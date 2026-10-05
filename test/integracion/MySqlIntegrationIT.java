@@ -11,7 +11,7 @@ import Modelo.Platos;
 import Modelo.PlatosDao;
 import Modelo.Salas;
 import Modelo.SalasDao;
-import Modelo.login;
+import Modelo.Usuario;
 import Servicio.GeneradorPdfPedido;
 import Servicio.PedidoPdfServicio;
 import infraestructura.ConfiguracionLogs;
@@ -126,7 +126,7 @@ public class MySqlIntegrationIT {
     @Test
     public void autenticaUsuarioSemillaRechazaCredencialesYConsultaMenu() {
         establecerClaveLegacySemilla();
-        Optional<login> autenticado = new LoginDao().autenticar("info@angelsifuentes.com", "admin");
+        Optional<Usuario> autenticado = new LoginDao().autenticar("info@angelsifuentes.com", "admin");
         assertTrue(autenticado.isPresent());
         assertEquals("Administrador", autenticado.get().getRol());
         assertTrue("La clave legacy debe migrarse tras autenticar", claveSemillaMigrada());
@@ -158,10 +158,10 @@ public class MySqlIntegrationIT {
     @Test
     public void altaGuardaHashYAutenticacionVerificaLaClaveSinTextoPlano() throws SQLException {
         String correo = "it-" + UUID.randomUUID() + "@restaurante.test";
-        login usuario = new login();
+        Usuario usuario = new Usuario();
         usuario.setNombre("Cuenta de prueba de hash");
         usuario.setCorreo(correo);
-        usuario.setPass("clave-segura-it");
+        usuario.setPassword("clave-segura-it");
         usuario.setRol("Asistente");
         try {
             assertTrue(new LoginDao().Registrar(usuario));
@@ -207,10 +207,10 @@ public class MySqlIntegrationIT {
     @Test
     public void correoDuplicadoEsConflictoWarningConCausaYLogUnico() throws IOException {
         int entradasAntes = contar(textoLog(), "El correo electrónico ya está registrado.");
-        login duplicado = new login();
+        Usuario duplicado = new Usuario();
         duplicado.setNombre("Usuario de integración duplicado");
         duplicado.setCorreo("info@angelsifuentes.com");
-        duplicado.setPass("no-se-registra");
+        duplicado.setPassword("no-se-registra");
         duplicado.setRol("Asistente");
 
         ErrorAplicacionException error = org.junit.Assert.assertThrows(ErrorAplicacionException.class,

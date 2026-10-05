@@ -18,7 +18,6 @@ import Modelo.PedidoPendienteExistenteException;
 import Modelo.Platos;
 import Modelo.Salas;
 import Modelo.Usuario;
-import Modelo.login;
 import Servicio.PoliticaAcceso;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -1524,14 +1523,14 @@ public final class Sistema extends javax.swing.JFrame {
         if (txtNombre.getText().trim().isEmpty() || txtCorreo.getText().trim().isEmpty() || txtPass.getPassword().length == 0) {
             JOptionPane.showMessageDialog(null, "Todo los campos son requeridos");
         } else {
-            login lg = new login();
+            Usuario lg = new Usuario();
             String correo = txtCorreo.getText();
             String pass = String.valueOf(txtPass.getPassword());
             String nom = txtNombre.getText();
             String rol = cbxRol.getSelectedItem().toString();
             lg.setNombre(nom);
             lg.setCorreo(correo);
-            lg.setPass(pass);
+            lg.setPassword(pass);
             lg.setRol(rol);
             if (lgDao.Registrar(lg)) {
                 JOptionPane.showMessageDialog(this, "Usuario registrado.");
@@ -1983,7 +1982,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void ListarUsuarios() {
-        List<login> Listar = lgDao.ListarUsuarios();
+        List<Usuario> Listar = lgDao.ListarUsuarios();
         modelo = (DefaultTableModel) TableUsuarios.getModel();
         modelo.setRowCount(0);
         Object[] ob = new Object[4];

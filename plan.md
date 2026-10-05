@@ -1,6 +1,6 @@
 # Restaurante — Documentación de Arquitectura y QA
 
-> **Motor:** MySQL 8.4.11 (LTS) · **Compilador:** Java 11 (target 11) · **Runtime:** OpenJDK 17 Temurin · **Build:** Apache Ant 1.10.15 · **Tests:** JUnit 4.13.2
+> **Motor:** MySQL 8.4.11 (LTS) · **Compilador:** Java 17 (target 17) · **Runtime:** OpenJDK 17 Temurin · **Build:** Apache Ant 1.10.15 · **Tests:** JUnit 4.13.2
 
 ---
 
@@ -8,9 +8,9 @@
 
 | Indicador | Valor |
 |:---|:---|
-| Archivos de producción (`src/`) | **48 archivos Java** |
-| Archivos de pruebas (`test/`) | **37 archivos Java** |
-| Pruebas unitarias (`ant test`) | **91 pruebas, 36 suites · 0 fallos · 0 errores** |
+| Archivos de producción (`src/`) | **47 archivos Java** |
+| Archivos de pruebas (`test/`) | **36 archivos Java** |
+| Pruebas unitarias (`ant test`) | **89 pruebas, 35 suites · 0 fallos · 0 errores** |
 | Pruebas de integración MySQL (`ant integration-test`) | **13 pruebas, 1 suite · 0 fallos · 0 errores** |
 | Migraciones de base de datos | **3 scripts aplicados** |
 | Rama principal | `main` — árbol limpio, sincronizado con `origin` |
@@ -42,7 +42,7 @@ src/
 
 ---
 
-## Inventario de Archivos de Producción (48)
+## Inventario de Archivos de Producción (47)
 
 ### `src/infraestructura/` — 4 archivos
 
@@ -53,19 +53,18 @@ src/
 | `ArchivoLogDiario.java` | Rota archivos `logs/restaurante-AAAA-MM-DD.log` diariamente, purga por mes calendario (soporta años bisiestos y cambios de año), y mantiene un canal de emergencia durable ante fallos del handler. |
 | `PasswordHasher.java` | PBKDF2-HMAC-SHA256 con 600 000 iteraciones y salt aleatorio de 16 bytes. Comparación en tiempo constante. Soporta migración transparente de contraseñas legacy. |
 
-### `src/Modelo/` — 15 archivos
+### `src/Modelo/` — 14 archivos
 
 **Entidades de dominio:**
 
 | Archivo | Responsabilidad |
 |:---|:---|
-| `Usuario.java` | Entidad de usuario autenticado (id, nombre, correo, rol). |
+| `Usuario.java` | Entidad de usuario autenticado (id, nombre, correo, password, rol). |
 | `Config.java` | Bean de configuración empresarial (RUC, nombre, teléfono, dirección, mensaje). |
 | `Platos.java` | Entidad de plato con precio en `BigDecimal`. |
 | `Salas.java` | Entidad de sala con número de mesas. |
 | `Pedidos.java` | Encabezado de pedido con total en `BigDecimal`, estado (`PENDIENTE` / `FINALIZADO`), sala y usuario. |
 | `DetallePedido.java` | Línea de detalle con precio en `BigDecimal`, cantidad y comentario. |
-| `login.java` | Fachada deprecada sobre `Usuario`; mantiene compatibilidad mientras se completa la migración a `Usuario`. |
 | `Conexion.java` | Fachada compatible; delega la apertura JDBC a `ProveedorConexionJdbc`. |
 
 **Excepciones de aplicación:**
@@ -80,7 +79,7 @@ src/
 
 | Archivo | Operaciones principales |
 |:---|:---|
-| `AutenticacionRepositorio.java` | `autenticar()`, `autenticarUsuario()` |
+| `AutenticacionRepositorio.java` | `autenticar(String correo, String clave)` |
 | `PedidosRepositorio.java` | `registrarPedidoCompleto()`, `verPedido()`, `verPedidoDetalle()`, `listarPedidos()`, `actualizarEstado()` |
 | `PlatosRepositorio.java` | `registrar()`, `listarPorFecha()`, `eliminar()`, `modificar()` |
 | `SalasRepositorio.java` | `registrar()`, `listar()`, `eliminar()`, `modificar()` |
@@ -89,7 +88,7 @@ src/
 
 | Archivo | Detalles técnicos clave |
 |:---|:---|
-| `LoginDao.java` | Autenticación con migración PBKDF2 en primer login; captura correo duplicado (MySQL 1062 → `WARNING`); gestiona datos de empresa; lista usuarios. |
+| `LoginDao.java` | Autenticación con migración PBKDF2 en primer login; captura correo duplicado (MySQL 1062 → `WARNING`); gestiona datos de empresa; lista usuarios como `Usuario`. |
 | `PedidosDao.java` | Transacción atómica con rollback automático; ID recuperado con `getGeneratedKeys()`; detecta conflicto de mesa (`uq_pedidos_mesa_pendiente`); finalización y listado histórico. |
 | `PlatosDao.java` | Filtro por `fecha` y nombre con parámetros SQL; `try-with-resources` en todas las operaciones. |
 | `SalasDao.java` | CRUD completo; traduce restricción foránea (MySQL 1451) a mensaje de negocio explícito. |
@@ -98,7 +97,7 @@ src/
 
 | Archivo | Responsabilidad |
 |:---|:---|
-| `AutenticacionServicio.java` | Valida entradas y delega al repositorio; sin SQL ni Swing. |
+| `AutenticacionServicio.java` | Valida entradas y delega al repositorio `Usuario`; sin SQL ni Swing. |
 | `PedidoServicio.java` | Valida y orquesta el registro completo de un pedido. |
 | `PlatosServicio.java` | Valida y gestiona el catálogo de platos diarios. |
 | `SalasServicio.java` | Valida y gestiona salas y número de mesas. |
@@ -123,11 +122,11 @@ src/
 
 **Ventanas principales:**
 
-| Archivo | Estado | Pendiente |
-|:---|:---|:---|
-| `FrmLogin.java` | Recibe `LoginControlador`; usa `AutenticacionSwingWorker`; Look&Feel registrado como `WARNING` si falla. | Retirar método `main()` generado por NetBeans. |
-| `Sistema.java` | Recibe `Usuario` y controladores; toda operación JDBC pasa por un `SwingWorker`; autorización vía `PoliticaAcceso`. | — |
-| `ManejadorErroresSwing.java` | Captura excepciones no atendidas en EDT y otros hilos; `RuntimeException` se registra y muestra; `Error` se relanza para el handler global. | — |
+| Archivo | Estado |
+|:---|:---|
+| `FrmLogin.java` | Recibe `LoginControlador`; usa `AutenticacionSwingWorker`; Look&Feel registrado como `WARNING` si falla. |
+| `Sistema.java` | Recibe `Usuario` y controladores; toda operación JDBC pasa por un `SwingWorker`; autorización vía `PoliticaAcceso`. |
+| `ManejadorErroresSwing.java` | Captura excepciones no atendidas en EDT y otros hilos; `RuntimeException` se registra y muestra; `Error` se relanza para el handler global. |
 
 **Utilidades de vista:**
 
@@ -188,24 +187,23 @@ src/
 
 ### Pruebas unitarias — `ant test` (sin MySQL, sin Docker)
 
-**91 pruebas · 36 suites · 0 fallos · 0 errores**
+**89 pruebas · 35 suites · 0 fallos · 0 errores**
 
 | Suite | Tests | Qué verifica |
 |:---|---:|:---|
-| `Controlador.LoginControladorTest` | 1 | Delegación al servicio de autenticación |
+| `Controlador.LoginControladorTest` | 1 | Delegación al servicio de autenticación con `Usuario` |
 | `Controlador.PedidosControladorTest` | 3 | Registro, consulta y PDF de pedidos |
 | `Controlador.PlatosControladorTest` | 2 | Delegación y propagación de fallos |
 | `Controlador.SalasControladorTest` | 2 | Delegación y propagación de fallos |
 | `Modelo.DetallePedidoTest` | 1 | Validación de `BigDecimal` en precio |
 | `Modelo.ErrorAplicacionExceptionTest` | 6 | Severidad, causa preservada y log único |
-| `Modelo.LoginCompatibilidadTest` | 1 | Alias `pass` en fachada deprecada |
 | `Modelo.PedidosDaoTest` | 2 | Rechazo de argumentos nulos antes de conectar |
 | `Modelo.PedidosTest` | 1 | Validación de `BigDecimal` en total |
 | `Modelo.PlatosDaoTest` | 2 | Rechazo de fecha nula y nombre; sin BD |
 | `Modelo.PlatosTest` | 1 | Validación de `BigDecimal` en precio |
 | `Modelo.SalasDaoTest` | 1 | Rechazo de argumento inválido; sin BD |
 | `Modelo.UsuarioTest` | 1 | Construcción y accesores de entidad |
-| `Servicio.AutenticacionServicioTest` | 5 | Validaciones, delegación, rechazo y advertencia |
+| `Servicio.AutenticacionServicioTest` | 4 | Validaciones, delegación, rechazo y advertencia |
 | `Servicio.ConsultaPedidosServicioTest` | 4 | Consulta de pedidos, detalles y estado |
 | `Servicio.GeneradorPdfPedidoTest` | 3 | Generación PDF con datos de prueba; firma `%PDF-` |
 | `Servicio.PedidoPdfServicioTest` | 2 | Delegación y propagación de fallo del visor |
@@ -258,7 +256,7 @@ Ejecutadas contra `mysql:8.4.11` en contenedor desechable (`restaurante_test`, p
 # Levantar la base de datos de desarrollo
 docker compose up -d
 
-# Compilar
+# Compilar con Java 17
 ant clean compile
 
 # Ejecutar pruebas unitarias (sin Docker)
@@ -301,17 +299,17 @@ Estas restricciones se verifican en cada cambio. Un cambio que las rompa no se a
 
 ---
 
-## Deuda Técnica y Próximos Pasos
+## Estado de Deuda Técnica y Roadmap
 
-### Pendiente técnico (prioridad alta)
+### Tareas de Deuda Técnica (100% Completadas)
 
-| Ítem | Descripción |
-|:---|:---|
-| Retirar `login.java` como fachada deprecada | Requiere migrar todos los consumidores restantes a `Usuario`. |
-| Eliminar `main()` en `FrmLogin.java` | El método `main()` generado por NetBeans queda como acceso directo no controlado; debe eliminarse. |
-| Elevar `javac.source` y `javac.target` a `17` o `21` | El runtime actual es OpenJDK 17 y el proyecto compila en source/target 11. Elevar a 17 habilita `Text Blocks`, `Records`, `Pattern Matching` y `sealed interfaces` sin instalar nada adicional. |
+| Ítem | Estado | Resolución |
+|:---|:---:|:---|
+| Retirar `login.java` como fachada deprecada | ✅ **Completado** | Migrados todos los DAOs, repositorios, controladores, vistas y tests a `Usuario.java`. Archivo `login.java` eliminado. |
+| Eliminar `main()` en `FrmLogin.java` | ✅ **Completado** | Verificado que solo `Restaurante.java` contiene el punto de entrada `main()`. |
+| Elevar `javac.source` y `javac.target` a `17` | ✅ **Completado** | Actualizado `project.properties` a `17` y verificado con `ant clean test`. |
 
-### Roadmap de modernización (Java 17 → 21)
+### Roadmap de Modernización Futura (Java 17 → 21)
 
 | Característica | Aplicación concreta |
 |:---|:---|

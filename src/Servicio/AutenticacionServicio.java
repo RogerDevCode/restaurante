@@ -3,7 +3,6 @@ package Servicio;
 import Modelo.AutenticacionRepositorio;
 import Modelo.ErrorAplicacionException;
 import Modelo.Usuario;
-import Modelo.login;
 import java.util.Optional;
 
 /** Reglas de aplicación para la autenticación. No depende de Swing ni de JDBC. */
@@ -17,15 +16,9 @@ public final class AutenticacionServicio {
         this.repositorio = repositorio;
     }
 
-    public Optional<login> autenticar(String correo, String clave) {
+    public Optional<Usuario> autenticar(String correo, String clave) {
         validarCredenciales(correo, clave);
         return repositorio.autenticar(correo.trim(), clave);
-    }
-
-    /** Caso de autenticación con el modelo de usuario normalizado. */
-    public Optional<Usuario> autenticarUsuario(String correo, String clave) {
-        validarCredenciales(correo, clave);
-        return repositorio.autenticarUsuario(correo.trim(), clave);
     }
 
     private void validarCredenciales(String correo, String clave) {

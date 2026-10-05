@@ -8,3 +8,4 @@ build/
 dist/
 nbproject/private/
 .nb-cache/
+.commandcode/

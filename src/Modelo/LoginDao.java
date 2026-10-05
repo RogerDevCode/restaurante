@@ -31,11 +31,11 @@ public class LoginDao implements AutenticacionRepositorio {
     }
 
     @Override
-    public Optional<login> autenticar(String correo, String clave) {
+    public Optional<Usuario> autenticar(String correo, String clave) {
         if (correo == null || correo.trim().isEmpty() || clave == null || clave.isEmpty()) {
             throw ErrorAplicacionException.validacion("El correo y la contraseña son obligatorios.");
         }
-        login usuario = null;
+        Usuario usuario = null;
         String contrasenaGuardada = null;
         String sql = "SELECT id, nombre, correo, pass, rol FROM usuarios WHERE correo = ?";
         try (Connection conexion = conexiones.getConnection();
@@ -43,7 +43,7 @@ public class LoginDao implements AutenticacionRepositorio {
             sentencia.setString(1, correo.trim());
             try (ResultSet resultados = sentencia.executeQuery()) {
                 if (resultados.next()) {
-                    usuario = new login();
+                    usuario = new Usuario();
                     usuario.setId(resultados.getInt("id"));
                     usuario.setNombre(resultados.getString("nombre"));
                     usuario.setCorreo(resultados.getString("correo"));
@@ -62,21 +62,18 @@ public class LoginDao implements AutenticacionRepositorio {
         return Optional.of(usuario);
     }
 
-    /** Adaptador temporal de compatibilidad para consumidores del modelo legacy. */
-    @Deprecated
-    public login log(String correo, String pass) {
-        return autenticar(correo, pass).orElseGet(login::new);
+    public Usuario log(String correo, String pass) {
+        return autenticar(correo, pass).orElseGet(Usuario::new);
     }
 
-    @Deprecated
-    public boolean Registrar(login reg) {
+    public boolean Registrar(Usuario reg) {
         validarRegistro(reg);
         String sql = "INSERT INTO usuarios (nombre, correo, pass, rol) VALUES (?,?,?,?)";
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, reg.getNombre());
             sentencia.setString(2, reg.getCorreo());
-            sentencia.setString(3, passwordHasher.hash(reg.getPass().toCharArray()));
+            sentencia.setString(3, passwordHasher.hash(reg.getPassword().toCharArray()));
             sentencia.setString(4, reg.getRol());
             return ErrorAplicacionException.resultadoUnaFila(
                     sentencia.executeUpdate(), "registrar usuario");
@@ -143,10 +140,10 @@ public class LoginDao implements AutenticacionRepositorio {
         }
     }
 
-    private void validarRegistro(login reg) {
+    private void validarRegistro(Usuario reg) {
         if (reg == null || reg.getNombre() == null || reg.getNombre().trim().isEmpty()
                 || reg.getCorreo() == null || reg.getCorreo().trim().isEmpty()
-                || reg.getPass() == null || reg.getPass().isEmpty()
+                || reg.getPassword() == null || reg.getPassword().isEmpty()
                 || reg.getRol() == null || reg.getRol().trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("Todos los datos del usuario son obligatorios.");
         }
@@ -155,14 +152,14 @@ public class LoginDao implements AutenticacionRepositorio {
         }
     }
 
-    public List<login> ListarUsuarios() {
-        List<login> usuarios = new ArrayList<>();
+    public List<Usuario> ListarUsuarios() {
+        List<Usuario> usuarios = new ArrayList<>();
         String sql = "SELECT * FROM usuarios";
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql);
                 ResultSet resultados = sentencia.executeQuery()) {
             while (resultados.next()) {
-                login usuario = new login();
+                Usuario usuario = new Usuario();
                 usuario.setId(resultados.getInt("id"));
                 usuario.setNombre(resultados.getString("nombre"));
                 usuario.setCorreo(resultados.getString("correo"));

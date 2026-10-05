@@ -3,7 +3,6 @@ package Vista;
 import Controlador.LoginControlador;
 import Modelo.AutenticacionRepositorio;
 import Modelo.Usuario;
-import Modelo.login;
 import Servicio.AutenticacionServicio;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -14,7 +13,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.SwingUtilities;
 import org.junit.Test;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -72,20 +70,10 @@ public class AutenticacionSwingWorkerTest {
 
     private LoginControlador controladorFalso(AtomicBoolean repositorioEnEdt,
             Usuario usuario, RuntimeException fallo) {
-        AutenticacionRepositorio repositorio = new AutenticacionRepositorio() {
-            @Override
-            public Optional<login> autenticar(String correo, String clave) {
-                repositorioEnEdt.set(SwingUtilities.isEventDispatchThread());
-                if (fallo != null) throw fallo;
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<Usuario> autenticarUsuario(String correo, String clave) {
-                repositorioEnEdt.set(SwingUtilities.isEventDispatchThread());
-                if (fallo != null) throw fallo;
-                return Optional.of(usuario);
-            }
+        AutenticacionRepositorio repositorio = (correo, clave) -> {
+            repositorioEnEdt.set(SwingUtilities.isEventDispatchThread());
+            if (fallo != null) throw fallo;
+            return Optional.ofNullable(usuario);
         };
         return new LoginControlador(new AutenticacionServicio(repositorio));
     }

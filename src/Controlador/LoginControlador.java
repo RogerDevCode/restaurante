@@ -3,7 +3,6 @@ package Controlador;
 import Modelo.LoginDao;
 import Modelo.ErrorAplicacionException;
 import Modelo.Usuario;
-import Modelo.login;
 import Servicio.AutenticacionServicio;
 import java.util.Optional;
 
@@ -22,12 +21,12 @@ public final class LoginControlador {
         this.servicio = servicio;
     }
 
-    public Optional<login> autenticar(String correo, String clave) {
+    public Optional<Usuario> autenticar(String correo, String clave) {
         return servicio.autenticar(correo, clave);
     }
 
     /** Coordina el caso de uso para consumidores migrados al modelo Usuario. */
     public Optional<Usuario> autenticarUsuario(String correo, String clave) {
-        return servicio.autenticarUsuario(correo, clave);
+        return servicio.autenticar(correo, clave);
     }
 }

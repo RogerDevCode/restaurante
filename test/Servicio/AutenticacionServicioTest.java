@@ -4,7 +4,6 @@ import Modelo.AutenticacionRepositorio;
 import Modelo.DataAccessException;
 import Modelo.ErrorAplicacionException;
 import Modelo.Usuario;
-import Modelo.login;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,14 +60,14 @@ public class AutenticacionServicioTest {
 
     @Test
     public void entregaCredencialesLimpiasYDevuelveUsuarioAutenticado() {
-        login usuario = new login(7, "Ana", "ana@restaurante.cl", "secreto", "Administrador");
+        Usuario usuario = new Usuario(7, "Ana", "ana@restaurante.cl", "secreto", "Administrador");
         AutenticacionRepositorio repositorio = (correo, clave) -> {
             assertEquals("ana@restaurante.cl", correo);
             assertEquals("secreto", clave);
             return Optional.of(usuario);
         };
 
-        Optional<login> resultado = new AutenticacionServicio(repositorio)
+        Optional<Usuario> resultado = new AutenticacionServicio(repositorio)
                 .autenticar(" ana@restaurante.cl ", "secreto");
 
         assertTrue(resultado.isPresent());
@@ -76,38 +75,23 @@ public class AutenticacionServicioTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
-    public void puertoExponeElModeloUsuarioDuranteLaMigracionDelDaoLegacy() {
-        login legado = new login(9, "Rosa", "rosa@example.test", "clave", "Asistente");
-        AutenticacionRepositorio repositorio = (correo, clave) -> Optional.of(legado);
-
-        Optional<Usuario> resultado = repositorio.autenticarUsuario("rosa@example.test", "clave");
-
-        assertTrue(resultado.isPresent());
-        assertSame(legado, resultado.get());
-        assertEquals("Rosa", resultado.get().getNombre());
-        assertEquals("Asistente", resultado.get().getRol());
-    }
-
-    @Test
-    @SuppressWarnings("deprecation")
-    public void servicioAutenticaComoUsuarioYValidaAntesDelRepositorio() {
-        login legado = new login(12, "Leo", "leo@example.test", "clave", "Administrador");
+    public void validaFormatoYCamposAntesDeConsultarRepositorio() {
+        Usuario usuarioEsperado = new Usuario(12, "Leo", "leo@example.test", "clave", "Administrador");
         AtomicInteger llamadas = new AtomicInteger();
         AutenticacionRepositorio repositorio = (correo, clave) -> {
             llamadas.incrementAndGet();
             assertEquals("leo@example.test", correo);
-            return Optional.of(legado);
+            return Optional.of(usuarioEsperado);
         };
 
-        Optional<Modelo.Usuario> usuario = new AutenticacionServicio(repositorio)
-                .autenticarUsuario(" leo@example.test ", "clave");
+        Optional<Usuario> usuario = new AutenticacionServicio(repositorio)
+                .autenticar(" leo@example.test ", "clave");
 
         assertTrue(usuario.isPresent());
-        assertSame(legado, usuario.get());
+        assertSame(usuarioEsperado, usuario.get());
         assertEquals(1, llamadas.get());
         org.junit.Assert.assertThrows(ErrorAplicacionException.class,
-                () -> new AutenticacionServicio(repositorio).autenticarUsuario(" ", "clave"));
+                () -> new AutenticacionServicio(repositorio).autenticar(" ", "clave"));
         assertEquals(1, llamadas.get());
     }
 
