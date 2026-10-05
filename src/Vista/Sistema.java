@@ -118,6 +118,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtTempNumMesa.setVisible(false);
         jTabbedPane1.setEnabled(false);
         panelSalas();
+        ListarConfig();
     }
 
     private boolean autorizar(PoliticaAcceso.Accion accion) {
@@ -215,6 +216,8 @@ public final class Sistema extends javax.swing.JFrame {
         txtDireccionConfig = new javax.swing.JTextField();
         jLabel31 = new javax.swing.JLabel();
         txtMensaje = new javax.swing.JTextField();
+        jLabelTasaConfig = new javax.swing.JLabel();
+        txtTasaConfig = new javax.swing.JTextField();
         btnActualizarConfig = new javax.swing.JButton();
         jLabel27 = new javax.swing.JLabel();
         txtRucConfig = new javax.swing.JTextField();
@@ -936,13 +939,21 @@ public final class Sistema extends javax.swing.JFrame {
         txtDireccionConfig.setBorder(null);
         jPanel8.add(txtDireccionConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 190, 147, 30));
 
+        jLabelTasaConfig.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabelTasaConfig.setText("Tasa de Cambio (Bs. / $)");
+        jPanel8.add(jLabelTasaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 230, -1, -1));
+
+        txtTasaConfig.setBackground(new java.awt.Color(204, 204, 204));
+        txtTasaConfig.setBorder(null);
+        jPanel8.add(txtTasaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 255, 147, 30));
+
         jLabel31.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
         jLabel31.setText("Mensaje");
-        jPanel8.add(jLabel31, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 290, -1, -1));
+        jPanel8.add(jLabel31, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 230, -1, -1));
 
         txtMensaje.setBackground(new java.awt.Color(204, 204, 204));
         txtMensaje.setBorder(null);
-        jPanel8.add(txtMensaje, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 320, 400, 30));
+        jPanel8.add(txtMensaje, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 255, 220, 30));
 
         btnActualizarConfig.setBackground(new java.awt.Color(255, 255, 255));
         btnActualizarConfig.setFont(new java.awt.Font("Times New Roman", 1, 13)); // NOI18N
@@ -1402,6 +1413,9 @@ public final class Sistema extends javax.swing.JFrame {
             conf.setTelefono(txtTelefonoConfig.getText());
             conf.setDireccion(txtDireccionConfig.getText());
             conf.setMensaje(txtMensaje.getText());
+            if (txtTasaConfig != null && !txtTasaConfig.getText().trim().isEmpty()) {
+                conf.setTasaDolar(new BigDecimal(txtTasaConfig.getText().trim()));
+            }
             conf.setId(Integer.parseInt(txtIdConfig.getText()));
             if (lgDao.ModificarDatos(conf)) {
                 JOptionPane.showMessageDialog(this, "Datos de la empresa modificados.");
@@ -1908,6 +1922,8 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JTextField txtPrecioPlato;
     private javax.swing.JTextField txtRucConfig;
     private javax.swing.JTextField txtSalaFinalizar;
+    private javax.swing.JTextField txtTasaConfig;
+    private javax.swing.JLabel jLabelTasaConfig;
     private javax.swing.JTextField txtTelefonoConfig;
     private javax.swing.JTextField txtTempIdSala;
     private javax.swing.JTextField txtTempNumMesa;
@@ -1920,7 +1936,9 @@ public final class Sistema extends javax.swing.JFrame {
             BigDecimal subtotal = importeMonetario(tabla.getModel().getValueAt(i, 4));
             Totalpagar = Totalpagar.add(subtotal);
         }
-        label.setText(Totalpagar.toPlainString());
+        BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
+        BigDecimal totalBs = Totalpagar.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        label.setText("Bs. " + totalBs.toPlainString() + " ($ " + Totalpagar.toPlainString() + ")");
     }
 
     private void LimpiarTableMenu() {
@@ -1939,6 +1957,9 @@ public final class Sistema extends javax.swing.JFrame {
         txtTelefonoConfig.setText("" + conf.getTelefono());
         txtDireccionConfig.setText("" + conf.getDireccion());
         txtMensaje.setText("" + conf.getMensaje());
+        if (txtTasaConfig != null) {
+            txtTasaConfig.setText(conf.getTasaDolar() != null ? conf.getTasaDolar().toPlainString() : "36.5000");
+        }
     }
 
     private void ListarPedidos() {
@@ -1966,7 +1987,9 @@ public final class Sistema extends javax.swing.JFrame {
             ob[2] = Listar.get(i).getUsuario();
             ob[3] = Listar.get(i).getNum_mesa();
             ob[4] = Listar.get(i).getFecha();
-            ob[5] = Listar.get(i).getTotalDecimal();
+            BigDecimal montoUsd = Listar.get(i).getTotalDecimal();
+            BigDecimal montoBs = Listar.get(i).getTotalBs();
+            ob[5] = montoBs != null ? "Bs. " + montoBs.toPlainString() + " ($ " + montoUsd.toPlainString() + ")" : "$ " + montoUsd.toPlainString();
             ob[6] = Listar.get(i).getEstado();
             modelo.addRow(ob);
         }
@@ -2175,10 +2198,15 @@ public final class Sistema extends javax.swing.JFrame {
     private int registrarPedidoCompleto() {
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
+        BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
+        BigDecimal totalBs = Totalpagar.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(id_sala);
         pedido.setNum_mesa(num_mesa);
         pedido.setTotalDecimal(Totalpagar);
+        pedido.setTasaCambio(tasa);
+        pedido.setTotalBs(totalBs);
         pedido.setUsuario(LabelVendedor.getText());
 
         List<DetallePedido> detalles = new ArrayList<>();
@@ -2232,7 +2260,11 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void mostrarPedidoEnPantalla(Pedidos pedido, List<DetallePedido> Listar) {
         ped = pedido;
-        totalFinalizar.setText(ped.getTotalDecimal().toPlainString());
+        BigDecimal tasa = (ped.getTasaCambio() != null && ped.getTasaCambio().compareTo(BigDecimal.ZERO) > 0)
+                ? ped.getTasaCambio()
+                : ((conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000"));
+        BigDecimal totalBs = ped.getTotalBs() != null ? ped.getTotalBs() : ped.getTotalDecimal().multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        totalFinalizar.setText("Bs. " + totalBs.toPlainString() + " ($ " + ped.getTotalDecimal().toPlainString() + ")");
         txtFechaHora.setText("" + ped.getFecha());
         txtSalaFinalizar.setText("" + ped.getSala());
         txtNumMesaFinalizar.setText("" + ped.getNum_mesa());

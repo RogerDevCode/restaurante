@@ -27,6 +27,7 @@ import infraestructura.PasswordHasher;
 import infraestructura.ProveedorConexionJdbc;
 import java.io.File;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -34,8 +35,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -43,7 +42,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-/** Prueba de integración E2E que simula el recorrido completo de un usuario. */
+/** Prueba de integración E2E que simula el recorrido completo de un usuario con soporte bimonetario. */
 public class SimulacionUsuarioE2EIT {
 
     @Test
@@ -85,12 +84,16 @@ public class SimulacionUsuarioE2EIT {
                     consultaPedidos
             );
 
-            // 2. Consulta de configuración de empresa
+            // 2. Consulta y ajuste de configuración de empresa y tasa del dólar
             Config config = loginDao.datosEmpresa();
             assertNotNull(config.getNombre());
             assertNotNull(config.getRuc());
+            BigDecimal tasaDolar = new BigDecimal("38.5000");
+            config.setTasaDolar(tasaDolar);
+            assertTrue(loginDao.ModificarDatos(config));
+            assertEquals(tasaDolar, loginDao.datosEmpresa().getTasaDolar());
 
-            // 3. Crear Sala y Menú del Día
+            // 3. Crear Sala y Menú del Día (en Dólares)
             String sufijo = UUID.randomUUID().toString().substring(0, 6);
             String nombreSala = "SALA E2E " + sufijo;
             assertTrue(salasCtrl.registrar(new Salas(0, nombreSala, 10)));
@@ -107,24 +110,29 @@ public class SimulacionUsuarioE2EIT {
             assertTrue(platosCtrl.registrar(plato1));
             assertTrue(platosCtrl.registrar(plato2));
 
-            // 4. Registrar Pedido completo
+            // 4. Registrar Pedido completo con cálculo en Bolívares y Dólares
             DetallePedido det1 = new DetallePedido(0, plato1.getNombre(), plato1.getPrecioDecimal(), 2, "Sin sal", 0);
             DetallePedido det2 = new DetallePedido(0, plato2.getNombre(), plato2.getPrecioDecimal(), 1, "Normal", 0);
-            BigDecimal totalEsperado = new BigDecimal("60.00"); // 25*2 + 10*1 = 60
+            BigDecimal totalUsd = new BigDecimal("60.00"); // 25*2 + 10*1 = 60
+            BigDecimal totalBs = totalUsd.multiply(tasaDolar).setScale(2, RoundingMode.HALF_UP); // 60 * 38.50 = 2310.00
 
-            Pedidos pedido = new Pedidos(0, salaCreada.getId(), 4, hoy, totalEsperado, salaCreada.getNombre(), admin.getNombre(), "PENDIENTE");
+            Pedidos pedido = new Pedidos(0, salaCreada.getId(), 4, hoy, totalUsd, salaCreada.getNombre(), admin.getNombre(), "PENDIENTE", tasaDolar, totalBs);
             int idPedido = pedidosCtrl.registrarPedidoCompleto(pedido, Arrays.asList(det1, det2));
             assertTrue("ID de pedido debe ser positivo", idPedido > 0);
 
             // 5. Conflicto de concurrencia: no se puede duplicar pedido pendiente en la misma mesa
-            Pedidos pedidoConflicto = new Pedidos(0, salaCreada.getId(), 4, hoy, new BigDecimal("10.00"), salaCreada.getNombre(), "Mozo2", "PENDIENTE");
+            Pedidos pedidoConflicto = new Pedidos(0, salaCreada.getId(), 4, hoy, new BigDecimal("10.00"), salaCreada.getNombre(), "Mozo2", "PENDIENTE", tasaDolar, new BigDecimal("385.00"));
             assertThrows(PedidoPendienteExistenteException.class,
                     () -> pedidosCtrl.registrarPedidoCompleto(pedidoConflicto, Arrays.asList(det2)));
 
-            // 6. Consulta de pedido activo
+            // 6. Consulta de pedido activo y montos bimonetarios
             Pedidos pedidoActivo = pedidosCtrl.verPedido(idPedido);
             assertEquals("PENDIENTE", pedidoActivo.getEstado());
             assertEquals(4, pedidoActivo.getNum_mesa());
+            assertEquals(0, totalUsd.compareTo(pedidoActivo.getTotalDecimal()));
+            assertEquals(0, totalBs.compareTo(pedidoActivo.getTotalBs()));
+            assertEquals(0, tasaDolar.compareTo(pedidoActivo.getTasaCambio()));
+
             List<DetallePedido> detalles = pedidosCtrl.verPedidoDetalle(idPedido);
             assertEquals(2, detalles.size());
 
@@ -132,7 +140,7 @@ public class SimulacionUsuarioE2EIT {
             assertTrue(pedidosCtrl.finalizarPedido(idPedido));
             assertEquals("FINALIZADO", pedidosCtrl.verPedido(idPedido).getEstado());
 
-            // 8. Generación de PDF
+            // 8. Generación de PDF con desglose en Bolívares y Dólares
             pedidosCtrl.generarPdfPedido(idPedido);
             Path pdfGenerado = dirPdfTemp.resolve("pedido-" + idPedido + ".pdf");
             assertTrue(Files.isRegularFile(pdfGenerado));

@@ -1,5 +1,6 @@
-
 package Modelo;
+
+import java.math.BigDecimal;
 
 public class Config {
     private int id;
@@ -8,18 +9,23 @@ public class Config {
     private String telefono;
     private String direccion;
     private String mensaje;
-    
-    public Config(){
-        
+    private BigDecimal tasaDolar = new BigDecimal("36.5000");
+
+    public Config() {
     }
 
     public Config(int id, String ruc, String nombre, String telefono, String direccion, String mensaje) {
+        this(id, ruc, nombre, telefono, direccion, mensaje, new BigDecimal("36.5000"));
+    }
+
+    public Config(int id, String ruc, String nombre, String telefono, String direccion, String mensaje, BigDecimal tasaDolar) {
         this.id = id;
         this.ruc = ruc;
         this.nombre = nombre;
         this.telefono = telefono;
         this.direccion = direccion;
         this.mensaje = mensaje;
+        setTasaDolar(tasaDolar);
     }
 
     public int getId() {
@@ -68,5 +74,17 @@ public class Config {
 
     public void setMensaje(String mensaje) {
         this.mensaje = mensaje;
+    }
+
+    public BigDecimal getTasaDolar() {
+        return tasaDolar;
+    }
+
+    public void setTasaDolar(BigDecimal tasaDolar) {
+        if (tasaDolar != null && tasaDolar.compareTo(BigDecimal.ZERO) > 0) {
+            this.tasaDolar = tasaDolar;
+        } else {
+            this.tasaDolar = new BigDecimal("36.5000");
+        }
     }
 }

@@ -29,6 +29,7 @@ CREATE TABLE `config` (
   `telefono` varchar(11) COLLATE utf8_spanish_ci NOT NULL,
   `direccion` text COLLATE utf8_spanish_ci NOT NULL,
   `mensaje` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
+  `tasa_dolar` decimal(12,4) NOT NULL DEFAULT 36.5000,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -39,7 +40,7 @@ CREATE TABLE `config` (
 
 LOCK TABLES `config` WRITE;
 /*!40000 ALTER TABLE `config` DISABLE KEYS */;
-INSERT INTO `config` VALUES (1,'65479877','Restaurante la Delicia','957847894','Lima - Perú','Gracias por la compra');
+INSERT INTO `config` VALUES (1,'65479877','Restaurante la Delicia','957847894','Lima - Perú','Gracias por la compra',36.5000);
 /*!40000 ALTER TABLE `config` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -90,6 +91,8 @@ CREATE TABLE `pedidos` (
   `usuario` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
   `id_sala_pendiente` int(11) GENERATED ALWAYS AS (CASE WHEN `estado` = 'PENDIENTE' THEN `id_sala` ELSE NULL END) STORED,
   `num_mesa_pendiente` int(11) GENERATED ALWAYS AS (CASE WHEN `estado` = 'PENDIENTE' THEN `num_mesa` ELSE NULL END) STORED,
+  `tasa_cambio` decimal(12,4) NULL DEFAULT NULL,
+  `total_bs` decimal(14,2) NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `id_sala` (`id_sala`),
   UNIQUE KEY `uq_pedidos_mesa_pendiente` (`id_sala_pendiente`,`num_mesa_pendiente`),

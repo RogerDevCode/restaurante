@@ -25,7 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-/** Compone documentos de pedido sin consultar MySQL ni abrir aplicaciones externas. */
+/** Compone documentos de pedido con desglose en Bolívares y Dólares. */
 public final class GeneradorPdfPedido {
     private final Path directorioSalida;
 
@@ -46,7 +46,7 @@ public final class GeneradorPdfPedido {
                 PdfWriter.getInstance(documento, archivo);
                 documento.open();
                 agregarEncabezado(documento, pedido, configuracion);
-                agregarDetalles(documento, detalles);
+                agregarDetalles(documento, pedido, configuracion, detalles);
                 agregarCierre(documento, pedido, configuracion);
                 documento.close();
             }
@@ -119,24 +119,25 @@ public final class GeneradorPdfPedido {
     }
 
     private String datosEmpresa(Config configuracion) {
-        return "Ruc:    " + texto(configuracion.getRuc())
+        return "RIF/RUC: " + texto(configuracion.getRuc())
                 + "\nNombre: " + texto(configuracion.getNombre())
                 + "\nTeléfono: " + texto(configuracion.getTelefono())
                 + "\nDirección: " + texto(configuracion.getDireccion());
     }
 
-    private void agregarDetalles(Document documento, List<DetallePedido> detalles) throws DocumentException {
-        Font negrita = new Font(Font.FontFamily.TIMES_ROMAN, 12, Font.BOLD, BaseColor.BLUE);
+    private void agregarDetalles(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles) throws DocumentException {
+        BigDecimal tasa = obtenerTasa(pedido, configuracion);
+        Font negrita = new Font(Font.FontFamily.TIMES_ROMAN, 11, Font.BOLD, BaseColor.BLUE);
         PdfPTable tabla = new PdfPTable(4);
         tabla.setWidthPercentage(100);
         tabla.getDefaultCell().setBorder(0);
-        tabla.setWidths(new float[]{10f, 50f, 15f, 15f});
+        tabla.setWidths(new float[]{10f, 44f, 23f, 23f});
         tabla.setHorizontalAlignment(Element.ALIGN_LEFT);
         PdfPCell[] cabeceras = {
             new PdfPCell(new Phrase("Cant.", negrita)),
-            new PdfPCell(new Phrase("Plato.", negrita)),
-            new PdfPCell(new Phrase("P. unt.", negrita)),
-            new PdfPCell(new Phrase("P. Total", negrita))
+            new PdfPCell(new Phrase("Plato", negrita)),
+            new PdfPCell(new Phrase("P. Unit. ($ / Bs.)", negrita)),
+            new PdfPCell(new Phrase("Total ($ / Bs.)", negrita))
         };
         for (PdfPCell celda : cabeceras) {
             celda.setBorder(Rectangle.NO_BORDER);
@@ -144,30 +145,51 @@ public final class GeneradorPdfPedido {
             tabla.addCell(celda);
         }
         for (DetallePedido detalle : detalles) {
-            BigDecimal precio = detalle.getPrecioDecimal().setScale(2, RoundingMode.UNNECESSARY);
-            BigDecimal subtotal = precio.multiply(BigDecimal.valueOf(detalle.getCantidad()));
+            BigDecimal precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.UNNECESSARY);
+            BigDecimal subtotalUsd = precioUsd.multiply(BigDecimal.valueOf(detalle.getCantidad()));
+            BigDecimal precioBs = precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal subtotalBs = subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+
             tabla.addCell(String.valueOf(detalle.getCantidad()));
             tabla.addCell(detalle.getNombre());
-            tabla.addCell(precio.toPlainString());
-            tabla.addCell(subtotal.toPlainString());
+            tabla.addCell("$" + precioUsd.toPlainString() + " (Bs. " + precioBs.toPlainString() + ")");
+            tabla.addCell("$" + subtotalUsd.toPlainString() + " (Bs. " + subtotalBs.toPlainString() + ")");
         }
         documento.add(tabla);
     }
 
     private void agregarCierre(Document documento, Pedidos pedido, Config configuracion) throws DocumentException {
-        Paragraph totalPedido = new Paragraph("Total S/: "
-                + pedido.getTotalDecimal().setScale(2, RoundingMode.UNNECESSARY).toPlainString());
-        totalPedido.setAlignment(Element.ALIGN_RIGHT);
+        BigDecimal tasa = obtenerTasa(pedido, configuracion);
+        BigDecimal totalUsd = pedido.getTotalDecimal().setScale(2, RoundingMode.UNNECESSARY);
+        BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs() : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+
+        Font fuenteResumen = new Font(Font.FontFamily.TIMES_ROMAN, 12, Font.BOLD);
+        Paragraph resumen = new Paragraph("Tasa de Cambio: Bs. " + tasa.setScale(4, RoundingMode.HALF_UP).toPlainString() + " / $\n"
+                + "Total USD: $" + totalUsd.toPlainString() + "\n"
+                + "TOTAL A PAGAR (Bs.): Bs. " + totalBs.toPlainString(), fuenteResumen);
+        resumen.setAlignment(Element.ALIGN_RIGHT);
         documento.add(Chunk.NEWLINE);
-        documento.add(totalPedido);
+        documento.add(resumen);
+
         Paragraph firma = new Paragraph("Cancelación \n\n------------------------------------\nFirma\n");
         firma.setAlignment(Element.ALIGN_CENTER);
         documento.add(Chunk.NEWLINE);
         documento.add(firma);
+
         Paragraph agradecimiento = new Paragraph(texto(configuracion.getMensaje()));
         agradecimiento.setAlignment(Element.ALIGN_CENTER);
         documento.add(Chunk.NEWLINE);
         documento.add(agradecimiento);
+    }
+
+    private BigDecimal obtenerTasa(Pedidos pedido, Config configuracion) {
+        if (pedido.getTasaCambio() != null && pedido.getTasaCambio().compareTo(BigDecimal.ZERO) > 0) {
+            return pedido.getTasaCambio();
+        }
+        if (configuracion.getTasaDolar() != null && configuracion.getTasaDolar().compareTo(BigDecimal.ZERO) > 0) {
+            return configuracion.getTasaDolar();
+        }
+        return new BigDecimal("36.5000");
     }
 
     private String texto(String valor) {

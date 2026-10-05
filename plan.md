@@ -12,7 +12,7 @@
 | Archivos de pruebas (`test/`) | **36 archivos Java** |
 | Pruebas unitarias (`ant test`) | **89 pruebas, 35 suites · 0 fallos · 0 errores** |
 | Pruebas de integración MySQL (`ant integration-test`) | **14 pruebas, 2 suites · 0 fallos · 0 errores** |
-| Migraciones de base de datos | **3 scripts aplicados** |
+| Migraciones de base de datos | **4 scripts aplicados** |
 | Rama principal | `main` — árbol limpio, sincronizado con `origin` |
 
 ---
@@ -60,11 +60,11 @@ src/
 | Archivo | Responsabilidad |
 |:---|:---|
 | `Usuario.java` | Entidad de usuario autenticado (id, nombre, correo, password, rol). |
-| `Config.java` | Bean de configuración empresarial (RUC, nombre, teléfono, dirección, mensaje). |
-| `Platos.java` | Entidad de plato con precio en `BigDecimal`. |
+| `Config.java` | Bean de configuración empresarial (RUC/RIF, nombre, teléfono, dirección, mensaje, tasa_dolar). |
+| `Platos.java` | Entidad de plato con precio base en USD (`BigDecimal`). |
 | `Salas.java` | Entidad de sala con número de mesas. |
-| `Pedidos.java` | Encabezado de pedido con total en `BigDecimal`, estado (`PENDIENTE` / `FINALIZADO`), sala y usuario. |
-| `DetallePedido.java` | Línea de detalle con precio en `BigDecimal`, cantidad y comentario. |
+| `Pedidos.java` | Encabezado de pedido con total base USD, tasa de cambio a Bs., total en Bs. (`BigDecimal`), estado (`PENDIENTE` / `FINALIZADO`), sala y usuario. |
+| `DetallePedido.java` | Línea de detalle con precio base en USD (`BigDecimal`), cantidad y comentario. |
 | `Conexion.java` | Fachada compatible; delega la apertura JDBC a `ProveedorConexionJdbc`. |
 
 **Excepciones de aplicación:**
@@ -88,8 +88,8 @@ src/
 
 | Archivo | Detalles técnicos clave |
 |:---|:---|
-| `LoginDao.java` | Autenticación con migración PBKDF2 en primer login; captura correo duplicado (MySQL 1062 → `WARNING`); gestiona datos de empresa; lista usuarios como `Usuario`. |
-| `PedidosDao.java` | Transacción atómica con rollback automático; ID recuperado con `getGeneratedKeys()`; detecta conflicto de mesa (`uq_pedidos_mesa_pendiente`); finalización y listado histórico. |
+| `LoginDao.java` | Autenticación con migración PBKDF2 en primer login; captura correo duplicado (MySQL 1062 → `WARNING`); gestiona datos de empresa y tasa de cambio USD/Bs.; lista usuarios como `Usuario`. |
+| `PedidosDao.java` | Transacción atómica con rollback automático; ID recuperado con `getGeneratedKeys()`; snapshot histórico de `tasa_cambio` y `total_bs`; detecta conflicto de mesa (`uq_pedidos_mesa_pendiente`); finalización y listado histórico bimonetario. |
 | `PlatosDao.java` | Filtro por `fecha` y nombre con parámetros SQL; `try-with-resources` en todas las operaciones. |
 | `SalasDao.java` | CRUD completo; traduce restricción foránea (MySQL 1451) a mensaje de negocio explícito. |
 
@@ -102,7 +102,7 @@ src/
 | `PlatosServicio.java` | Valida y gestiona el catálogo de platos diarios. |
 | `SalasServicio.java` | Valida y gestiona salas y número de mesas. |
 | `ConsultaPedidosServicio.java` | Recupera pedidos, estados y detalles para la vista. |
-| `GeneradorPdfPedido.java` | Ensambla el PDF con iText desde modelos; sin JDBC ni AWT. |
+| `GeneradorPdfPedido.java` | Ensambla el PDF con iText desde modelos; renderiza montos bimonetarios (Bs. oficial y $ USD base) y tasa de cambio; sin JDBC ni AWT. |
 | `PedidoPdfServicio.java` | Coordina consulta, generación y apertura del PDF con funciones inyectables; propaga fallo del visor como `SEVERE`. |
 | `PoliticaAcceso.java` | RBAC: `Administrador` tiene acceso total; `Asistente` solo puede consultar salas/platos y registrar pedidos. |
 
@@ -125,7 +125,7 @@ src/
 | Archivo | Estado |
 |:---|:---|
 | `FrmLogin.java` | Recibe `LoginControlador`; usa `AutenticacionSwingWorker`; Look&Feel registrado como `WARNING` si falla. |
-| `Sistema.java` | Recibe `Usuario` y controladores; toda operación JDBC pasa por un `SwingWorker`; autorización vía `PoliticaAcceso`. |
+| `Sistema.java` | Recibe `Usuario` y controladores; toda operación JDBC pasa por un `SwingWorker`; autorización vía `PoliticaAcceso`; cálculo y visualización bimonetaria en tiempo real (Bs. y $ USD); edición de tasa de cambio en panel Configuración. |
 | `ManejadorErroresSwing.java` | Captura excepciones no atendidas en EDT y otros hilos; `RuntimeException` se registra y muestra; `Error` se relanza para el handler global. |
 
 **Utilidades de vista:**
@@ -147,11 +147,12 @@ src/
 | `PanelMesasSwingWorker.java` | Generación dinámica de botones de mesas |
 | `PedidoEnPantallaSwingWorker.java` | Detalle de pedido seleccionado |
 
-### `src/restaurante/` — 1 archivo
+### `src/restaurante/` — 2 archivos
 
 | Archivo | Responsabilidad |
 |:---|:---|
 | `Restaurante.java` | Composition Root. Instala logs y manejador de errores Swing. Construye e inyecta todos los controladores. Abre `FrmLogin` en el EDT. |
+| `SimularUsuario.java` | Simulador interactivo CLI de usuario que reproduce 9 pasos operativos completos (autenticación, menú, toma de pedido bimonetario, concurrencia de mesa, cobro y auditoría). |
 
 ---
 
@@ -168,10 +169,10 @@ src/
 |:---|:---|:---|
 | `usuarios` | `id`, `nombre`, `correo`, `pass` (varchar 255), `rol` | `uq_usuarios_correo` — correo único |
 | `salas` | `id`, `nombre`, `mesas` | — |
-| `platos` | `id`, `nombre`, `precio` (decimal 10,2), `fecha` | — |
-| `pedidos` | `id`, `id_sala`, `num_mesa`, `fecha`, `total` (decimal 10,2), `estado`, `usuario` | `uq_pedidos_mesa_pendiente` — columnas generadas STORED; FK → `salas.id` |
-| `detalle_pedidos` | `id`, `nombre`, `precio` (decimal 10,2), `cantidad`, `comentario`, `id_pedido` | FK → `pedidos.id` |
-| `config` | `id`, `ruc`, `nombre`, `telefono`, `direccion`, `mensaje` | — |
+| `platos` | `id`, `nombre`, `precio` (decimal 10,2 en USD base), `fecha` | — |
+| `pedidos` | `id`, `id_sala`, `num_mesa`, `fecha`, `total` (decimal 10,2 USD), `tasa_cambio` (decimal 12,4), `total_bs` (decimal 14,2), `estado`, `usuario` | `uq_pedidos_mesa_pendiente` — columnas generadas STORED; FK → `salas.id` |
+| `detalle_pedidos` | `id`, `nombre`, `precio` (decimal 10,2 USD), `cantidad`, `comentario`, `id_pedido` | FK → `pedidos.id` |
+| `config` | `id`, `ruc`, `nombre`, `telefono`, `direccion`, `mensaje`, `tasa_dolar` (decimal 12,4) | — |
 
 ### Migraciones aplicadas
 
@@ -180,6 +181,7 @@ src/
 | `db/migrations/001_un_pedido_pendiente_por_mesa.sql` | Índice único condicional sobre columnas generadas STORED; impide más de un pedido `PENDIENTE` por sala/mesa. |
 | `db/migrations/002_correo_usuario_unico.sql` | Índice único `uq_usuarios_correo`; evita altas duplicadas. |
 | `db/migrations/003_password_hash_capacity.sql` | Amplía `pass` a `varchar(255)` para acomodar los hashes PBKDF2. |
+| `db/migrations/004_tasa_cambio_config.sql` | Añade columna `tasa_dolar` a `config` y columnas históricas `tasa_cambio` y `total_bs` a `pedidos`. |
 
 ---
 

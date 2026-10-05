@@ -60,7 +60,7 @@ public class PedidosDao implements PedidosRepositorio {
             }
         }
 
-        String sqlPedido = "INSERT INTO pedidos (id_sala, num_mesa, total, usuario) VALUES (?,?,?,?)";
+        String sqlPedido = "INSERT INTO pedidos (id_sala, num_mesa, total, usuario, tasa_cambio, total_bs) VALUES (?,?,?,?,?,?)";
         String sqlDetalle = "INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido) VALUES (?,?,?,?,?)";
 
         try (Connection conexion = conexiones.getConnection()) {
@@ -72,6 +72,8 @@ public class PedidosDao implements PedidosRepositorio {
                     sentenciaPedido.setInt(2, pedido.getNum_mesa());
                     sentenciaPedido.setBigDecimal(3, importePersistible(pedido.getTotalDecimal(), "El total del pedido"));
                     sentenciaPedido.setString(4, pedido.getUsuario());
+                    sentenciaPedido.setBigDecimal(5, pedido.getTasaCambio());
+                    sentenciaPedido.setBigDecimal(6, pedido.getTotalBs());
                     if (sentenciaPedido.executeUpdate() != 1) {
                         throw new SQLException("No se pudo insertar el encabezado del pedido.");
                     }
@@ -215,6 +217,8 @@ public class PedidosDao implements PedidosRepositorio {
                ped.setTotalDecimal(resultados.getBigDecimal("total"));
                ped.setUsuario(resultados.getString("usuario"));
                ped.setEstado(resultados.getString("estado"));
+               ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
+               ped.setTotalBs(resultados.getBigDecimal("total_bs"));
             }
            }
        } catch (SQLException ex) {
@@ -290,6 +294,8 @@ public class PedidosDao implements PedidosRepositorio {
                ped.setTotalDecimal(resultados.getBigDecimal("total"));
                ped.setUsuario(resultados.getString("usuario"));
                ped.setEstado(resultados.getString("estado"));
+               ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
+               ped.setTotalBs(resultados.getBigDecimal("total_bs"));
                Lista.add(ped);
            }
        } catch (SQLException ex) {

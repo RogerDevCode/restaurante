@@ -11,6 +11,8 @@ public class Pedidos {
     private String sala;
     private String usuario;
     private String estado;
+    private BigDecimal tasaCambio;
+    private BigDecimal totalBs;
 
     public Pedidos() {
     }
@@ -24,6 +26,12 @@ public class Pedidos {
         this.sala = sala;
         this.usuario = usuario;
         this.estado = estado;
+    }
+
+    public Pedidos(int id, int id_sala, int num_mesa, String fecha, BigDecimal total, String sala, String usuario, String estado, BigDecimal tasaCambio, BigDecimal totalBs) {
+        this(id, id_sala, num_mesa, fecha, total, sala, usuario, estado);
+        this.tasaCambio = tasaCambio;
+        this.totalBs = totalBs;
     }
 
     public int getId() {
@@ -93,6 +101,19 @@ public class Pedidos {
         this.estado = estado;
     }
 
-    
-        
+    public BigDecimal getTasaCambio() {
+        return tasaCambio;
+    }
+
+    public void setTasaCambio(BigDecimal tasaCambio) {
+        this.tasaCambio = tasaCambio;
+    }
+
+    public BigDecimal getTotalBs() {
+        return totalBs;
+    }
+
+    public void setTotalBs(BigDecimal totalBs) {
+        this.totalBs = totalBs;
+    }
 }

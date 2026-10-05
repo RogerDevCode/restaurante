@@ -176,7 +176,7 @@ public class LoginDao implements AutenticacionRepositorio {
         if (conf == null) {
             throw ErrorAplicacionException.validacion("Los datos de configuración son obligatorios.");
         }
-        String sql = "UPDATE config SET ruc=?, nombre=?, telefono=?, direccion=?, mensaje=? WHERE id=?";
+        String sql = "UPDATE config SET ruc=?, nombre=?, telefono=?, direccion=?, mensaje=?, tasa_dolar=? WHERE id=?";
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, conf.getRuc());
@@ -184,7 +184,8 @@ public class LoginDao implements AutenticacionRepositorio {
             sentencia.setString(3, conf.getTelefono());
             sentencia.setString(4, conf.getDireccion());
             sentencia.setString(5, conf.getMensaje());
-            sentencia.setInt(6, conf.getId());
+            sentencia.setBigDecimal(6, conf.getTasaDolar());
+            sentencia.setInt(7, conf.getId());
             return ErrorAplicacionException.resultadoUnaFila(
                     sentencia.executeUpdate(), "actualizar configuración de empresa");
         } catch (SQLException ex) {
@@ -206,6 +207,7 @@ public class LoginDao implements AutenticacionRepositorio {
                 configuracion.setTelefono(resultados.getString("telefono"));
                 configuracion.setDireccion(resultados.getString("direccion"));
                 configuracion.setMensaje(resultados.getString("mensaje"));
+                configuracion.setTasaDolar(resultados.getBigDecimal("tasa_dolar"));
             }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo consultar la configuración.", ex);
