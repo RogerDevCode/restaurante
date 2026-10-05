@@ -11,7 +11,7 @@
 | Archivos de producción (`src/`) | **47 archivos Java** |
 | Archivos de pruebas (`test/`) | **36 archivos Java** |
 | Pruebas unitarias (`ant test`) | **89 pruebas, 35 suites · 0 fallos · 0 errores** |
-| Pruebas de integración MySQL (`ant integration-test`) | **13 pruebas, 1 suite · 0 fallos · 0 errores** |
+| Pruebas de integración MySQL (`ant integration-test`) | **14 pruebas, 2 suites · 0 fallos · 0 errores** |
 | Migraciones de base de datos | **3 scripts aplicados** |
 | Rama principal | `main` — árbol limpio, sincronizado con `origin` |
 
@@ -247,6 +247,7 @@ Ejecutadas contra `mysql:8.4.11` en contenedor desechable (`restaurante_test`, p
 | `falloForzadoEnDetalleHaceRollbackYDejaUnaEntradaDeLog` | Rollback comprobado; encabezado limpio en BD |
 | `dosSesionesConcurrentesSoloDejanUnPedidoPendiente` | Índice único condicional previene duplicado bajo concurrencia |
 | `erroresDeConexionYCredencialesSePropaganYQuedanEnLog` | Conexión detenida y credencial incorrecta propagadas con log único |
+| `simulaRecorridoCompletoDeUsuarioE2E` (`SimulacionUsuarioE2EIT`) | Simulación E2E completa: login, creación de sala/platos, toma de pedido, detección de conflicto de mesa, consulta, cobro/finalización, PDF de venta y verificación RBAC de rol Asistente |
 
 ---
 

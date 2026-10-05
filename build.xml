@@ -71,7 +71,7 @@
             <formatter type="xml"/>
             <batchtest todir="${build.test.results.dir}/integration">
                 <fileset dir="${build.test.classes.dir}">
-                    <include name="integracion/MySqlIntegrationIT.class"/>
+                    <include name="integracion/*IT.class"/>
                 </fileset>
             </batchtest>
         </junit>

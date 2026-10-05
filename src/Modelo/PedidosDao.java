@@ -208,10 +208,13 @@ public class PedidosDao implements PedidosRepositorio {
                ped = new Pedidos();
 
                ped.setId(resultados.getInt("id"));
+               ped.setId_sala(resultados.getInt("id_sala"));
                ped.setFecha(resultados.getString("fecha"));
                ped.setSala(resultados.getString("nombre"));
                ped.setNum_mesa(resultados.getInt("num_mesa"));
                ped.setTotalDecimal(resultados.getBigDecimal("total"));
+               ped.setUsuario(resultados.getString("usuario"));
+               ped.setEstado(resultados.getString("estado"));
             }
            }
        } catch (SQLException ex) {
