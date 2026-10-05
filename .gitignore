@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+logs/
+
+# NetBeans & Java Build Outputs
+build/
+dist/
+nbproject/private/
+.nb-cache/

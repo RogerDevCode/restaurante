@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- You may freely edit this file. See commented blocks below for -->
+<!-- some examples of how to customize the build. -->
+<!-- (If you delete it and reopen the project it will be recreated.) -->
+<!-- By default, only the Clean and Build commands use this build script. -->
+<!-- Commands such as Run, Debug, and Test only use this build script if -->
+<!-- the Compile on Save feature is turned off for the project. -->
+<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
+<!-- in the project's Project Properties dialog box.-->
+<project name="Restaurante" default="default" basedir=".">
+    <description>Builds, tests, and runs the project Restaurante.</description>
+    <import file="nbproject/build-impl.xml"/>
+
+    <property name="integration.compose.project" value="restaurante-integration"/>
+    <property name="integration.db.url"
+              value="jdbc:mysql://127.0.0.1:3307/restaurante_test?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=UTC"/>
+    <property name="integration.db.user" value="restaurante_test_app"/>
+    <property name="integration.db.password" value="test_only_app_password"/>
+
+    <target name="-integration-url-safety">
+        <condition property="integration.db.configuration.safe">
+            <and>
+                <equals arg1="${integration.db.url}"
+                        arg2="jdbc:mysql://127.0.0.1:3307/restaurante_test?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=UTC"/>
+                <equals arg1="${integration.db.user}" arg2="restaurante_test_app"/>
+                <equals arg1="${integration.db.password}" arg2="test_only_app_password"/>
+            </and>
+        </condition>
+        <fail unless="integration.db.configuration.safe"
+              message="Integración abortada antes de Docker/JDBC: solo se permite la URL y las credenciales fijas de restaurante_test en 127.0.0.1:3307."/>
+    </target>
+
+    <target name="-integration-compose-up" depends="-integration-url-safety">
+        <exec executable="docker" failonerror="false" resultproperty="integration.compose.up.exit">
+            <arg value="compose"/>
+            <arg value="-p"/><arg value="${integration.compose.project}"/>
+            <arg value="-f"/><arg value="docker-compose.integration.yml"/>
+            <arg value="up"/><arg value="-d"/><arg value="--wait"/>
+        </exec>
+        <condition property="integration.compose.up.ok">
+            <equals arg1="${integration.compose.up.exit}" arg2="0"/>
+        </condition>
+    </target>
+
+    <target name="-integration-compose-check" depends="-integration-compose-up">
+        <exec executable="docker" failonerror="false" resultproperty="integration.compose.ps.exit"
+              outputproperty="integration.compose.container.id">
+            <arg value="compose"/>
+            <arg value="-p"/><arg value="${integration.compose.project}"/>
+            <arg value="-f"/><arg value="docker-compose.integration.yml"/>
+            <arg value="ps"/><arg value="-q"/><arg value="db"/>
+        </exec>
+        <condition property="integration.db.ready">
+            <and>
+                <isset property="integration.compose.up.ok"/>
+                <equals arg1="${integration.compose.ps.exit}" arg2="0"/>
+                <not><equals arg1="${integration.compose.container.id}" arg2="" trim="true"/></not>
+            </and>
+        </condition>
+    </target>
+
+    <target name="-integration-run-tests" depends="-integration-compose-check" if="integration.db.ready">
+        <mkdir dir="${build.test.results.dir}/integration"/>
+        <junit printsummary="true" fork="true" haltonfailure="false"
+               failureproperty="integration.tests.failed">
+            <classpath><path path="${run.test.classpath}"/></classpath>
+            <sysproperty key="DB_URL" value="${integration.db.url}"/>
+            <sysproperty key="DB_USER" value="${integration.db.user}"/>
+            <sysproperty key="DB_PASSWORD" value="${integration.db.password}"/>
+            <formatter type="plain" usefile="false"/>
+            <formatter type="xml"/>
+            <batchtest todir="${build.test.results.dir}/integration">
+                <fileset dir="${build.test.classes.dir}">
+                    <include name="integracion/MySqlIntegrationIT.class"/>
+                </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="-integration-compose-down" depends="-integration-run-tests">
+        <exec executable="docker" failonerror="false" resultproperty="integration.compose.down.exit">
+            <arg value="compose"/>
+            <arg value="-p"/><arg value="${integration.compose.project}"/>
+            <arg value="-f"/><arg value="docker-compose.integration.yml"/>
+            <arg value="down"/><arg value="--volumes"/><arg value="--remove-orphans"/>
+        </exec>
+        <condition property="integration.compose.down.ok">
+            <equals arg1="${integration.compose.down.exit}" arg2="0"/>
+        </condition>
+    </target>
+
+    <target name="integration-test" depends="compile-test,-integration-compose-down">
+        <fail unless="integration.db.ready"
+              message="No se inició MySQL de integración; la suite no se ejecutó. Revisa Docker, el puerto 3307 y la salud del contenedor."/>
+        <fail if="integration.tests.failed"
+              message="Falló la suite de integración MySQL; revisa build/test/results/integration."/>
+        <fail unless="integration.compose.down.ok"
+              message="No se pudo limpiar el proyecto/volumen Compose de integración."/>
+    </target>
+    <!--
+
+    There exist several targets which are by default empty and which can be 
+    used for execution of your tasks. These targets are usually executed 
+    before and after some main targets. They are: 
+
+      -pre-init:                 called before initialization of project properties
+      -post-init:                called after initialization of project properties
+      -pre-compile:              called before javac compilation
+      -post-compile:             called after javac compilation
+      -pre-compile-single:       called before javac compilation of single file
+      -post-compile-single:      called after javac compilation of single file
+      -pre-compile-test:         called before javac compilation of JUnit tests
+      -post-compile-test:        called after javac compilation of JUnit tests
+      -pre-compile-test-single:  called before javac compilation of single JUnit test
+      -post-compile-test-single: called after javac compilation of single JUunit test
+      -pre-jar:                  called before JAR building
+      -post-jar:                 called after JAR building
+      -post-clean:               called after cleaning build products
+
+    (Targets beginning with '-' are not intended to be called on their own.)
+
+    Example of inserting an obfuscator after compilation could look like this:
+
+        <target name="-post-compile">
+            <obfuscate>
+                <fileset dir="${build.classes.dir}"/>
+            </obfuscate>
+        </target>
+
+    For list of available properties check the imported 
+    nbproject/build-impl.xml file. 
+
+
+    Another way to customize the build is by overriding existing main targets.
+    The targets of interest are: 
+
+      -init-macrodef-javac:     defines macro for javac compilation
+      -init-macrodef-junit:     defines macro for junit execution
+      -init-macrodef-debug:     defines macro for class debugging
+      -init-macrodef-java:      defines macro for class execution
+      -do-jar:                  JAR building
+      run:                      execution of project 
+      -javadoc-build:           Javadoc generation
+      test-report:              JUnit report generation
+
+    An example of overriding the target for project execution could look like this:
+
+        <target name="run" depends="Restaurante-impl.jar">
+            <exec dir="bin" executable="launcher.exe">
+                <arg file="${dist.jar}"/>
+            </exec>
+        </target>
+
+    Notice that the overridden target depends on the jar target and not only on 
+    the compile target as the regular run target does. Again, for a list of available 
+    properties which you can use, check the target you are overriding in the
+    nbproject/build-impl.xml file. 
+
+    -->
+</project>

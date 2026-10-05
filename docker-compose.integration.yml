@@ -1,0 +1,25 @@
+services:
+  db:
+    image: mysql:8.4.11
+    environment:
+      MYSQL_DATABASE: restaurante_test
+      MYSQL_USER: restaurante_test_app
+      MYSQL_PASSWORD: test_only_app_password
+      MYSQL_ROOT_PASSWORD: test_only_root_password
+    command: --log-bin-trust-function-creators=1
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - restaurante_integration_mysql_data:/var/lib/mysql
+      - ./BD.sql:/docker-entrypoint-initdb.d/001-restaurante.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping --host=127.0.0.1 --user=root --password="$${MYSQL_ROOT_PASSWORD}" --silent
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
+
+volumes:
+  restaurante_integration_mysql_data:
