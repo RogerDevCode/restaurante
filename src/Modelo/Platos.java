@@ -1,18 +1,20 @@
 package Modelo;
 
+import java.math.BigDecimal;
+
 public class Platos {
     private int id;
     private String nombre;
-    private double precio;
+    private BigDecimal precio = BigDecimal.ZERO;
     private String fecha;
 
     public Platos() {
     }
 
-    public Platos(int id, String nombre, double precio, String fecha) {
+    public Platos(int id, String nombre, BigDecimal precio, String fecha) {
         this.id = id;
         this.nombre = nombre;
-        this.precio = precio;
+        setPrecioDecimal(precio);
         this.fecha = fecha;
     }
 
@@ -32,11 +34,14 @@ public class Platos {
         this.nombre = nombre;
     }
 
-    public double getPrecio() {
+    public BigDecimal getPrecioDecimal() {
         return precio;
     }
 
-    public void setPrecio(double precio) {
+    public void setPrecioDecimal(BigDecimal precio) {
+        if (precio == null) {
+            throw ErrorAplicacionException.validacion("El precio del plato es obligatorio.");
+        }
         this.precio = precio;
     }
 

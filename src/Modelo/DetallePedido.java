@@ -1,9 +1,11 @@
 package Modelo;
 
+import java.math.BigDecimal;
+
 public class DetallePedido {
     private int id;
     private String nombre;
-    private double precio;
+    private BigDecimal precio = BigDecimal.ZERO;
     private int cantidad;
     private String comentario;
     private int id_pedido;
@@ -11,10 +13,10 @@ public class DetallePedido {
     public DetallePedido() {
     }
 
-    public DetallePedido(int id, String nombre, double precio, int cantidad, String comentario, int id_pedido) {
+    public DetallePedido(int id, String nombre, BigDecimal precio, int cantidad, String comentario, int id_pedido) {
         this.id = id;
         this.nombre = nombre;
-        this.precio = precio;
+        setPrecioDecimal(precio);
         this.cantidad = cantidad;
         this.comentario = comentario;
         this.id_pedido = id_pedido;
@@ -36,11 +38,14 @@ public class DetallePedido {
         this.nombre = nombre;
     }
 
-    public double getPrecio() {
+    public BigDecimal getPrecioDecimal() {
         return precio;
     }
 
-    public void setPrecio(double precio) {
+    public void setPrecioDecimal(BigDecimal precio) {
+        if (precio == null) {
+            throw ErrorAplicacionException.validacion("El precio del detalle es obligatorio.");
+        }
         this.precio = precio;
     }
 

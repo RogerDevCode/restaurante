@@ -169,9 +169,10 @@ CREATE TABLE `usuarios` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
   `correo` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
-  `pass` varchar(50) COLLATE utf8_spanish_ci NOT NULL,
+  `pass` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
   `rol` varchar(20) COLLATE utf8_spanish_ci NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_usuarios_correo` (`correo`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -181,7 +182,7 @@ CREATE TABLE `usuarios` (
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` VALUES (1,'ANGEL SIFUENTES','info@angelsifuentes.com','admin','Administrador');
+INSERT INTO `usuarios` VALUES (1,'ANGEL SIFUENTES','info@angelsifuentes.com','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador');
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

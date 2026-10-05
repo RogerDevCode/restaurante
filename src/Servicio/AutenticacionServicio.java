@@ -2,6 +2,7 @@ package Servicio;
 
 import Modelo.AutenticacionRepositorio;
 import Modelo.ErrorAplicacionException;
+import Modelo.Usuario;
 import Modelo.login;
 import java.util.Optional;
 
@@ -17,9 +18,19 @@ public final class AutenticacionServicio {
     }
 
     public Optional<login> autenticar(String correo, String clave) {
+        validarCredenciales(correo, clave);
+        return repositorio.autenticar(correo.trim(), clave);
+    }
+
+    /** Caso de autenticación con el modelo de usuario normalizado. */
+    public Optional<Usuario> autenticarUsuario(String correo, String clave) {
+        validarCredenciales(correo, clave);
+        return repositorio.autenticarUsuario(correo.trim(), clave);
+    }
+
+    private void validarCredenciales(String correo, String clave) {
         if (correo == null || correo.trim().isEmpty() || clave == null || clave.isEmpty()) {
             throw ErrorAplicacionException.validacion("El correo y la contraseña son obligatorios.");
         }
-        return repositorio.autenticar(correo.trim(), clave);
     }
 }

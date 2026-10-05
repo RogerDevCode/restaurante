@@ -5,6 +5,8 @@ import Modelo.DetallePedido;
 import Modelo.ErrorAplicacionException;
 import Modelo.Pedidos;
 import Modelo.PedidosRepositorio;
+import Modelo.PedidosRepositorioFalso;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -44,9 +46,12 @@ public class PedidoServicioTest {
     @Test
     public void pedidoSinDetallesFallaAntesDeAccederAlRepositorio() {
         AtomicInteger llamadas = new AtomicInteger();
-        PedidoServicio servicio = new PedidoServicio((pedido, detalles) -> {
-            llamadas.incrementAndGet();
-            return 12;
+        PedidoServicio servicio = new PedidoServicio(new PedidosRepositorioFalso() {
+            @Override
+            public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) {
+                llamadas.incrementAndGet();
+                return 12;
+            }
         });
 
         org.junit.Assert.assertThrows(ErrorAplicacionException.class,
@@ -58,13 +63,35 @@ public class PedidoServicioTest {
     }
 
     @Test
+    public void rechazaTotalQueNoCoincideConLaSumaDeDetalles() {
+        AtomicInteger llamadas = new AtomicInteger();
+        Pedidos pedido = pedidoValido();
+        pedido.setTotalDecimal(new BigDecimal("2499.99"));
+        PedidoServicio servicio = new PedidoServicio(new PedidosRepositorioFalso() {
+            @Override
+            public int registrarPedidoCompleto(Pedidos recibido, List<DetallePedido> detalles) {
+                llamadas.incrementAndGet();
+                return 12;
+            }
+        });
+
+        org.junit.Assert.assertThrows(ErrorAplicacionException.class,
+                () -> servicio.registrarPedidoCompleto(pedido, Arrays.asList(detalleValido())));
+
+        assertEquals(0, llamadas.get());
+    }
+
+    @Test
     public void delegaPedidoCompletoYDevuelveElIdPersistido() {
         Pedidos pedido = pedidoValido();
         List<DetallePedido> detalles = Arrays.asList(detalleValido());
-        PedidosRepositorio repositorio = (recibido, recibidos) -> {
-            assertSame(pedido, recibido);
-            assertSame(detalles, recibidos);
-            return 42;
+        PedidosRepositorio repositorio = new PedidosRepositorioFalso() {
+            @Override
+            public int registrarPedidoCompleto(Pedidos recibido, List<DetallePedido> recibidos) {
+                assertSame(pedido, recibido);
+                assertSame(detalles, recibidos);
+                return 42;
+            }
         };
 
         assertEquals(42, new PedidoServicio(repositorio).registrarPedidoCompleto(pedido, detalles));
@@ -73,8 +100,11 @@ public class PedidoServicioTest {
     @Test
     public void propagaFalloDelRepositorioSinVolverARegistrarlo() {
         DataAccessException fallo = new DataAccessException("BD no disponible", new IllegalStateException());
-        PedidoServicio servicio = new PedidoServicio((pedido, detalles) -> {
-            throw fallo;
+        PedidoServicio servicio = new PedidoServicio(new PedidosRepositorioFalso() {
+            @Override
+            public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) {
+                throw fallo;
+            }
         });
 
         DataAccessException propagado = org.junit.Assert.assertThrows(DataAccessException.class,
@@ -88,7 +118,7 @@ public class PedidoServicioTest {
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(1);
         pedido.setNum_mesa(3);
-        pedido.setTotal(2500.0);
+        pedido.setTotalDecimal(new BigDecimal("2500.00"));
         pedido.setUsuario("Ana");
         return pedido;
     }
@@ -97,7 +127,7 @@ public class PedidoServicioTest {
         DetallePedido detalle = new DetallePedido();
         detalle.setNombre("Plato del día");
         detalle.setCantidad(1);
-        detalle.setPrecio(2500.0);
+        detalle.setPrecioDecimal(new BigDecimal("2500.00"));
         return detalle;
     }
 

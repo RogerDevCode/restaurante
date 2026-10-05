@@ -3,6 +3,7 @@ package Servicio;
 import Modelo.AutenticacionRepositorio;
 import Modelo.DataAccessException;
 import Modelo.ErrorAplicacionException;
+import Modelo.Usuario;
 import Modelo.login;
 import java.util.Optional;
 import java.util.ArrayList;
@@ -72,6 +73,42 @@ public class AutenticacionServicioTest {
 
         assertTrue(resultado.isPresent());
         assertSame(usuario, resultado.get());
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void puertoExponeElModeloUsuarioDuranteLaMigracionDelDaoLegacy() {
+        login legado = new login(9, "Rosa", "rosa@example.test", "clave", "Asistente");
+        AutenticacionRepositorio repositorio = (correo, clave) -> Optional.of(legado);
+
+        Optional<Usuario> resultado = repositorio.autenticarUsuario("rosa@example.test", "clave");
+
+        assertTrue(resultado.isPresent());
+        assertSame(legado, resultado.get());
+        assertEquals("Rosa", resultado.get().getNombre());
+        assertEquals("Asistente", resultado.get().getRol());
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void servicioAutenticaComoUsuarioYValidaAntesDelRepositorio() {
+        login legado = new login(12, "Leo", "leo@example.test", "clave", "Administrador");
+        AtomicInteger llamadas = new AtomicInteger();
+        AutenticacionRepositorio repositorio = (correo, clave) -> {
+            llamadas.incrementAndGet();
+            assertEquals("leo@example.test", correo);
+            return Optional.of(legado);
+        };
+
+        Optional<Modelo.Usuario> usuario = new AutenticacionServicio(repositorio)
+                .autenticarUsuario(" leo@example.test ", "clave");
+
+        assertTrue(usuario.isPresent());
+        assertSame(legado, usuario.get());
+        assertEquals(1, llamadas.get());
+        org.junit.Assert.assertThrows(ErrorAplicacionException.class,
+                () -> new AutenticacionServicio(repositorio).autenticarUsuario(" ", "clave"));
+        assertEquals(1, llamadas.get());
     }
 
     @Test

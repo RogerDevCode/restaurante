@@ -2,6 +2,7 @@ package integracion;
 
 import Modelo.DataAccessException;
 import Modelo.DetallePedido;
+import Modelo.ErrorAplicacionException;
 import Modelo.LoginDao;
 import Modelo.PedidoPendienteExistenteException;
 import Modelo.Pedidos;
@@ -11,8 +12,12 @@ import Modelo.PlatosDao;
 import Modelo.Salas;
 import Modelo.SalasDao;
 import Modelo.login;
+import Servicio.GeneradorPdfPedido;
+import Servicio.PedidoPdfServicio;
 import infraestructura.ConfiguracionLogs;
+import infraestructura.ProveedorConexionJdbc;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,7 +44,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 /** Pruebas de integración: requieren MySQL de docker-compose.integration.yml. */
@@ -118,11 +125,163 @@ public class MySqlIntegrationIT {
 
     @Test
     public void autenticaUsuarioSemillaRechazaCredencialesYConsultaMenu() {
+        establecerClaveLegacySemilla();
         Optional<login> autenticado = new LoginDao().autenticar("info@angelsifuentes.com", "admin");
         assertTrue(autenticado.isPresent());
         assertEquals("Administrador", autenticado.get().getRol());
+        assertTrue("La clave legacy debe migrarse tras autenticar", claveSemillaMigrada());
         assertTrue(new LoginDao().autenticar("no-existe@restaurante.test", "incorrecta").isEmpty());
         assertTrue(new PlatosDao().Listar("", LocalDate.now().toString()).size() >= 3);
+    }
+
+    @Test
+    public void rechazaUnRolNoReconocidoAntesDeCrearLaSesion() {
+        asignarRolSemilla("RolNoValido");
+        try {
+            assertTrue(new LoginDao().autenticar("info@angelsifuentes.com", "admin").isEmpty());
+        } finally {
+            asignarRolSemilla("Administrador");
+        }
+    }
+
+    private void asignarRolSemilla(String rol) {
+        try (Connection conexion = conexion(); java.sql.PreparedStatement sentencia =
+                conexion.prepareStatement("UPDATE usuarios SET rol = ? WHERE correo = ?")) {
+            sentencia.setString(1, rol);
+            sentencia.setString(2, "info@angelsifuentes.com");
+            assertEquals(1, sentencia.executeUpdate());
+        } catch (SQLException ex) {
+            throw new AssertionError("No se pudo preparar el rol de integración", ex);
+        }
+    }
+
+    @Test
+    public void altaGuardaHashYAutenticacionVerificaLaClaveSinTextoPlano() throws SQLException {
+        String correo = "it-" + UUID.randomUUID() + "@restaurante.test";
+        login usuario = new login();
+        usuario.setNombre("Cuenta de prueba de hash");
+        usuario.setCorreo(correo);
+        usuario.setPass("clave-segura-it");
+        usuario.setRol("Asistente");
+        try {
+            assertTrue(new LoginDao().Registrar(usuario));
+            String almacenada = clavePorCorreo(correo);
+            assertTrue(almacenada.startsWith("pbkdf2-sha256$"));
+            assertFalse(almacenada.equals("clave-segura-it"));
+            assertTrue(new LoginDao().autenticar(correo, "clave-segura-it").isPresent());
+            assertTrue(new LoginDao().autenticar(correo, "clave-incorrecta").isEmpty());
+        } finally {
+            try (Connection conexion = conexion(); java.sql.PreparedStatement sentencia =
+                    conexion.prepareStatement("DELETE FROM usuarios WHERE correo = ?")) {
+                sentencia.setString(1, correo);
+                sentencia.executeUpdate();
+            }
+        }
+    }
+
+    private void establecerClaveLegacySemilla() {
+        try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+            sentencia.executeUpdate("UPDATE usuarios SET pass='admin' WHERE correo='info@angelsifuentes.com'");
+        } catch (SQLException ex) {
+            throw new AssertionError("No se pudo preparar la cuenta de integración para probar migración", ex);
+        }
+    }
+
+    private boolean claveSemillaMigrada() {
+        return clavePorCorreo("info@angelsifuentes.com").startsWith("pbkdf2-sha256$");
+    }
+
+    private String clavePorCorreo(String correo) {
+        try (Connection conexion = conexion(); java.sql.PreparedStatement sentencia =
+                conexion.prepareStatement("SELECT pass FROM usuarios WHERE correo = ?")) {
+            sentencia.setString(1, correo);
+            try (ResultSet resultado = sentencia.executeQuery()) {
+                assertTrue(resultado.next());
+                return resultado.getString(1);
+            }
+        } catch (SQLException ex) {
+            throw new AssertionError("No se pudo consultar la cuenta de integración", ex);
+        }
+    }
+
+    @Test
+    public void correoDuplicadoEsConflictoWarningConCausaYLogUnico() throws IOException {
+        int entradasAntes = contar(textoLog(), "El correo electrónico ya está registrado.");
+        login duplicado = new login();
+        duplicado.setNombre("Usuario de integración duplicado");
+        duplicado.setCorreo("info@angelsifuentes.com");
+        duplicado.setPass("no-se-registra");
+        duplicado.setRol("Asistente");
+
+        ErrorAplicacionException error = org.junit.Assert.assertThrows(ErrorAplicacionException.class,
+                () -> new LoginDao().Registrar(duplicado));
+
+        assertTrue(error.getCause() instanceof SQLException);
+        assertEquals(1062, ((SQLException) error.getCause()).getErrorCode());
+        assertEquals(entradasAntes + 1, contar(textoLog(), "El correo electrónico ya está registrado."));
+        assertTrue(textoLog().contains("WARNING: El correo electrónico ya está registrado."));
+        assertFalse(textoLog().contains("SEVERE: El correo electrónico ya está registrado."));
+        assertFalse(textoLog().contains("no-se-registra"));
+    }
+
+    @Test
+    public void generaPdfDesdeDatosMySqlSinAbrirAplicacionExterna() throws Exception {
+        int idPedido;
+        try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement();
+                ResultSet resultado = sentencia.executeQuery(
+                        "SELECT p.id FROM pedidos p INNER JOIN detalle_pedidos d ON d.id_pedido = p.id LIMIT 1")) {
+            assertTrue("La semilla debe incluir un pedido con detalle", resultado.next());
+            idPedido = resultado.getInt(1);
+        }
+        Path directorio = Files.createTempDirectory("restaurante-pdf-mysql-it-");
+        Path pdf = directorio.resolve("pedido-" + idPedido + ".pdf");
+        PedidoPdfServicio servicio = servicioPdfReal(directorio, archivo -> { });
+
+        servicio.generar(idPedido);
+
+        assertTrue(Files.isRegularFile(pdf));
+        byte[] bytes = Files.readAllBytes(pdf);
+        assertTrue(bytes.length > 100);
+        assertEquals("%PDF-", new String(bytes, 0, 5, StandardCharsets.US_ASCII));
+        Files.delete(pdf);
+        Files.delete(directorio);
+    }
+
+    @Test
+    public void falloAlAbrirPdfPreservaCausaYQuedaRegistradoUnaSolaVez() throws Exception {
+        int idPedido;
+        try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement();
+                ResultSet resultado = sentencia.executeQuery(
+                        "SELECT p.id FROM pedidos p INNER JOIN detalle_pedidos d ON d.id_pedido = p.id LIMIT 1")) {
+            assertTrue("La semilla debe incluir un pedido con detalle", resultado.next());
+            idPedido = resultado.getInt(1);
+        }
+        Path directorio = Files.createTempDirectory("restaurante-pdf-apertura-it-");
+        int registrosAntes = contar(textoLog(), "El PDF se generó, pero no se pudo abrir automáticamente.");
+        IOException causa = new IOException("fallo de apertura inducido");
+        PedidoPdfServicio servicio = servicioPdfReal(directorio, archivo -> { throw causa; });
+
+        ErrorAplicacionException error = org.junit.Assert.assertThrows(
+                ErrorAplicacionException.class, () -> servicio.generar(idPedido));
+
+        assertSame(causa, error.getCause());
+        assertEquals(registrosAntes + 1,
+                contar(textoLog(), "El PDF se generó, pero no se pudo abrir automáticamente."));
+        assertTrue(textoLog().contains("SEVERE: El PDF se generó, pero no se pudo abrir automáticamente."));
+        assertTrue(Files.isRegularFile(directorio.resolve("pedido-" + idPedido + ".pdf")));
+        Files.delete(directorio.resolve("pedido-" + idPedido + ".pdf"));
+        Files.delete(directorio);
+    }
+
+    private PedidoPdfServicio servicioPdfReal(Path directorio, PedidoPdfServicio.AbridorPdf abridor) {
+        PedidosDao pedidos = new PedidosDao(new ProveedorConexionJdbc());
+        LoginDao configuracion = new LoginDao();
+        return new PedidoPdfServicio(
+                pedidos::verPedido,
+                pedidos::verPedidoDetalle,
+                configuracion::datosEmpresa,
+                new GeneradorPdfPedido(directorio),
+                abridor);
     }
 
     @Test
@@ -143,16 +302,35 @@ public class MySqlIntegrationIT {
         PlatosDao platosDao = new PlatosDao();
         Platos plato = new Platos();
         plato.setNombre("IT-PLATO-" + sufijo);
-        plato.setPrecio(5.25);
+        plato.setPrecioDecimal(new BigDecimal("5.25"));
         plato.setFecha(LocalDate.now().toString());
         assertTrue(platosDao.Registrar(plato));
         int idPlato = idPlatoPorNombre(plato.getNombre());
         plato.setId(idPlato);
         plato.setNombre("IT-PLATO-EDITADO-" + sufijo);
-        plato.setPrecio(6.50);
+        plato.setPrecioDecimal(new BigDecimal("6.50"));
         assertTrue(platosDao.Modificar(plato));
         assertTrue(platosDao.Listar("IT-PLATO-EDITADO-" + sufijo, LocalDate.now().toString()).size() == 1);
         assertTrue(platosDao.Eliminar(idPlato));
+    }
+
+    @Test
+    public void noPermiteBorrarSalaConHistorialYRegistraConflictoComoWarning() throws Exception {
+        int idSala = crearSalaPrueba();
+        int mesa = mesaPrueba();
+        new PedidosDao().registrarPedidoCompleto(pedido(idSala, mesa), detallesValidos());
+        int logsAntes = contar(textoLog(), "No se puede eliminar la sala porque tiene pedidos asociados.");
+
+        ErrorAplicacionException error = org.junit.Assert.assertThrows(
+                ErrorAplicacionException.class, () -> new SalasDao().eliminar(idSala));
+
+        assertTrue(error.getCause() instanceof SQLException);
+        assertEquals(1451, ((SQLException) error.getCause()).getErrorCode());
+        assertEquals(logsAntes + 1,
+                contar(textoLog(), "No se puede eliminar la sala porque tiene pedidos asociados."));
+        assertTrue(textoLog().contains("WARNING: No se puede eliminar la sala porque tiene pedidos asociados."));
+        assertFalse(textoLog().contains("SEVERE: No se puede eliminar la sala porque tiene pedidos asociados."));
+        assertEquals(1, contarFilas("SELECT COUNT(*) FROM salas WHERE id=" + idSala));
     }
 
     @Test
@@ -180,9 +358,11 @@ public class MySqlIntegrationIT {
         int logsAntes = contar(textoLog(), "No se pudo guardar el pedido completo.");
         DetallePedido detalle = detallesValidos().get(0);
         detalle.setComentario("__FALLAR_DETALLE_IT__");
+        Pedidos pedido = pedido(idSala, mesa);
+        pedido.setTotalDecimal(new BigDecimal("20.00"));
 
         DataAccessException error = org.junit.Assert.assertThrows(DataAccessException.class,
-                () -> new PedidosDao().registrarPedidoCompleto(pedido(idSala, mesa), Arrays.asList(detalle)));
+                () -> new PedidosDao().registrarPedidoCompleto(pedido, Arrays.asList(detalle)));
 
         assertTrue(error.getCause() instanceof SQLException);
         assertEquals("45000", ((SQLException) error.getCause()).getSQLState());
@@ -314,14 +494,14 @@ public class MySqlIntegrationIT {
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(idSala);
         pedido.setNum_mesa(mesa);
-        pedido.setTotal(35.50);
+        pedido.setTotalDecimal(new BigDecimal("35.50"));
         pedido.setUsuario(USUARIO_PRUEBA);
         return pedido;
     }
 
     private List<DetallePedido> detallesValidos() {
-        DetallePedido primero = new DetallePedido(0, "IT-PLATO-A", 20.00, 1, "", 0);
-        DetallePedido segundo = new DetallePedido(0, "IT-PLATO-B", 15.50, 1, "", 0);
+        DetallePedido primero = new DetallePedido(0, "IT-PLATO-A", new BigDecimal("20.00"), 1, "", 0);
+        DetallePedido segundo = new DetallePedido(0, "IT-PLATO-B", new BigDecimal("15.50"), 1, "", 0);
         return Arrays.asList(primero, segundo);
     }
 

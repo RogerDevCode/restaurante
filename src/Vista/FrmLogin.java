@@ -2,7 +2,8 @@
 package Vista;
 
 import Modelo.DataAccessException;
-import Modelo.login;
+import Modelo.ErrorAplicacionException;
+import Modelo.Usuario;
 import Controlador.LoginControlador;
 import java.awt.Image;
 import java.awt.BorderLayout;
@@ -27,6 +28,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.Timer;
 import java.util.Optional;
+import java.util.function.Function;
 
 
 public class FrmLogin extends javax.swing.JFrame {
@@ -36,12 +38,21 @@ public class FrmLogin extends javax.swing.JFrame {
     private static final Color FONDO = new Color(250, 248, 243);
     private static final Color TEXTO = new Color(37, 46, 43);
     private static final Color SECUNDARIO = new Color(112, 120, 115);
-    login lg = new login();
-    private final LoginControlador controlador = new LoginControlador();
+    private Usuario usuarioAutenticado;
+    private final LoginControlador controlador;
+    private final Function<Usuario, Sistema> crearSistema;
     private Timer tiempo;
     int contador;
     int segundos = 30;
-    public FrmLogin() {
+    public FrmLogin(LoginControlador controlador, Function<Usuario, Sistema> crearSistema) {
+        if (controlador == null) {
+            throw ErrorAplicacionException.validacion("El controlador de inicio de sesión es obligatorio.");
+        }
+        if (crearSistema == null) {
+            throw ErrorAplicacionException.validacion("La fábrica del sistema es obligatoria.");
+        }
+        this.controlador = controlador;
+        this.crearSistema = crearSistema;
         initComponents();
         construirInterfazLogin();
         this.setLocationRelativeTo(null);
@@ -261,7 +272,7 @@ public class FrmLogin extends javax.swing.JFrame {
             if (contador == 100) {
                 tiempo.stop();
                 if (barra.getValue() == 100) {
-                    Sistema sis = new Sistema(lg);
+                    Sistema sis = crearSistema.apply(usuarioAutenticado);
                     sis.setVisible(true);
                     dispose();
                 }
@@ -270,33 +281,55 @@ public class FrmLogin extends javax.swing.JFrame {
     }
     public void validar(){
         String correo = txtCorreo.getText().trim();
-        String pass = String.valueOf(txtPass.getPassword());
+        char[] claveCapturada = txtPass.getPassword();
+        String pass = new String(claveCapturada);
+        java.util.Arrays.fill(claveCapturada, '\0');
         if (correo.isEmpty() || pass.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Ingresa el correo y la contraseña.",
                     "Datos requeridos", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        cambiarEstadoFormulario(false);
+        new AutenticacionSwingWorker(controlador, correo, pass,
+                this::autenticacionCompletada, this::autenticacionFallida).execute();
+    }
 
-        try {
-            Optional<login> usuario = controlador.autenticar(correo, pass);
-            if (!usuario.isPresent()) {
-                JOptionPane.showMessageDialog(this, "Correo o contraseña incorrectos.",
-                        "Acceso denegado", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            lg = usuario.get();
-        } catch (DataAccessException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "No se pudo acceder a la base de datos. Revisa la conexión e inténtalo nuevamente.",
-                    "Error de conexión", JOptionPane.ERROR_MESSAGE);
+    private void autenticacionCompletada(Optional<Usuario> resultado) {
+        if (!resultado.isPresent()) {
+            cambiarEstadoFormulario(true);
+            JOptionPane.showMessageDialog(this, "Correo o contraseña incorrectos.",
+                    "Acceso denegado", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        usuarioAutenticado = resultado.get();
         barra.setVisible(true);
         contador = -1;
         barra.setValue(0);
         barra.setStringPainted(true);
         tiempo = new Timer(segundos, new BarraProgreso());
         tiempo.start();
+    }
+
+    private void autenticacionFallida(Throwable error) {
+        cambiarEstadoFormulario(true);
+        if (error instanceof DataAccessException) {
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo acceder a la base de datos. Revisa la conexión e inténtalo nuevamente.",
+                    "Error de conexión", JOptionPane.ERROR_MESSAGE);
+        } else if (error instanceof ErrorAplicacionException) {
+            JOptionPane.showMessageDialog(this, error.getMessage(),
+                    "No se pudo iniciar sesión", JOptionPane.WARNING_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo iniciar sesión. El detalle quedó registrado.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void cambiarEstadoFormulario(boolean habilitado) {
+        btnIniciar.setEnabled(habilitado);
+        txtCorreo.setEnabled(habilitado);
+        txtPass.setEnabled(habilitado);
     }
     /**
      * This method is called from within the constructor to initialize the form.
@@ -411,73 +444,6 @@ public class FrmLogin extends javax.swing.JFrame {
         // TODO add your handling code here:
         System.exit(0);
     }//GEN-LAST:event_jButton1ActionPerformed
-
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Windows".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(FrmLogin.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(FrmLogin.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(FrmLogin.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(FrmLogin.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-        //</editor-fold>
-
-        /* Create and display the form */
-        ManejadorErroresSwing.instalar();
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new FrmLogin().setVisible(true);
-            }
-        });
-    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JProgressBar barra;

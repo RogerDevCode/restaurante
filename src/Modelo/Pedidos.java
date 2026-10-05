@@ -1,11 +1,13 @@
 package Modelo;
 
+import java.math.BigDecimal;
+
 public class Pedidos {
     private int id;
     private int id_sala;
     private int num_mesa;
     private String fecha;
-    private double total;
+    private BigDecimal total = BigDecimal.ZERO;
     private String sala;
     private String usuario;
     private String estado;
@@ -13,12 +15,12 @@ public class Pedidos {
     public Pedidos() {
     }
 
-    public Pedidos(int id, int id_sala, int num_mesa, String fecha, double total, String sala, String usuario, String estado) {
+    public Pedidos(int id, int id_sala, int num_mesa, String fecha, BigDecimal total, String sala, String usuario, String estado) {
         this.id = id;
         this.id_sala = id_sala;
         this.num_mesa = num_mesa;
         this.fecha = fecha;
-        this.total = total;
+        setTotalDecimal(total);
         this.sala = sala;
         this.usuario = usuario;
         this.estado = estado;
@@ -56,11 +58,14 @@ public class Pedidos {
         this.fecha = fecha;
     }
 
-    public double getTotal() {
+    public BigDecimal getTotalDecimal() {
         return total;
     }
 
-    public void setTotal(double total) {
+    public void setTotalDecimal(BigDecimal total) {
+        if (total == null) {
+            throw ErrorAplicacionException.validacion("El total del pedido es obligatorio.");
+        }
         this.total = total;
     }
 
