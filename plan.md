@@ -9,9 +9,9 @@
 | Indicador | Valor |
 |:---|:---|
 | Archivos de producción (`src/`) | **47 archivos Java** |
-| Archivos de pruebas (`test/`) | **36 archivos Java** |
-| Pruebas unitarias (`ant test`) | **89 pruebas, 35 suites · 0 fallos · 0 errores** |
-| Pruebas de integración MySQL (`ant integration-test`) | **14 pruebas, 2 suites · 0 fallos · 0 errores** |
+| Archivos de pruebas (`test/`) | **41 archivos Java** |
+| Pruebas unitarias (`ant test`) | **111 pruebas, 38 suites · 0 fallos · 0 errores** |
+| Pruebas de integración MySQL (`ant integration-test`) | **18 pruebas, 4 suites · 0 fallos · 0 errores** |
 | Migraciones de base de datos | **4 scripts aplicados** |
 | Rama principal | `main` — árbol limpio, sincronizado con `origin` |
 
@@ -189,7 +189,7 @@ src/
 
 ### Pruebas unitarias — `ant test` (sin MySQL, sin Docker)
 
-**89 pruebas · 35 suites · 0 fallos · 0 errores**
+**111 pruebas · 38 suites · 0 fallos · 0 errores**
 
 | Suite | Tests | Qué verifica |
 |:---|---:|:---|
@@ -197,6 +197,7 @@ src/
 | `Controlador.PedidosControladorTest` | 3 | Registro, consulta y PDF de pedidos |
 | `Controlador.PlatosControladorTest` | 2 | Delegación y propagación de fallos |
 | `Controlador.SalasControladorTest` | 2 | Delegación y propagación de fallos |
+| `Modelo.AdversarialModelTest` | 3 | Ataque a valores límite, tasas extremas y strings gigantes |
 | `Modelo.DetallePedidoTest` | 1 | Validación de `BigDecimal` en precio |
 | `Modelo.ErrorAplicacionExceptionTest` | 6 | Severidad, causa preservada y log único |
 | `Modelo.PedidosDaoTest` | 2 | Rechazo de argumentos nulos antes de conectar |
@@ -205,7 +206,9 @@ src/
 | `Modelo.PlatosTest` | 1 | Validación de `BigDecimal` en precio |
 | `Modelo.SalasDaoTest` | 1 | Rechazo de argumento inválido; sin BD |
 | `Modelo.UsuarioTest` | 1 | Construcción y accesores de entidad |
+| `Servicio.AdversarialValidationTest` | 11 | Ataque a límites, valores negativos, totales incompatibles y bypass RBAC |
 | `Servicio.AutenticacionServicioTest` | 4 | Validaciones, delegación, rechazo y advertencia |
+| `Servicio.CombinatoriaReglasNegocioTest` | 8 | Matriz combinatoria completa de roles, precios límite, fechas bisiestas y redondeo |
 | `Servicio.ConsultaPedidosServicioTest` | 4 | Consulta de pedidos, detalles y estado |
 | `Servicio.GeneradorPdfPedidoTest` | 3 | Generación PDF con datos de prueba; firma `%PDF-` |
 | `Servicio.PedidoPdfServicioTest` | 2 | Delegación y propagación de fallo del visor |
@@ -231,25 +234,15 @@ src/
 
 ### Pruebas de integración MySQL — `ant integration-test`
 
-**13 pruebas · 1 suite · 0 fallos · 0 errores**
+**18 pruebas · 4 suites · 0 fallos · 0 errores**
 Ejecutadas contra `mysql:8.4.11` en contenedor desechable (`restaurante_test`, puerto 3307). Guardia Ant impide ejecución sobre la base de desarrollo.
 
-| Prueba | Escenario validado |
-|:---|:---|
-| `verificaVersionCatalogoYEsquemaMysqlReal` | Catálogo, esquema y versión 8.4.x del motor |
-| `autenticaUsuarioSemillaRechazaCredencialesYConsultaMenu` | Login correcto, credencial inválida, consulta de menú del día y migración de clave legacy a PBKDF2 |
-| `rechazaUnRolNoReconocidoAntesDeCrearLaSesion` | `PoliticaAcceso` rechaza rol desconocido sin llegar a BD |
-| `altaGuardaHashYAutenticacionVerificaLaClaveSinTextoPlano` | Alta de usuario, verificación con hash y negativa a comparar en texto plano |
-| `correoDuplicadoEsConflictoWarningConCausaYLogUnico` | MySQL 1062 → `WARNING` con causa preservada y sin exponer contraseña |
-| `generaPdfDesdeDatosMySqlSinAbrirAplicacionExterna` | PDF generado desde datos reales; cabecera `%PDF-` verificada |
-| `falloAlAbrirPdfPreservaCausaYQuedaRegistradoUnaSolaVez` | Fallo del visor → `SEVERE` con causa y log único |
-| `ejecutaCrudRealDeSalasYPlatos` | CREATE, READ, UPDATE, DELETE en MySQL real |
-| `noPermiteBorrarSalaConHistorialYRegistraConflictoComoWarning` | MySQL 1451 → mensaje de negocio explícito |
-| `transaccionRegistraPedidoDetallesYFinalizacion` | Inserción atómica, `getGeneratedKeys()`, cambio de estado |
-| `falloForzadoEnDetalleHaceRollbackYDejaUnaEntradaDeLog` | Rollback comprobado; encabezado limpio en BD |
-| `dosSesionesConcurrentesSoloDejanUnPedidoPendiente` | Índice único condicional previene duplicado bajo concurrencia |
-| `erroresDeConexionYCredencialesSePropaganYQuedanEnLog` | Conexión detenida y credencial incorrecta propagadas con log único |
-| `simulaRecorridoCompletoDeUsuarioE2E` (`SimulacionUsuarioE2EIT`) | Simulación E2E completa: login, creación de sala/platos, toma de pedido, detección de conflicto de mesa, consulta, cobro/finalización, PDF de venta y verificación RBAC de rol Asistente |
+| Suite | Tests | Escenario validado |
+|:---|---:|:---|
+| `integracion.AdversarialIntegrationIT` | 3 | Resiliencia contra inyección SQL en login y registro, y payloads de cadenas gigantes |
+| `integracion.CombinatoriaUsuarioE2EIT` | 1 | Matriz combinatoria completa: ciclo bimonetario, inmutabilidad histórica, cambio de tasa dinámico, concurrencia de mesa y FK de sala |
+| `integracion.MySqlIntegrationIT` | 13 | Operaciones reales sobre MySQL 8.4: migración legacy, PBKDF2, transacciones atómicas con rollback, unicidad condicional de mesa, integridad referencial y PDF |
+| `integracion.SimulacionUsuarioE2EIT` | 1 | Simulación E2E completa: login, creación de sala/platos, toma de pedido, detección de conflicto de mesa, consulta, cobro/finalización, PDF de venta y verificación RBAC de rol Asistente |
 
 ---
 

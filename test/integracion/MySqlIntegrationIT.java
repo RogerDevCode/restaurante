@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -124,14 +125,19 @@ public class MySqlIntegrationIT {
     }
 
     @Test
-    public void autenticaUsuarioSemillaRechazaCredencialesYConsultaMenu() {
+    public void autenticaUsuarioSemillaRechazaCredencialesYConsultaMenu() throws SQLException {
         establecerClaveLegacySemilla();
+        String hoy = LocalDate.now().toString();
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement("UPDATE platos SET fecha = ? WHERE id IN (1, 2, 3)")) {
+            ps.setString(1, hoy);
+            ps.executeUpdate();
+        }
         Optional<Usuario> autenticado = new LoginDao().autenticar("info@angelsifuentes.com", "admin");
         assertTrue(autenticado.isPresent());
         assertEquals("Administrador", autenticado.get().getRol());
         assertTrue("La clave legacy debe migrarse tras autenticar", claveSemillaMigrada());
         assertTrue(new LoginDao().autenticar("no-existe@restaurante.test", "incorrecta").isEmpty());
-        assertTrue(new PlatosDao().Listar("", LocalDate.now().toString()).size() >= 3);
+        assertTrue(new PlatosDao().Listar("", hoy).size() >= 3);
     }
 
     @Test

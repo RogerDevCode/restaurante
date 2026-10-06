@@ -1408,15 +1408,30 @@ public final class Sistema extends javax.swing.JFrame {
                 && !txtNombreConfig.getText().trim().isEmpty()
                 && !txtTelefonoConfig.getText().trim().isEmpty()
                 && !txtDireccionConfig.getText().trim().isEmpty()) {
-            conf.setRuc(txtRucConfig.getText());
-            conf.setNombre(txtNombreConfig.getText());
-            conf.setTelefono(txtTelefonoConfig.getText());
-            conf.setDireccion(txtDireccionConfig.getText());
-            conf.setMensaje(txtMensaje.getText());
+            conf.setRuc(txtRucConfig.getText().trim());
+            conf.setNombre(txtNombreConfig.getText().trim());
+            conf.setTelefono(txtTelefonoConfig.getText().trim());
+            conf.setDireccion(txtDireccionConfig.getText().trim());
+            conf.setMensaje(txtMensaje.getText().trim());
             if (txtTasaConfig != null && !txtTasaConfig.getText().trim().isEmpty()) {
-                conf.setTasaDolar(new BigDecimal(txtTasaConfig.getText().trim()));
+                try {
+                    BigDecimal tasa = new BigDecimal(txtTasaConfig.getText().trim());
+                    if (tasa.compareTo(BigDecimal.ZERO) <= 0 || tasa.scale() > 4 || tasa.precision() - tasa.scale() > 8) {
+                        JOptionPane.showMessageDialog(this, "La tasa de cambio debe ser positiva y caber en DECIMAL(12,4).", "Tasa inválida", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+                    conf.setTasaDolar(tasa);
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Ingresa una tasa de cambio numérica válida.", "Tasa inválida", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
             }
-            conf.setId(Integer.parseInt(txtIdConfig.getText()));
+            try {
+                conf.setId(Integer.parseInt(txtIdConfig.getText().trim()));
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Identificador de configuración inválido.", "Error", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             if (lgDao.ModificarDatos(conf)) {
                 JOptionPane.showMessageDialog(this, "Datos de la empresa modificados.");
             } else {
@@ -1468,14 +1483,18 @@ public final class Sistema extends javax.swing.JFrame {
         if (txtNombreSala.getText().trim().isEmpty() || txtMesas.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(null, "Los campos esta vacios");
         } else {
-            sl.setNombre(txtNombreSala.getText());
-            sl.setMesas(Integer.parseInt(txtMesas.getText()));
-            if (salasControlador.registrar(sl)) {
-                JOptionPane.showMessageDialog(this, "Sala registrada.");
-                LimpiarSala();
-                ListarSalas();
-            } else {
-                JOptionPane.showMessageDialog(this, "No se registró la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+            try {
+                sl.setNombre(txtNombreSala.getText().trim());
+                sl.setMesas(Integer.parseInt(txtMesas.getText().trim()));
+                if (salasControlador.registrar(sl)) {
+                    JOptionPane.showMessageDialog(this, "Sala registrada.");
+                    LimpiarSala();
+                    ListarSalas();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se registró la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "El número de mesas debe ser un número entero válido.", "Formato inválido", JOptionPane.WARNING_MESSAGE);
             }
         }
     }//GEN-LAST:event_btnRegistrarSalaActionPerformed
@@ -1487,14 +1506,21 @@ public final class Sistema extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(null, "Seleecione una fila");
         } else {
             if (!txtNombreSala.getText().trim().isEmpty()) {
-                sl.setNombre(txtNombreSala.getText());
-                sl.setId(Integer.parseInt(txtIdSala.getText()));
-                if (salasControlador.modificar(sl)) {
-                    JOptionPane.showMessageDialog(this, "Sala modificada.");
-                    LimpiarSala();
-                    ListarSalas();
-                } else {
-                    JOptionPane.showMessageDialog(this, "No se aplicaron cambios a la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                try {
+                    sl.setNombre(txtNombreSala.getText().trim());
+                    sl.setId(Integer.parseInt(txtIdSala.getText().trim()));
+                    if (!txtMesas.getText().trim().isEmpty()) {
+                        sl.setMesas(Integer.parseInt(txtMesas.getText().trim()));
+                    }
+                    if (salasControlador.modificar(sl)) {
+                        JOptionPane.showMessageDialog(this, "Sala modificada.");
+                        LimpiarSala();
+                        ListarSalas();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "No se aplicaron cambios a la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Los identificadores y número de mesas deben ser números enteros válidos.", "Formato inválido", JOptionPane.WARNING_MESSAGE);
                 }
             } else {
                 JOptionPane.showMessageDialog(this, "El nombre de la sala es obligatorio.",
@@ -1743,15 +1769,19 @@ public final class Sistema extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(null, "Seleecione una fila");
         } else {
             if (!txtNombrePlato.getText().trim().isEmpty() && !txtPrecioPlato.getText().trim().isEmpty()) {
-                pla.setNombre(txtNombrePlato.getText());
-                pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText()));
-                pla.setId(Integer.parseInt(txtIdPlato.getText()));
-                if (platosControlador.modificar(pla)) {
-                    JOptionPane.showMessageDialog(null, "Plato Modificado");
-                    ListarPlatos(TablePlatos);
-                    LimpiarPlatos();
-                } else {
-                    JOptionPane.showMessageDialog(this, "No se aplicaron cambios al plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                try {
+                    pla.setNombre(txtNombrePlato.getText().trim());
+                    pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText().trim()));
+                    pla.setId(Integer.parseInt(txtIdPlato.getText().trim()));
+                    if (platosControlador.modificar(pla)) {
+                        JOptionPane.showMessageDialog(null, "Plato Modificado");
+                        ListarPlatos(TablePlatos);
+                        LimpiarPlatos();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "No se aplicaron cambios al plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Identificador de plato inválido.", "Error", JOptionPane.WARNING_MESSAGE);
                 }
             } else {
                 JOptionPane.showMessageDialog(this, "El nombre y el precio del plato son obligatorios.",
@@ -1766,12 +1796,16 @@ public final class Sistema extends javax.swing.JFrame {
         if (!"".equals(txtIdPlato.getText())) {
             int pregunta = JOptionPane.showConfirmDialog(null, "Esta seguro de eliminar");
             if (pregunta == 0) {
-                int id = Integer.parseInt(txtIdPlato.getText());
-                if (platosControlador.eliminar(id)) {
-                    LimpiarPlatos();
-                    ListarPlatos(TablePlatos);
-                } else {
-                    JOptionPane.showMessageDialog(this, "No se eliminó el plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                try {
+                    int id = Integer.parseInt(txtIdPlato.getText().trim());
+                    if (platosControlador.eliminar(id)) {
+                        LimpiarPlatos();
+                        ListarPlatos(TablePlatos);
+                    } else {
+                        JOptionPane.showMessageDialog(this, "No se eliminó el plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Identificador de plato inválido.", "Error", JOptionPane.WARNING_MESSAGE);
                 }
             }
         } else {
