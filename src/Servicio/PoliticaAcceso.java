@@ -32,12 +32,14 @@ public final class PoliticaAcceso {
         if (accion == null) {
             throw ErrorAplicacionException.validacion("La acción solicitada es obligatoria.");
         }
-        if ("Administrador".equals(rol)) {
-            return true;
-        }
-        return accion == Accion.CONSULTAR_SALAS
-                || accion == Accion.CONSULTAR_PLATOS
-                || accion == Accion.REGISTRAR_PEDIDOS;
+        return switch (rol) {
+            case "Administrador" -> true;
+            case "Asistente" -> switch (accion) {
+                case CONSULTAR_SALAS, CONSULTAR_PLATOS, REGISTRAR_PEDIDOS -> true;
+                case GESTIONAR_PEDIDOS, GESTIONAR_SALAS, GESTIONAR_PLATOS, GESTIONAR_USUARIOS, EDITAR_CONFIGURACION -> false;
+            };
+            default -> false;
+        };
     }
 
     public boolean esAdministrador() {

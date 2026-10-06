@@ -37,7 +37,11 @@ public class LoginDao implements AutenticacionRepositorio {
         }
         Usuario usuario = null;
         String contrasenaGuardada = null;
-        String sql = "SELECT id, nombre, correo, pass, rol FROM usuarios WHERE correo = ?";
+        String sql = """
+            SELECT id, nombre, correo, pass, rol
+            FROM usuarios
+            WHERE correo = ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, correo.trim());
@@ -68,7 +72,10 @@ public class LoginDao implements AutenticacionRepositorio {
 
     public boolean Registrar(Usuario reg) {
         validarRegistro(reg);
-        String sql = "INSERT INTO usuarios (nombre, correo, pass, rol) VALUES (?,?,?,?)";
+        String sql = """
+            INSERT INTO usuarios (nombre, correo, pass, rol)
+            VALUES (?, ?, ?, ?)
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, reg.getNombre());
@@ -97,7 +104,11 @@ public class LoginDao implements AutenticacionRepositorio {
             return false;
         }
         String hashNuevo = passwordHasher.hash(contrasena);
-        String sql = "UPDATE usuarios SET pass = ? WHERE id = ? AND BINARY pass = BINARY ?";
+        String sql = """
+            UPDATE usuarios
+            SET pass = ?
+            WHERE id = ? AND BINARY pass = BINARY ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, hashNuevo);
@@ -117,7 +128,11 @@ public class LoginDao implements AutenticacionRepositorio {
     }
 
     private boolean verificarHashActual(int id, char[] contrasena) {
-        String sql = "SELECT pass FROM usuarios WHERE id = ?";
+        String sql = """
+            SELECT pass
+            FROM usuarios
+            WHERE id = ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setInt(1, id);
@@ -154,7 +169,10 @@ public class LoginDao implements AutenticacionRepositorio {
 
     public List<Usuario> ListarUsuarios() {
         List<Usuario> usuarios = new ArrayList<>();
-        String sql = "SELECT * FROM usuarios";
+        String sql = """
+            SELECT id, nombre, correo, pass, rol
+            FROM usuarios
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql);
                 ResultSet resultados = sentencia.executeQuery()) {
@@ -176,7 +194,11 @@ public class LoginDao implements AutenticacionRepositorio {
         if (conf == null) {
             throw ErrorAplicacionException.validacion("Los datos de configuración son obligatorios.");
         }
-        String sql = "UPDATE config SET ruc=?, nombre=?, telefono=?, direccion=?, mensaje=?, tasa_dolar=? WHERE id=?";
+        String sql = """
+            UPDATE config
+            SET ruc = ?, nombre = ?, telefono = ?, direccion = ?, mensaje = ?, tasa_dolar = ?
+            WHERE id = ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, conf.getRuc());
@@ -195,7 +217,10 @@ public class LoginDao implements AutenticacionRepositorio {
 
     public Config datosEmpresa() {
         Config configuracion = null;
-        String sql = "SELECT * FROM config";
+        String sql = """
+            SELECT id, ruc, nombre, telefono, direccion, mensaje, tasa_dolar
+            FROM config
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql);
                 ResultSet resultados = sentencia.executeQuery()) {

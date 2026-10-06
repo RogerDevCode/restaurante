@@ -65,9 +65,9 @@ public final class ManejadorErroresSwing extends EventQueue {
         try {
             despacho.run();
         } catch (Throwable error) {
-            if (error instanceof Error) {
+            if (error instanceof Error err) {
                 // El uncaught handler es el único responsable de registrar Errors.
-                throw (Error) error;
+                throw err;
             }
             // Las excepciones de una acción quedan resueltas en esta frontera: se
             // registran y muestran, y el EDT continúa atendiendo eventos.
@@ -76,10 +76,13 @@ public final class ManejadorErroresSwing extends EventQueue {
     }
 
     private static void reportar(Throwable error, String hilo, BiConsumer<Throwable, String> presentador) {
-        if (!(error instanceof ErrorAplicacionException)) {
+        String mensaje;
+        if (error instanceof ErrorAplicacionException appEx) {
+            mensaje = appEx.getMessage();
+        } else {
             LOGGER.log(Level.SEVERE, "Error no controlado en el hilo " + hilo, error);
+            mensaje = null;
         }
-        String mensaje = error instanceof ErrorAplicacionException ? error.getMessage() : null;
         if (mensaje == null || mensaje.trim().isEmpty()) {
             mensaje = "Ocurrió un error inesperado. El detalle quedó registrado en el log.";
         }

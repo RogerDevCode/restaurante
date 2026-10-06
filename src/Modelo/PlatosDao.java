@@ -27,7 +27,10 @@ public class PlatosDao implements PlatosRepositorio {
     @Override
     public boolean registrar(Platos pla) {
         validarPlato(pla);
-        String sql = "INSERT INTO platos (nombre, precio, fecha) VALUES (?,?,?)";
+        String sql = """
+            INSERT INTO platos (nombre, precio, fecha)
+            VALUES (?, ?, ?)
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, pla.getNombre());
@@ -47,10 +50,17 @@ public class PlatosDao implements PlatosRepositorio {
         }
         List<Platos> platos = new ArrayList<>();
         boolean filtrarNombre = valor != null && !valor.trim().isEmpty();
-        String sql = "SELECT * FROM platos WHERE fecha = ?";
-        if (filtrarNombre) {
-            sql += " AND nombre LIKE ?";
-        }
+        String sql = filtrarNombre
+            ? """
+              SELECT id, nombre, precio, fecha
+              FROM platos
+              WHERE fecha = ? AND nombre LIKE ?
+              """
+            : """
+              SELECT id, nombre, precio, fecha
+              FROM platos
+              WHERE fecha = ?
+              """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, fecha);
@@ -74,7 +84,10 @@ public class PlatosDao implements PlatosRepositorio {
 
     @Override
     public boolean eliminar(int id) {
-        String sql = "DELETE FROM platos WHERE id = ?";
+        String sql = """
+            DELETE FROM platos
+            WHERE id = ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setInt(1, id);
@@ -88,7 +101,11 @@ public class PlatosDao implements PlatosRepositorio {
     @Override
     public boolean modificar(Platos pla) {
         validarPlato(pla);
-        String sql = "UPDATE platos SET nombre=?, precio=? WHERE id=?";
+        String sql = """
+            UPDATE platos
+            SET nombre = ?, precio = ?
+            WHERE id = ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, pla.getNombre());

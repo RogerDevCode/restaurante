@@ -1,4 +1,3 @@
-
 package Modelo;
 
 import infraestructura.ProveedorConexionJdbc;
@@ -26,12 +25,16 @@ public class PedidosDao implements PedidosRepositorio {
         this.conexiones = conexiones;
     }
 
-    public int verificarStado(int mesa, int id_sala){
+    public int verificarStado(int mesa, int id_sala) {
         if (mesa <= 0 || id_sala <= 0) {
             throw ErrorAplicacionException.validacion("La sala y el número de mesa deben ser válidos.");
         }
         int id_pedido = 0;
-        String sql = "SELECT id FROM pedidos WHERE num_mesa=? AND id_sala=? AND estado = ?";
+        String sql = """
+            SELECT id
+            FROM pedidos
+            WHERE num_mesa = ? AND id_sala = ? AND estado = ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setInt(1, mesa);
@@ -60,8 +63,14 @@ public class PedidosDao implements PedidosRepositorio {
             }
         }
 
-        String sqlPedido = "INSERT INTO pedidos (id_sala, num_mesa, total, usuario, tasa_cambio, total_bs) VALUES (?,?,?,?,?,?)";
-        String sqlDetalle = "INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido) VALUES (?,?,?,?,?)";
+        String sqlPedido = """
+            INSERT INTO pedidos (id_sala, num_mesa, total, usuario, tasa_cambio, total_bs)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """;
+        String sqlDetalle = """
+            INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido)
+            VALUES (?, ?, ?, ?, ?)
+            """;
 
         try (Connection conexion = conexiones.getConnection()) {
             try {
@@ -110,8 +119,7 @@ public class PedidosDao implements PedidosRepositorio {
                 } catch (SQLException errorRollback) {
                     error.addSuppressed(errorRollback);
                 }
-                if (error instanceof SQLException) {
-                    SQLException errorSql = (SQLException) error;
+                if (error instanceof SQLException errorSql) {
                     String mensaje = errorSql.getMessage();
                     if (errorSql.getErrorCode() == 1062
                             && mensaje != null
@@ -165,109 +173,95 @@ public class PedidosDao implements PedidosRepositorio {
         }
     }
 
-    public List<DetallePedido> verPedidoDetalle(int id_pedido){
-       if (id_pedido <= 0) {
-           throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido.");
-       }
-       List<DetallePedido> Lista = new ArrayList<>();
-       String sql = "SELECT d.* FROM pedidos p INNER JOIN detalle_pedidos d ON p.id = d.id_pedido WHERE p.id = ?";
-       try (Connection conexion = conexiones.getConnection();
-               PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-           sentencia.setInt(1, id_pedido);
-           try (ResultSet resultados = sentencia.executeQuery()) {
-           while (resultados.next()) {
-               DetallePedido det = new DetallePedido();
-               det.setId(resultados.getInt("id"));
-               det.setNombre(resultados.getString("nombre"));
-               det.setPrecioDecimal(resultados.getBigDecimal("precio"));
-               det.setCantidad(resultados.getInt("cantidad"));
-               det.setComentario(resultados.getString("comentario"));
-               Lista.add(det);
-           }
-           }
-       } catch (SQLException ex) {
-           throw new DataAccessException("No se pudieron consultar los detalles del pedido.", ex);
-       }
-       if (Lista.isEmpty()) {
-           throw new ErrorAplicacionException(
-                   "El pedido " + id_pedido + " no tiene detalles asociados.",
-                   new IllegalStateException("Un pedido debe contener al menos un detalle."));
-       }
-       return Lista;
-   }
+    public List<DetallePedido> verPedidoDetalle(int id_pedido) {
+        if (id_pedido <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido.");
+        }
+        List<DetallePedido> lista = new ArrayList<>();
+        String sql = """
+            SELECT d.id, d.nombre, d.precio, d.cantidad, d.comentario, d.id_pedido
+            FROM pedidos p
+            INNER JOIN detalle_pedidos d ON p.id = d.id_pedido
+            WHERE p.id = ?
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setInt(1, id_pedido);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                while (resultados.next()) {
+                    DetallePedido det = new DetallePedido();
+                    det.setId(resultados.getInt("id"));
+                    det.setNombre(resultados.getString("nombre"));
+                    det.setPrecioDecimal(resultados.getBigDecimal("precio"));
+                    det.setCantidad(resultados.getInt("cantidad"));
+                    det.setComentario(resultados.getString("comentario"));
+                    lista.add(det);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron consultar los detalles del pedido.", ex);
+        }
+        if (lista.isEmpty()) {
+            throw new ErrorAplicacionException(
+                    "El pedido " + id_pedido + " no tiene detalles asociados.",
+                    new IllegalStateException("Un pedido debe contener al menos un detalle."));
+        }
+        return lista;
+    }
 
-    public Pedidos verPedido(int id_pedido){
+    public Pedidos verPedido(int id_pedido) {
         if (id_pedido <= 0) {
             throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido.");
         }
         Pedidos ped = null;
-       String sql = "SELECT p.*, s.nombre FROM pedidos p INNER JOIN salas s ON p.id_sala = s.id WHERE p.id = ?";
-       try (Connection conexion = conexiones.getConnection();
-               PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-           sentencia.setInt(1, id_pedido);
-           try (ResultSet resultados = sentencia.executeQuery()) {
-            if (resultados.next()) {
-               ped = new Pedidos();
-
-               ped.setId(resultados.getInt("id"));
-               ped.setId_sala(resultados.getInt("id_sala"));
-               ped.setFecha(resultados.getString("fecha"));
-               ped.setSala(resultados.getString("nombre"));
-               ped.setNum_mesa(resultados.getInt("num_mesa"));
-               ped.setTotalDecimal(resultados.getBigDecimal("total"));
-               ped.setUsuario(resultados.getString("usuario"));
-               ped.setEstado(resultados.getString("estado"));
-               ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
-               ped.setTotalBs(resultados.getBigDecimal("total_bs"));
+        String sql = """
+            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.total, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
+            FROM pedidos p
+            INNER JOIN salas s ON p.id_sala = s.id
+            WHERE p.id = ?
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setInt(1, id_pedido);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (resultados.next()) {
+                    ped = new Pedidos();
+                    ped.setId(resultados.getInt("id"));
+                    ped.setId_sala(resultados.getInt("id_sala"));
+                    ped.setFecha(resultados.getString("fecha"));
+                    ped.setSala(resultados.getString("nombre_sala"));
+                    ped.setNum_mesa(resultados.getInt("num_mesa"));
+                    ped.setTotalDecimal(resultados.getBigDecimal("total"));
+                    ped.setUsuario(resultados.getString("usuario"));
+                    ped.setEstado(resultados.getString("estado"));
+                    ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
+                    ped.setTotalBs(resultados.getBigDecimal("total_bs"));
+                }
             }
-           }
-       } catch (SQLException ex) {
-           throw new DataAccessException("No se pudo consultar el pedido.", ex);
-       }
-       if (ped == null) {
-           throw new ErrorAplicacionException(
-                   "No existe el pedido " + id_pedido + ".",
-                   new IllegalStateException("La consulta no encontró el pedido solicitado."));
-       }
-       return ped;
-   }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo consultar el pedido.", ex);
+        }
+        if (ped == null) {
+            throw new ErrorAplicacionException(
+                    "No existe el pedido " + id_pedido + ".",
+                    new IllegalStateException("La consulta no encontró el pedido solicitado."));
+        }
+        return ped;
+    }
 
-    public List<DetallePedido> finalizarPedido(int id_pedido){
-       if (id_pedido <= 0) {
-           throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido.");
-       }
-       List<DetallePedido> Lista = new ArrayList<>();
-       String sql = "SELECT d.* FROM pedidos p INNER JOIN detalle_pedidos d ON p.id = d.id_pedido WHERE p.id = ?";
-       try (Connection conexion = conexiones.getConnection();
-               PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-           sentencia.setInt(1, id_pedido);
-           try (ResultSet resultados = sentencia.executeQuery()) {
-           while (resultados.next()) {
-               DetallePedido det = new DetallePedido();
-               det.setId(resultados.getInt("id"));
-               det.setNombre(resultados.getString("nombre"));
-               det.setPrecioDecimal(resultados.getBigDecimal("precio"));
-               det.setCantidad(resultados.getInt("cantidad"));
-               det.setComentario(resultados.getString("comentario"));
-               Lista.add(det);
-           }
-           }
-       } catch (SQLException ex) {
-           throw new DataAccessException("No se pudieron consultar los detalles del pedido.", ex);
-       }
-       if (Lista.isEmpty()) {
-           throw new ErrorAplicacionException(
-                   "El pedido " + id_pedido + " no tiene detalles asociados.",
-                   new IllegalStateException("Un pedido debe contener al menos un detalle."));
-       }
-       return Lista;
-   }
+    public List<DetallePedido> finalizarPedido(int id_pedido) {
+        return verPedidoDetalle(id_pedido);
+    }
 
-    public boolean actualizarEstado (int id_pedido){
+    public boolean actualizarEstado(int id_pedido) {
         if (id_pedido <= 0) {
             throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para finalizarlo.");
         }
-        String sql = "UPDATE pedidos SET estado = ? WHERE id = ?";
+        String sql = """
+            UPDATE pedidos
+            SET estado = ?
+            WHERE id = ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, "FINALIZADO");
@@ -279,29 +273,33 @@ public class PedidosDao implements PedidosRepositorio {
         }
     }
 
-    public List<Pedidos> listarPedidos(){
-       List<Pedidos> Lista = new ArrayList<>();
-       String sql = "SELECT p.*, s.nombre FROM pedidos p INNER JOIN salas s ON p.id_sala = s.id ORDER BY p.fecha DESC";
-       try (Connection conexion = conexiones.getConnection();
-               PreparedStatement sentencia = conexion.prepareStatement(sql);
-               ResultSet resultados = sentencia.executeQuery()) {
-           while (resultados.next()) {
-               Pedidos ped = new Pedidos();
-               ped.setId(resultados.getInt("id"));
-               ped.setSala(resultados.getString("nombre"));
-               ped.setNum_mesa(resultados.getInt("num_mesa"));
-               ped.setFecha(resultados.getString("fecha"));
-               ped.setTotalDecimal(resultados.getBigDecimal("total"));
-               ped.setUsuario(resultados.getString("usuario"));
-               ped.setEstado(resultados.getString("estado"));
-               ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
-               ped.setTotalBs(resultados.getBigDecimal("total_bs"));
-               Lista.add(ped);
-           }
-       } catch (SQLException ex) {
-           throw new DataAccessException("No se pudieron listar los pedidos.", ex);
-       }
-       return Lista;
-   }
-
+    public List<Pedidos> listarPedidos() {
+        List<Pedidos> lista = new ArrayList<>();
+        String sql = """
+            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.total, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
+            FROM pedidos p
+            INNER JOIN salas s ON p.id_sala = s.id
+            ORDER BY p.fecha DESC
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql);
+                ResultSet resultados = sentencia.executeQuery()) {
+            while (resultados.next()) {
+                Pedidos ped = new Pedidos();
+                ped.setId(resultados.getInt("id"));
+                ped.setSala(resultados.getString("nombre_sala"));
+                ped.setNum_mesa(resultados.getInt("num_mesa"));
+                ped.setFecha(resultados.getString("fecha"));
+                ped.setTotalDecimal(resultados.getBigDecimal("total"));
+                ped.setUsuario(resultados.getString("usuario"));
+                ped.setEstado(resultados.getString("estado"));
+                ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
+                ped.setTotalBs(resultados.getBigDecimal("total_bs"));
+                lista.add(ped);
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron listar los pedidos.", ex);
+        }
+        return lista;
+    }
 }

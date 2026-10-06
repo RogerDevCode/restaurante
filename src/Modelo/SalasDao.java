@@ -28,7 +28,10 @@ public class SalasDao implements SalasRepositorio {
         if (sala == null) {
             throw ErrorAplicacionException.validacion("Los datos de la sala son obligatorios.");
         }
-        String sql = "INSERT INTO salas(nombre, mesas) VALUES (?,?)";
+        String sql = """
+            INSERT INTO salas (nombre, mesas)
+            VALUES (?, ?)
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, sala.getNombre());
@@ -43,7 +46,10 @@ public class SalasDao implements SalasRepositorio {
     @Override
     public List<Salas> listar() {
         List<Salas> salas = new ArrayList<>();
-        String sql = "SELECT * FROM salas";
+        String sql = """
+            SELECT id, nombre, mesas
+            FROM salas
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql);
                 ResultSet resultados = sentencia.executeQuery()) {
@@ -62,7 +68,10 @@ public class SalasDao implements SalasRepositorio {
 
     @Override
     public boolean eliminar(int id) {
-        String sql = "DELETE FROM salas WHERE id = ?";
+        String sql = """
+            DELETE FROM salas
+            WHERE id = ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setInt(1, id);
@@ -82,7 +91,11 @@ public class SalasDao implements SalasRepositorio {
         if (sala == null) {
             throw ErrorAplicacionException.validacion("Los datos de la sala son obligatorios.");
         }
-        String sql = "UPDATE salas SET nombre=?, mesas=? WHERE id=?";
+        String sql = """
+            UPDATE salas
+            SET nombre = ?, mesas = ?
+            WHERE id = ?
+            """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, sala.getNombre());

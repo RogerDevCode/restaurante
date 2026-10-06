@@ -2262,8 +2262,8 @@ public final class Sistema extends javax.swing.JFrame {
 
     private BigDecimal importeMonetario(Object valor) {
         try {
-            BigDecimal importe = valor instanceof BigDecimal
-                    ? (BigDecimal) valor : new BigDecimal(String.valueOf(valor).trim());
+            BigDecimal importe = (valor instanceof BigDecimal bd)
+                    ? bd : new BigDecimal(String.valueOf(valor).trim());
             if (importe.scale() > 2 || importe.precision() - importe.scale() > 8) {
                 throw new ArithmeticException("El importe excede DECIMAL(10,2).");
             }

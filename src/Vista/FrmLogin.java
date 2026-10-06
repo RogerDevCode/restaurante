@@ -316,8 +316,8 @@ public class FrmLogin extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(this,
                     "No se pudo acceder a la base de datos. Revisa la conexión e inténtalo nuevamente.",
                     "Error de conexión", JOptionPane.ERROR_MESSAGE);
-        } else if (error instanceof ErrorAplicacionException) {
-            JOptionPane.showMessageDialog(this, error.getMessage(),
+        } else if (error instanceof ErrorAplicacionException appEx) {
+            JOptionPane.showMessageDialog(this, appEx.getMessage(),
                     "No se pudo iniciar sesión", JOptionPane.WARNING_MESSAGE);
         } else {
             JOptionPane.showMessageDialog(this,
