@@ -8,6 +8,7 @@ package Vista;
 import Controlador.PedidosControlador;
 import Controlador.PlatosControlador;
 import Controlador.SalasControlador;
+import Modelo.CalculoFiscalRecord;
 import Modelo.Config;
 import Modelo.DataAccessException;
 import Modelo.ErrorAplicacionException;
@@ -218,6 +219,8 @@ public final class Sistema extends javax.swing.JFrame {
         txtMensaje = new javax.swing.JTextField();
         jLabelTasaConfig = new javax.swing.JLabel();
         txtTasaConfig = new javax.swing.JTextField();
+        jLabelIvaConfig = new javax.swing.JLabel();
+        txtIvaConfig = new javax.swing.JTextField();
         btnActualizarConfig = new javax.swing.JButton();
         jLabel27 = new javax.swing.JLabel();
         txtRucConfig = new javax.swing.JTextField();
@@ -955,6 +958,14 @@ public final class Sistema extends javax.swing.JFrame {
         txtMensaje.setBorder(null);
         jPanel8.add(txtMensaje, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 255, 220, 30));
 
+        jLabelIvaConfig.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabelIvaConfig.setText("IVA (%)");
+        jPanel8.add(jLabelIvaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 295, -1, -1));
+
+        txtIvaConfig.setBackground(new java.awt.Color(204, 204, 204));
+        txtIvaConfig.setBorder(null);
+        jPanel8.add(txtIvaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 318, 147, 30));
+
         btnActualizarConfig.setBackground(new java.awt.Color(255, 255, 255));
         btnActualizarConfig.setFont(new java.awt.Font("Times New Roman", 1, 13)); // NOI18N
         btnActualizarConfig.setText("Modificar");
@@ -1423,6 +1434,19 @@ public final class Sistema extends javax.swing.JFrame {
                     conf.setTasaDolar(tasa);
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "Ingresa una tasa de cambio numérica válida.", "Tasa inválida", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
+            if (txtIvaConfig != null && !txtIvaConfig.getText().trim().isEmpty()) {
+                try {
+                    BigDecimal iva = new BigDecimal(txtIvaConfig.getText().trim());
+                    if (iva.compareTo(BigDecimal.ZERO) < 0 || iva.compareTo(new BigDecimal("100.00")) > 0 || iva.scale() > 2) {
+                        JOptionPane.showMessageDialog(this, "El IVA debe estar entre 0.00 y 100.00% con hasta dos decimales.", "IVA inválido", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+                    conf.setIvaPorcentaje(iva);
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Ingresa un porcentaje de IVA numérico válido.", "IVA inválido", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
             }
@@ -1958,6 +1982,8 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JTextField txtSalaFinalizar;
     private javax.swing.JTextField txtTasaConfig;
     private javax.swing.JLabel jLabelTasaConfig;
+    private javax.swing.JTextField txtIvaConfig;
+    private javax.swing.JLabel jLabelIvaConfig;
     private javax.swing.JTextField txtTelefonoConfig;
     private javax.swing.JTextField txtTempIdSala;
     private javax.swing.JTextField txtTempNumMesa;
@@ -1971,8 +1997,13 @@ public final class Sistema extends javax.swing.JFrame {
             Totalpagar = Totalpagar.add(subtotal);
         }
         BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
-        BigDecimal totalBs = Totalpagar.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-        label.setText("Bs. " + totalBs.toPlainString() + " ($ " + Totalpagar.toPlainString() + ")");
+        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
+        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(Totalpagar, ivaPorcentaje, tasa);
+        label.setText("Bs. " + fiscal.totalBs().toPlainString() + " ($ " + fiscal.totalUsd().toPlainString() + ")");
+        label.setToolTipText("Subtotal: $ " + fiscal.subtotalUsd().toPlainString()
+                + " | IVA (" + fiscal.ivaPorcentaje().toPlainString() + "%): $ " + fiscal.ivaUsd().toPlainString()
+                + " | Total: $ " + fiscal.totalUsd().toPlainString()
+                + " (Bs. " + fiscal.totalBs().toPlainString() + ")");
     }
 
     private void LimpiarTableMenu() {
@@ -1993,6 +2024,9 @@ public final class Sistema extends javax.swing.JFrame {
         txtMensaje.setText("" + conf.getMensaje());
         if (txtTasaConfig != null) {
             txtTasaConfig.setText(conf.getTasaDolar() != null ? conf.getTasaDolar().toPlainString() : "36.5000");
+        }
+        if (txtIvaConfig != null) {
+            txtIvaConfig.setText(conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje().toPlainString() : "16.00");
         }
     }
 
@@ -2233,14 +2267,20 @@ public final class Sistema extends javax.swing.JFrame {
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
         BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
-        BigDecimal totalBs = Totalpagar.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
+        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(Totalpagar, ivaPorcentaje, tasa);
 
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(id_sala);
         pedido.setNum_mesa(num_mesa);
-        pedido.setTotalDecimal(Totalpagar);
-        pedido.setTasaCambio(tasa);
-        pedido.setTotalBs(totalBs);
+        pedido.setSubtotal(fiscal.subtotalUsd());
+        pedido.setIvaPorcentaje(fiscal.ivaPorcentaje());
+        pedido.setIvaMonto(fiscal.ivaUsd());
+        pedido.setTotalDecimal(fiscal.totalUsd());
+        pedido.setTasaCambio(fiscal.tasaCambio());
+        pedido.setSubtotalBs(fiscal.subtotalBs());
+        pedido.setIvaBs(fiscal.ivaBs());
+        pedido.setTotalBs(fiscal.totalBs());
         pedido.setUsuario(LabelVendedor.getText());
 
         List<DetallePedido> detalles = new ArrayList<>();

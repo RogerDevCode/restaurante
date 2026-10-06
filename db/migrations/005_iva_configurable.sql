@@ -1,0 +1,10 @@
+-- Migración para soporte de IVA (Impuesto al Valor Agregado) configurable
+ALTER TABLE config
+  ADD COLUMN iva_porcentaje DECIMAL(5,2) NOT NULL DEFAULT 16.00;
+
+ALTER TABLE pedidos
+  ADD COLUMN subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN iva_porcentaje DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN iva_monto DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN subtotal_bs DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN iva_bs DECIMAL(14,2) NOT NULL DEFAULT 0.00;

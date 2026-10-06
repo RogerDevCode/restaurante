@@ -7,11 +7,16 @@ public class Pedidos {
     private int id_sala;
     private int num_mesa;
     private String fecha;
+    private BigDecimal subtotal;
+    private BigDecimal ivaPorcentaje;
+    private BigDecimal ivaMonto;
     private BigDecimal total = BigDecimal.ZERO;
     private String sala;
     private String usuario;
     private String estado;
     private BigDecimal tasaCambio;
+    private BigDecimal subtotalBs;
+    private BigDecimal ivaBs;
     private BigDecimal totalBs;
 
     public Pedidos() {
@@ -66,6 +71,30 @@ public class Pedidos {
         this.fecha = fecha;
     }
 
+    public BigDecimal getSubtotal() {
+        return subtotal != null ? subtotal : total;
+    }
+
+    public void setSubtotal(BigDecimal subtotal) {
+        this.subtotal = subtotal;
+    }
+
+    public BigDecimal getIvaPorcentaje() {
+        return ivaPorcentaje != null ? ivaPorcentaje : BigDecimal.ZERO;
+    }
+
+    public void setIvaPorcentaje(BigDecimal ivaPorcentaje) {
+        this.ivaPorcentaje = ivaPorcentaje;
+    }
+
+    public BigDecimal getIvaMonto() {
+        return ivaMonto != null ? ivaMonto : BigDecimal.ZERO;
+    }
+
+    public void setIvaMonto(BigDecimal ivaMonto) {
+        this.ivaMonto = ivaMonto;
+    }
+
     public BigDecimal getTotalDecimal() {
         return total;
     }
@@ -107,6 +136,22 @@ public class Pedidos {
 
     public void setTasaCambio(BigDecimal tasaCambio) {
         this.tasaCambio = tasaCambio;
+    }
+
+    public BigDecimal getSubtotalBs() {
+        return subtotalBs;
+    }
+
+    public void setSubtotalBs(BigDecimal subtotalBs) {
+        this.subtotalBs = subtotalBs;
+    }
+
+    public BigDecimal getIvaBs() {
+        return ivaBs;
+    }
+
+    public void setIvaBs(BigDecimal ivaBs) {
+        this.ivaBs = ivaBs;
     }
 
     public BigDecimal getTotalBs() {

@@ -64,8 +64,8 @@ public class PedidosDao implements PedidosRepositorio {
         }
 
         String sqlPedido = """
-            INSERT INTO pedidos (id_sala, num_mesa, total, usuario, tasa_cambio, total_bs)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO pedidos (id_sala, num_mesa, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         String sqlDetalle = """
             INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido)
@@ -79,10 +79,15 @@ public class PedidosDao implements PedidosRepositorio {
                 try (PreparedStatement sentenciaPedido = conexion.prepareStatement(sqlPedido, Statement.RETURN_GENERATED_KEYS)) {
                     sentenciaPedido.setInt(1, pedido.getId_sala());
                     sentenciaPedido.setInt(2, pedido.getNum_mesa());
-                    sentenciaPedido.setBigDecimal(3, importePersistible(pedido.getTotalDecimal(), "El total del pedido"));
-                    sentenciaPedido.setString(4, pedido.getUsuario());
-                    sentenciaPedido.setBigDecimal(5, pedido.getTasaCambio());
-                    sentenciaPedido.setBigDecimal(6, pedido.getTotalBs());
+                    sentenciaPedido.setBigDecimal(3, importePersistible(pedido.getSubtotal(), "El subtotal del pedido"));
+                    sentenciaPedido.setBigDecimal(4, pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : BigDecimal.ZERO);
+                    sentenciaPedido.setBigDecimal(5, pedido.getIvaMonto() != null ? pedido.getIvaMonto() : BigDecimal.ZERO);
+                    sentenciaPedido.setBigDecimal(6, importePersistible(pedido.getTotalDecimal(), "El total del pedido"));
+                    sentenciaPedido.setString(7, pedido.getUsuario());
+                    sentenciaPedido.setBigDecimal(8, pedido.getTasaCambio());
+                    sentenciaPedido.setBigDecimal(9, pedido.getSubtotalBs());
+                    sentenciaPedido.setBigDecimal(10, pedido.getIvaBs());
+                    sentenciaPedido.setBigDecimal(11, pedido.getTotalBs());
                     if (sentenciaPedido.executeUpdate() != 1) {
                         throw new SQLException("No se pudo insertar el encabezado del pedido.");
                     }
@@ -143,28 +148,82 @@ public class PedidosDao implements PedidosRepositorio {
                 || pedido.getUsuario() == null || pedido.getUsuario().trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("La sala, mesa y usuario del pedido deben ser válidos.");
         }
-        BigDecimal totalCalculado = BigDecimal.ZERO.setScale(2);
         if (detalles == null || detalles.isEmpty()) {
             throw ErrorAplicacionException.validacion("El pedido debe incluir al menos un detalle.");
         }
+        BigDecimal sumaDetalles = BigDecimal.ZERO.setScale(2);
         for (DetallePedido detalle : detalles) {
             if (detalle == null || detalle.getNombre() == null || detalle.getNombre().trim().isEmpty()
                     || detalle.getCantidad() <= 0) {
                 throw ErrorAplicacionException.validacion("Cada detalle debe tener nombre y cantidad positiva.");
             }
             BigDecimal precio = importePersistible(detalle.getPrecioDecimal(), "El precio de cada plato");
-            totalCalculado = totalCalculado.add(precio.multiply(BigDecimal.valueOf(detalle.getCantidad())));
+            sumaDetalles = sumaDetalles.add(precio.multiply(BigDecimal.valueOf(detalle.getCantidad())));
         }
+
+        BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
+        BigDecimal subtotalEsperado = sumaDetalles;
+        BigDecimal ivaEsperado = BigDecimal.ZERO;
+        BigDecimal totalEsperado = subtotalEsperado;
+
+        if (ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0) {
+            ivaEsperado = subtotalEsperado.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            totalEsperado = subtotalEsperado.add(ivaEsperado).setScale(2, RoundingMode.HALF_UP);
+        }
+
+        BigDecimal subtotal = importePersistible(pedido.getSubtotal() != null ? pedido.getSubtotal() : subtotalEsperado, "El subtotal del pedido");
+        if (subtotal.compareTo(subtotalEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
+        }
+
+        BigDecimal ivaMonto = importePersistible(pedido.getIvaMonto() != null ? pedido.getIvaMonto() : ivaEsperado, "El monto del IVA");
+        if (ivaMonto.compareTo(ivaEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El monto del IVA no coincide con el porcentaje aplicado.");
+        }
+
         BigDecimal total = importePersistible(pedido.getTotalDecimal(), "El total del pedido");
-        if (total.compareTo(totalCalculado) != 0) {
-            throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles.");
+        if (total.compareTo(totalEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El total del pedido no coincide con el subtotal más IVA.");
+        }
+
+        BigDecimal tasa = pedido.getTasaCambio();
+        if (tasa == null || tasa.compareTo(BigDecimal.ZERO) <= 0) {
+            tasa = new BigDecimal("36.5000");
+            pedido.setTasaCambio(tasa);
+        }
+
+        BigDecimal subBs = subtotal.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        if (pedido.getSubtotalBs() == null) {
+            pedido.setSubtotalBs(subBs);
+        } else if (pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP).compareTo(subBs) != 0) {
+            throw ErrorAplicacionException.validacion("El subtotal en Bs no coincide con la tasa de cambio.");
+        }
+
+        BigDecimal ivaBs = ivaMonto.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        if (pedido.getIvaBs() == null) {
+            pedido.setIvaBs(ivaBs);
+        } else if (pedido.getIvaBs().setScale(2, RoundingMode.HALF_UP).compareTo(ivaBs) != 0) {
+            throw ErrorAplicacionException.validacion("El IVA en Bs no coincide con la tasa de cambio.");
+        }
+
+        BigDecimal totalBs = total.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        if (pedido.getTotalBs() == null) {
+            pedido.setTotalBs(totalBs);
+        } else if (pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP).compareTo(totalBs) != 0) {
+            throw ErrorAplicacionException.validacion("El total en Bs no coincide con la tasa de cambio.");
+        }
+        if (pedido.getSubtotal() == null) {
+            pedido.setSubtotal(subtotalEsperado);
+        }
+        if (pedido.getIvaMonto() == null) {
+            pedido.setIvaMonto(ivaEsperado);
         }
     }
 
     private BigDecimal importePersistible(BigDecimal importe, String campo) {
-        if (importe == null || importe.signum() <= 0 || importe.scale() > 2
+        if (importe == null || importe.signum() < 0 || importe.scale() > 2
                 || importe.precision() - importe.scale() > 8) {
-            throw ErrorAplicacionException.validacion(campo + " debe ser positivo y caber en DECIMAL(10,2).");
+            throw ErrorAplicacionException.validacion(campo + " no debe ser negativo y caber en DECIMAL(10,2).");
         }
         try {
             return importe.setScale(2, RoundingMode.UNNECESSARY);
@@ -215,7 +274,7 @@ public class PedidosDao implements PedidosRepositorio {
         }
         Pedidos ped = null;
         String sql = """
-            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.total, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
+            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
             FROM pedidos p
             INNER JOIN salas s ON p.id_sala = s.id
             WHERE p.id = ?
@@ -231,11 +290,16 @@ public class PedidosDao implements PedidosRepositorio {
                     ped.setFecha(resultados.getString("fecha"));
                     ped.setSala(resultados.getString("nombre_sala"));
                     ped.setNum_mesa(resultados.getInt("num_mesa"));
+                    ped.setSubtotal(resultados.getBigDecimal("subtotal"));
+                    ped.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
+                    ped.setIvaMonto(resultados.getBigDecimal("iva_monto"));
                     ped.setTotalDecimal(resultados.getBigDecimal("total"));
+                    ped.setSubtotalBs(resultados.getBigDecimal("subtotal_bs"));
+                    ped.setIvaBs(resultados.getBigDecimal("iva_bs"));
+                    ped.setTotalBs(resultados.getBigDecimal("total_bs"));
                     ped.setUsuario(resultados.getString("usuario"));
                     ped.setEstado(resultados.getString("estado"));
                     ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
-                    ped.setTotalBs(resultados.getBigDecimal("total_bs"));
                 }
             }
         } catch (SQLException ex) {
@@ -276,7 +340,7 @@ public class PedidosDao implements PedidosRepositorio {
     public List<Pedidos> listarPedidos() {
         List<Pedidos> lista = new ArrayList<>();
         String sql = """
-            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.total, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
+            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
             FROM pedidos p
             INNER JOIN salas s ON p.id_sala = s.id
             ORDER BY p.fecha DESC
@@ -290,11 +354,16 @@ public class PedidosDao implements PedidosRepositorio {
                 ped.setSala(resultados.getString("nombre_sala"));
                 ped.setNum_mesa(resultados.getInt("num_mesa"));
                 ped.setFecha(resultados.getString("fecha"));
+                ped.setSubtotal(resultados.getBigDecimal("subtotal"));
+                ped.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
+                ped.setIvaMonto(resultados.getBigDecimal("iva_monto"));
                 ped.setTotalDecimal(resultados.getBigDecimal("total"));
+                ped.setSubtotalBs(resultados.getBigDecimal("subtotal_bs"));
+                ped.setIvaBs(resultados.getBigDecimal("iva_bs"));
+                ped.setTotalBs(resultados.getBigDecimal("total_bs"));
                 ped.setUsuario(resultados.getString("usuario"));
                 ped.setEstado(resultados.getString("estado"));
                 ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
-                ped.setTotalBs(resultados.getBigDecimal("total_bs"));
                 lista.add(ped);
             }
         } catch (SQLException ex) {

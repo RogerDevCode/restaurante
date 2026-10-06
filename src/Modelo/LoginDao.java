@@ -196,7 +196,7 @@ public class LoginDao implements AutenticacionRepositorio {
         }
         String sql = """
             UPDATE config
-            SET ruc = ?, nombre = ?, telefono = ?, direccion = ?, mensaje = ?, tasa_dolar = ?
+            SET ruc = ?, nombre = ?, telefono = ?, direccion = ?, mensaje = ?, tasa_dolar = ?, iva_porcentaje = ?
             WHERE id = ?
             """;
         try (Connection conexion = conexiones.getConnection();
@@ -207,7 +207,8 @@ public class LoginDao implements AutenticacionRepositorio {
             sentencia.setString(4, conf.getDireccion());
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
-            sentencia.setInt(7, conf.getId());
+            sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
+            sentencia.setInt(8, conf.getId());
             return ErrorAplicacionException.resultadoUnaFila(
                     sentencia.executeUpdate(), "actualizar configuración de empresa");
         } catch (SQLException ex) {
@@ -218,7 +219,7 @@ public class LoginDao implements AutenticacionRepositorio {
     public Config datosEmpresa() {
         Config configuracion = null;
         String sql = """
-            SELECT id, ruc, nombre, telefono, direccion, mensaje, tasa_dolar
+            SELECT id, ruc, nombre, telefono, direccion, mensaje, tasa_dolar, iva_porcentaje
             FROM config
             """;
         try (Connection conexion = conexiones.getConnection();
@@ -233,6 +234,7 @@ public class LoginDao implements AutenticacionRepositorio {
                 configuracion.setDireccion(resultados.getString("direccion"));
                 configuracion.setMensaje(resultados.getString("mensaje"));
                 configuracion.setTasaDolar(resultados.getBigDecimal("tasa_dolar"));
+                configuracion.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
             }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo consultar la configuración.", ex);

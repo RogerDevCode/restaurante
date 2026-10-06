@@ -82,9 +82,24 @@ public final class GeneradorPdfPedido {
             totalDetalles = totalDetalles.add(detalle.getPrecioDecimal().setScale(2, RoundingMode.UNNECESSARY)
                     .multiply(BigDecimal.valueOf(detalle.getCantidad())));
         }
+        BigDecimal subtotalEsperado = totalDetalles;
+        BigDecimal ivaEsperado = BigDecimal.ZERO;
+        BigDecimal totalEsperado = subtotalEsperado;
+
+        if (pedido.getIvaPorcentaje() != null && pedido.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0) {
+            ivaEsperado = subtotalEsperado.multiply(pedido.getIvaPorcentaje()).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            totalEsperado = subtotalEsperado.add(ivaEsperado).setScale(2, RoundingMode.HALF_UP);
+        }
+
+        if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.UNNECESSARY).compareTo(subtotalEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
+        }
+        if (pedido.getIvaMonto() != null && pedido.getIvaMonto().setScale(2, RoundingMode.UNNECESSARY).compareTo(ivaEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El monto del IVA no coincide con el porcentaje aplicado.");
+        }
         if (!importeValido(pedido.getTotalDecimal())
-                || pedido.getTotalDecimal().setScale(2, RoundingMode.UNNECESSARY).compareTo(totalDetalles) != 0) {
-            throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles.");
+                || pedido.getTotalDecimal().setScale(2, RoundingMode.UNNECESSARY).compareTo(totalEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles y cálculo de IVA.");
         }
     }
 
@@ -163,10 +178,29 @@ public final class GeneradorPdfPedido {
         BigDecimal totalUsd = pedido.getTotalDecimal().setScale(2, RoundingMode.UNNECESSARY);
         BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs() : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
 
+        BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
+        boolean tieneIva = ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0;
+
+        StringBuilder sb = new StringBuilder();
+        if (tieneIva) {
+            BigDecimal subtotalUsd = pedido.getSubtotal() != null ? pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP) : totalUsd;
+            BigDecimal ivaUsd = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+            BigDecimal subtotalBs = pedido.getSubtotalBs() != null ? pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP) : subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal ivaBs = pedido.getIvaBs() != null ? pedido.getIvaBs().setScale(2, RoundingMode.HALF_UP) : ivaUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+
+            sb.append("Subtotal: $").append(subtotalUsd.toPlainString())
+              .append(" (Bs. ").append(subtotalBs.toPlainString()).append(")\n");
+            sb.append("IVA (").append(ivaPorcentaje.setScale(2, RoundingMode.HALF_UP).toPlainString()).append("%): $")
+              .append(ivaUsd.toPlainString())
+              .append(" (Bs. ").append(ivaBs.toPlainString()).append(")\n");
+        }
+
+        sb.append("Tasa de Cambio: Bs. ").append(tasa.setScale(4, RoundingMode.HALF_UP).toPlainString()).append(" / $\n")
+          .append("Total USD: $").append(totalUsd.toPlainString()).append("\n")
+          .append("TOTAL A PAGAR (Bs.): Bs. ").append(totalBs.toPlainString());
+
         Font fuenteResumen = new Font(Font.FontFamily.TIMES_ROMAN, 12, Font.BOLD);
-        Paragraph resumen = new Paragraph("Tasa de Cambio: Bs. " + tasa.setScale(4, RoundingMode.HALF_UP).toPlainString() + " / $\n"
-                + "Total USD: $" + totalUsd.toPlainString() + "\n"
-                + "TOTAL A PAGAR (Bs.): Bs. " + totalBs.toPlainString(), fuenteResumen);
+        Paragraph resumen = new Paragraph(sb.toString(), fuenteResumen);
         resumen.setAlignment(Element.ALIGN_RIGHT);
         documento.add(Chunk.NEWLINE);
         documento.add(resumen);

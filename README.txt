@@ -251,3 +251,149 @@ local o restaurante:
 Soporte y Contacto del Desarrollador:
 Proyecto Restaurante 2026 - Codigo fuente bajo control de versiones Git.
 ================================================================================
+
+
+================================================================================
+9. INSTALACION DETALLADA DE MYSQL 8.4.11 EN WINDOWS 10 / 11 (64 BITS)
+================================================================================
+El proyecto fija MySQL Community Server 8.4.11 LTS en su configuracion Docker.
+Esta seccion explica como instalar esa version como servidor local de Windows,
+crear e importar la base de datos del proyecto y configurar la conexion JDBC.
+
+1. DESCARGAR EL INSTALADOR OFICIAL
+   - Abre la pagina oficial de MySQL Community Server 8.4.11:
+     https://dev.mysql.com/downloads/mysql/8.4.html
+   - Selecciona Windows de 64 bits y descarga el paquete MSI de MySQL Server.
+     No descargues MySQL Installer 8.0: para MySQL 8.4 se utiliza el MSI del
+     servidor, que incluye MySQL Configurator.
+   - La pagina puede solicitar iniciar sesion o crear una cuenta Oracle; puedes
+     continuar con la opcion para iniciar la descarga sin registrarte.
+
+2. INSTALAR MYSQL SERVER
+   - Ejecuta el archivo `.msi` descargado y acepta el aviso de Windows.
+   - Sigue el asistente de instalacion. MySQL 8.4 necesita Microsoft Visual
+     C++ 2019 Redistributable. Si el instalador indica que falta, instalalo
+     desde el Centro de descargas oficial de Microsoft y vuelve a ejecutar el
+     MSI:
+     https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist
+   - Al terminar, abre MySQL Configurator cuando el asistente lo ofrezca.
+     Tambien puedes abrirlo luego desde el menu Inicio buscando "MySQL
+     Configurator".
+
+3. CONFIGURAR EL SERVIDOR CON MYSQL CONFIGURATOR
+   - Server Configuration Type: selecciona `Development`.
+   - Connectivity: deja marcada la conexion `TCP/IP` y el puerto `3306`.
+     El proyecto conecta por defecto a `127.0.0.1:3306`.
+   - Si solo utilizaras el sistema en este equipo, desmarca la opcion para
+     abrir el puerto de MySQL en Windows Firewall ("Open Windows Firewall port
+     for network access").
+   - Authentication: conserva el metodo predeterminado.
+   - Accounts and Roles: asigna una contrasena segura a la cuenta administrativa
+     `root` y guardala en un lugar seguro. No hace falta configurar la
+     aplicacion para conectarse como `root`.
+   - Windows Service: conserva la opcion de instalar MySQL como servicio y
+     marcar el inicio automatico con Windows.
+   - Pulsa `Execute` y espera a que todos los pasos terminen correctamente.
+   - La carpeta predeterminada del servidor instalado por MSI es:
+     `C:\Program Files\MySQL\MySQL Server 8.4`
+
+4. COMPROBAR QUE EL SERVIDOR ESTA ACTIVO
+   - Desde Inicio, abre `Servicios` y confirma que el servicio MySQL (normalmente
+     `MySQL84`) indique `En ejecucion`.
+   - Abre CMD y ejecuta:
+
+     ```bat
+     "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" --version
+     ```
+
+   - Para probar la conexion al servidor como administrador:
+
+     ```bat
+     "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -u root -p -e "SELECT VERSION();"
+     ```
+
+   - Escribe la contrasena de `root` cuando se solicite. Si instalaste MySQL en
+     otra carpeta, ajusta la ruta de `mysql.exe` en estos comandos.
+
+5. CREAR LA BASE DE DATOS Y EL USUARIO DE LA APLICACION
+   - Abre CMD en la carpeta raiz del proyecto. Puedes usar el Explorador de
+     archivos para abrir esa carpeta y escribir `cmd` en la barra de direcciones.
+   - Conecta como `root`:
+
+     ```bat
+     "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -u root -p
+     ```
+
+   - Ingresa la contrasena de `root`. Cuando aparezca el indicador `mysql>`,
+     ejecuta estas sentencias. Sustituye `PON_AQUI_UNA_CLAVE_SEGURA` por una
+     contrasena propia y conserva esa misma clave para el archivo `.env`.
+     Para evitar problemas al leer `.env`, usa una clave larga formada por
+     letras, numeros, guion o guion bajo; no uses espacios, `:` ni `=`:
+
+     ```sql
+     CREATE DATABASE IF NOT EXISTS restaurante CHARACTER SET utf8 COLLATE utf8_spanish_ci;
+     CREATE USER 'restaurante_app'@'127.0.0.1' IDENTIFIED BY 'PON_AQUI_UNA_CLAVE_SEGURA';
+     GRANT ALL PRIVILEGES ON restaurante.* TO 'restaurante_app'@'127.0.0.1';
+     EXIT;
+     ```
+
+   - Si la base `restaurante` ya existe, no ejecutes a ciegas el `CREATE
+     DATABASE`: revisa primero si contiene datos que debas conservar. El paso de
+     importacion siguiente reemplaza tablas que tengan los mismos nombres.
+
+6. IMPORTAR EL ESQUEMA Y LOS DATOS INICIALES
+   - Verifica que CMD este ubicado en la raiz del proyecto, donde esta `BD.sql`.
+     Puedes comprobarlo con `dir BD.sql`.
+   - Ejecuta:
+
+     ```bat
+     "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -h 127.0.0.1 -u restaurante_app -p restaurante < BD.sql
+     ```
+
+   - Ingresa la contrasena creada para `restaurante_app` cuando se solicite.
+     Si CMD indica que no encuentra `BD.sql`, cambia a la carpeta del proyecto
+     usando `cd /d "C:\ruta\a\Restaurante"` y repite el comando.
+   - `BD.sql` es un volcado heredado y contiene `DROP TABLE IF EXISTS`; importar
+     de nuevo elimina y recrea las tablas indicadas en ese archivo. Hazlo solo
+     en una base vacia o despues de respaldar cualquier informacion existente.
+
+7. CONFIGURAR LA APLICACION
+   - En la carpeta raiz del proyecto, copia `.env.example` como `.env`. Desde
+     CMD puedes ejecutar `copy .env.example .env`.
+   - Abre `.env` con el Bloc de notas y deja estos valores, con la contrasena
+     que asignaste arriba:
+
+     ```ini
+     MYSQL_DATABASE=restaurante
+     MYSQL_USER=restaurante_app
+     MYSQL_PASSWORD=PON_AQUI_UNA_CLAVE_SEGURA
+     MYSQL_PORT=3306
+     ```
+
+   - Guarda el archivo. No publiques ni compartas `.env`, porque contiene la
+     contrasena de la base de datos.
+
+8. VERIFICAR LA IMPORTACION Y ARRANCAR EL SISTEMA
+   - Desde CMD, ubicado en la raiz del proyecto, comprueba que la base contiene
+     tablas:
+
+     ```bat
+     "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -h 127.0.0.1 -u restaurante_app -p -D restaurante -e "SHOW TABLES;"
+     ```
+
+   - Si aparecen tablas, MySQL acepta la conexion y la importacion esta lista.
+     Ejecuta despues `iniciar_restaurante.bat`.
+
+PROBLEMAS FRECUENTES
+   - Puerto 3306 ocupado: ejecuta `netstat -ano | findstr :3306` en CMD.
+     Deten el otro servicio MySQL si no lo necesitas, o configura MySQL para usar
+     otro puerto y actualiza `MYSQL_PORT` en `.env` con el mismo numero.
+   - Acceso denegado: revisa que `MYSQL_USER`, `MYSQL_PASSWORD` y el host del
+     usuario coincidan con la cuenta creada (`restaurante_app` en `127.0.0.1`).
+   - El servidor no inicia: revisa en Servicios que MySQL84 este iniciado y
+     comprueba el registro `.err` de la carpeta de datos de MySQL.
+
+Documentacion oficial de instalacion y configuracion para Windows:
+https://dev.mysql.com/doc/refman/8.4/en/windows-installation.html
+https://dev.mysql.com/doc/refman/8.4/en/mysql-configurator-workflow-server.html
+================================================================================
