@@ -24,9 +24,19 @@ public class AdversarialIntegrationIT {
 
     @BeforeClass
     public static void setUp() {
-        System.setProperty("DB_URL", "jdbc:mysql://127.0.0.1:3307/restaurante_test");
-        System.setProperty("DB_USER", "restaurante_test_app");
-        System.setProperty("DB_PASSWORD", "test_only_app_password");
+        if (System.getProperty("DB_URL") == null) {
+            System.setProperty("DB_URL", System.getenv().getOrDefault("TEST_DB_URL", "jdbc:mysql://127.0.0.1:3307/restaurante_test"));
+        }
+        if (System.getProperty("DB_USER") == null) {
+            System.setProperty("DB_USER", System.getenv().getOrDefault("TEST_DB_USER", "restaurante_test_app"));
+        }
+        if (System.getProperty("DB_PASSWORD") == null) {
+            String passEnv = System.getenv("TEST_DB_PASSWORD");
+            if (passEnv == null || passEnv.isBlank()) {
+                passEnv = System.getenv().getOrDefault("MYSQL_PASSWORD", "test_app_pass");
+            }
+            System.setProperty("DB_PASSWORD", passEnv);
+        }
     }
 
     private Connection conexion() throws SQLException {

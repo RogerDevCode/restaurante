@@ -61,8 +61,9 @@ public class MySqlIntegrationIT {
         String url = System.getProperty("DB_URL", "");
         assertTrue("La URL debe apuntar exclusivamente a restaurante_test en 127.0.0.1:3307",
                 url.matches("jdbc:mysql://127\\.0\\.0\\.1:3307/restaurante_test(?:\\?.*)?"));
-        assertEquals("restaurante_test_app", System.getProperty("DB_USER"));
-        assertEquals("test_only_app_password", System.getProperty("DB_PASSWORD"));
+        assertNotNull("El usuario de BD debe estar configurado", System.getProperty("DB_USER"));
+        assertNotNull("La clave de BD debe estar configurada", System.getProperty("DB_PASSWORD"));
+        assertFalse("La clave de BD no debe estar vacía", System.getProperty("DB_PASSWORD").isBlank());
 
         directorioLogsAnterior = System.getProperty("restaurante.logs.dir");
         directorioLogs = Files.createTempDirectory("restaurante-mysql-integration-logs-");

@@ -65,7 +65,8 @@ public class CombinatoriaUsuarioE2EIT {
 
     private static final String TEST_URL = "jdbc:mysql://127.0.0.1:3307/restaurante_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
     private static final String TEST_USER = "restaurante_test_app";
-    private static final String TEST_PASS = "test_only_app_password";
+    private static final String TEST_PASS = System.getProperty("DB_PASSWORD",
+            System.getenv().getOrDefault("TEST_DB_PASSWORD", System.getenv().getOrDefault("MYSQL_PASSWORD", "")));
 
     private BigDecimal tasaOriginal = new BigDecimal("36.5000");
 
