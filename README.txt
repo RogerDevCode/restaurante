@@ -397,3 +397,136 @@ Documentacion oficial de instalacion y configuracion para Windows:
 https://dev.mysql.com/doc/refman/8.4/en/windows-installation.html
 https://dev.mysql.com/doc/refman/8.4/en/mysql-configurator-workflow-server.html
 ================================================================================
+
+
+================================================================================
+10. INSTALACION PASO A PASO EN SERVIDOR MYSQL LOCAL (LINUX / WINDOWS / XAMPP)
+================================================================================
+Esta seccion detalla el procedimiento de puesta en marcha de la base de datos
+en cualquier servidor MySQL local y aclara si es necesario o no modificar el
+codigo del programa.
+
+--------------------------------------------------------------------------------
+¿ES NECESARIO MODIFICAR EL PROGRAMA PARA LEER LA UBICACION DE LA BASE DE DATOS?
+--------------------------------------------------------------------------------
+RESPUESTA: NO, NO ES NECESARIO MODIFICAR EL CODIGO DEL PROGRAMA.
+
+Razon tecnica y de diseno:
+El sistema fue construido con una arquitectura desacoplada basada en el
+estandar Twelve-Factor App Configuration (clase ProveedorConexionJdbc).
+
+La aplicacion NO tiene direcciones IP ni contrasenas fijas en el codigo (hardcoded).
+En su lugar, lee dinamicamente los parametros de conexion en este orden de prioridad:
+  1. Archivo de configuracion local `.env` ubicado en la raiz de la aplicacion.
+  2. Variables de entorno del Sistema Operativo (Environment Variables).
+  3. Propiedades del sistema pasadas a Java al iniciar (-DDB_URL=... o -DMYSQL_HOST=...).
+
+Por lo tanto:
+- Si el servidor MySQL esta en la misma maquina: solo configuras `.env` con host 127.0.0.1.
+- Si el servidor MySQL esta en otra maquina o red local: solo cambias `MYSQL_HOST=192.168.1.X`
+  en el `.env` (o defines `DB_URL=...`).
+El codigo fuente (.java) y el archivo ejecutable (.jar) permanecen intactos.
+
+--------------------------------------------------------------------------------
+PROCEDIMIENTO PASO A PASO PARA CONFIGURAR LA BASE DE DATOS LOCAL
+--------------------------------------------------------------------------------
+
+PASO 1: VERIFICAR QUE EL SERVIDOR MYSQL ESTE EN EJECUCION
+  - En Linux (Ubuntu/Debian):
+      sudo systemctl status mysql
+      (Si no esta activo: sudo systemctl start mysql)
+
+  - En Windows (Servicio MySQL Server Oficial):
+      Abre `services.msc` y confirma que el servicio `MySQL84` indique "En ejecucion".
+
+  - En Windows con XAMPP / WampServer:
+      Abre el panel de control de XAMPP y presiona "Start" en el modulo MySQL
+      (debe indicar el puerto 3306 en verde).
+
+PASO 2: CREAR LA BASE DE DATOS Y EL USUARIO EXCLUSIVO
+  Abre una terminal (CMD / PowerShell / Bash) y conectate a MySQL como root:
+      mysql -u root -p
+
+  Ingresa tu contrasena de root. Dentro de la consola `mysql>`, ejecuta:
+
+      CREATE DATABASE IF NOT EXISTS restaurante
+        CHARACTER SET utf8mb4
+        COLLATE utf8mb4_unicode_ci;
+
+      -- Crear usuario exclusivo de la aplicacion (seguridad recomendada):
+      CREATE USER IF NOT EXISTS 'restaurante_app'@'127.0.0.1' IDENTIFIED BY 'TuClaveSegura2026';
+      CREATE USER IF NOT EXISTS 'restaurante_app'@'localhost' IDENTIFIED BY 'TuClaveSegura2026';
+
+      -- Otorgar permisos completos sobre la base de datos restaurante:
+      GRANT ALL PRIVILEGES ON restaurante.* TO 'restaurante_app'@'127.0.0.1';
+      GRANT ALL PRIVILEGES ON restaurante.* TO 'restaurante_app'@'localhost';
+      FLUSH PRIVILEGES;
+
+      EXIT;
+
+  (Nota para desarrollo con XAMPP: tambien puedes usar el usuario predeterminado
+   `root` sin contrasena si no deseas crear una cuenta adicional).
+
+PASO 3: IMPORTAR EL ESQUEMA DE DATOS Y TABLAS (BD.sql)
+  Ubicado en la carpeta raiz del proyecto Restaurante, ejecuta el comando de
+  importacion:
+
+  - En Linux / macOS:
+      mysql -h 127.0.0.1 -u restaurante_app -p restaurante < BD.sql
+
+  - En Windows (CMD o PowerShell):
+      mysql -h 127.0.0.1 -u restaurante_app -p restaurante < BD.sql
+      (O con la ruta absoluta si mysql.exe no esta en el PATH):
+      "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -h 127.0.0.1 -u restaurante_app -p restaurante < BD.sql
+
+  - Metodo grafico alternativo (phpMyAdmin / DBeaver / MySQL Workbench):
+      1. Abre phpMyAdmin (http://localhost/phpmyadmin).
+      2. Selecciona la base de datos `restaurante`.
+      3. Haz clic en la pestaña "Importar".
+      4. Selecciona el archivo `BD.sql` de la raiz del proyecto y pulsa "Continuar".
+
+PASO 4: CONFIGURAR EL ARCHIVO `.env` EN LA RAIZ DEL PROYECTO
+  En la carpeta raiz de Restaurante, copia la plantilla `.env.example` como `.env`:
+
+  - En Linux:
+      cp .env.example .env
+
+  - En Windows:
+      copy .env.example .env
+
+  Abre el archivo `.env` con un editor de texto (Bloc de notas, nano, etc.) y define:
+
+      # ============================================================
+      # CONFIGURACION DE BASE DE DATOS LOCAL
+      # ============================================================
+      MYSQL_HOST=127.0.0.1
+      MYSQL_PORT=3306
+      MYSQL_DATABASE=restaurante
+      MYSQL_USER=restaurante_app
+      MYSQL_PASSWORD=TuClaveSegura2026
+
+      # Si usas XAMPP con root sin clave:
+      # MYSQL_USER=root
+      # MYSQL_PASSWORD=
+
+PASO 5: VERIFICACION DE TABLAS E INICIO DEL SISTEMA
+  Comprueba que la base de datos contenga todas las tablas del sistema:
+      mysql -h 127.0.0.1 -u restaurante_app -p -D restaurante -e "SHOW TABLES;"
+
+  Debes ver las 6 tablas esenciales:
+  - `config` (incluyendo columnas tasa_dolar e iva_porcentaje)
+  - `detalle_pedidos` (con persistencia de items)
+  - `pedidos` (con desglose fiscal: subtotal, iva_porcentaje, iva_monto, subtotal_bs, iva_bs, total)
+  - `platos`
+  - `salas`
+  - `usuarios`
+
+  Inicia el sistema:
+  - En Windows: doble clic en `iniciar_restaurante.bat` o `java -jar dist/Restaurante.jar`
+  - En Linux / Consola: `java -jar dist/Restaurante.jar` o `ant run`
+
+  Credenciales iniciales:
+  - Usuario: info@angelsifuentes.com
+  - Clave: admin
+================================================================================
+

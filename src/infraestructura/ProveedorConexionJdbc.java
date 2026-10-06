@@ -25,6 +25,13 @@ public class ProveedorConexionJdbc {
         if (password == null) {
             password = setting("MYSQL_PASSWORD", localConfig);
         }
+        String host = setting("MYSQL_HOST", localConfig);
+        if (host == null || host.trim().isEmpty()) {
+            host = setting("DB_HOST", localConfig);
+        }
+        if (host == null || host.trim().isEmpty()) {
+            host = "127.0.0.1";
+        }
         String port = setting("MYSQL_PORT", localConfig);
         if (port == null || port.trim().isEmpty()) {
             port = "3306";
@@ -38,7 +45,7 @@ public class ProveedorConexionJdbc {
                     "Falta configurar MYSQL_DATABASE, MYSQL_USER y MYSQL_PASSWORD en .env o en el entorno");
         }
         if (url == null || url.trim().isEmpty()) {
-            url = "jdbc:mysql://127.0.0.1:" + port + "/" + database
+            url = "jdbc:mysql://" + host + ":" + port + "/" + database
                     + "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
         }
 
