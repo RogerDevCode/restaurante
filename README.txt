@@ -199,6 +199,55 @@ Desde el panel "Usuarios", el Administrador puede registrar nuevos usuarios con:
    por ejemplo `logs/restaurante-2026-10-05.log`.
 
 --------------------------------------------------------------------------------
+8. CHECKLIST DE PUESTA EN MARCHA PARA PRODUCCION
+--------------------------------------------------------------------------------
+Siga esta lista de verificacion paso a paso para el despliegue exitoso en el
+local o restaurante:
+
+[ ] 1. BASE DE DATOS Y CONECTIVIDAD:
+    - Opcion Docker: Iniciar Docker Desktop y ejecutar `docker compose up -d`.
+    - Opcion Local: Iniciar MySQL y verificar que la BD `restaurante` este
+      importada desde `BD.sql`.
+    - Verificar que el archivo `.env` contenga las credenciales correctas.
+
+[ ] 2. PRIMER INICIO DE SESION:
+    - Ejecutar la aplicacion con doble clic en `iniciar_restaurante.bat` o
+      `java -jar dist/Restaurante.jar`.
+    - Iniciar sesion con las credenciales por defecto:
+      Usuario: `info@angelsifuentes.com` / Clave: `admin`.
+
+[ ] 3. CONFIGURACION FISCAL Y DE LA EMPRESA:
+    - Ir a la pestaña "Config".
+    - Ingresar RUC / RIF, Nombre del Restaurante, Telefono, Direccion y
+      Mensaje de agradecimiento para los tickets.
+    - Establecer la TASA DE CAMBIO ($ a Bs.) oficial del dia (ej. 36.5000).
+    - Presionar "Actualizar" y confirmar que los datos se guarden.
+
+[ ] 4. GESTION DE SEGURIDAD Y USUARIOS:
+    - Ir a la pestaña "Usuarios".
+    - Cambiar la contrasena por defecto del usuario Administrador.
+    - Registrar las cuentas de trabajo para el personal (Meseros / Cajeros)
+      con Rol "Asistente".
+
+[ ] 5. PARAMETRIZACION DE INFRAESTRUCTURA (SALAS Y MESAS):
+    - Ir a la pestaña "Salas".
+    - Registrar las salas o ambientes (ej. "Terraza", "Salon Principal", "Bar").
+    - Asignar el numero de mesas correspondiente a cada sala.
+
+[ ] 6. CARGA DEL CATALOGO DE PRODUCTOS (PLATOS):
+    - Ir a la pestaña "Platos".
+    - Registrar las categorias y platos con su precio base en Dolares ($ USD).
+    - Verificar que en la tabla se visualice correctamente la conversion a
+      Bolivares (Bs.).
+
+[ ] 7. PRUEBA DE CICLO COMPLETO DE ATENCION Y FACTURACION:
+    - Abrir una sala y seleccionar una mesa disponible.
+    - Agregar platos al pedido y verificar el total bimonetario (Bs. y $).
+    - Presionar "GENERAR PEDIDO" y verificar que la mesa cambie a ocupada.
+    - Presionar "Finalizar Pedido" y verificar la generacion del Ticket PDF
+      en la carpeta `pdf/`.
+
+--------------------------------------------------------------------------------
 Soporte y Contacto del Desarrollador:
 Proyecto Restaurante 2026 - Codigo fuente bajo control de versiones Git.
 ================================================================================
