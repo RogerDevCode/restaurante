@@ -278,7 +278,7 @@ public class PedidosDao implements PedidosRepositorio {
         Pedidos ped = null;
         String sql = """
             SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala,
-                   p.cliente_nombre, p.cliente_documento, p.metodo_pago
+                   p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd
             FROM pedidos p
             INNER JOIN salas s ON p.id_sala = s.id
             WHERE p.id = ?
@@ -308,6 +308,8 @@ public class PedidosDao implements PedidosRepositorio {
                         ped.setClienteNombre(resultados.getString("cliente_nombre"));
                         ped.setClienteDocumento(resultados.getString("cliente_documento"));
                         ped.setMetodoPago(resultados.getString("metodo_pago"));
+                        ped.setEfectivoBs(resultados.getBigDecimal("efectivo_bs"));
+                        ped.setEfectivoUsd(resultados.getBigDecimal("efectivo_usd"));
                     } catch (SQLException ignoreCol) {}
                 }
             }
@@ -383,16 +385,46 @@ public class PedidosDao implements PedidosRepositorio {
 
     @Override
     public boolean actualizarEstadoConCliente(int id_pedido, String clienteNombre, String clienteDocumento, String metodoPago) {
+        return actualizarEstadoConCliente(id_pedido, clienteNombre, clienteDocumento, metodoPago, null, null);
+    }
+
+    @Override
+    public boolean actualizarEstadoConCliente(int id_pedido, String clienteNombre, String clienteDocumento,
+            String metodoPago, BigDecimal efectivoBs, BigDecimal efectivoUsd) {
         if (id_pedido <= 0) {
             throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para finalizarlo.");
         }
         String doc = clienteDocumento == null || clienteDocumento.trim().isEmpty() ? "V-00000000" : clienteDocumento.trim();
         String nom = clienteNombre == null || clienteNombre.trim().isEmpty() ? "Consumidor Final" : clienteNombre.trim();
         String pago = (metodoPago == null || metodoPago.trim().isEmpty()) ? "EFECTIVO" : metodoPago.trim().toUpperCase();
+        Pedidos validacionPago = new Pedidos();
+        validacionPago.setMetodoPago(pago);
+
+        BigDecimal efectivoFinalBs = efectivoBs;
+        BigDecimal efectivoFinalUsd = efectivoUsd;
+        if ("MIXTO".equals(pago)) {
+            if (efectivoBs == null || efectivoUsd == null) {
+                throw ErrorAplicacionException.validacion("Para un pago mixto debe indicar el efectivo recibido en Bs. y USD (use 0 si no aplica).");
+            }
+            validacionPago.setEfectivoBs(efectivoBs);
+            validacionPago.setEfectivoUsd(efectivoUsd);
+            efectivoFinalBs = validacionPago.getEfectivoBs();
+            efectivoFinalUsd = validacionPago.getEfectivoUsd();
+        } else if (efectivoBs != null || efectivoUsd != null) {
+            throw ErrorAplicacionException.validacion("El desglose de efectivo solo se admite para pagos MIXTO.");
+        }
 
         String sql = """
             UPDATE pedidos
-            SET estado = ?, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?
+            SET estado = ?, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
+                efectivo_bs = CASE
+                    WHEN ? = 'MIXTO' THEN ?
+                    WHEN ? IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(total_bs, total * COALESCE(NULLIF(tasa_cambio, 0), 36.5000))
+                    ELSE 0 END,
+                efectivo_usd = CASE
+                    WHEN ? = 'MIXTO' THEN ?
+                    WHEN ? = 'EFECTIVO_USD' THEN total
+                    ELSE 0 END
             WHERE id = ? AND estado = 'PENDIENTE'
             """;
         try (Connection conexion = conexiones.getConnection()) {
@@ -402,10 +434,19 @@ public class PedidosDao implements PedidosRepositorio {
                 sentencia.setString(2, nom);
                 sentencia.setString(3, doc);
                 sentencia.setString(4, pago);
-                sentencia.setInt(5, id_pedido);
+                if ("MIXTO".equals(pago)) {
+                    validarEfectivoMixto(conexion, id_pedido, efectivoFinalBs, efectivoFinalUsd);
+                }
+                sentencia.setString(5, pago);
+                sentencia.setBigDecimal(6, efectivoFinalBs);
+                sentencia.setString(7, pago);
+                sentencia.setString(8, pago);
+                sentencia.setBigDecimal(9, efectivoFinalUsd);
+                sentencia.setString(10, pago);
+                sentencia.setInt(11, id_pedido);
                 int filas = sentencia.executeUpdate();
                 if (filas == 0) {
-                    validarMotivoNoFinalizado(conexion, id_pedido);
+                    return validarMotivoNoFinalizado(conexion, id_pedido);
                 }
                 exito = ErrorAplicacionException.resultadoUnaFila(
                         filas, "finalizar pedido " + id_pedido);
@@ -438,7 +479,7 @@ public class PedidosDao implements PedidosRepositorio {
         }
     }
 
-    private void validarMotivoNoFinalizado(Connection conexion, int id_pedido) throws SQLException {
+    private boolean validarMotivoNoFinalizado(Connection conexion, int id_pedido) throws SQLException {
         String sqlCheck = "SELECT estado FROM pedidos WHERE id = ?";
         try (PreparedStatement ps = conexion.prepareStatement(sqlCheck)) {
             ps.setInt(1, id_pedido);
@@ -446,12 +487,39 @@ public class PedidosDao implements PedidosRepositorio {
                 if (rs.next()) {
                     String est = rs.getString("estado");
                     if ("FINALIZADO".equalsIgnoreCase(est)) {
-                        throw ErrorAplicacionException.validacion(
-                                "El pedido " + id_pedido + " ya fue finalizado previamente por otro usuario.");
+                        return true;
                     }
                 } else {
                     throw ErrorAplicacionException.validacion(
                             "No existe el pedido " + id_pedido + " para finalizar.");
+                }
+            }
+        }
+        return false;
+    }
+
+    private void validarEfectivoMixto(Connection conexion, int idPedido,
+            BigDecimal efectivoBs, BigDecimal efectivoUsd) throws SQLException {
+        String sql = "SELECT total, total_bs, tasa_cambio FROM pedidos WHERE id = ?";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, idPedido);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw ErrorAplicacionException.validacion("No existe el pedido " + idPedido + " para finalizar.");
+                }
+                BigDecimal totalUsd = rs.getBigDecimal("total");
+                BigDecimal tasa = rs.getBigDecimal("tasa_cambio");
+                if (tasa == null || tasa.signum() <= 0) {
+                    tasa = new BigDecimal("36.5000");
+                }
+                BigDecimal totalBs = rs.getBigDecimal("total_bs");
+                if (totalBs == null) {
+                    totalBs = totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                }
+                BigDecimal equivalenteBs = efectivoBs.add(efectivoUsd.multiply(tasa))
+                        .setScale(2, RoundingMode.HALF_UP);
+                if (equivalenteBs.compareTo(totalBs) > 0) {
+                    throw ErrorAplicacionException.validacion("El efectivo indicado para el pago mixto supera el total del pedido.");
                 }
             }
         }
@@ -468,7 +536,7 @@ public class PedidosDao implements PedidosRepositorio {
             sentencia.setInt(2, id_pedido);
             int filas = sentencia.executeUpdate();
             if (filas == 0) {
-                validarMotivoNoFinalizado(conexion, id_pedido);
+                return validarMotivoNoFinalizado(conexion, id_pedido);
             }
             return ErrorAplicacionException.resultadoUnaFila(
                     filas, "finalizar pedido " + id_pedido);
@@ -576,7 +644,7 @@ public class PedidosDao implements PedidosRepositorio {
         List<Pedidos> lista = new ArrayList<>();
         String sql = """
             SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala,
-                   p.cliente_nombre, p.cliente_documento, p.metodo_pago
+                   p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd
             FROM pedidos p
             INNER JOIN salas s ON p.id_sala = s.id
             ORDER BY p.fecha DESC
@@ -604,6 +672,8 @@ public class PedidosDao implements PedidosRepositorio {
                     ped.setClienteNombre(resultados.getString("cliente_nombre"));
                     ped.setClienteDocumento(resultados.getString("cliente_documento"));
                     ped.setMetodoPago(resultados.getString("metodo_pago"));
+                    ped.setEfectivoBs(resultados.getBigDecimal("efectivo_bs"));
+                    ped.setEfectivoUsd(resultados.getBigDecimal("efectivo_usd"));
                 } catch (SQLException ignoreCol) {}
                 lista.add(ped);
             }

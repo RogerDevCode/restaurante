@@ -73,6 +73,8 @@ public final class MigradorEsquemaJdbc {
         asegurarColumna(con, meta, catalogo, "pedidos", "cliente_nombre", "VARCHAR(150) NOT NULL DEFAULT 'Consumidor Final'");
         asegurarColumna(con, meta, catalogo, "pedidos", "cliente_documento", "VARCHAR(30) NOT NULL DEFAULT 'V-00000000'");
         asegurarColumna(con, meta, catalogo, "pedidos", "metodo_pago", "VARCHAR(30) NOT NULL DEFAULT 'EFECTIVO'");
+        asegurarColumna(con, meta, catalogo, "pedidos", "efectivo_bs", "DECIMAL(14,2) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "efectivo_usd", "DECIMAL(14,2) NULL DEFAULT NULL");
 
         // 3. Columnas en config
         asegurarColumna(con, meta, catalogo, "config", "logo_path", "VARCHAR(255) NULL DEFAULT NULL");

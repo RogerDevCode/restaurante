@@ -31,6 +31,12 @@ public interface PedidosRepositorio {
         return actualizarEstado(idPedido);
     }
 
+    /** Finaliza el pedido y registra la parte cobrada en efectivo en cada moneda (requerida para MIXTO). */
+    default boolean actualizarEstadoConCliente(int idPedido, String clienteNombre, String clienteDocumento,
+            String metodoPago, java.math.BigDecimal efectivoBs, java.math.BigDecimal efectivoUsd) {
+        return actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago);
+    }
+
     /** Devuelve el historial de pedidos ordenado por fecha descendente. */
     List<Pedidos> listarPedidos();
 

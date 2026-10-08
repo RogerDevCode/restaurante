@@ -2574,10 +2574,20 @@ public final class Sistema extends javax.swing.JFrame {
             String metodoPagoSel = (String) cbMetodoPago.getSelectedItem();
             if (metodoPagoSel == null || metodoPagoSel.isBlank()) metodoPagoSel = "EFECTIVO";
 
+            java.math.BigDecimal efectivoPagoBs = null;
+            java.math.BigDecimal efectivoPagoUsd = null;
+            if ("MIXTO".equalsIgnoreCase(metodoPagoSel)) {
+                java.math.BigDecimal[] desglose = solicitarEfectivoPagoMixto();
+                if (desglose == null) return;
+                efectivoPagoBs = desglose[0];
+                efectivoPagoUsd = desglose[1];
+            }
+
             int idPedido = Integer.parseInt(txtIdPedido.getText());
             long version = versionPedidoPantalla;
             btnFinalizar.setEnabled(false);
-            new FinalizarPedidoSwingWorker(pedidosControlador, idPedido, clienteNombre, clienteDoc, metodoPagoSel, finalizado -> {
+            new FinalizarPedidoSwingWorker(pedidosControlador, idPedido, clienteNombre, clienteDoc, metodoPagoSel,
+                    efectivoPagoBs, efectivoPagoUsd, finalizado -> {
                 boolean mismoPedido = version == versionPedidoPantalla
                         && String.valueOf(idPedido).equals(txtIdPedido.getText());
                 if (finalizado) {
@@ -2616,6 +2626,30 @@ public final class Sistema extends javax.swing.JFrame {
             }).execute();
         }
     }//GEN-LAST:event_btnFinalizarActionPerformed
+
+    private java.math.BigDecimal[] solicitarEfectivoPagoMixto() {
+        javax.swing.JTextField txtBs = new javax.swing.JTextField("0.00", 12);
+        javax.swing.JTextField txtUsd = new javax.swing.JTextField("0.00", 12);
+        javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.GridLayout(0, 1, 4, 4));
+        panel.add(new javax.swing.JLabel("Efectivo recibido en Bs. (0 si no aplica):"));
+        panel.add(txtBs);
+        panel.add(new javax.swing.JLabel("Efectivo recibido en USD (0 si no aplica):"));
+        panel.add(txtUsd);
+        int opcion = JOptionPane.showConfirmDialog(this, panel,
+                "Desglose del pago mixto", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (opcion != JOptionPane.OK_OPTION) return null;
+        try {
+            java.math.BigDecimal bs = new java.math.BigDecimal(txtBs.getText().trim()).setScale(2, java.math.RoundingMode.UNNECESSARY);
+            java.math.BigDecimal usd = new java.math.BigDecimal(txtUsd.getText().trim()).setScale(2, java.math.RoundingMode.UNNECESSARY);
+            if (bs.signum() < 0 || usd.signum() < 0) throw new NumberFormatException("El monto no puede ser negativo.");
+            return new java.math.BigDecimal[]{bs, usd};
+        } catch (NumberFormatException | ArithmeticException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Indica montos no negativos con hasta dos decimales.",
+                    "Desglose inválido", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+    }
 
     private String mensajeError(Throwable error) {
         if (error == null) return "Error desconocido";

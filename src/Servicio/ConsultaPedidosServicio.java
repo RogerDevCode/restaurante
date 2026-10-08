@@ -81,9 +81,15 @@ public final class ConsultaPedidosServicio {
     }
 
     public boolean finalizarConCliente(int idPedido, String clienteNombre, String clienteDocumento, String metodoPago) {
+        return finalizarConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago, null, null);
+    }
+
+    public boolean finalizarConCliente(int idPedido, String clienteNombre, String clienteDocumento,
+            String metodoPago, java.math.BigDecimal efectivoBs, java.math.BigDecimal efectivoUsd) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         validarId(idPedido);
-        return repositorio.actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago);
+        return repositorio.actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento,
+                metodoPago, efectivoBs, efectivoUsd);
     }
 
     public boolean anular(int idPedido, String motivo, String usuario) {

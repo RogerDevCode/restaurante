@@ -108,6 +108,8 @@ CREATE TABLE `pedidos` (
   `cliente_nombre` varchar(150) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'Consumidor Final',
   `cliente_documento` varchar(30) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'V-00000000',
   `metodo_pago` varchar(30) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'EFECTIVO',
+  `efectivo_bs` decimal(14,2) DEFAULT NULL,
+  `efectivo_usd` decimal(14,2) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `id_sala` (`id_sala`),
   KEY `idx_pedidos_estado_fecha` (`estado`,`fecha`),

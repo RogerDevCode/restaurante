@@ -287,6 +287,21 @@ BEGIN
         INDEX idx_cierres_fecha (fecha_jornada),
         INDEX idx_cierres_tipo (tipo)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    -- 22. Desglose de efectivo en pedidos para pagos mixtos y arqueo multi-moneda
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'efectivo_bs'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN efectivo_bs DECIMAL(14,2) NULL DEFAULT NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'efectivo_usd'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN efectivo_usd DECIMAL(14,2) NULL DEFAULT NULL;
+    END IF;
 END$$
 DELIMITER ;
 

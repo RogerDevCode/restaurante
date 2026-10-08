@@ -22,9 +22,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,10 +43,16 @@ public class ServicioRespaldoBaseDatos {
     private static final DateTimeFormatter FORMATO_ARCHIVO = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     private static final DateTimeFormatter FORMATO_FECHA_DIA = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-    private static final List<String> PALABRAS_PROHIBIDAS = Arrays.asList(
-            "DROP DATABASE", "CREATE DATABASE", "SHUTDOWN", "GRANT ", "REVOKE ",
-            "CREATE USER", "DROP USER", "FLUSH PRIVILEGES", "ALTER USER"
+    private static final Pattern SQL_INSERT_RESPALDO = Pattern.compile(
+            "(?is)^INSERT\\s+INTO\\s+`[^`]+`\\s+VALUES\\s*"
+            + "\\((?:NULL|-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|'(?:\\\\.|[^'\\\\])*')"
+            + "(?:\\s*,\\s*(?:NULL|-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|'(?:\\\\.|[^'\\\\])*'))*\\)"
+            + "(?:\\s*,\\s*\\((?:NULL|-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|'(?:\\\\.|[^'\\\\])*')"
+            + "(?:\\s*,\\s*(?:NULL|-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|'(?:\\\\.|[^'\\\\])*'))*\\))*$"
     );
+    private static final Pattern SQL_DROP_TABLA_RESPALDO = Pattern.compile("(?is)^DROP\\s+TABLE\\s+IF\\s+EXISTS\\s+`[^`]+`$");
+    private static final Pattern SQL_CREATE_TABLA_RESPALDO = Pattern.compile(
+            "(?is)^CREATE\\s+TABLE(?:\\s+IF\\s+NOT\\s+EXISTS)?\\s+`[^`]+`\\s*\\(.*\\)\\s+ENGINE\\s*=.*$");
 
     private final ProveedorConexionJdbc conexiones;
     private final Path directorioRespaldos;
@@ -181,11 +187,7 @@ public class ServicioRespaldoBaseDatos {
         }
     }
 
-    /**
-     * Valida que un archivo sea un respaldo legítimo y seguro generado por el sistema.
-     *
-     * @param archivoSql Archivo a validar.
-     */
+    /** Valida las marcas, el cierre y las únicas sentencias admitidas en el formato de respaldo del sistema. */
     public void validarArchivoRespaldo(Path archivoSql) {
         if (archivoSql == null || !Files.exists(archivoSql) || !Files.isRegularFile(archivoSql)) {
             throw ErrorAplicacionException.validacion("El archivo de respaldo especificado no existe o es inválido.");
@@ -197,26 +199,41 @@ public class ServicioRespaldoBaseDatos {
             try (BufferedReader reader = Files.newBufferedReader(archivoSql, StandardCharsets.UTF_8)) {
                 boolean tieneFirma = false;
                 boolean tienePie = false;
+                boolean despuesDelPie = false;
                 String linea;
                 int lineasLeidas = 0;
+                StringBuilder sentencia = new StringBuilder();
                 while ((linea = reader.readLine()) != null) {
                     lineasLeidas++;
                     if (lineasLeidas <= 25) {
-                        if (linea.contains(MAGIC_HEADER) || linea.contains("RESPALDO DE BASE DE DATOS - RESTAURANTE 2026")) {
+                        if (linea.trim().equals(MAGIC_HEADER)
+                                || linea.trim().equals("-- RESPALDO DE BASE DE DATOS - RESTAURANTE 2026")) {
                             tieneFirma = true;
                         }
                     }
-                    if (linea.contains(MAGIC_FOOTER) || linea.contains("-- FIN DEL RESPALDO")) {
+                    if (linea.trim().equals(MAGIC_FOOTER) || linea.trim().equals("-- FIN DEL RESPALDO")) {
                         tienePie = true;
+                        despuesDelPie = true;
+                        continue;
                     }
-
-                    // Escanear por sentencias prohibidas de alto riesgo
-                    String lineaUpper = linea.toUpperCase();
-                    for (String prohibida : PALABRAS_PROHIBIDAS) {
-                        if (lineaUpper.contains(prohibida)) {
-                            throw ErrorAplicacionException.validacion("El archivo contiene comandos no autorizados (" + prohibida.trim() + ") y fue rechazado por seguridad.");
-                        }
+                    String recortada = linea.trim();
+                    if (despuesDelPie && !recortada.isEmpty()) {
+                        throw ErrorAplicacionException.validacion("El respaldo contiene contenido después de la marca final y fue rechazado.");
                     }
+                    if (recortada.isEmpty() || recortada.startsWith("--") || recortada.startsWith("/*")) {
+                        continue;
+                    }
+                    if (!tieneFirma) {
+                        throw ErrorAplicacionException.validacion("El respaldo contiene SQL antes de su encabezado oficial.");
+                    }
+                    sentencia.append(linea).append('\n');
+                    if (recortada.endsWith(";")) {
+                        validarSentenciaRespaldo(sentencia.toString());
+                        sentencia.setLength(0);
+                    }
+                }
+                if (!sentencia.toString().isBlank()) {
+                    throw ErrorAplicacionException.validacion("El respaldo termina con una sentencia SQL incompleta.");
                 }
                 if (!tieneFirma) {
                     throw ErrorAplicacionException.validacion("El archivo seleccionado no tiene la firma oficial de respaldo de Restaurante 2026.");
@@ -228,6 +245,47 @@ public class ServicioRespaldoBaseDatos {
         } catch (IOException ex) {
             throw new DataAccessException("No se pudo leer el archivo de respaldo para su validación: " + ex.getMessage(), ex);
         }
+    }
+
+    private void validarSentenciaRespaldo(String sentenciaConPuntoYComa) {
+        String sql = sentenciaConPuntoYComa.trim();
+        if (!sql.endsWith(";")) {
+            throw ErrorAplicacionException.validacion("Sentencia inválida en el respaldo.");
+        }
+        sql = sql.substring(0, sql.length() - 1).trim();
+        if (contieneSeparadorFueraDeCadena(sql)) {
+            throw ErrorAplicacionException.validacion("El respaldo contiene más de una sentencia SQL por bloque y fue rechazado.");
+        }
+        boolean permitida = sql.matches("(?is)^SET\\s+FOREIGN_KEY_CHECKS\\s*=\\s*[01]$")
+                || sql.matches("(?is)^SET\\s+SQL_MODE\\s*=\\s*'NO_AUTO_VALUE_ON_ZERO'$")
+                || SQL_DROP_TABLA_RESPALDO.matcher(sql).matches()
+                || SQL_CREATE_TABLA_RESPALDO.matcher(sql).matches()
+                || SQL_INSERT_RESPALDO.matcher(sql).matches();
+        if (!permitida) {
+            throw ErrorAplicacionException.validacion("El respaldo contiene una sentencia SQL fuera del formato permitido y fue rechazado.");
+        }
+    }
+
+    private boolean contieneSeparadorFueraDeCadena(String sql) {
+        boolean dentroDeCadena = false;
+        boolean escapado = false;
+        for (int i = 0; i < sql.length(); i++) {
+            char caracter = sql.charAt(i);
+            if (dentroDeCadena && escapado) {
+                escapado = false;
+                continue;
+            }
+            if (dentroDeCadena && caracter == '\\') {
+                escapado = true;
+                continue;
+            }
+            if (caracter == '\'') {
+                dentroDeCadena = !dentroDeCadena;
+            } else if (!dentroDeCadena && caracter == ';') {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -275,16 +333,29 @@ public class ServicioRespaldoBaseDatos {
                 return preRespaldo;
 
             } catch (Exception ex) {
-                con.rollback();
+                try {
+                    con.rollback();
+                } catch (SQLException rollbackEx) {
+                    ex.addSuppressed(rollbackEx);
+                }
                 LOGGER.log(Level.SEVERE, "Fallo durante la restauración. Iniciando auto-recuperación desde la copia de seguridad previa: " + preRespaldo.getFileName(), ex);
+                Exception falloRecuperacion = null;
                 try {
                     ejecutarScriptSql(con, preRespaldo);
                     con.commit();
                     LOGGER.info("Auto-recuperación completada: La base de datos viva fue restaurada a su estado previo.");
                 } catch (Exception recEx) {
+                    falloRecuperacion = recEx;
                     LOGGER.log(Level.SEVERE, "ERROR CRÍTICO: Falló la auto-recuperación desde la copia previa: " + recEx.getMessage(), recEx);
                 }
-                throw new DataAccessException("La restauración falló y la base de datos viva fue restaurada a su estado previo (" + preRespaldo.getFileName() + "). Causa del fallo: " + ex.getMessage(), ex);
+                if (falloRecuperacion == null) {
+                    throw new DataAccessException("La restauración falló; la base de datos fue recuperada desde la copia previa (" + preRespaldo.getFileName() + "). Causa: " + ex.getMessage(), ex);
+                }
+                DataAccessException error = new DataAccessException(
+                        "Falló la restauración y también la recuperación automática desde " + preRespaldo.getFileName()
+                        + ". La base puede haber quedado parcialmente restaurada; se requiere recuperación manual.", ex);
+                error.addSuppressed(falloRecuperacion);
+                throw error;
             } finally {
                 try (Statement stReset = con.createStatement()) {
                     stReset.execute("SET FOREIGN_KEY_CHECKS = 1;");

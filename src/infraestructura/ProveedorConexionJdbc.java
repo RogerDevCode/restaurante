@@ -9,6 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -105,7 +107,7 @@ public class ProveedorConexionJdbc {
     }
 
     private Connection obtenerConexionPool(String url, String user, String password, Properties localConfig) throws SQLException {
-        String clave = user + "@" + url;
+        String clave = user + "@" + url + "#" + huellaCredencial(password);
         BlockingQueue<Connection> pool = POOL_DISPONIBLES.computeIfAbsent(clave, k -> new LinkedBlockingQueue<>());
         AtomicInteger activas = CONEXIONES_ACTIVAS.computeIfAbsent(clave, k -> new AtomicInteger(0));
 
@@ -157,6 +159,16 @@ public class ProveedorConexionJdbc {
                     }
                 }
             }
+        }
+    }
+
+    private String huellaCredencial(String password) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(password.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("La plataforma no dispone de SHA-256 para identificar el pool.", ex);
         }
     }
 

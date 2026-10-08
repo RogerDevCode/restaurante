@@ -22,6 +22,8 @@ public class Pedidos {
     private String clienteNombre = "Consumidor Final";
     private String clienteDocumento = "V-00000000";
     private String metodoPago = "EFECTIVO";
+    private BigDecimal efectivoBs;
+    private BigDecimal efectivoUsd;
 
     public Pedidos() {
     }
@@ -196,6 +198,32 @@ public class Pedidos {
         return metodoPago == null || metodoPago.trim().isEmpty() ? "EFECTIVO" : metodoPago.trim().toUpperCase();
     }
 
+    public BigDecimal getEfectivoBs() {
+        return efectivoBs;
+    }
+
+    public void setEfectivoBs(BigDecimal efectivoBs) {
+        this.efectivoBs = normalizarEfectivo(efectivoBs, "Bs.");
+    }
+
+    public BigDecimal getEfectivoUsd() {
+        return efectivoUsd;
+    }
+
+    public void setEfectivoUsd(BigDecimal efectivoUsd) {
+        this.efectivoUsd = normalizarEfectivo(efectivoUsd, "USD");
+    }
+
+    private BigDecimal normalizarEfectivo(BigDecimal monto, String moneda) {
+        if (monto == null) {
+            return null;
+        }
+        if (monto.signum() < 0 || monto.scale() > 2) {
+            throw ErrorAplicacionException.validacion("El efectivo recibido en " + moneda + " debe ser no negativo y tener hasta dos decimales.");
+        }
+        return monto.setScale(2, RoundingMode.UNNECESSARY);
+    }
+
     public void setMetodoPago(String metodoPago) {
         if (metodoPago == null || metodoPago.trim().isEmpty()) {
             this.metodoPago = "EFECTIVO";
@@ -204,6 +232,8 @@ public class Pedidos {
         String normalizado = metodoPago.trim().toUpperCase();
         switch (normalizado) {
             case "EFECTIVO":
+            case "EFECTIVO_BS":
+            case "EFECTIVO_USD":
             case "TRANSFERENCIA":
             case "TARJETA":
             case "PAGO_MOVIL":
@@ -212,7 +242,7 @@ public class Pedidos {
                 break;
             default:
                 throw ErrorAplicacionException.validacion(
-                        "Método de pago no válido: " + metodoPago + ". Debe ser EFECTIVO, TRANSFERENCIA, TARJETA, PAGO_MOVIL o MIXTO.");
+                        "Método de pago no válido: " + metodoPago + ". Debe ser EFECTIVO, EFECTIVO_BS, EFECTIVO_USD, TRANSFERENCIA, TARJETA, PAGO_MOVIL o MIXTO.");
         }
     }
 }

@@ -138,8 +138,14 @@ public final class PedidosControlador {
     }
 
     public boolean finalizarPedidoConCliente(int idPedido, String clienteNombre, String clienteDocumento, String metodoPago) {
+        return finalizarPedidoConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago, null, null);
+    }
+
+    public boolean finalizarPedidoConCliente(int idPedido, String clienteNombre, String clienteDocumento,
+            String metodoPago, java.math.BigDecimal efectivoBs, java.math.BigDecimal efectivoUsd) {
         exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
-        return consultas.finalizarConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago);
+        return consultas.finalizarConCliente(idPedido, clienteNombre, clienteDocumento,
+                metodoPago, efectivoBs, efectivoUsd);
     }
 
     private static final java.util.logging.Logger LOGGER =

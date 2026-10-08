@@ -3,6 +3,8 @@ package integracion;
 import Modelo.Cliente;
 import Modelo.ClienteDao;
 import Modelo.Config;
+import Modelo.CierreCaja;
+import Modelo.CierreCajaDao;
 import Modelo.DataAccessException;
 import Modelo.DetallePedido;
 import Modelo.ErrorAplicacionException;
@@ -444,6 +446,43 @@ public class MySqlIntegrationIT {
         } finally {
             restaurarPropiedad("DB_PASSWORD", claveOriginal);
         }
+    }
+
+    @Test
+    public void metodosDeEfectivoSeGuardanSeVuelvenALeerYConciliacionSumaPagoMixto() throws Exception {
+        int idSala = crearSalaPrueba();
+        PedidosDao pedidosDao = new PedidosDao();
+        List<String> metodos = List.of("EFECTIVO_BS", "EFECTIVO_USD", "MIXTO");
+        List<Integer> ids = new ArrayList<>();
+        for (int i = 0; i < metodos.size(); i++) {
+            int id = pedidosDao.registrarPedidoCompleto(pedido(idSala, mesaPrueba()), detallesValidos());
+            assertTrue(id > 0);
+            ids.add(id);
+        }
+
+        assertTrue(pedidosDao.actualizarEstadoConCliente(ids.get(0), "Cliente", "V-101", "EFECTIVO_BS"));
+        assertTrue(pedidosDao.actualizarEstadoConCliente(ids.get(1), "Cliente", "V-102", "EFECTIVO_USD"));
+        assertTrue(pedidosDao.actualizarEstadoConCliente(ids.get(2), "Cliente", "V-103", "MIXTO",
+                new BigDecimal("20.00"), new BigDecimal("0.50")));
+
+        Pedidos efectivoBs = pedidosDao.verPedido(ids.get(0));
+        Pedidos efectivoUsd = pedidosDao.verPedido(ids.get(1));
+        Pedidos mixto = pedidosDao.verPedido(ids.get(2));
+        assertEquals("EFECTIVO_BS", efectivoBs.getMetodoPago());
+        assertEquals(0, efectivoBs.getEfectivoBs().compareTo(efectivoBs.getTotalBs()));
+        assertEquals("EFECTIVO_USD", efectivoUsd.getMetodoPago());
+        assertEquals(0, efectivoUsd.getEfectivoUsd().compareTo(efectivoUsd.getTotalDecimal()));
+        assertEquals("MIXTO", mixto.getMetodoPago());
+        assertEquals(new BigDecimal("20.00"), mixto.getEfectivoBs());
+        assertEquals(new BigDecimal("0.50"), mixto.getEfectivoUsd());
+
+        Config config = new Config();
+        config.setTasaDolar(new BigDecimal("36.5000"));
+        CierreCaja cierre = new CierreCajaDao().consultarCierre(
+                LocalDate.now().toString(), CierreCaja.TipoCierre.TOTAL, "Admin", config);
+        assertEquals(new BigDecimal("1315.75"), cierre.getTotalEfectivoBs());
+        assertEquals(new BigDecimal("36.00"), cierre.getTotalEfectivoUsd());
+        assertEquals(0, cierre.getPagosMixtosSinDesglose());
     }
 
     @Test

@@ -186,6 +186,10 @@ public final class GeneradorPdfCierre {
             if (cierre.tieneConciliacionEfectivo()) {
                 agregarSeparadorSimple(documento);
                 documento.add(new Paragraph("ARQUEO Y CONCILIACIÓN DE EFECTIVO", FONT_SECCION));
+                if (cierre.getPagosMixtosSinDesglose() > 0) {
+                    documento.add(new Paragraph("ADVERTENCIA: " + cierre.getPagosMixtosSinDesglose()
+                            + " pago(s) mixto(s) antiguo(s) sin desglose de efectivo; no se incluyen en el esperado.", FONT_REGULAR_BOLD));
+                }
                 PdfPTable tblConc = crearTabla(2, new float[]{55f, 45f});
 
                 if (cierre.tieneConciliacionBs()) {
@@ -381,6 +385,7 @@ public final class GeneradorPdfCierre {
         alto += 22.0f + (cierre.getDesgloseUsuarios().size() * 12.0f);
         alto += 22.0f + (cierre.getTopPlatos().size() * 12.0f);
         alto += 80.0f;       // Firma y márgenes
+        if (cierre.getPagosMixtosSinDesglose() > 0) alto += 18.0f;
         return Math.max(450.0f, alto);
     }
 }

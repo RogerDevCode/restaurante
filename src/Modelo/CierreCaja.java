@@ -322,6 +322,23 @@ public class CierreCaja {
 
     private BigDecimal efectivoDeclaradoBs = null;
     private BigDecimal efectivoDeclaradoUsd = null;
+    private BigDecimal efectivoEsperadoBsPersistido;
+    private BigDecimal efectivoEsperadoUsdPersistido;
+    private int pagosMixtosSinDesglose;
+
+    public void setResumenEfectivo(BigDecimal efectivoBs, BigDecimal efectivoUsd, int pagosMixtosSinDesglose) {
+        if (efectivoBs == null || efectivoUsd == null || efectivoBs.signum() < 0
+                || efectivoUsd.signum() < 0 || pagosMixtosSinDesglose < 0) {
+            throw ErrorAplicacionException.validacion("El resumen de efectivo del cierre no es válido.");
+        }
+        this.efectivoEsperadoBsPersistido = efectivoBs.setScale(2, RoundingMode.HALF_UP);
+        this.efectivoEsperadoUsdPersistido = efectivoUsd.setScale(2, RoundingMode.HALF_UP);
+        this.pagosMixtosSinDesglose = pagosMixtosSinDesglose;
+    }
+
+    public int getPagosMixtosSinDesglose() {
+        return pagosMixtosSinDesglose;
+    }
 
     public BigDecimal getEfectivoDeclaradoBs() {
         return efectivoDeclaradoBs;
@@ -358,6 +375,9 @@ public class CierreCaja {
     }
 
     public BigDecimal getTotalEfectivoBs() {
+        if (efectivoEsperadoBsPersistido != null) {
+            return efectivoEsperadoBsPersistido;
+        }
         if (desgloseMetodos == null || desgloseMetodos.isEmpty()) {
             return BigDecimal.ZERO.setScale(2);
         }
@@ -369,6 +389,9 @@ public class CierreCaja {
     }
 
     public BigDecimal getTotalEfectivoUsd() {
+        if (efectivoEsperadoUsdPersistido != null) {
+            return efectivoEsperadoUsdPersistido;
+        }
         if (desgloseMetodos == null || desgloseMetodos.isEmpty()) {
             return BigDecimal.ZERO.setScale(2);
         }

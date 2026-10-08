@@ -60,7 +60,7 @@ public class AdversarialFase2ConcurrenciaYOptimizacionTest {
     }
 
     @Test
-    public void rechazaFinalizacionConcurrenteSiPedidoYaFueFinalizado() throws Exception {
+    public void finalizacionRepetidaEsIdempotenteSiPedidoYaFueFinalizado() throws Exception {
         InvocationHandler rsHandler = (proxy, method, args) -> {
             if ("next".equals(method.getName())) {
                 return true;
@@ -98,11 +98,8 @@ public class AdversarialFase2ConcurrenciaYOptimizacionTest {
             @Override public Connection getConnection() { return connMock; }
         });
 
-        ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
-                () -> dao.actualizarEstadoConCliente(42, "Juan Perez", "V-12345678", "EFECTIVO"));
-
-        assertTrue("Debe alertar que el pedido ya fue finalizado",
-                ex.getMessage().contains("ya fue finalizado previamente por otro usuario"));
+        assertTrue("La repetición de la finalización debe conservar el resultado exitoso",
+                dao.actualizarEstadoConCliente(42, "Juan Perez", "V-12345678", "EFECTIVO"));
     }
 
     @Test

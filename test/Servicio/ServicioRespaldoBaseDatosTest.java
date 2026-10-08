@@ -93,6 +93,44 @@ public class ServicioRespaldoBaseDatosTest {
     }
 
     @Test
+    public void rechazaSentenciasFueraDelFormatoAunqueLaFirmaSeaCorrecta() throws IOException {
+        Path script = tempDir.resolve("sentencia_no_permitida.sql");
+        Files.writeString(script, """
+            -- RESPALDO DE BASE DE DATOS - RESTAURANTE 2026
+            -- RESTAURANTE_2026_BACKUP_SQL
+            UPDATE usuarios SET rol = 'ADMIN';
+            -- FIN DEL RESPALDO RESTAURANTE 2026
+            """);
+        assertThrows(ErrorAplicacionException.class, () -> servicio.validarArchivoRespaldo(script));
+    }
+
+    @Test
+    public void rechazaSqlAnadidoDespuesDelPie() throws IOException {
+        Path script = tempDir.resolve("sql_despues_del_pie.sql");
+        Files.writeString(script, """
+            -- RESPALDO DE BASE DE DATOS - RESTAURANTE 2026
+            -- RESTAURANTE_2026_BACKUP_SQL
+            SET FOREIGN_KEY_CHECKS = 0;
+            SET FOREIGN_KEY_CHECKS = 1;
+            -- FIN DEL RESPALDO RESTAURANTE 2026
+            UPDATE usuarios SET rol = 'ADMIN';
+            """);
+        assertThrows(ErrorAplicacionException.class, () -> servicio.validarArchivoRespaldo(script));
+    }
+
+    @Test
+    public void rechazaMultiplesSentenciasEnUnMismoBloque() throws IOException {
+        Path script = tempDir.resolve("sentencias_combinadas.sql");
+        Files.writeString(script, """
+            -- RESPALDO DE BASE DE DATOS - RESTAURANTE 2026
+            -- RESTAURANTE_2026_BACKUP_SQL
+            CREATE TABLE `temporal` (id INT) ENGINE=InnoDB; DROP TABLE `usuarios`;
+            -- FIN DEL RESPALDO RESTAURANTE 2026
+            """);
+        assertThrows(ErrorAplicacionException.class, () -> servicio.validarArchivoRespaldo(script));
+    }
+
+    @Test
     public void restaurarRespaldoEjecutaScriptSqlValidoYCreaCopiaPrevia() throws IOException {
         Path scriptPrueba = tempDir.resolve("prueba_restore.sql");
         String sql = """
@@ -101,12 +139,12 @@ public class ServicioRespaldoBaseDatosTest {
             -- RESTAURANTE_2026_BACKUP_SQL
             -- ========================================================
             SET FOREIGN_KEY_CHECKS = 0;
-            CREATE TABLE IF NOT EXISTS test_respaldo_tmp (
+            DROP TABLE IF EXISTS `test_respaldo_tmp`;
+            CREATE TABLE `test_respaldo_tmp` (
                 id INT PRIMARY KEY,
                 valor VARCHAR(50)
-            );
-            INSERT INTO test_respaldo_tmp VALUES (1, 'Dato Test')
-            ON DUPLICATE KEY UPDATE valor = VALUES(valor);
+            ) ENGINE=InnoDB;
+            INSERT INTO `test_respaldo_tmp` VALUES (1, 'Dato Test');
             SET FOREIGN_KEY_CHECKS = 1;
             -- FIN DEL RESPALDO RESTAURANTE 2026
             """;
@@ -126,7 +164,7 @@ public class ServicioRespaldoBaseDatosTest {
             -- RESTAURANTE_2026_BACKUP_SQL
             -- ========================================================
             SET FOREIGN_KEY_CHECKS = 0;
-            CREATE TABLE IF NOT EXISTS test_respaldo_tmp (id INT PRIMARY KEY);
+            CREATE TABLE `test_respaldo_tmp` (id INT PRIMARY KEY) ENGINE=InnoDB;
             """;
         Files.writeString(scriptTruncado, sql);
 
@@ -149,7 +187,7 @@ public class ServicioRespaldoBaseDatosTest {
             """;
         Files.writeString(scriptConError, sql);
 
-        assertThrows("Cualquier error de sentencia SQL debe abortar inmediatamente (Fail-Fast)",
-                DataAccessException.class, () -> servicio.restaurarRespaldo(scriptConError));
+        assertThrows("Las sentencias fuera del formato del respaldo se rechazan antes de restaurar",
+                ErrorAplicacionException.class, () -> servicio.restaurarRespaldo(scriptConError));
     }
 }

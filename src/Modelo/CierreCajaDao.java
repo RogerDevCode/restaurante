@@ -166,6 +166,36 @@ public class CierreCajaDao {
                 }
                 cierre.setDesgloseMetodos(metodos);
 
+                String sqlEfectivo = """
+                    SELECT
+                        COALESCE(SUM(CASE
+                            WHEN metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(efectivo_bs, total_bs, 0)
+                            WHEN metodo_pago = 'MIXTO' THEN COALESCE(efectivo_bs, 0)
+                            ELSE 0 END), 0) AS efectivo_bs,
+                        COALESCE(SUM(CASE
+                            WHEN metodo_pago = 'EFECTIVO_USD' THEN COALESCE(efectivo_usd, total, 0)
+                            WHEN metodo_pago = 'MIXTO' THEN COALESCE(efectivo_usd, 0)
+                            ELSE 0 END), 0) AS efectivo_usd,
+                        COALESCE(SUM(CASE
+                            WHEN metodo_pago = 'MIXTO' AND (efectivo_bs IS NULL OR efectivo_usd IS NULL) THEN 1
+                            ELSE 0 END), 0) AS mixtos_sin_desglose
+                    FROM pedidos
+                    WHERE estado = 'FINALIZADO'
+                      AND (fecha LIKE ? OR DATE(fecha) = ?)
+                    """;
+                try (PreparedStatement ps = con.prepareStatement(sqlEfectivo)) {
+                    ps.setString(1, likeParam);
+                    ps.setString(2, fechaFiltro);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            cierre.setResumenEfectivo(
+                                    rs.getBigDecimal("efectivo_bs"),
+                                    rs.getBigDecimal("efectivo_usd"),
+                                    rs.getInt("mixtos_sin_desglose"));
+                        }
+                    }
+                }
+
                 // 4. Desglose por sala
                 List<CierreCaja.ResumenSala> salas = new ArrayList<>();
                 String sqlSalas = """
@@ -318,6 +348,9 @@ public class CierreCajaDao {
         BigDecimal subBs = BigDecimal.ZERO;
         BigDecimal ivUsd = BigDecimal.ZERO;
         BigDecimal ivBs = BigDecimal.ZERO;
+        BigDecimal efectivoEsperadoBs = BigDecimal.ZERO;
+        BigDecimal efectivoEsperadoUsd = BigDecimal.ZERO;
+        int mixtosSinDesglose = 0;
 
         Map<String, int[]> metodosMap = new LinkedHashMap<>(); // metodo -> [cant, usdCents, bsCents]
         Map<String, int[]> salasMap = new LinkedHashMap<>();
@@ -342,6 +375,21 @@ public class CierreCajaDao {
                 ivBs = ivBs.add(ib);
 
                 String met = p.getMetodoPago() != null && !p.getMetodoPago().isBlank() ? p.getMetodoPago().trim().toUpperCase() : "EFECTIVO";
+                switch (met) {
+                    case "EFECTIVO", "EFECTIVO_BS" -> efectivoEsperadoBs = efectivoEsperadoBs.add(
+                            p.getEfectivoBs() != null ? p.getEfectivoBs() : b);
+                    case "EFECTIVO_USD" -> efectivoEsperadoUsd = efectivoEsperadoUsd.add(
+                            p.getEfectivoUsd() != null ? p.getEfectivoUsd() : u);
+                    case "MIXTO" -> {
+                        if (p.getEfectivoBs() == null || p.getEfectivoUsd() == null) {
+                            mixtosSinDesglose++;
+                        } else {
+                            efectivoEsperadoBs = efectivoEsperadoBs.add(p.getEfectivoBs());
+                            efectivoEsperadoUsd = efectivoEsperadoUsd.add(p.getEfectivoUsd());
+                        }
+                    }
+                    default -> { }
+                }
                 metodosMap.computeIfAbsent(met, k -> new int[3]);
                 metodosMap.get(met)[0]++;
                 metodosMap.get(met)[1] += u.multiply(BigDecimal.valueOf(100)).intValue();
@@ -370,6 +418,7 @@ public class CierreCajaDao {
         cierre.setSubtotalBs(subBs);
         cierre.setIvaUsd(ivUsd);
         cierre.setIvaBs(ivBs);
+        cierre.setResumenEfectivo(efectivoEsperadoBs, efectivoEsperadoUsd, mixtosSinDesglose);
 
         if (finalizados > 0) {
             cierre.setTicketPromedioUsd(totUsd.divide(BigDecimal.valueOf(finalizados), 2, RoundingMode.HALF_UP));

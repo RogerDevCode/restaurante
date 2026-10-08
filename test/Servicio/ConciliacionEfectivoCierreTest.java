@@ -4,6 +4,7 @@ import Modelo.CierreCaja;
 import Modelo.CierreCajaDao;
 import Modelo.Config;
 import Modelo.ErrorAplicacionException;
+import Modelo.Pedidos;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,6 +50,39 @@ public class ConciliacionEfectivoCierreTest {
                 new BigDecimal("200.00"), cierre.getTotalEfectivoBs());
         assertEquals("El efectivo esperado en USD debe ser exactamente 5.48",
                 new BigDecimal("5.48"), cierre.getTotalEfectivoUsd());
+    }
+
+    @Test
+    public void conciliacionIncluyeDesgloseEfectivoMixtoYMarcaRegistrosAntiguos() {
+        Pedidos mixto = new Pedidos();
+        mixto.setEstado("FINALIZADO");
+        mixto.setTotalDecimal(new BigDecimal("10.00"));
+        mixto.setTotalBs(new BigDecimal("365.00"));
+        mixto.setMetodoPago("MIXTO");
+        mixto.setEfectivoBs(new BigDecimal("20.00"));
+        mixto.setEfectivoUsd(new BigDecimal("1.50"));
+
+        Pedidos mixtoAntiguo = new Pedidos();
+        mixtoAntiguo.setEstado("FINALIZADO");
+        mixtoAntiguo.setTotalDecimal(new BigDecimal("5.00"));
+        mixtoAntiguo.setMetodoPago("MIXTO");
+
+        CierreCaja calculado = CierreCajaDao.calcularDesdeMemoria(
+                "2026-10-08", CierreCaja.TipoCierre.TOTAL, "Admin", config,
+                List.of(mixto, mixtoAntiguo), List.of());
+
+        assertEquals(new BigDecimal("20.00"), calculado.getTotalEfectivoBs());
+        assertEquals(new BigDecimal("1.50"), calculado.getTotalEfectivoUsd());
+        assertEquals(1, calculado.getPagosMixtosSinDesglose());
+    }
+
+    @Test
+    public void modeloDePedidoAceptaLosMetodosDeEfectivoPorMoneda() {
+        Pedidos pedido = new Pedidos();
+        pedido.setMetodoPago("EFECTIVO_BS");
+        assertEquals("EFECTIVO_BS", pedido.getMetodoPago());
+        pedido.setMetodoPago("EFECTIVO_USD");
+        assertEquals("EFECTIVO_USD", pedido.getMetodoPago());
     }
 
     @Test
