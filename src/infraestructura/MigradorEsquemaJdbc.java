@@ -1,12 +1,14 @@
 package infraestructura;
 
+import Modelo.DataAccessException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -19,26 +21,34 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final AtomicBoolean MIGRADO = new AtomicBoolean(false);
+    private static final Set<String> BASES_MIGRADAS = ConcurrentHashMap.newKeySet();
 
     private MigradorEsquemaJdbc() {
     }
 
     public static synchronized void migrarSiEsNecesario(ProveedorConexionJdbc proveedor) {
-        if (MIGRADO.get()) {
-            return;
-        }
         if (proveedor == null) {
             return;
         }
 
         try (Connection con = proveedor.getConnection()) {
+            String claveBase = claveBase(con);
+            if (BASES_MIGRADAS.contains(claveBase)) {
+                return;
+            }
             asegurarEsquema(con);
-            MIGRADO.set(true);
+            BASES_MIGRADAS.add(claveBase);
             LOGGER.info("Esquema de base de datos verificado y sincronizado correctamente.");
         } catch (SQLException ex) {
-            LOGGER.log(Level.WARNING, "Aviso al sincronizar automáticamente el esquema de la BD: " + ex.getMessage(), ex);
+            LOGGER.log(Level.SEVERE, "No se pudo verificar o sincronizar el esquema de la BD: " + ex.getMessage(), ex);
+            throw new DataAccessException("No se pudo verificar o sincronizar el esquema de la base de datos.", ex);
         }
+    }
+
+    private static String claveBase(Connection con) throws SQLException {
+        String url = con.getMetaData().getURL();
+        String catalogo = con.getCatalog();
+        return (url != null ? url : "") + "|" + (catalogo != null ? catalogo : "");
     }
 
     public static void asegurarEsquema(Connection con) throws SQLException {
@@ -58,8 +68,6 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
                 """);
             st.executeUpdate("INSERT IGNORE INTO clientes (documento, nombre) VALUES ('V-00000000', 'Consumidor Final')");
-        } catch (SQLException e) {
-            LOGGER.log(Level.FINE, "Aviso creando tabla clientes: " + e.getMessage());
         }
 
         // 2. Columnas en pedidos
@@ -106,16 +114,19 @@ public final class MigradorEsquemaJdbc {
         asegurarTablaCierresCaja(con, meta, catalogo);
     }
 
-    private static void asegurarColumna(Connection con, DatabaseMetaData meta, String catalogo, String tabla, String columna, String definicion) {
-        try {
-            if (!columnaExiste(meta, catalogo, tabla, columna)) {
-                try (Statement st = con.createStatement()) {
+    private static void asegurarColumna(Connection con, DatabaseMetaData meta, String catalogo,
+            String tabla, String columna, String definicion) throws SQLException {
+        if (!columnaExiste(meta, catalogo, tabla, columna)) {
+            try (Statement st = con.createStatement()) {
+                try {
                     st.executeUpdate("ALTER TABLE " + tabla + " ADD COLUMN " + columna + " " + definicion);
-                    LOGGER.info("Columna sincronizada automáticamente: " + tabla + "." + columna);
+                } catch (SQLException ex) {
+                    if (ex.getErrorCode() != 1060 || !columnaExiste(meta, catalogo, tabla, columna)) {
+                        throw ex;
+                    }
                 }
+                LOGGER.info("Columna sincronizada automáticamente: " + tabla + "." + columna);
             }
-        } catch (SQLException ex) {
-            LOGGER.log(Level.FINE, "Aviso asegurando columna " + tabla + "." + columna + ": " + ex.getMessage());
         }
     }
 
@@ -135,16 +146,19 @@ public final class MigradorEsquemaJdbc {
         return false;
     }
 
-    private static void asegurarIndice(Connection con, DatabaseMetaData meta, String catalogo, String tabla, String nombreIndice, String columnas) {
-        try {
-            if (!indiceExiste(meta, catalogo, tabla, nombreIndice)) {
-                try (Statement st = con.createStatement()) {
+    private static void asegurarIndice(Connection con, DatabaseMetaData meta, String catalogo,
+            String tabla, String nombreIndice, String columnas) throws SQLException {
+        if (!indiceExiste(meta, catalogo, tabla, nombreIndice)) {
+            try (Statement st = con.createStatement()) {
+                try {
                     st.executeUpdate("ALTER TABLE " + tabla + " ADD INDEX " + nombreIndice + " " + columnas);
-                    LOGGER.info("Índice sincronizado automáticamente: " + tabla + "." + nombreIndice);
+                } catch (SQLException ex) {
+                    if (ex.getErrorCode() != 1061 || !indiceExiste(meta, catalogo, tabla, nombreIndice)) {
+                        throw ex;
+                    }
                 }
+                LOGGER.info("Índice sincronizado automáticamente: " + tabla + "." + nombreIndice);
             }
-        } catch (SQLException ex) {
-            LOGGER.log(Level.FINE, "Aviso asegurando índice " + tabla + "." + nombreIndice + ": " + ex.getMessage());
         }
     }
 
@@ -159,7 +173,7 @@ public final class MigradorEsquemaJdbc {
         return false;
     }
 
-    private static void asegurarTablaConfiguracionSistema(Connection con, DatabaseMetaData meta, String catalogo) {
+    private static void asegurarTablaConfiguracionSistema(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
         try (Statement st = con.createStatement()) {
             st.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS configuracion_sistema (
@@ -170,18 +184,11 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
                 """);
             LOGGER.info("Tabla configuracion_sistema verificada.");
-        } catch (SQLException ex) {
-            LOGGER.log(Level.FINE, "Aviso creando tabla configuracion_sistema: " + ex.getMessage());
         }
-
-        try {
-            migrarParametrosDesdeConfig(con, meta, catalogo);
-        } catch (Exception ex) {
-            LOGGER.log(Level.FINE, "Aviso sincronizando parámetros clave-valor: " + ex.getMessage());
-        }
+        migrarParametrosDesdeConfig(con, meta, catalogo);
     }
 
-    private static void migrarParametrosDesdeConfig(Connection con, DatabaseMetaData meta, String catalogo) {
+    private static void migrarParametrosDesdeConfig(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
         String sqlSelect = "SELECT * FROM config LIMIT 1";
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(sqlSelect)) {
@@ -213,28 +220,18 @@ public final class MigradorEsquemaJdbc {
                     stDef.executeUpdate(insertDefaults);
                 }
             }
-        } catch (SQLException ex) {
-            LOGGER.log(Level.FINE, "Aviso migrando config a clave-valor: " + ex.getMessage());
         }
     }
 
-    private static void insertarClaveDesdeResultSetSiExiste(DatabaseMetaData meta, String catalogo, ResultSet rs, PreparedStatement ps, String columnaBd, String clave, String porDefecto) {
-        try {
-            if (columnaExiste(meta, catalogo, "config", columnaBd)) {
-                String valor = rs.getString(columnaBd);
-                ps.setString(1, clave);
-                ps.setString(2, valor != null && !valor.isBlank() ? valor : porDefecto);
-                ps.executeUpdate();
-            } else {
-                ps.setString(1, clave);
-                ps.setString(2, porDefecto);
-                ps.executeUpdate();
-            }
-        } catch (SQLException ignored) {
-        }
+    private static void insertarClaveDesdeResultSetSiExiste(DatabaseMetaData meta, String catalogo,
+            ResultSet rs, PreparedStatement ps, String columnaBd, String clave, String porDefecto) throws SQLException {
+        String valor = columnaExiste(meta, catalogo, "config", columnaBd) ? rs.getString(columnaBd) : null;
+        ps.setString(1, clave);
+        ps.setString(2, valor != null && !valor.isBlank() ? valor : porDefecto);
+        ps.executeUpdate();
     }
 
-    private static void asegurarTablaAuditoriaPedidos(Connection con, DatabaseMetaData meta, String catalogo) {
+    private static void asegurarTablaAuditoriaPedidos(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
         try (Statement st = con.createStatement()) {
             st.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS auditoria_pedidos (
@@ -248,12 +245,10 @@ public final class MigradorEsquemaJdbc {
                     INDEX idx_auditoria_pedidos_fecha (fecha_hora)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
                 """);
-        } catch (SQLException ex) {
-            LOGGER.log(Level.FINE, "Aviso creando tabla auditoria_pedidos: " + ex.getMessage());
         }
     }
 
-    private static void asegurarTablaCierresCaja(Connection con, DatabaseMetaData meta, String catalogo) {
+    private static void asegurarTablaCierresCaja(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
         try (Statement st = con.createStatement()) {
             st.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS cierres_caja (
@@ -280,8 +275,6 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
                 """);
             LOGGER.info("Tabla cierres_caja verificada.");
-        } catch (SQLException ex) {
-            LOGGER.log(Level.FINE, "Aviso creando tabla cierres_caja: " + ex.getMessage());
         }
     }
 }

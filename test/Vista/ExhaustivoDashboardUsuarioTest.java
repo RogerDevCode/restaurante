@@ -20,10 +20,12 @@ import Servicio.PedidoPdfServicio;
 import Servicio.PedidoServicio;
 import Servicio.PoliticaAcceso;
 import infraestructura.MigradorEsquemaJdbc;
+import infraestructura.ProveedorConexionJdbc;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -451,10 +453,25 @@ public class ExhaustivoDashboardUsuarioTest {
                         sentenciasEjecutadas.incrementAndGet();
                         return 1;
                     }
+                    if ("executeQuery".equals(name)) {
+                        return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                                ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
+                                (p, m, a) -> "next".equals(m.getName()) ? false : null);
+                    }
                     if ("close".equals(name)) return null;
                     return null;
                 }
         );
+
+        PreparedStatement mockPreparedStatement = (PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
+                PreparedStatement.class.getClassLoader(), new Class<?>[] { PreparedStatement.class },
+                (proxy, method, args) -> {
+                    if ("executeUpdate".equals(method.getName())) {
+                        sentenciasEjecutadas.incrementAndGet();
+                        return 1;
+                    }
+                    return null;
+                });
 
         DatabaseMetaData mockMeta = (DatabaseMetaData) java.lang.reflect.Proxy.newProxyInstance(
                 DatabaseMetaData.class.getClassLoader(),
@@ -484,6 +501,7 @@ public class ExhaustivoDashboardUsuarioTest {
                     if ("getMetaData".equals(name)) return mockMeta;
                     if ("getCatalog".equals(name)) return "restaurante";
                     if ("createStatement".equals(name)) return mockStatement;
+                    if ("prepareStatement".equals(name)) return mockPreparedStatement;
                     if ("isClosed".equals(name)) return false;
                     if ("close".equals(name)) return null;
                     return null;
@@ -495,5 +513,120 @@ public class ExhaustivoDashboardUsuarioTest {
 
         assertTrue("Debe ejecutar sentencias para crear tabla clientes, columnas faltantes e índices",
                 sentenciasEjecutadas.get() >= 10);
+    }
+
+    @Test
+    public void migradorPropagaFalloDeDdlParaNoMarcarEsquemaCompleto() {
+        SQLException falloDdl = new SQLException("Permiso ALTER denegado", "42000", 1142);
+        Statement mockStatement = (Statement) java.lang.reflect.Proxy.newProxyInstance(
+                Statement.class.getClassLoader(), new Class<?>[] { Statement.class },
+                (proxy, method, args) -> {
+                    if ("executeUpdate".equals(method.getName())) {
+                        throw falloDdl;
+                    }
+                    return null;
+                });
+        DatabaseMetaData mockMeta = (DatabaseMetaData) java.lang.reflect.Proxy.newProxyInstance(
+                DatabaseMetaData.class.getClassLoader(), new Class<?>[] { DatabaseMetaData.class },
+                (proxy, method, args) -> {
+                    if ("getColumns".equals(method.getName()) || "getIndexInfo".equals(method.getName())) {
+                        return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                                ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
+                                (p, m, a) -> "next".equals(m.getName()) ? false : null);
+                    }
+                    return null;
+                });
+        Connection mockConnection = (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                Connection.class.getClassLoader(), new Class<?>[] { Connection.class },
+                (proxy, method, args) -> {
+                    if ("getMetaData".equals(method.getName())) return mockMeta;
+                    if ("getCatalog".equals(method.getName())) return "restaurante";
+                    if ("createStatement".equals(method.getName())) return mockStatement;
+                    return null;
+                });
+
+        SQLException error = org.junit.Assert.assertThrows(SQLException.class,
+                () -> MigradorEsquemaJdbc.asegurarEsquema(mockConnection));
+
+        assertEquals(falloDdl, error);
+    }
+
+    @Test
+    public void migradorReintentaLuegoDeFalloYCacheaPorBaseDeDatos() {
+        String sufijo = Long.toUnsignedString(System.nanoTime());
+        AtomicInteger ejecucionesTrasReintento = new AtomicInteger();
+        ProveedorConexionJdbc proveedorFallaUnaVez = proveedorMigracion(
+                "jdbc:mysql://migracion.test/reintento_" + sufijo,
+                "reintento_" + sufijo, new AtomicInteger(), true);
+        org.junit.Assert.assertThrows(DataAccessException.class,
+                () -> MigradorEsquemaJdbc.migrarSiEsNecesario(proveedorFallaUnaVez));
+
+        MigradorEsquemaJdbc.migrarSiEsNecesario(proveedorMigracion(
+                "jdbc:mysql://migracion.test/reintento_" + sufijo,
+                "reintento_" + sufijo, ejecucionesTrasReintento, false));
+        assertTrue("El fallo previo no debe bloquear el reintento", ejecucionesTrasReintento.get() > 0);
+
+        AtomicInteger ejecucionesSegundaBase = new AtomicInteger();
+        MigradorEsquemaJdbc.migrarSiEsNecesario(proveedorMigracion(
+                "jdbc:mysql://migracion.test/segunda_" + sufijo,
+                "segunda_" + sufijo, ejecucionesSegundaBase, false));
+        assertTrue("La segunda base debe ejecutar su propia migración", ejecucionesSegundaBase.get() > 0);
+    }
+
+    private ProveedorConexionJdbc proveedorMigracion(String url, String catalogo,
+            AtomicInteger sentencias, boolean fallarPrimeraSentencia) {
+        AtomicInteger intentos = new AtomicInteger();
+        Statement statement = (Statement) java.lang.reflect.Proxy.newProxyInstance(
+                Statement.class.getClassLoader(), new Class<?>[] { Statement.class },
+                (proxy, method, args) -> {
+                    if ("executeUpdate".equals(method.getName())) {
+                        sentencias.incrementAndGet();
+                        if (fallarPrimeraSentencia && intentos.getAndIncrement() == 0) {
+                            throw new SQLException("Fallo DDL inducido", "42000", 1142);
+                        }
+                        return 1;
+                    }
+                    if ("executeQuery".equals(method.getName())) {
+                        return resultadoVacioMigracion();
+                    }
+                    return null;
+                });
+        PreparedStatement preparedStatement = (PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
+                PreparedStatement.class.getClassLoader(), new Class<?>[] { PreparedStatement.class },
+                (proxy, method, args) -> {
+                    if ("executeUpdate".equals(method.getName())) {
+                        sentencias.incrementAndGet();
+                        return 1;
+                    }
+                    if ("executeBatch".equals(method.getName())) return new int[0];
+                    return null;
+                });
+        DatabaseMetaData metadata = (DatabaseMetaData) java.lang.reflect.Proxy.newProxyInstance(
+                DatabaseMetaData.class.getClassLoader(), new Class<?>[] { DatabaseMetaData.class },
+                (proxy, method, args) -> {
+                    if ("getURL".equals(method.getName())) return url;
+                    if ("getColumns".equals(method.getName()) || "getIndexInfo".equals(method.getName())) {
+                        return resultadoVacioMigracion();
+                    }
+                    return null;
+                });
+        Connection connection = (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                Connection.class.getClassLoader(), new Class<?>[] { Connection.class },
+                (proxy, method, args) -> {
+                    if ("getMetaData".equals(method.getName())) return metadata;
+                    if ("getCatalog".equals(method.getName())) return catalogo;
+                    if ("createStatement".equals(method.getName())) return statement;
+                    if ("prepareStatement".equals(method.getName())) return preparedStatement;
+                    return null;
+                });
+        return new ProveedorConexionJdbc() {
+            @Override public Connection getConnection() { return connection; }
+        };
+    }
+
+    private ResultSet resultadoVacioMigracion() {
+        return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
+                (proxy, method, args) -> "next".equals(method.getName()) ? false : null);
     }
 }

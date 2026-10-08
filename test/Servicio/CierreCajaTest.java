@@ -7,6 +7,7 @@ import Modelo.ErrorAplicacionException;
 import Modelo.Pedidos;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -225,7 +226,7 @@ public class CierreCajaTest {
     @Test
     public void imprimirCierreFallaSiNoSePuedePersistirEnBaseDeDatos() {
         Config config = new Config(1, "J-000", "Restaurant", "123", "Calle", "Gracias");
-        GeneradorPdfCierre generador = new GeneradorPdfCierre();
+        GeneradorPdfCierre generador = new GeneradorPdfCierre(temporal.getRoot().toPath());
 
         Modelo.CierreCajaDao daoConFalloGuardado = new Modelo.CierreCajaDao() {
             @Override
@@ -249,5 +250,55 @@ public class CierreCajaTest {
 
         assertThrows(Modelo.DataAccessException.class,
                 () -> servicio.imprimirCierre("2026-10-07", CierreCaja.TipoCierre.TOTAL, "Admin"));
+
+        try (var archivos = Files.list(temporal.getRoot().toPath())) {
+            assertEquals("El PDF debe eliminarse si falla el INSERT del cierre", 0, archivos.count());
+        } catch (IOException ex) {
+            throw new AssertionError("No se pudo comprobar la limpieza del PDF", ex);
+        }
+    }
+
+    @Test
+    public void falloSqlLanzadoTambienLimpiaElPdfGenerado() throws IOException {
+        Config config = new Config(1, "J-000", "Restaurant", "123", "Calle", "Gracias");
+        Modelo.CierreCajaDao daoConExcepcion = new Modelo.CierreCajaDao() {
+            @Override
+            public CierreCaja consultarCierre(String fecha, CierreCaja.TipoCierre tipo,
+                    String usuarioEmisor, Config cfg) {
+                return new CierreCaja();
+            }
+
+            @Override
+            public boolean guardarCierre(CierreCaja cierre, String rutaPdf) {
+                throw new Modelo.DataAccessException("Fallo SQL inducido");
+            }
+        };
+        CierreCajaServicio servicio = new CierreCajaServicio(
+                daoConExcepcion, () -> config,
+                new GeneradorPdfCierre(temporal.getRoot().toPath()), p -> { }, p -> { });
+
+        assertThrows(Modelo.DataAccessException.class,
+                () -> servicio.imprimirCierre("2026-10-07", CierreCaja.TipoCierre.TOTAL, "Admin"));
+        try (var archivos = Files.list(temporal.getRoot().toPath())) {
+            assertEquals("El error SQL no debe dejar el PDF sin registro", 0, archivos.count());
+        }
+    }
+
+    @Test
+    public void pdfDeCierresDelMismoSegundoUsaRutasDistintas() {
+        GeneradorPdfCierre generador = new GeneradorPdfCierre(temporal.getRoot().toPath());
+        Config config = new Config(1, "J-000", "Restaurant", "123", "Calle", "Gracias");
+        CierreCaja cierre = new CierreCaja();
+        cierre.setTipo(CierreCaja.TipoCierre.TOTAL);
+        cierre.setFecha("2026-10-07");
+        cierre.setFechaHoraEmision("2026-10-07 12:00:00");
+        cierre.setUsuarioEmisor("Admin");
+
+        Path primero = generador.generar(cierre, config);
+        Path segundo = generador.generar(cierre, config);
+
+        assertFalse("Una emisión no debe sobrescribir el PDF de otra", primero.equals(segundo));
+        assertTrue(Files.exists(primero));
+        assertTrue(Files.exists(segundo));
     }
 }

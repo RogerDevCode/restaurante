@@ -112,35 +112,54 @@ public class ConfiguracionSistemaDao implements ConfiguracionRepositorio {
         if (configuraciones == null || configuraciones.isEmpty()) {
             return;
         }
+        try (Connection con = conexiones.getConnection()) {
+            boolean autoCommitPrevio = con.getAutoCommit();
+            try {
+                con.setAutoCommit(false);
+                guardarVarios(con, configuraciones);
+                con.commit();
+            } catch (SQLException | RuntimeException ex) {
+                try {
+                    con.rollback();
+                } catch (SQLException errorRollback) {
+                    ex.addSuppressed(errorRollback);
+                }
+                throw ex;
+            } finally {
+                try {
+                    con.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException errorRestauracion) {
+                    LOGGER.log(Level.WARNING, "No se pudo restaurar el autocommit de la conexión de configuración.",
+                            errorRestauracion);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron guardar las configuraciones en lote.", ex);
+        }
+    }
+
+    @Override
+    public void guardarVarios(Connection con, Map<String, String> configuraciones) throws SQLException {
+        Objects.requireNonNull(con, "La conexión transaccional es obligatoria.");
+        if (configuraciones == null || configuraciones.isEmpty()) {
+            return;
+        }
         String sql = """
             INSERT INTO configuracion_sistema (clave, valor)
             VALUES (?, ?)
             ON DUPLICATE KEY UPDATE valor = VALUES(valor)
             """;
-        try (Connection con = conexiones.getConnection()) {
-            boolean autoCommitPrevio = con.getAutoCommit();
-            try {
-                con.setAutoCommit(false);
-                try (PreparedStatement ps = con.prepareStatement(sql)) {
-                    for (Map.Entry<String, String> e : configuraciones.entrySet()) {
-                        String clave = e.getKey();
-                        if (clave != null && !clave.trim().isEmpty()) {
-                            ps.setString(1, clave.trim());
-                            ps.setString(2, e.getValue() != null ? e.getValue() : "");
-                            ps.addBatch();
-                        }
-                    }
-                    ps.executeBatch();
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            for (Map.Entry<String, String> e : configuraciones.entrySet()) {
+                String clave = e.getKey();
+                if (clave != null && !clave.trim().isEmpty()) {
+                    validarClave(clave);
+                    ps.setString(1, clave.trim());
+                    ps.setString(2, e.getValue() != null ? e.getValue() : "");
+                    ps.addBatch();
                 }
-                con.commit();
-            } catch (SQLException ex) {
-                con.rollback();
-                throw ex;
-            } finally {
-                con.setAutoCommit(autoCommitPrevio);
             }
-        } catch (SQLException ex) {
-            throw new DataAccessException("No se pudieron guardar las configuraciones en lote.", ex);
+            ps.executeBatch();
         }
     }
 

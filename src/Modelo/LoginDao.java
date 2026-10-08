@@ -216,39 +216,42 @@ public class LoginDao implements AutenticacionRepositorio {
             WHERE id = ?
             """;
         try (Connection conexion = conexiones.getConnection()) {
-            int filas = 0;
-            try (PreparedStatement sentencia = conexion.prepareStatement(sqlCompleto)) {
-                sentencia.setString(1, conf.getRuc());
-                sentencia.setString(2, conf.getNombre());
-                sentencia.setString(3, conf.getTelefono());
-                sentencia.setString(4, conf.getDireccion());
-                sentencia.setString(5, conf.getMensaje());
-                sentencia.setBigDecimal(6, conf.getTasaDolar());
-                sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
-                sentencia.setString(8, conf.getLogoPath());
-                sentencia.setString(9, conf.getClienteDefaultNombre());
-                sentencia.setString(10, conf.getClienteDefaultDocumento());
-                sentencia.setInt(11, conf.getMesesRetencionPedidos() > 0 ? conf.getMesesRetencionPedidos() : 24);
-                sentencia.setInt(12, conf.isImprimirLogoTicket() ? 1 : 0);
-                sentencia.setString(13, conf.getImpresoraTickets());
-                sentencia.setString(14, conf.getModoSalidaTickets() != null ? conf.getModoSalidaTickets().name() : "TERMICA_DIRECTA");
-                sentencia.setInt(15, conf.getId());
-                filas = sentencia.executeUpdate();
-            } catch (SQLException ex) {
-                if (ex.getErrorCode() == 1054) {
-                    filas = modificarDatosSinImpresora(conexion, conf);
-                } else {
-                    throw ex;
-                }
-            }
-
-            // Si no se actualizó ninguna fila (por ejemplo ID no coincide o tabla vacía)
-            if (filas == 0) {
-                filas = autoRecuperarConfig(conexion, conf);
-            }
-
-            // Sincronizar parámetros operativos en la tabla clave-valor
+            boolean autoCommitPrevio = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
             try {
+                int filas;
+                try (PreparedStatement sentencia = conexion.prepareStatement(sqlCompleto)) {
+                    sentencia.setString(1, conf.getRuc());
+                    sentencia.setString(2, conf.getNombre());
+                    sentencia.setString(3, conf.getTelefono());
+                    sentencia.setString(4, conf.getDireccion());
+                    sentencia.setString(5, conf.getMensaje());
+                    sentencia.setBigDecimal(6, conf.getTasaDolar());
+                    sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
+                    sentencia.setString(8, conf.getLogoPath());
+                    sentencia.setString(9, conf.getClienteDefaultNombre());
+                    sentencia.setString(10, conf.getClienteDefaultDocumento());
+                    sentencia.setInt(11, conf.getMesesRetencionPedidos() > 0 ? conf.getMesesRetencionPedidos() : 24);
+                    sentencia.setInt(12, conf.isImprimirLogoTicket() ? 1 : 0);
+                    sentencia.setString(13, conf.getImpresoraTickets());
+                    sentencia.setString(14, conf.getModoSalidaTickets() != null ? conf.getModoSalidaTickets().name() : "TERMICA_DIRECTA");
+                    sentencia.setInt(15, conf.getId());
+                    filas = sentencia.executeUpdate();
+                } catch (SQLException ex) {
+                    if (ex.getErrorCode() == 1054) {
+                        filas = modificarDatosSinImpresora(conexion, conf);
+                    } else {
+                        throw ex;
+                    }
+                }
+
+                if (filas == 0) {
+                    filas = autoRecuperarConfig(conexion, conf);
+                }
+                if (filas <= 0) {
+                    throw new SQLException("No se actualizó ni se pudo crear la fila de configuración empresarial.");
+                }
+
                 java.util.Map<String, String> pares = new java.util.HashMap<>();
                 if (conf.getTasaDolar() != null) {
                     pares.put(ConfigClaves.TASA_DOLAR, conf.getTasaDolar().toPlainString());
@@ -270,12 +273,26 @@ public class LoginDao implements AutenticacionRepositorio {
                     pares.put(ConfigClaves.CLIENTE_DEFAULT_DOCUMENTO, conf.getClienteDefaultDocumento());
                 }
                 pares.put(ConfigClaves.MESES_RETENCION_PEDIDOS, String.valueOf(conf.getMesesRetencionPedidos() > 0 ? conf.getMesesRetencionPedidos() : 24));
-                configuracionRepo.guardarVarios(pares);
-            } catch (Exception ex) {
-                LOGGER.log(Level.WARNING, "Aviso sincronizando parámetros clave-valor: " + ex.getMessage());
+                configuracionRepo.guardarVarios(conexion, pares);
+                conexion.commit();
+                return true;
+            } catch (SQLException | RuntimeException error) {
+                try {
+                    conexion.rollback();
+                } catch (SQLException errorRollback) {
+                    error.addSuppressed(errorRollback);
+                }
+                if (error instanceof SQLException errorSql) {
+                    throw new DataAccessException("No se pudo actualizar atómicamente la configuración.", errorSql);
+                }
+                throw error;
+            } finally {
+                try {
+                    conexion.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException errorRestauracion) {
+                    LOGGER.log(Level.WARNING, "No se pudo restaurar el autocommit de la conexión de configuración.", errorRestauracion);
+                }
             }
-
-            return filas > 0;
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo actualizar la configuración.", ex);
         }

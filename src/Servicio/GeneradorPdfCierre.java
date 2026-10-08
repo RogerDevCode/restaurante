@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -85,7 +86,8 @@ public final class GeneradorPdfCierre {
 
         String prefijo = cierre.getTipo() == CierreCaja.TipoCierre.TOTAL ? "cierre-Z" : "cierre-X";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        String nombreArchivo = String.format("%s_%s_%s.pdf", prefijo, cierre.getFecha().replace("-", ""), timestamp);
+        String nombreArchivo = String.format("%s_%s_%s_%s.pdf", prefijo,
+                cierre.getFecha().replace("-", ""), timestamp, UUID.randomUUID());
         Path archivoSalida = directorioSalida.resolve(nombreArchivo);
 
         float altoEstimado = calcularAltoDinamico(cierre, config);
@@ -288,9 +290,15 @@ public final class GeneradorPdfCierre {
             documento.close();
             return archivoSalida;
 
-        } catch (DocumentException | IOException ex) {
+        } catch (DocumentException | IOException | RuntimeException ex) {
             if (documento.isOpen()) {
                 documento.close();
+            }
+            try {
+                Files.deleteIfExists(archivoSalida);
+            } catch (IOException errorLimpieza) {
+                ex.addSuppressed(errorLimpieza);
+                LOGGER.log(Level.SEVERE, "No se pudo limpiar el PDF incompleto: " + archivoSalida, errorLimpieza);
             }
             throw new ErrorAplicacionException("No se pudo componer el ticket PDF de cierre de caja.", ex);
         }

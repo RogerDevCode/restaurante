@@ -450,11 +450,6 @@ public class PedidosDao implements PedidosRepositorio {
                 }
                 exito = ErrorAplicacionException.resultadoUnaFila(
                         filas, "finalizar pedido " + id_pedido);
-            } catch (SQLException ex) {
-                if (ex.getErrorCode() == 1054) {
-                    return actualizarEstadoLegacy(conexion, id_pedido);
-                }
-                throw ex;
             }
 
             if (exito) {
@@ -522,24 +517,6 @@ public class PedidosDao implements PedidosRepositorio {
                     throw ErrorAplicacionException.validacion("El efectivo indicado para el pago mixto supera el total del pedido.");
                 }
             }
-        }
-    }
-
-    private boolean actualizarEstadoLegacy(Connection conexion, int id_pedido) throws SQLException {
-        String sql = """
-            UPDATE pedidos
-            SET estado = ?
-            WHERE id = ? AND estado = 'PENDIENTE'
-            """;
-        try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, "FINALIZADO");
-            sentencia.setInt(2, id_pedido);
-            int filas = sentencia.executeUpdate();
-            if (filas == 0) {
-                return validarMotivoNoFinalizado(conexion, id_pedido);
-            }
-            return ErrorAplicacionException.resultadoUnaFila(
-                    filas, "finalizar pedido " + id_pedido);
         }
     }
 

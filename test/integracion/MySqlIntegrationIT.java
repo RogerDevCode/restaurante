@@ -363,6 +363,31 @@ public class MySqlIntegrationIT {
     }
 
     @Test
+    public void esquemaSinMetodoPagoNoDebeFinalizarPedidoParcialmente() throws Exception {
+        int idSala = crearSalaPrueba();
+        int idPedido = new PedidosDao().registrarPedidoCompleto(
+                pedido(idSala, mesaPrueba()), detallesValidos());
+        boolean columnaEliminada = false;
+        try (Connection con = conexion(); Statement st = con.createStatement()) {
+            st.execute("ALTER TABLE pedidos DROP COLUMN metodo_pago");
+            columnaEliminada = true;
+        }
+        try {
+            org.junit.Assert.assertThrows(DataAccessException.class,
+                    () -> new PedidosDao().actualizarEstadoConCliente(
+                            idPedido, "Cliente IT", "V-100", "TRANSFERENCIA"));
+            assertEquals("Un error de esquema debe conservar el estado pendiente", "PENDIENTE",
+                    estadoPedido(idPedido));
+        } finally {
+            if (columnaEliminada) {
+                try (Connection con = conexion(); Statement st = con.createStatement()) {
+                    st.execute("ALTER TABLE pedidos ADD COLUMN metodo_pago VARCHAR(30) NOT NULL DEFAULT 'EFECTIVO'");
+                }
+            }
+        }
+    }
+
+    @Test
     public void falloForzadoEnDetalleHaceRollbackYDejaUnaEntradaDeLog() throws SQLException, IOException {
         int idSala = crearSalaPrueba();
         int mesa = mesaPrueba();
@@ -382,6 +407,135 @@ public class MySqlIntegrationIT {
         assertEquals(pedidosAntes, pedidosDePrueba());
         assertEquals(detallesAntes, detallesDePedidosDePrueba());
         assertEquals(logsAntes + 1, contar(textoLog(), "No se pudo guardar el pedido completo."));
+    }
+
+    @Test
+    public void errorDeAuditoriaRevierteAnulacionDelPedido() throws Exception {
+        int idSala = crearSalaPrueba();
+        int idPedido = new PedidosDao().registrarPedidoCompleto(
+                pedido(idSala, mesaPrueba()), detallesValidos());
+        String trigger = "trg_it_error_anulacion_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        try (Connection con = conexion(); Statement st = con.createStatement()) {
+            st.execute("CREATE TRIGGER " + trigger + " BEFORE INSERT ON auditoria_pedidos FOR EACH ROW "
+                    + "BEGIN IF NEW.accion = 'ANULACION' THEN "
+                    + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Fallo auditoría inducido'; END IF; END");
+        }
+        try {
+            org.junit.Assert.assertThrows(DataAccessException.class,
+                    () -> new PedidosDao().anularPedidoConAuditoria(idPedido, "Prueba rollback", USUARIO_PRUEBA));
+            assertEquals("PENDIENTE", estadoPedido(idPedido));
+            assertEquals(0, contarFilas("SELECT COUNT(*) FROM auditoria_pedidos WHERE id_pedido=" + idPedido
+                    + " AND accion='ANULACION'"));
+        } finally {
+            try (Connection con = conexion(); Statement st = con.createStatement()) {
+                st.execute("DROP TRIGGER IF EXISTS " + trigger);
+            }
+        }
+    }
+
+    @Test
+    public void falloAlEliminarDetallesRevierteLaPurgaCompleta() throws Exception {
+        int idSala = crearSalaPrueba();
+        int idPedido = new PedidosDao().registrarPedidoCompleto(
+                pedido(idSala, mesaPrueba()), detallesValidos());
+        PedidosDao dao = new PedidosDao();
+        assertTrue(dao.actualizarEstado(idPedido));
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE pedidos SET fecha = '2000-01-01 00:00:00' WHERE id = ?")) {
+            ps.setInt(1, idPedido);
+            assertEquals(1, ps.executeUpdate());
+        }
+        String trigger = "trg_it_error_purga_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        try (Connection con = conexion(); Statement st = con.createStatement()) {
+            st.execute("CREATE TRIGGER " + trigger + " BEFORE DELETE ON detalle_pedidos FOR EACH ROW "
+                    + "BEGIN IF OLD.id_pedido = " + idPedido + " THEN "
+                    + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Fallo purga inducido'; END IF; END");
+        }
+        try {
+            org.junit.Assert.assertThrows(DataAccessException.class, () -> dao.purgarPedidosFinalizados(1));
+            assertEquals("FINALIZADO", estadoPedido(idPedido));
+            assertEquals(2, contarFilas("SELECT COUNT(*) FROM detalle_pedidos WHERE id_pedido=" + idPedido));
+        } finally {
+            try (Connection con = conexion(); Statement st = con.createStatement()) {
+                st.execute("DROP TRIGGER IF EXISTS " + trigger);
+            }
+        }
+    }
+
+    @Test
+    public void falloEnClaveValorRevierteActualizacionDeConfiguracionEmpresarial() throws Exception {
+        LoginDao login = new LoginDao();
+        Config anterior = login.datosEmpresa();
+        assertNotNull(anterior);
+        Config cambio = login.datosEmpresa();
+        String nombreAnterior;
+        BigDecimal tasaAnterior;
+        String tasaClaveAnterior;
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                "SELECT nombre, tasa_dolar FROM config WHERE id = ?")) {
+            ps.setInt(1, anterior.getId());
+            try (ResultSet rs = ps.executeQuery()) {
+                assertTrue(rs.next());
+                nombreAnterior = rs.getString("nombre");
+                tasaAnterior = rs.getBigDecimal("tasa_dolar");
+            }
+        }
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                "SELECT valor FROM configuracion_sistema WHERE clave = 'tasa_dolar'");
+             ResultSet rs = ps.executeQuery()) {
+            assertTrue(rs.next());
+            tasaClaveAnterior = rs.getString("valor");
+        }
+        cambio.setNombre("CONFIG_ROLLBACK_" + UUID.randomUUID());
+        cambio.setTasaDolar(new BigDecimal("99.1234"));
+        String trigger = "trg_it_error_config_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        try (Connection con = conexion(); Statement st = con.createStatement()) {
+            st.execute("CREATE TRIGGER " + trigger + " BEFORE INSERT ON configuracion_sistema FOR EACH ROW "
+                    + "BEGIN IF NEW.clave = 'tasa_dolar' THEN "
+                    + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Fallo config KV inducido'; END IF; END");
+        }
+        try {
+            org.junit.Assert.assertThrows(DataAccessException.class, () -> login.ModificarDatos(cambio));
+            try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                         "SELECT nombre, tasa_dolar FROM config WHERE id = ?")) {
+                ps.setInt(1, anterior.getId());
+                try (ResultSet rs = ps.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals(nombreAnterior, rs.getString("nombre"));
+                    assertEquals(0, tasaAnterior.compareTo(rs.getBigDecimal("tasa_dolar")));
+                }
+            }
+            try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                    "SELECT valor FROM configuracion_sistema WHERE clave = 'tasa_dolar'");
+                 ResultSet rs = ps.executeQuery()) {
+                assertTrue(rs.next());
+                assertEquals(tasaClaveAnterior, rs.getString("valor"));
+            }
+        } finally {
+            try (Connection con = conexion(); Statement st = con.createStatement()) {
+                st.execute("DROP TRIGGER IF EXISTS " + trigger);
+            }
+        }
+        try {
+            assertTrue("La actualización debe confirmar ambas tablas después de retirar el fallo",
+                    login.ModificarDatos(cambio));
+            try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                    "SELECT tasa_dolar FROM config WHERE id = ?")) {
+                ps.setInt(1, anterior.getId());
+                try (ResultSet rs = ps.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals(0, new BigDecimal("99.1234").compareTo(rs.getBigDecimal("tasa_dolar")));
+                }
+            }
+            try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                    "SELECT valor FROM configuracion_sistema WHERE clave = 'tasa_dolar'");
+                 ResultSet rs = ps.executeQuery()) {
+                assertTrue(rs.next());
+                assertEquals("99.1234", rs.getString("valor"));
+            }
+        } finally {
+            assertTrue("La configuración previa de pruebas debe restaurarse", login.ModificarDatos(anterior));
+        }
     }
 
     @Test

@@ -6,13 +6,17 @@ import Modelo.CierreCajaDao;
 import Modelo.DataAccessException;
 import Modelo.ErrorAplicacionException;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Servicio que coordina la consulta de datos del cierre de caja, la composición del PDF en 80 mm
  * y su impresión directa a la tickera térmica o previsualización interactiva.
  */
 public class CierreCajaServicio {
+    private static final Logger LOGGER = Logger.getLogger(CierreCajaServicio.class.getName());
     private final CierreCajaDao cierreDao;
     private final PedidoPdfServicio.ConsultaConfiguracion consultaConfig;
     private final GeneradorPdfCierre generador;
@@ -68,9 +72,14 @@ public class CierreCajaServicio {
             cierre.setEfectivoDeclaradoUsd(efectivoDeclaradoUsd);
         }
         Path archivo = generador.generar(cierre, config);
-        boolean guardado = cierreDao.guardarCierre(cierre, archivo != null ? archivo.toString() : null);
-        if (!guardado) {
-            throw new DataAccessException("No se pudo registrar la auditoría del cierre de caja en la base de datos.");
+        try {
+            boolean guardado = cierreDao.guardarCierre(cierre, archivo != null ? archivo.toString() : null);
+            if (!guardado) {
+                throw new DataAccessException("No se pudo registrar la auditoría del cierre de caja en la base de datos.");
+            }
+        } catch (RuntimeException error) {
+            eliminarPdfSiExiste(archivo, error);
+            throw error;
         }
         try {
             impresor.abrir(archivo);
@@ -78,6 +87,19 @@ public class CierreCajaServicio {
             throw new ErrorAplicacionException("El ticket de cierre se generó, pero falló el envío a la impresora.", ex);
         }
         return archivo;
+    }
+
+    private void eliminarPdfSiExiste(Path archivo, RuntimeException errorOriginal) {
+        if (archivo == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(archivo);
+        } catch (IOException errorLimpieza) {
+            errorOriginal.addSuppressed(errorLimpieza);
+            LOGGER.log(Level.SEVERE, "No se pudo limpiar el PDF de cierre tras fallar su registro SQL: " + archivo,
+                    errorLimpieza);
+        }
     }
 
     /**

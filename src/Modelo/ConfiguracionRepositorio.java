@@ -28,6 +28,15 @@ public interface ConfiguracionRepositorio {
     void guardarVarios(Map<String, String> configuraciones);
 
     /**
+     * Guarda un lote usando la conexión y transacción controladas por el llamador.
+     * Las implementaciones no JDBC pueden conservar el comportamiento de lote existente.
+     */
+    default void guardarVarios(java.sql.Connection conexion, Map<String, String> configuraciones)
+            throws java.sql.SQLException {
+        guardarVarios(configuraciones);
+    }
+
+    /**
      * Verifica si una clave existe en el almacenamiento.
      */
     boolean existe(String clave);

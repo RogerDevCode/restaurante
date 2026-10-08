@@ -2,6 +2,7 @@ package Modelo;
 
 import infraestructura.ProveedorConexionJdbc;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -77,6 +78,40 @@ public class PedidosDaoTest {
 
         org.junit.Assert.assertThrows(ErrorAplicacionException.class,
                 () -> new PedidosDao(proveedorFalso).registrarPedidoCompleto(pedido, Arrays.asList(detalle)));
+    }
+
+    @Test
+    public void errorColumnaDesconocidaAlFinalizarNoDebeMarcarPedidoComoFinalizado() {
+        SQLException columnaFaltante = new SQLException("Unknown column 'metodo_pago'", "42S22", 1054);
+        java.util.concurrent.atomic.AtomicInteger sentenciasPreparadas = new java.util.concurrent.atomic.AtomicInteger();
+        PreparedStatement sentencia = (PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class<?>[]{PreparedStatement.class},
+                (proxy, method, args) -> {
+                    if ("executeUpdate".equals(method.getName())) {
+                        throw columnaFaltante;
+                    }
+                    return null;
+                });
+        Connection conexion = (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class<?>[]{Connection.class},
+                (proxy, method, args) -> {
+                    if ("prepareStatement".equals(method.getName())) {
+                        sentenciasPreparadas.incrementAndGet();
+                        return sentencia;
+                    }
+                    return null;
+                });
+        ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc() {
+            @Override public Connection getConnection() { return conexion; }
+        };
+
+        DataAccessException error = org.junit.Assert.assertThrows(DataAccessException.class,
+                () -> new PedidosDao(proveedor).actualizarEstadoConCliente(
+                        42, "Cliente", "V-42", "TRANSFERENCIA"));
+
+        assertSame(columnaFaltante, error.getCause());
+        assertEquals("No debe intentarse un UPDATE legacy que solo cambie el estado", 1,
+                sentenciasPreparadas.get());
     }
 
     @Test
