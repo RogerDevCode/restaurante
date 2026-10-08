@@ -1,0 +1,150 @@
+================================================================================
+GUÍA RÁPIDA: INSTALACIÓN EN WINDOWS 11 Y ACTUALIZACIÓN DEL JAR
+================================================================================
+
+1. INSTALACIÓN DEL PROGRAMA EN WINDOWS 11
+-----------------------------------------
+Requisitos previos:
+- Java 21 LTS (JDK o JRE 21) instalado y agregado a la variable PATH del sistema.
+- MySQL Server (8.0 o 8.4) o MariaDB en ejecución en el puerto 3306.
+
+Pasos de instalación:
+1. Extraer el archivo "Restaurante_Ejecutable.zip" en una carpeta de su elección (ejemplo: C:\Restaurante).
+2. Configurar la base de datos:
+   - Si es instalación limpia desde cero: hacer doble clic en "instalar_mysql_y_bd.bat".
+     (Crea la base de datos "restaurante", el usuario "admin" con clave "admin" y carga el esquema completo).
+   - Si ya existía un servidor con datos y ventas: hacer doble clic en "actualizar_bd.bat".
+     (Aplica las nuevas columnas de RIF, logo e IVA sin borrar pedidos ni información existente).
+3. Archivo de configuración (.env):
+   - Asegurarse de que el archivo ".env" en la carpeta contenga las credenciales del servidor:
+     MYSQL_HOST=127.0.0.1
+     MYSQL_PORT=3306
+     MYSQL_DATABASE=restaurante
+     MYSQL_USER=admin
+     MYSQL_PASSWORD=admin
+     (También se admiten los alias DB_HOST, DB_PORT, DB_NAME, DB_USER y DB_PASS / DB_PASSWORD).
+4. Iniciar la aplicación:
+   - Hacer doble clic en "iniciar_restaurante.bat".
+   (Nota: Ejecutar siempre mediante el archivo .bat para garantizar la carga de librerías y el directorio de trabajo).
+
+
+2. PROCEDIMIENTO AL RECOMPILAR CON NETBEANS Y JDK 21
+----------------------------------------------------
+Nota técnica sobre la versión: La versión moderna soportada es Apache NetBeans 21+ con JDK 21 LTS.
+
+¿Basta con solo reemplazar el archivo Restaurante.jar?
+- NO ES SUFICIENTE por sí solo. Reemplazar el archivo JAR es indispensable, pero requiere cumplir 3 condiciones adicionales:
+
+Flujo exacto a seguir:
+Paso 1: Compilación limpia en NetBeans
+- En NetBeans, hacer clic derecho sobre el proyecto "Restaurante" y seleccionar "Clean and Build" (o atajo Shift + F11).
+- Esto genera el archivo ejecutable en la subcarpeta "dist/Restaurante.jar".
+
+Paso 2: Reemplazo del archivo JAR
+- Copiar "dist/Restaurante.jar" y pegarlo en la carpeta "Restaurante_Ejecutable/" reemplazando el archivo anterior.
+
+Paso 3: Sincronización de dependencias (Carpeta lib/)
+- El JAR depende obligatoriamente de las librerías ubicadas en "Restaurante_Ejecutable/lib/":
+  * AbsoluteLayout.jar
+  * itextpdf-5.5.1.jar
+  * mysql-connector-j-8.0.31.jar
+- Si su socio añadió o actualizó librerías en NetBeans, copie los nuevos archivos .jar desde "dist/lib/" hacia "Restaurante_Ejecutable/lib/". Si no hubo nuevas dependencias, conserve la carpeta lib/ intacta.
+
+Paso 4: Sincronización de base de datos
+- Si los cambios de código incorporaron nuevas tablas, columnas o índices, ejecutar "actualizar_bd.bat" en el equipo de destino antes de abrir la aplicación.
+
+Paso 5: Ejecución
+- Iniciar el sistema con "iniciar_restaurante.bat".
+
+
+=================================================================================
+RESUMEN DE CAMBIOS Y MANUAL DE USO
+================================================================================
+
+3. CAMBIOS IMPLEMENTADOS
+------------------------
+- Facturación con cliente: al finalizar una mesa, se solicita o confirma el cliente (Nombre y Cédula/RIF), guardándose junto a la factura y en la tabla de clientes.
+- Cliente por defecto configurable: en Ajustes/Configuración se define el nombre y cédula/RIF por defecto (ej. "Consumidor Final" / "V-00000000").
+- Dashboard de estadísticas para restaurantes:
+  * Tarjetas KPI en tiempo real: Ventas hoy (USD y Bs.), Ventas históricas (USD y Bs.), Total pedidos hoy e históricos, Ticket promedio hoy e histórico, Clientes registrados y Mesas ocupadas actuales.
+  * Top Platos más vendidos con cantidad facturada e importes totales.
+  * Buscador rápido de clientes por Nombre o Cédula/RIF.
+  * Historial de facturas por cliente ordenadas cronológicamente desde la más reciente en adelante.
+  * Botón para reimprimir/abrir el ticket PDF de cualquier factura histórica de un cliente.
+- Botón "Dashboard" en el menú lateral: acceso directo con un solo clic.
+- RUC reemplazado por RIF en interfaz gráfica, base de datos y facturas PDF.
+- Corrección de error al guardar datos de negocio (columnas ampliadas y auto-recuperación de registros).
+- Logo e ícono 100% configurables: se reflejan de inmediato en menú lateral, ícono de ventana y encabezado de tickets PDF.
+- Precios operan en USD; total en Bolívares (Bs.) y desglose de IVA se calculan y presentan al momento de facturar la mesa.
+
+- Impresión directa en tickera térmica de 80mm (Windows 11):
+  * Diseñado para impresoras térmicas de 80 mm (como Xprinter XP-80T / POS-80).
+  * Formato en rollo continuo optimizado a 80mm (227 pt) para evitar saltos de página o desperdicio de papel.
+  * Encabezado limpio con nombre de negocio configurable, RIF, dirección, teléfono y logo opcional.
+  * Se eliminó el texto redundante 'Nombre' en el ticket.
+- Pre-visualización opcional de la factura:
+  * Nuevo botón "Previsualizar" en la ventana de finalizar pedido ("Pagar"), en "Historial de Pedidos" y en "Dashboard".
+  * La previsualización es completamente opcional: el sistema sigue imprimiendo directo a la tickera de forma silenciosa por defecto al presionar "Facturar" o "Imprimir Directo".
+  * Desde el visor de previsualización también se puede imprimir si el operador lo desea.
+- Cierre de Caja del Día (Parcial X y Total Z):
+  * Cierre Parcial (Corte X): Auditoría a mitad de jornada o cambio de turno sin cerrar la caja.
+  * Cierre Total (Corte Z): Cierre fiscal y operativo definitivo al finalizar el día.
+  * Emisión en ticket térmico continuo de 80mm con:
+    - Totales en USD ($) y Bolívares (Bs.) según la tasa del día.
+    - Desglose impositivo: Base imponible (Subtotal) e IVA.
+    - Desglose por método de pago: Efectivo, Tarjeta, Pago Móvil, Transferencia y Mixto.
+    - Rendimiento operativo por Sala/Salón y ventas por Mozo/Mesero.
+    - Top de platos más vendidos del día con cantidades y montos.
+    - Líneas de firma para cajero y supervisor.
+  * Botones dedicados "Cierre Parcial (X)" y "Cierre Total (Z)" en:
+    - Menú Dashboard (acceso directo en el encabezado).
+    - Pestaña "Historial de Pedidos".
+  * Al solicitar el cierre, una ventana permite elegir entre: [Imprimir Directo (80mm)], [Previsualizar] en pantalla o Cancelar.
+
+4. CÓMO UTILIZAR LAS NUEVAS FUNCIONES
+-------------------------------------
+A. Asignar cliente y previsualizar o facturar directo:
+   1. En "Salas", abrir la mesa con el pedido activo y presionar "Finalizar".
+   2. Se abre la ventana con método de pago, cliente y dos opciones:
+      - "Facturar": Finaliza la mesa e imprime DIRECTO a la tickera térmica sin ventanas emergentes.
+      - "Previsualizar": Abre la factura en pantalla para revisarla antes de imprimir (opcional).
+
+B. Cierre de Caja del Día (Corte Parcial X y Corte Total Z):
+   1. Ir al "Dashboard" o a la pestaña "Historial de Pedidos".
+   2. Hacer clic en "Cierre Parcial (X)" (cambio de turno/auditoría) o "Cierre Total (Z)" (fin de jornada).
+   3. El sistema preguntará:
+      - [Imprimir Directo (80mm)]: Envía el ticket directamente a la impresora térmica.
+      - [Previsualizar]: Muestra el reporte completo en pantalla para revisarlo.
+   4. El ticket incluye resumen bi-monetario ($ y Bs.), IVA, métodos de pago, salas, mozos y platos vendidos.
+
+C. Configurar la Impresora de Tickets en Windows 11:
+   1. Ejecutar "listar_impresoras.bat" para ver los nombres exactos de las impresoras instaladas.
+   2. Abrir el archivo ".env" y definir:
+      IMPRESORA_TICKETS=XP-80T   (o el nombre exacto de la tickera instalada)
+      ACCION_IMPRESION=IMPRIMIR   (para impresión directa automática)
+      PDF_FORMATO=80MM
+
+D. Configurar el cliente por defecto del negocio:
+   1. Iniciar sesión como Administrador e ir a la pestaña "Config".
+   2. En la sección de configuración se encuentran los campos:
+      - Cliente Predeterminado: Nombre (ej. Consumidor Final).
+      - Cédula/RIF Predeterminado: Documento (ej. V-00000000).
+   3. Presionar "Actualizar".
+
+E. Usar el Dashboard y consultar facturas de clientes:
+   1. Hacer clic en el botón "Dashboard" en el menú lateral izquierdo.
+   2. Se presentan las métricas del día e históricas (ventas en USD y Bs., ticket promedio, mesas ocupadas y platos estrella).
+   3. En la sección "Búsqueda de Clientes":
+      - Escribir en la barra de búsqueda el nombre, cédula o RIF y presionar "Buscar" (o Enter).
+      - Presionar "Ver Todos" para listar la totalidad de clientes registrados.
+   4. Al seleccionar un cliente en la tabla, la tabla inferior cargará automáticamente todas sus facturas.
+   5. Seleccionar una factura y presionar "Imprimir Directo" o "Previsualizar Factura".
+   6. Presionar "Actualizar Métricas" para refrescar las estadísticas en tiempo real.
+
+5. EJECUCIÓN RÁPIDA
+-------------------
+- Carpeta: Restaurante_Ejecutable/
+- Paquete: Restaurante_Ejecutable.zip
+- Ejecutar: iniciar_restaurante.bat
+- Actualizar Base de Datos existente: ejecutar actualizar_bd.bat
+- Detectar impresoras: ejecutar listar_impresoras.bat

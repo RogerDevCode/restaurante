@@ -1,6 +1,7 @@
 @echo off
 title Sistema de Restaurante 2026 - Iniciando
 chcp 65001 >nul
+cd /d "%~dp0"
 cls
 
 echo ========================================================
@@ -8,11 +9,21 @@ echo       SISTEMA DE GESTIÓN DE RESTAURANTE 2026
 echo ========================================================
 echo.
 
+:: Configurar Java desde JAVA_HOME si no está en PATH
+where java >nul 2>&1
+if %errorlevel% neq 0 (
+    if defined JAVA_HOME (
+        if exist "%JAVA_HOME%\bin\java.exe" (
+            set "PATH=%JAVA_HOME%\bin;%PATH%"
+        )
+    )
+)
+
 :: Verificar si Java está instalado
 java -version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Java no está instalado o no se encuentra en el PATH.
-    echo Por favor instala Java 21 o Java 17 LTS siguiendo las instrucciones de README.txt.
+    echo [ERROR] Java no está instalado o no se encuentra en el PATH ni JAVA_HOME.
+    echo Por favor ejecute 'instalar_acceso_directo.bat' para configurar Java 21 automáticamente.
     echo.
     pause
     exit /b 1
@@ -27,6 +38,13 @@ if not exist ".env" (
         echo         es distinta a la por defecto, edita el archivo .env con el Bloc de Notas.
         echo.
     )
+)
+
+:: Verificar si existe el JAR distribuible en la carpeta actual
+if exist "Restaurante.jar" (
+    echo [INFO] Ejecutando Sistema desde Restaurante.jar...
+    java -jar "Restaurante.jar"
+    goto fin
 )
 
 :: Verificar si existe el JAR distribuible en dist/

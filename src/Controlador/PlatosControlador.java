@@ -31,4 +31,16 @@ public final class PlatosControlador {
     public boolean eliminar(int id) {
         return servicio.eliminar(id);
     }
+
+    public boolean desactivar(int id) {
+        return servicio.desactivar(id);
+    }
+
+    public boolean reactivar(int id) {
+        return servicio.reactivar(id);
+    }
+
+    public java.util.List<Modelo.Platos> listarInactivos() {
+        return servicio.listarInactivos();
+    }
 }

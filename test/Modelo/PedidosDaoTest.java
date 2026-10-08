@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public class PedidosDaoTest {
     private final Logger logger = Logger.getLogger(ErrorAplicacionException.class.getName());
@@ -76,6 +77,84 @@ public class PedidosDaoTest {
 
         org.junit.Assert.assertThrows(ErrorAplicacionException.class,
                 () -> new PedidosDao(proveedorFalso).registrarPedidoCompleto(pedido, Arrays.asList(detalle)));
+    }
+
+    @Test
+    public void purgarPedidosFinalizadosRechazaMesesMenorAUno() {
+        ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc() {
+            @Override public Connection getConnection() { throw new AssertionError("No debe conectar"); }
+        };
+        PedidosDao dao = new PedidosDao(proveedor);
+        org.junit.Assert.assertThrows(ErrorAplicacionException.class, () -> dao.purgarPedidosFinalizados(0));
+        org.junit.Assert.assertThrows(ErrorAplicacionException.class, () -> dao.purgarPedidosFinalizados(-1));
+    }
+
+    @Test
+    public void purgarPedidosFinalizadosEjecutaTransaccionYConsultasCorrectas() throws Exception {
+        List<String> sqlEjecutados = new ArrayList<>();
+        List<Integer> mesesParametros = new ArrayList<>();
+        java.util.concurrent.atomic.AtomicBoolean autoCommitDesactivado = new java.util.concurrent.atomic.AtomicBoolean(false);
+        java.util.concurrent.atomic.AtomicBoolean transaccionConfirmada = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        java.lang.reflect.InvocationHandler psHandler = (proxy, method, args) -> {
+            if ("setInt".equals(method.getName()) && args != null && args.length == 2) {
+                if ((int) args[0] == 1) {
+                    mesesParametros.add((int) args[1]);
+                }
+                return null;
+            }
+            if ("executeUpdate".equals(method.getName())) {
+                return 5;
+            }
+            return null;
+        };
+        java.sql.PreparedStatement psMock = (java.sql.PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{java.sql.PreparedStatement.class},
+                psHandler);
+
+        java.lang.reflect.InvocationHandler connHandler = (proxy, method, args) -> {
+            if ("getAutoCommit".equals(method.getName())) {
+                return true;
+            }
+            if ("setAutoCommit".equals(method.getName()) && args != null && args.length == 1) {
+                if (Boolean.FALSE.equals(args[0])) {
+                    autoCommitDesactivado.set(true);
+                }
+                return null;
+            }
+            if ("prepareStatement".equals(method.getName()) && args != null && args.length > 0) {
+                sqlEjecutados.add((String) args[0]);
+                return psMock;
+            }
+            if ("commit".equals(method.getName())) {
+                transaccionConfirmada.set(true);
+                return null;
+            }
+            return null;
+        };
+        Connection connMock = (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{Connection.class},
+                connHandler);
+
+        PedidosDao dao = new PedidosDao(new ProveedorConexionJdbc() {
+            @Override public Connection getConnection() { return connMock; }
+        });
+
+        int eliminados = dao.purgarPedidosFinalizados(6);
+
+        assertEquals(5, eliminados);
+        assertTrue(autoCommitDesactivado.get());
+        assertTrue(transaccionConfirmada.get());
+        assertEquals(2, sqlEjecutados.size());
+        assertTrue(sqlEjecutados.get(0).contains("detalle_pedidos"));
+        assertTrue(sqlEjecutados.get(0).contains("FINALIZADO"));
+        assertTrue(sqlEjecutados.get(1).contains("pedidos"));
+        assertTrue(sqlEjecutados.get(1).contains("FINALIZADO"));
+        assertEquals(2, mesesParametros.size());
+        assertEquals(Integer.valueOf(6), mesesParametros.get(0));
+        assertEquals(Integer.valueOf(6), mesesParametros.get(1));
     }
 
     private static final class CapturadorLogs extends Handler {

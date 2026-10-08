@@ -4,6 +4,8 @@ import Modelo.Config;
 import Modelo.DetallePedido;
 import Modelo.ErrorAplicacionException;
 import Modelo.Pedidos;
+import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -73,6 +75,39 @@ public class GeneradorPdfPedidoTest {
                 () -> new GeneradorPdfPedido(destino).generar(pedidoValido(), configuracionValida(), null));
 
         assertFalse(Files.exists(destino.resolve("pedido-42.pdf")));
+    }
+
+    @Test
+    public void pdfContieneMetodoPagoEnEncabezadoYCierre() throws Exception {
+        Path destino = temporal.newFolder("pdf-metodo-pago").toPath();
+        Pedidos pedido = pedidoValido();
+        pedido.setMetodoPago("TRANSFERENCIA");
+        Path archivo = new GeneradorPdfPedido(destino).generar(pedido, configuracionValida(), detalleValido());
+
+        assertTrue(Files.isRegularFile(archivo));
+        String textoPdf = extraerTextoPdf(archivo);
+        assertTrue("El PDF debe contener 'TRANSFERENCIA'", textoPdf.contains("TRANSFERENCIA"));
+    }
+
+    @Test
+    public void pdfUsaEfectivoComoMetodoPagoPorDefecto() throws Exception {
+        Path destino = temporal.newFolder("pdf-efectivo").toPath();
+        // El pedidoValido() no setea metodoPago, por lo tanto usa el default EFECTIVO
+        Path archivo = new GeneradorPdfPedido(destino).generar(pedidoValido(), configuracionValida(), detalleValido());
+
+        assertTrue(Files.isRegularFile(archivo));
+        String textoPdf = extraerTextoPdf(archivo);
+        assertTrue("El PDF debe contener 'EFECTIVO' como método de pago por defecto", textoPdf.contains("EFECTIVO"));
+    }
+
+    private String extraerTextoPdf(Path archivo) throws IOException {
+        PdfReader reader = new PdfReader(archivo.toAbsolutePath().toString());
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i <= reader.getNumberOfPages(); i++) {
+            sb.append(PdfTextExtractor.getTextFromPage(reader, i));
+        }
+        reader.close();
+        return sb.toString();
     }
 
     private Pedidos pedidoValido() {

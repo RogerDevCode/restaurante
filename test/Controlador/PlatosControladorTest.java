@@ -27,7 +27,10 @@ public class PlatosControladorTest {
         assertTrue(controlador.registrar(plato));
         assertTrue(controlador.modificar(plato));
         assertTrue(controlador.eliminar(7));
-        assertEquals(4, repositorio.operaciones.get());
+        assertTrue(controlador.desactivar(7));
+        assertTrue(controlador.reactivar(7));
+        assertTrue(controlador.listarInactivos().isEmpty());
+        assertEquals(7, repositorio.operaciones.get());
         assertEquals(7, repositorio.ultimoId.get());
     }
 
@@ -57,7 +60,10 @@ public class PlatosControladorTest {
 
         @Override public boolean registrar(Platos plato) { verificar(); ultimoPlato.set(plato); return true; }
         @Override public List<Platos> listarPorFecha(String nombre, String fecha) { verificar(); return Collections.emptyList(); }
-        @Override public boolean eliminar(int id) { verificar(); ultimoId.set(id); return true; }
+        @Override public boolean desactivar(int id) { verificar(); ultimoId.set(id); return true; }
+        @Override public boolean reactivar(int id) { verificar(); ultimoId.set(id); return true; }
+        @Override public List<Platos> listarInactivos() { verificar(); return Collections.emptyList(); }
+        @Override public boolean eliminar(int id) { return desactivar(id); }
         @Override public boolean modificar(Platos plato) { verificar(); ultimoPlato.set(plato); ultimoId.set(plato.getId()); return true; }
         private void verificar() { operaciones.incrementAndGet(); if (fallo != null) throw fallo; }
     }

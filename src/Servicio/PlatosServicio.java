@@ -46,12 +46,29 @@ public final class PlatosServicio {
         return repositorio.modificar(normalizar(plato));
     }
 
-    public boolean eliminar(int id) {
+    public boolean desactivar(int id) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         if (id <= 0) {
-            throw ErrorAplicacionException.validacion("Selecciona un plato válido para eliminar.");
+            throw ErrorAplicacionException.validacion("Selecciona un plato válido para desactivar.");
         }
-        return repositorio.eliminar(id);
+        return repositorio.desactivar(id);
+    }
+
+    public boolean reactivar(int id) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        if (id <= 0) {
+            throw ErrorAplicacionException.validacion("Selecciona un plato válido para reactivar.");
+        }
+        return repositorio.reactivar(id);
+    }
+
+    public java.util.List<Platos> listarInactivos() {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        return repositorio.listarInactivos();
+    }
+
+    public boolean eliminar(int id) {
+        return desactivar(id);
     }
 
     private void exigir(PoliticaAcceso.Accion accion) {

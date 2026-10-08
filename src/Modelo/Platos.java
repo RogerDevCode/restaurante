@@ -1,12 +1,16 @@
 package Modelo;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
 
 public class Platos {
     private int id;
     private String nombre;
-    private BigDecimal precio = BigDecimal.ZERO;
+    private BigDecimal precio = BigDecimal.ZERO.setScale(2);
     private String fecha;
+    private boolean activo = true;
+    private LocalDateTime desactivadoEn;
 
     public Platos() {
     }
@@ -42,7 +46,7 @@ public class Platos {
         if (precio == null) {
             throw ErrorAplicacionException.validacion("El precio del plato es obligatorio.");
         }
-        this.precio = precio;
+        this.precio = (precio.scale() <= 2) ? precio.setScale(2, RoundingMode.HALF_UP) : precio;
     }
 
     public String getFecha() {
@@ -53,7 +57,19 @@ public class Platos {
         this.fecha = fecha;
     }
 
-    
-    
-    
+    public boolean isActivo() {
+        return activo;
+    }
+
+    public void setActivo(boolean activo) {
+        this.activo = activo;
+    }
+
+    public LocalDateTime getDesactivadoEn() {
+        return desactivadoEn;
+    }
+
+    public void setDesactivadoEn(LocalDateTime desactivadoEn) {
+        this.desactivadoEn = desactivadoEn;
+    }
 }

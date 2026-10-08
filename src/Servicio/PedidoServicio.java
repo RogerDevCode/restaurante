@@ -50,10 +50,30 @@ public final class PedidoServicio {
                 throw ErrorAplicacionException.validacion("La cantidad de cada plato debe ser mayor que cero.");
             }
             validarImporte(detalle.getPrecioDecimal(), "El precio de cada plato");
-            BigDecimal precio = detalle.getPrecioDecimal().setScale(2, RoundingMode.UNNECESSARY);
+            BigDecimal precio = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
             totalDetalles = totalDetalles.add(precio.multiply(BigDecimal.valueOf(detalle.getCantidad())));
         }
-        if (pedido.getTotalDecimal().setScale(2, RoundingMode.UNNECESSARY).compareTo(totalDetalles) != 0) {
+
+        BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
+        BigDecimal subtotalEsperado = totalDetalles;
+        BigDecimal ivaEsperado = BigDecimal.ZERO;
+        BigDecimal totalConIva = subtotalEsperado;
+
+        if (ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0) {
+            ivaEsperado = subtotalEsperado.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            totalConIva = subtotalEsperado.add(ivaEsperado).setScale(2, RoundingMode.HALF_UP);
+        }
+
+        if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP).compareTo(subtotalEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
+        }
+
+        if (pedido.getIvaMonto() != null && pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP).compareTo(ivaEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El monto del IVA no coincide con el porcentaje aplicado.");
+        }
+
+        BigDecimal totalPedido = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
+        if (totalPedido.compareTo(totalConIva) != 0 && totalPedido.compareTo(subtotalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles.");
         }
     }

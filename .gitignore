@@ -6,6 +6,9 @@ logs/
 # NetBeans & Java Build Outputs
 build/
 dist/
+Restaurante_Ejecutable/
+Restaurante_Ejecutable.zip
+respaldos/
 nbproject/private/
 .nb-cache/
 .commandcode/

@@ -222,7 +222,7 @@
         <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
           <Image iconType="3" name="/Img/titulo.png"/>
         </Property>
-        <Property name="text" type="java.lang.String" value="Restaurante la Delicia"/>
+        <Property name="text" type="java.lang.String" value="Restaurante"/>
         <Property name="focusable" type="boolean" value="false"/>
         <Property name="horizontalTextPosition" type="int" value="2"/>
       </Properties>

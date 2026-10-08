@@ -28,7 +28,7 @@ public class AdversarialModelTest {
         pedido.setTotalDecimal(new BigDecimal("10.00"));
         pedido.setTotalBs(pedido.getTotalDecimal().multiply(pedido.getTasaCambio()));
         
-        assertEquals(new BigDecimal("365.0000"), pedido.getTotalBs());
+        assertEquals(new BigDecimal("365.00"), pedido.getTotalBs());
     }
 
     @Test

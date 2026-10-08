@@ -125,6 +125,134 @@ public class PedidosControladorTest {
         assertEquals(5, operaciones.get());
     }
 
+    @Test
+    public void previsualizarPdfPedidoDelegaAlServicioPdfSinImpresionDirecta() {
+        AtomicInteger idPrevisualizado = new AtomicInteger();
+        PedidoPdfServicio pdf = new PedidoPdfServicio(
+                this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()),
+                path -> { throw new AssertionError("No debe imprimir directo"); },
+                path -> idPrevisualizado.set(42));
+        PedidosControlador controlador = new PedidosControlador(
+                new PedidoServicio(new PedidosRepositorioFalso()),
+                pdf, politica("Administrador"),
+                new ConsultaPedidosServicio(new PedidosRepositorioFalso(), politica("Administrador")));
+
+        controlador.previsualizarPdfPedido(42);
+
+        assertEquals(42, idPrevisualizado.get());
+    }
+
+    @Test
+    public void operacionesCierreCajaDeleganAlServicioConfigurado() throws Exception {
+        AtomicReference<String> accionCierre = new AtomicReference<>();
+        Servicio.GeneradorPdfCierre generador = new Servicio.GeneradorPdfCierre(temporal.getRoot().toPath());
+        Modelo.CierreCajaDao daoFalso = new Modelo.CierreCajaDao() {
+            @Override
+            public Modelo.CierreCaja consultarCierre(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor, Config cfg) {
+                Modelo.CierreCaja c = new Modelo.CierreCaja();
+                c.setTipo(tipo);
+                c.setFecha(fecha != null ? fecha : "2026-10-07");
+                c.setFechaHoraEmision("2026-10-07 18:00:00");
+                c.setUsuarioEmisor(usuarioEmisor);
+                return c;
+            }
+        };
+        Servicio.CierreCajaServicio cierreServicio = new Servicio.CierreCajaServicio(
+                daoFalso,
+                this::configuracion,
+                generador,
+                path -> accionCierre.set("IMPRIMIR"),
+                path -> accionCierre.set("PREVISUALIZAR")
+        );
+
+        PedidoPdfServicio pdf = new PedidoPdfServicio(
+                this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> { });
+        PedidosControlador controlador = new PedidosControlador(
+                new PedidoServicio(new PedidosRepositorioFalso()),
+                pdf, politica("Administrador"),
+                new ConsultaPedidosServicio(new PedidosRepositorioFalso(), politica("Administrador")),
+                cierreServicio);
+
+        // 1. Previsualizar Corte X
+        Path resPrev = controlador.previsualizarCierreCaja("2026-10-07", Modelo.CierreCaja.TipoCierre.PARCIAL, "Admin");
+        assertNotNull(resPrev);
+        assertEquals("PREVISUALIZAR", accionCierre.get());
+
+        // 2. Imprimir Corte Z
+        Path resImp = controlador.imprimirCierreCaja("2026-10-07", Modelo.CierreCaja.TipoCierre.TOTAL, "Admin");
+        assertNotNull(resImp);
+        assertEquals("IMPRIMIR", accionCierre.get());
+    }
+
+    @Test
+    public void operacionesCierreCajaLanzanErrorSiServicioNoEstaConfigurado() {
+        PedidosControlador controladorSinCierre = new PedidosControlador(
+                new PedidoServicio(new PedidosRepositorioFalso()),
+                new PedidoPdfServicio(this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
+                        new GeneradorPdfPedido(temporal.getRoot().toPath()), a -> {}),
+                politica("Administrador"),
+                new ConsultaPedidosServicio(new PedidosRepositorioFalso(), politica("Administrador")),
+                null);
+
+        assertThrows(IllegalStateException.class, () ->
+                controladorSinCierre.imprimirCierreCaja("2026-10-07", Modelo.CierreCaja.TipoCierre.TOTAL, "Admin"));
+
+        assertThrows(IllegalStateException.class, () ->
+                controladorSinCierre.previsualizarCierreCaja("2026-10-07", Modelo.CierreCaja.TipoCierre.PARCIAL, "Admin"));
+    }
+
+    @Test
+    public void reimprimirPdfPedidoRegistraAuditoriaExito() {
+        AtomicReference<String> auditoriaAccion = new AtomicReference<>();
+        Modelo.AuditoriaPedidosDao daoAuditoria = new Modelo.AuditoriaPedidosDao() {
+            @Override
+            public boolean registrar(Modelo.AuditoriaPedido aud) {
+                auditoriaAccion.set(aud.getAccion());
+                return true;
+            }
+        };
+
+        PedidoPdfServicio pdf = new PedidoPdfServicio(
+                this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> { });
+        ConsultaPedidosServicio consultas = new ConsultaPedidosServicio(
+                new PedidosRepositorioFalso(), politica("Administrador"), daoAuditoria);
+        PedidosControlador controlador = new PedidosControlador(
+                new PedidoServicio(new PedidosRepositorioFalso()),
+                pdf, politica("Administrador"), consultas);
+
+        controlador.reimprimirPdfPedido(42, "Copia solicitada", "Admin");
+        assertEquals("REIMPRESION", auditoriaAccion.get());
+    }
+
+    @Test
+    public void reimprimirPdfPedidoRegistraAuditoriaFalloAnteError() {
+        AtomicReference<String> auditoriaAccion = new AtomicReference<>();
+        Modelo.AuditoriaPedidosDao daoAuditoria = new Modelo.AuditoriaPedidosDao() {
+            @Override
+            public boolean registrar(Modelo.AuditoriaPedido aud) {
+                auditoriaAccion.set(aud.getAccion());
+                return true;
+            }
+        };
+
+        PedidoPdfServicio pdfConError = new PedidoPdfServicio(
+                id -> { throw new RuntimeException("Error impresora"); },
+                id -> Collections.singletonList(detalle()), this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> { });
+        ConsultaPedidosServicio consultas = new ConsultaPedidosServicio(
+                new PedidosRepositorioFalso(), politica("Administrador"), daoAuditoria);
+        PedidosControlador controlador = new PedidosControlador(
+                new PedidoServicio(new PedidosRepositorioFalso()),
+                pdfConError, politica("Administrador"), consultas);
+
+        assertThrows(RuntimeException.class, () ->
+                controlador.reimprimirPdfPedido(42, "Copia solicitada", "Admin"));
+        assertEquals("REIMPRESION_FALLIDA", auditoriaAccion.get());
+    }
+
     private Pedidos pedido(int id) {
         Pedidos pedido = new Pedidos();
         pedido.setId(id);
@@ -154,3 +282,4 @@ public class PedidosControladorTest {
         return detalle;
     }
 }
+

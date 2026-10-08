@@ -21,6 +21,13 @@ public final class AutenticacionServicio {
         return repositorio.autenticar(correo.trim(), clave);
     }
 
+    public Optional<Usuario> autenticar(String correo, char[] clave) {
+        if (correo == null || correo.trim().isEmpty() || clave == null || clave.length == 0) {
+            throw ErrorAplicacionException.validacion("El correo y la contraseña son obligatorios.");
+        }
+        return autenticar(correo, new String(clave));
+    }
+
     private void validarCredenciales(String correo, String clave) {
         if (correo == null || correo.trim().isEmpty() || clave == null || clave.isEmpty()) {
             throw ErrorAplicacionException.validacion("El correo y la contraseña son obligatorios.");

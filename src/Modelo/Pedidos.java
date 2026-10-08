@@ -1,6 +1,7 @@
 package Modelo;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class Pedidos {
     private int id;
@@ -18,6 +19,9 @@ public class Pedidos {
     private BigDecimal subtotalBs;
     private BigDecimal ivaBs;
     private BigDecimal totalBs;
+    private String clienteNombre = "Consumidor Final";
+    private String clienteDocumento = "V-00000000";
+    private String metodoPago = "EFECTIVO";
 
     public Pedidos() {
     }
@@ -76,7 +80,7 @@ public class Pedidos {
     }
 
     public void setSubtotal(BigDecimal subtotal) {
-        this.subtotal = subtotal;
+        this.subtotal = subtotal != null ? subtotal.setScale(2, RoundingMode.HALF_UP) : null;
     }
 
     public BigDecimal getIvaPorcentaje() {
@@ -92,7 +96,7 @@ public class Pedidos {
     }
 
     public void setIvaMonto(BigDecimal ivaMonto) {
-        this.ivaMonto = ivaMonto;
+        this.ivaMonto = ivaMonto != null ? ivaMonto.setScale(2, RoundingMode.HALF_UP) : null;
     }
 
     public BigDecimal getTotalDecimal() {
@@ -103,7 +107,7 @@ public class Pedidos {
         if (total == null) {
             throw ErrorAplicacionException.validacion("El total del pedido es obligatorio.");
         }
-        this.total = total;
+        this.total = total.setScale(2, RoundingMode.HALF_UP);
     }
 
     public String getSala() {
@@ -143,7 +147,7 @@ public class Pedidos {
     }
 
     public void setSubtotalBs(BigDecimal subtotalBs) {
-        this.subtotalBs = subtotalBs;
+        this.subtotalBs = subtotalBs != null ? subtotalBs.setScale(2, RoundingMode.HALF_UP) : null;
     }
 
     public BigDecimal getIvaBs() {
@@ -151,7 +155,7 @@ public class Pedidos {
     }
 
     public void setIvaBs(BigDecimal ivaBs) {
-        this.ivaBs = ivaBs;
+        this.ivaBs = ivaBs != null ? ivaBs.setScale(2, RoundingMode.HALF_UP) : null;
     }
 
     public BigDecimal getTotalBs() {
@@ -159,6 +163,56 @@ public class Pedidos {
     }
 
     public void setTotalBs(BigDecimal totalBs) {
-        this.totalBs = totalBs;
+        this.totalBs = totalBs != null ? totalBs.setScale(2, RoundingMode.HALF_UP) : null;
+    }
+
+    public String getClienteNombre() {
+        return clienteNombre == null || clienteNombre.trim().isEmpty()
+                ? "Consumidor Final" : clienteNombre.trim();
+    }
+
+    public void setClienteNombre(String clienteNombre) {
+        if (clienteNombre == null || clienteNombre.trim().isEmpty()) {
+            this.clienteNombre = "Consumidor Final";
+        } else {
+            this.clienteNombre = clienteNombre.trim();
+        }
+    }
+
+    public String getClienteDocumento() {
+        return clienteDocumento == null || clienteDocumento.trim().isEmpty()
+                ? "V-00000000" : clienteDocumento.trim();
+    }
+
+    public void setClienteDocumento(String clienteDocumento) {
+        if (clienteDocumento == null || clienteDocumento.trim().isEmpty()) {
+            this.clienteDocumento = "V-00000000";
+        } else {
+            this.clienteDocumento = clienteDocumento.trim();
+        }
+    }
+
+    public String getMetodoPago() {
+        return metodoPago == null || metodoPago.trim().isEmpty() ? "EFECTIVO" : metodoPago.trim().toUpperCase();
+    }
+
+    public void setMetodoPago(String metodoPago) {
+        if (metodoPago == null || metodoPago.trim().isEmpty()) {
+            this.metodoPago = "EFECTIVO";
+            return;
+        }
+        String normalizado = metodoPago.trim().toUpperCase();
+        switch (normalizado) {
+            case "EFECTIVO":
+            case "TRANSFERENCIA":
+            case "TARJETA":
+            case "PAGO_MOVIL":
+            case "MIXTO":
+                this.metodoPago = normalizado;
+                break;
+            default:
+                throw ErrorAplicacionException.validacion(
+                        "Método de pago no válido: " + metodoPago + ". Debe ser EFECTIVO, TRANSFERENCIA, TARJETA, PAGO_MOVIL o MIXTO.");
+        }
     }
 }

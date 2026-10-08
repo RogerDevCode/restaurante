@@ -1,315 +1,468 @@
-# Restaurante — Documentación de Arquitectura y QA
+# Plan de Mejoras — Restaurante 2026
 
-> **Motor:** MySQL 8.4.11 (LTS) · **Compilador:** Java 17 (target 17) · **Runtime:** OpenJDK 17 Temurin · **Build:** Apache Ant 1.10.15 · **Tests:** JUnit 4.13.2
-
----
-
-## Estado del Proyecto
-
-| Indicador | Valor |
-|:---|:---|
-| Archivos de producción (`src/`) | **47 archivos Java** |
-| Archivos de pruebas (`test/`) | **41 archivos Java** |
-| Pruebas unitarias (`ant test`) | **111 pruebas, 38 suites · 0 fallos · 0 errores** |
-| Pruebas de integración MySQL (`ant integration-test`) | **18 pruebas, 4 suites · 0 fallos · 0 errores** |
-| Migraciones de base de datos | **4 scripts aplicados** |
-| Rama principal | `main` — árbol limpio, sincronizado con `origin` |
+> **Convenciones de este documento**
+> - Cada tarea lleva el archivo exacto a modificar con número de línea de referencia.
+> - Las tareas de BD se ejecutan **antes** que el código Java que las usa.
+> - Las migraciones siguen la numeración existente (`008_`, `009_`, …).
+> - Los tests a actualizar se mencionan junto a la tarea que los afecta.
 
 ---
 
-## Arquitectura de Capas (MVC + Infraestructura)
+## Resumen de sprints
 
+| Sprint | Qué incluye | Riesgo | Estado |
+|--------|-------------|--------|--------|
+| 1 | Botones `+`/`−` en carrito (sin BD) | Muy bajo | ✅ Completado & Probado Adversarialmente |
+| 2 | Filtros rápidos en historial (sin BD) | Muy bajo | ✅ Completado & Probado Adversarialmente |
+| 3 | Leyenda + timestamp en panel de mesas (sin BD) | Muy bajo | ✅ Completado & Probado Adversarialmente |
+| 4 | Método de pago al finalizar (migración + UI + PDF) | Medio | ✅ Completado & Probado Adversarialmente |
+| 5 | Soft delete platos + toggle en UI | Bajo | ✅ Completado & Probado Adversarialmente |
+| 6 | Purga configurable de registros históricos | Medio | ✅ Completado & Probado Adversarialmente |
+| 7 | Re-impresión de PDF desde historial | Bajo | ✅ Completado & Probado Adversarialmente |
+| 8 | Dashboard visible al login de administrador | Muy bajo | ✅ Completado & Probado Adversarialmente |
+
+---
+
+## Sprint 1 · Botones `+` / `−` en el carrito con subtotal por línea
+
+### Contexto
+El carrito (`tableMenu`) ya muestra columnas `[id, nombre, cantidad, precio, subtotal, comentario]`
+([`Sistema.java:1782-1797`](src/Vista/Sistema.java#L1782)). Al agregar el mismo plato ya suma cantidad
+([`Sistema.java:1771-1779`](src/Vista/Sistema.java#L1771)). Solo faltan los botones de ajuste fino.
+
+### Tareas
+
+#### 1.1 Agregar botones en la toolbar del carrito — `Sistema.java`
+- Localizar el panel que contiene `btnEliminarTempPlato` (~línea 884 del `.form`).
+- Añadir `btnMasCantidad` (`+`) y `btnMenosCantidad` (`−`) al mismo panel con `AbsoluteConstraints`.
+- **Listener `btnMasCantidad`:**
+  ```
+  fila seleccionada → leer cantidadActual de columna 2
+  cantidadNueva = cantidadActual + 1
+  subtotalNuevo = precio (col 3) × cantidadNueva
+  tmp.setValueAt(cantidadNueva, fila, 2)
+  tmp.setValueAt(subtotalNuevo, fila, 4)
+  TotalPagar(tableMenu, totalMenu)
+  ```
+- **Listener `btnMenosCantidad`:**
+  ```
+  si cantidadActual > 1 → igual que arriba con cantidadNueva = cantidadActual - 1
+  si cantidadActual == 1 → eliminar fila (igual que btnEliminarTempPlato)
+  TotalPagar(tableMenu, totalMenu)
+  ```
+- Deshabilitar ambos botones si ninguna fila está seleccionada
+  (usar `tableMenu.getSelectionModel().addListSelectionListener`).
+
+#### 1.2 Tests — `MejorasUIYServicioTest.java`
+- Agregar casos: aumentar cantidad, disminuir a 1, disminuir a 0 (elimina fila), subtotal correcto.
+
+**No hay cambios de BD ni de modelo.**
+
+---
+
+## Sprint 2 · Filtros rápidos en historial
+
+### Contexto
+El filtro actual ([`Sistema.java:2636-2646`](src/Vista/Sistema.java#L2636))
+usa un `RowFilter.regexFilter` sobre `TablePedidos`.
+El estado del pedido está en la columna 5 (valor `PENDIENTE` / `FINALIZADO`) —
+verificar índice exacto con los headers declarados en `TablePedidos`.
+
+### Tareas
+
+#### 2.1 Añadir controles en `jPanel6` — `Sistema.java` (constructor, ~línea 157)
+Junto a `txtBuscarHistorial` y `lblBuscarHistorial` agregar:
 ```
-src/
-├── infraestructura/          Acceso a datos JDBC, logging, seguridad
-├── Modelo/                   Dominio, entidades, excepciones, contratos
-├── Servicio/                 Casos de uso, reglas de negocio, autorización
-├── Controlador/              Coordinadores entre servicio y vista
-├── Vista/                    Ventanas Swing + SwingWorkers asíncronos
-└── restaurante/              Composition root (main)
-```
-
-### Capas y reglas de dependencia
-
-| Capa | Puede depender de | No puede depender de |
-|:---|:---|:---|
-| `infraestructura` | Nada del proyecto | — |
-| `Modelo` (dominio) | Nada del proyecto | Todo lo demás |
-| `Servicio` | `Modelo`, contratos inyectables | `Vista`, `Controlador`, JDBC directo |
-| `Controlador` | `Servicio`, `Modelo` | `Vista` (salvo tipos genéricos) |
-| `Vista` | `Controlador`, `Modelo`, `SwingWorker`s | JDBC directo, `Servicio` directo |
-| `restaurante.Restaurante` | Toda la aplicación | — (es el composition root) |
-
----
-
-## Inventario de Archivos de Producción (47)
-
-### `src/infraestructura/` — 4 archivos
-
-| Archivo | Responsabilidad |
-|:---|:---|
-| `ProveedorConexionJdbc.java` | Abre conexiones JDBC leyendo `.env`, variables de entorno o propiedades de sistema. Soporta sobreescritura para pruebas aisladas. |
-| `ConfiguracionLogs.java` | Instala el handler de logging antes de aceptar cualquier evento. Aborta el arranque si no puede inicializar el archivo diario. |
-| `ArchivoLogDiario.java` | Rota archivos `logs/restaurante-AAAA-MM-DD.log` diariamente, purga por mes calendario (soporta años bisiestos y cambios de año), y mantiene un canal de emergencia durable ante fallos del handler. |
-| `PasswordHasher.java` | PBKDF2-HMAC-SHA256 con 600 000 iteraciones y salt aleatorio de 16 bytes. Comparación en tiempo constante. Soporta migración transparente de contraseñas legacy. |
-
-### `src/Modelo/` — 14 archivos
-
-**Entidades de dominio:**
-
-| Archivo | Responsabilidad |
-|:---|:---|
-| `Usuario.java` | Entidad de usuario autenticado (id, nombre, correo, password, rol). |
-| `Config.java` | Bean de configuración empresarial (RUC/RIF, nombre, teléfono, dirección, mensaje, tasa_dolar). |
-| `Platos.java` | Entidad de plato con precio base en USD (`BigDecimal`). |
-| `Salas.java` | Entidad de sala con número de mesas. |
-| `Pedidos.java` | Encabezado de pedido con total base USD, tasa de cambio a Bs., total en Bs. (`BigDecimal`), estado (`PENDIENTE` / `FINALIZADO`), sala y usuario. |
-| `DetallePedido.java` | Línea de detalle con precio base en USD (`BigDecimal`), cantidad y comentario. |
-| `Conexion.java` | Fachada compatible; delega la apertura JDBC a `ProveedorConexionJdbc`. |
-
-**Excepciones de aplicación:**
-
-| Archivo | Descripción |
-|:---|:---|
-| `ErrorAplicacionException.java` | Base para errores de aplicación. Distingue `WARNING` (validaciones, conflictos de negocio) de `SEVERE` (fallos técnicos). Registra exactamente una vez al crearse. |
-| `DataAccessException.java` | Error técnico JDBC; preserva la `SQLException` como causa. |
-| `PedidoPendienteExistenteException.java` | Conflicto de negocio `WARNING` cuando una mesa ya tiene un pedido pendiente. |
-
-**Contratos de persistencia (interfaces inyectables):**
-
-| Archivo | Operaciones principales |
-|:---|:---|
-| `AutenticacionRepositorio.java` | `autenticar(String correo, String clave)` |
-| `PedidosRepositorio.java` | `registrarPedidoCompleto()`, `verPedido()`, `verPedidoDetalle()`, `listarPedidos()`, `actualizarEstado()` |
-| `PlatosRepositorio.java` | `registrar()`, `listarPorFecha()`, `eliminar()`, `modificar()` |
-| `SalasRepositorio.java` | `registrar()`, `listar()`, `eliminar()`, `modificar()` |
-
-### `src/Modelo/` — DAOs JDBC — 4 archivos
-
-| Archivo | Detalles técnicos clave |
-|:---|:---|
-| `LoginDao.java` | Autenticación con migración PBKDF2 en primer login; captura correo duplicado (MySQL 1062 → `WARNING`); gestiona datos de empresa y tasa de cambio USD/Bs.; lista usuarios como `Usuario`. |
-| `PedidosDao.java` | Transacción atómica con rollback automático; ID recuperado con `getGeneratedKeys()`; snapshot histórico de `tasa_cambio` y `total_bs`; detecta conflicto de mesa (`uq_pedidos_mesa_pendiente`); finalización y listado histórico bimonetario. |
-| `PlatosDao.java` | Filtro por `fecha` y nombre con parámetros SQL; `try-with-resources` en todas las operaciones. |
-| `SalasDao.java` | CRUD completo; traduce restricción foránea (MySQL 1451) a mensaje de negocio explícito. |
-
-### `src/Servicio/` — 8 archivos
-
-| Archivo | Responsabilidad |
-|:---|:---|
-| `AutenticacionServicio.java` | Valida entradas y delega al repositorio `Usuario`; sin SQL ni Swing. |
-| `PedidoServicio.java` | Valida y orquesta el registro completo de un pedido. |
-| `PlatosServicio.java` | Valida y gestiona el catálogo de platos diarios. |
-| `SalasServicio.java` | Valida y gestiona salas y número de mesas. |
-| `ConsultaPedidosServicio.java` | Recupera pedidos, estados y detalles para la vista. |
-| `GeneradorPdfPedido.java` | Ensambla el PDF con iText desde modelos; renderiza montos bimonetarios (Bs. oficial y $ USD base) y tasa de cambio; sin JDBC ni AWT. |
-| `PedidoPdfServicio.java` | Coordina consulta, generación y apertura del PDF con funciones inyectables; propaga fallo del visor como `SEVERE`. |
-| `PoliticaAcceso.java` | RBAC: `Administrador` tiene acceso total; `Asistente` solo puede consultar salas/platos y registrar pedidos. |
-
-**Acciones de `PoliticaAcceso`:**
-`CONSULTAR_SALAS` · `CONSULTAR_PLATOS` · `REGISTRAR_PEDIDOS` · `GESTIONAR_PEDIDOS` · `GESTIONAR_SALAS` · `GESTIONAR_PLATOS` · `GESTIONAR_USUARIOS` · `EDITAR_CONFIGURACION`
-
-### `src/Controlador/` — 4 archivos
-
-| Archivo | Delega a |
-|:---|:---|
-| `LoginControlador.java` | `AutenticacionServicio` |
-| `PedidosControlador.java` | `PedidoServicio`, `ConsultaPedidosServicio`, `PedidoPdfServicio` |
-| `PlatosControlador.java` | `PlatosServicio` |
-| `SalasControlador.java` | `SalasServicio` |
-
-### `src/Vista/` — 12 archivos
-
-**Ventanas principales:**
-
-| Archivo | Estado |
-|:---|:---|
-| `FrmLogin.java` | Recibe `LoginControlador`; usa `AutenticacionSwingWorker`; Look&Feel registrado como `WARNING` si falla. |
-| `Sistema.java` | Recibe `Usuario` y controladores; toda operación JDBC pasa por un `SwingWorker`; autorización vía `PoliticaAcceso`; cálculo y visualización bimonetaria en tiempo real (Bs. y $ USD); edición de tasa de cambio en panel Configuración. |
-| `ManejadorErroresSwing.java` | Captura excepciones no atendidas en EDT y otros hilos; `RuntimeException` se registra y muestra; `Error` se relanza para el handler global. |
-
-**Utilidades de vista:**
-
-| Archivo | Descripción |
-|:---|:---|
-| `Eventos.java` | Utilidades de eventos de teclado; reubicado de `Modelo` a `Vista`. |
-| `Tables.java` | Renderizador de celdas de tablas Swing; reubicado de `Modelo` a `Vista`. |
-
-**SwingWorkers asíncronos (7) — ninguna consulta JDBC bloquea el EDT:**
-
-| Archivo | Operación asíncrona |
-|:---|:---|
-| `AutenticacionSwingWorker.java` | Login |
-| `FinalizarPedidoSwingWorker.java` | Cambio de estado del pedido |
-| `ListaPedidosSwingWorker.java` | Historial de pedidos |
-| `ListaPlatosSwingWorker.java` | Menú del día |
-| `ListaSalasSwingWorker.java` | Listado de salas en tabla y panel |
-| `PanelMesasSwingWorker.java` | Generación dinámica de botones de mesas |
-| `PedidoEnPantallaSwingWorker.java` | Detalle de pedido seleccionado |
-
-### `src/restaurante/` — 2 archivos
-
-| Archivo | Responsabilidad |
-|:---|:---|
-| `Restaurante.java` | Composition Root. Instala logs y manejador de errores Swing. Construye e inyecta todos los controladores. Abre `FrmLogin` en el EDT. |
-| `SimularUsuario.java` | Simulador interactivo CLI de usuario que reproduce 9 pasos operativos completos (autenticación, menú, toma de pedido bimonetario, concurrencia de mesa, cobro y auditoría). |
-
----
-
-## Infraestructura de Base de Datos
-
-### Motor
-- **Imagen Docker:** `mysql:8.4.11` (LTS)
-- **Compose de desarrollo:** `docker-compose.yml` — volumen persistente, puerto `127.0.0.1:3306`, healthcheck cada 5 s, credenciales desde `.env` (excluido de Git).
-- **Compose de integración:** `docker-compose.integration.yml` — base `restaurante_test`, puerto `127.0.0.1:3307`, volumen y red aislados, destruidos automáticamente al terminar.
-
-### Esquema (6 tablas)
-
-| Tabla | Columnas clave | Restricciones |
-|:---|:---|:---|
-| `usuarios` | `id`, `nombre`, `correo`, `pass` (varchar 255), `rol` | `uq_usuarios_correo` — correo único |
-| `salas` | `id`, `nombre`, `mesas` | — |
-| `platos` | `id`, `nombre`, `precio` (decimal 10,2 en USD base), `fecha` | — |
-| `pedidos` | `id`, `id_sala`, `num_mesa`, `fecha`, `total` (decimal 10,2 USD), `tasa_cambio` (decimal 12,4), `total_bs` (decimal 14,2), `estado`, `usuario` | `uq_pedidos_mesa_pendiente` — columnas generadas STORED; FK → `salas.id` |
-| `detalle_pedidos` | `id`, `nombre`, `precio` (decimal 10,2 USD), `cantidad`, `comentario`, `id_pedido` | FK → `pedidos.id` |
-| `config` | `id`, `ruc`, `nombre`, `telefono`, `direccion`, `mensaje`, `tasa_dolar` (decimal 12,4) | — |
-
-### Migraciones aplicadas
-
-| Script | Descripción |
-|:---|:---|
-| `db/migrations/001_un_pedido_pendiente_por_mesa.sql` | Índice único condicional sobre columnas generadas STORED; impide más de un pedido `PENDIENTE` por sala/mesa. |
-| `db/migrations/002_correo_usuario_unico.sql` | Índice único `uq_usuarios_correo`; evita altas duplicadas. |
-| `db/migrations/003_password_hash_capacity.sql` | Amplía `pass` a `varchar(255)` para acomodar los hashes PBKDF2. |
-| `db/migrations/004_tasa_cambio_config.sql` | Añade columna `tasa_dolar` a `config` y columnas históricas `tasa_cambio` y `total_bs` a `pedidos`. |
-
----
-
-## Suites de Pruebas Automatizadas
-
-### Pruebas unitarias — `ant test` (sin MySQL, sin Docker)
-
-**111 pruebas · 38 suites · 0 fallos · 0 errores**
-
-| Suite | Tests | Qué verifica |
-|:---|---:|:---|
-| `Controlador.LoginControladorTest` | 1 | Delegación al servicio de autenticación con `Usuario` |
-| `Controlador.PedidosControladorTest` | 3 | Registro, consulta y PDF de pedidos |
-| `Controlador.PlatosControladorTest` | 2 | Delegación y propagación de fallos |
-| `Controlador.SalasControladorTest` | 2 | Delegación y propagación de fallos |
-| `Modelo.AdversarialModelTest` | 3 | Ataque a valores límite, tasas extremas y strings gigantes |
-| `Modelo.DetallePedidoTest` | 1 | Validación de `BigDecimal` en precio |
-| `Modelo.ErrorAplicacionExceptionTest` | 6 | Severidad, causa preservada y log único |
-| `Modelo.PedidosDaoTest` | 2 | Rechazo de argumentos nulos antes de conectar |
-| `Modelo.PedidosTest` | 1 | Validación de `BigDecimal` en total |
-| `Modelo.PlatosDaoTest` | 2 | Rechazo de fecha nula y nombre; sin BD |
-| `Modelo.PlatosTest` | 1 | Validación de `BigDecimal` en precio |
-| `Modelo.SalasDaoTest` | 1 | Rechazo de argumento inválido; sin BD |
-| `Modelo.UsuarioTest` | 1 | Construcción y accesores de entidad |
-| `Servicio.AdversarialValidationTest` | 11 | Ataque a límites, valores negativos, totales incompatibles y bypass RBAC |
-| `Servicio.AutenticacionServicioTest` | 4 | Validaciones, delegación, rechazo y advertencia |
-| `Servicio.CombinatoriaReglasNegocioTest` | 8 | Matriz combinatoria completa de roles, precios límite, fechas bisiestas y redondeo |
-| `Servicio.ConsultaPedidosServicioTest` | 4 | Consulta de pedidos, detalles y estado |
-| `Servicio.GeneradorPdfPedidoTest` | 3 | Generación PDF con datos de prueba; firma `%PDF-` |
-| `Servicio.PedidoPdfServicioTest` | 2 | Delegación y propagación de fallo del visor |
-| `Servicio.PedidoServicioTest` | 4 | Validaciones, delegación, rechazo y propagación técnica |
-| `Servicio.PlatosServicioTest` | 4 | Reglas de negocio sin BD |
-| `Servicio.PoliticaAccesoTest` | 3 | Permiso de Administrador, restricciones de Asistente |
-| `Servicio.SalasServicioTest` | 4 | Reglas de negocio sin BD |
-| `Vista.AutenticacionSwingWorkerTest` | 2 | Ejecución asíncrona y callback en EDT |
-| `Vista.EventosTest` | 1 | Registro de evento de teclado |
-| `Vista.FinalizarPedidoSwingWorkerTest` | 4 | Éxito, fallo y callback seguro |
-| `Vista.ListaPedidosSwingWorkerTest` | 2 | Carga asíncrona y callback |
-| `Vista.ListaPlatosSwingWorkerTest` | 2 | Carga asíncrona y callback |
-| `Vista.ListaSalasSwingWorkerTest` | 2 | Carga asíncrona y callback |
-| `Vista.ManejadorErroresSwingTest` | 6 | RuntimeException, Error, fallo de diálogo, sin datos sensibles |
-| `Vista.PanelMesasSwingWorkerTest` | 2 | Generación dinámica y callback |
-| `Vista.PedidoEnPantallaSwingWorkerTest` | 2 | Detalle de pedido y callback |
-| `Vista.TablesTest` | 1 | Renderizador de celda |
-| `infraestructura.ArchivoLogDiarioTest` | 7 | Rotación, purga mensual, canal de emergencia y fallo cerrado |
-| `infraestructura.ConexionTest` | 2 | Error de `.env` malformado propagado como `SQLException` |
-| `infraestructura.ConfiguracionLogsTest` | 1 | Arranque aborta si no puede crear el log diario |
-| `infraestructura.PasswordHasherTest` | 2 | Hash, verificación y rechazo de hash corrupto |
-| `infraestructura.ProveedorConexionJdbcTest` | 2 | Precedencia de propiedades y error de `.env` |
-
-### Pruebas de integración MySQL — `ant integration-test`
-
-**18 pruebas · 4 suites · 0 fallos · 0 errores**
-Ejecutadas contra `mysql:8.4.11` en contenedor desechable (`restaurante_test`, puerto 3307). Guardia Ant impide ejecución sobre la base de desarrollo.
-
-| Suite | Tests | Escenario validado |
-|:---|---:|:---|
-| `integracion.AdversarialIntegrationIT` | 3 | Resiliencia contra inyección SQL en login y registro, y payloads de cadenas gigantes |
-| `integracion.CombinatoriaUsuarioE2EIT` | 1 | Matriz combinatoria completa: ciclo bimonetario, inmutabilidad histórica, cambio de tasa dinámico, concurrencia de mesa y FK de sala |
-| `integracion.MySqlIntegrationIT` | 13 | Operaciones reales sobre MySQL 8.4: migración legacy, PBKDF2, transacciones atómicas con rollback, unicidad condicional de mesa, integridad referencial y PDF |
-| `integracion.SimulacionUsuarioE2EIT` | 1 | Simulación E2E completa: login, creación de sala/platos, toma de pedido, detección de conflicto de mesa, consulta, cobro/finalización, PDF de venta y verificación RBAC de rol Asistente |
-
----
-
-## Comandos de Referencia
-
-```bash
-# Levantar la base de datos de desarrollo
-docker compose up -d
-
-# Compilar con Java 17
-ant clean compile
-
-# Ejecutar pruebas unitarias (sin Docker)
-ant test
-
-# Ejecutar pruebas de integración MySQL (levanta y destruye contenedor aislado)
-ant integration-test
-
-# Ejecutar la aplicación
-ant run
-
-# Construir JAR distribuible
-ant jar
+JButton btnHoy           → aplica filtro fecha = LocalDate.now()
+JButton btnPendientes    → aplica filtro estado = "PENDIENTE"
+JButton btnFinalizados   → aplica filtro estado = "FINALIZADO"
+JTextField txtDesde      → fecha inicio (formato yyyy-MM-dd, placeholder "Desde")
+JTextField txtHasta      → fecha fin  (formato yyyy-MM-dd, placeholder "Hasta")
+JButton btnLimpiarFiltro → resetea todo: texto vacío, deshabilita sorter
 ```
 
-### Flujo de trabajo Git
+#### 2.2 Refactorizar `aplicarFiltroHistorial()` — `Sistema.java`
+Convertir el método a un `RowFilter` compuesto:
+```java
+private void aplicarFiltroHistorial() {
+    TableRowSorter<?> sorter = (TableRowSorter<?>) TablePedidos.getRowSorter();
+    if (sorter == null) return;
 
-```bash
-# Antes de subir cualquier cambio:
-ant clean test        # debe pasar en verde
-git add .
-git commit -m "tipo(alcance): descripción breve"
-git push origin main
+    List<RowFilter<Object,Object>> filtros = new ArrayList<>();
+
+    // filtro de texto libre (columnas todas)
+    String texto = txtBuscarHistorial.getText().trim();
+    if (!texto.isEmpty())
+        filtros.add(RowFilter.regexFilter("(?i)" + Pattern.quote(texto)));
+
+    // filtro de estado (columna índice estado — verificar)
+    if (filtroPendiente)   filtros.add(RowFilter.regexFilter("PENDIENTE", COL_ESTADO));
+    if (filtroFinalizado)  filtros.add(RowFilter.regexFilter("FINALIZADO", COL_ESTADO));
+
+    // filtro de fecha (columna índice fecha)
+    if (!txtDesde.getText().isBlank() || !txtHasta.getText().isBlank())
+        filtros.add(filtroRangoFecha(txtDesde.getText(), txtHasta.getText()));
+
+    sorter.setRowFilter(filtros.isEmpty() ? null : RowFilter.andFilter(filtros));
+}
+```
+Donde `filtroRangoFecha` compara strings ISO (`yyyy-MM-dd HH:mm:ss`) con `compareTo`.
+
+#### 2.3 Tests — `ListaPedidosSwingWorkerTest.java` / nuevo `FiltrosHistorialTest`
+- Verificar que cada botón aplica el filtro correcto sobre un `DefaultTableModel` de prueba.
+
+**No hay cambios de BD ni de modelo.**
+
+---
+
+## Sprint 3 · Leyenda de mesas + botón Actualizar + timestamp
+
+### Contexto
+[`PanelMesasSwingWorker`](src/Vista/PanelMesasSwingWorker.java) devuelve
+`Map<Integer,Integer>` (número de mesa → id pedido pendiente, 0 si libre).
+El método `panelMesas` en `Sistema.java` pinta cada botón. No hay leyenda ni hora.
+
+### Tareas
+
+#### 3.1 Crear leyenda visual — `Sistema.java`, método `panelMesas()`
+Al final del panel de mesas (después de pintar los botones) añadir:
+```java
+JPanel leyenda = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+leyenda.setOpaque(false);
+leyenda.add(cuadroColor(new Color(144, 238, 144), "Libre"));
+leyenda.add(cuadroColor(new Color(255, 160, 122), "Ocupada"));
+// cuadroColor() crea un JLabel con border coloreado + texto
 ```
 
+#### 3.2 Botón "Actualizar mesas" en panel de mesas — `Sistema.java`
+- Añadir `JButton btnActualizarMesas` al header del panel de mesas.
+- Al presionar → llamar `panelMesas(idSala, nombreSala, cantMesas)` nuevamente.
+
+#### 3.3 Timestamp de última carga — `Sistema.java`
+- Declarar `JLabel lblUltimaCargaMesas`.
+- Al terminar `PanelMesasSwingWorker.done()` → actualizar label con
+  `LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))`.
+
+#### 3.4 Tests — `PanelMesasSwingWorkerTest.java`
+- Verificar que el callback `alCompletar` recibe el mapa correcto (ya existe test base).
+
+**No hay cambios de BD.**
+
 ---
 
-## Restricciones de Calidad Activas
+## Sprint 4 · Método de pago al finalizar
 
-Estas restricciones se verifican en cada cambio. Un cambio que las rompa no se acepta:
+### Contexto
+El campo `cliente_nombre` y `cliente_documento` ya existen en `pedidos`
+([migración 007](db/migrations/007_clientes_y_dashboard.sql)).
+[`PedidosDao.actualizarEstadoConCliente`](src/Modelo/PedidosDao.java#L379)
+hace el `UPDATE`. El PDF ya imprime nombre y cédula del cliente
+([`GeneradorPdfPedido.java:170`](src/Servicio/GeneradorPdfPedido.java#L170)).
+Falta el campo `metodo_pago`.
 
-1. **Ningún `catch` vacío ni `System.err`** en código de producción.
-2. **Un único registro de log por error** — sin duplicidad de stack traces entre handlers.
-3. **Ningún secreto en logs** — contraseñas, tokens ni claves nunca aparecen en los archivos de log.
-4. **Ninguna operación de I/O en el EDT de Swing** — toda consulta JDBC pasa por un `SwingWorker`.
-5. **Ningún `double` para precios o totales** — solo `BigDecimal` con validación de nulos.
-6. **Toda excepción preserva su causa original** — sin swallow ni re-envueltas sin causa.
-7. **`ant test` en verde antes de hacer `git push`** — sin commits que rompan las pruebas unitarias.
-8. **La suite de integración usa solo credenciales fijas de `restaurante_test`** — el guardia Ant aborta ante cualquier otra URL o credencial.
+### Tareas
+
+#### 4.1 Migración SQL `008_metodo_pago.sql`
+```sql
+-- Migración 008: Método de pago en pedidos
+ALTER TABLE pedidos
+  ADD COLUMN metodo_pago VARCHAR(30) NOT NULL DEFAULT 'EFECTIVO'
+  AFTER cliente_documento;
+```
+Guardar en `db/migrations/008_metodo_pago.sql` y agregar al script `actualizar_bd.sql`.
+
+#### 4.2 Modelo `Pedidos.java`
+- Agregar campo `private String metodoPago = "EFECTIVO";`
+- Agregar `getMetodoPago()` / `setMetodoPago(String)` con validación
+  (valor debe ser uno de: EFECTIVO, TRANSFERENCIA, TARJETA, PAGO_MOVIL, MIXTO).
+
+#### 4.3 `PedidosDao.java`
+- En `actualizarEstadoConCliente()` (~línea 386): agregar `metodo_pago = ?` al `UPDATE`.
+- Añadir setter en la firma del método:
+  `actualizarEstadoConCliente(int idPedido, String clienteNombre, String clienteDoc, String metodoPago)`.
+- En `verPedido()` (~línea 280): añadir `p.metodo_pago` al `SELECT` y mapearlo.
+- En `listarPedidos()` (~línea 445): idem.
+- En métodos `*Legacy`: dejar `metodoPago = "EFECTIVO"` por defecto (sin cambio de SQL).
+
+#### 4.4 `PedidosRepositorio.java` (interfaz)
+- Actualizar firma de `actualizarEstadoConCliente` con el parámetro `metodoPago`.
+
+#### 4.5 `PedidosControlador.java`
+- Actualizar `finalizarPedidoConCliente()` para recibir y pasar `metodoPago`.
+
+#### 4.6 `FinalizarPedidoSwingWorker.java`
+- Agregar campo `private final String metodoPago`.
+- Actualizar constructores para recibir `metodoPago`.
+- Pasar `metodoPago` a `controlador.finalizarPedidoConCliente(...)`.
+
+#### 4.7 Diálogo de finalización — `Sistema.java` (~línea 1877)
+- Agregar al panel `panelFacturar`:
+  ```java
+  JComboBox<String> cbMetodoPago = new JComboBox<>(
+      new String[]{"EFECTIVO","TRANSFERENCIA","TARJETA","PAGO_MOVIL","MIXTO"});
+  panelFacturar.add(new JLabel("Método de Pago:"));
+  panelFacturar.add(cbMetodoPago);
+  ```
+- Leer `cbMetodoPago.getSelectedItem()` al confirmar y pasarlo al `FinalizarPedidoSwingWorker`.
+
+#### 4.8 `GeneradorPdfPedido.java`
+- En `agregarEncabezado()` (~línea 170): añadir línea
+  `"\\nMétodo de Pago: " + texto(pedido.getMetodoPago())` al `Paragraph informacion`.
+- En `agregarCierre()` (~línea 254): cambiar `"Cancelación"` por
+  `"Forma de Pago: " + texto(pedido.getMetodoPago())`.
+
+#### 4.9 Tests a actualizar
+- `PedidoServicioTest` / `PedidosDaoTest`: agregar método de pago en fixtures.
+- `GeneradorPdfPedidoTest`: verificar que el PDF incluye el método de pago.
+- `FinalizarPedidoSwingWorkerTest`: pasar `metodoPago` en la construcción.
 
 ---
 
-## Estado de Deuda Técnica y Roadmap
+## Sprint 5 · Soft delete de platos
 
-### Tareas de Deuda Técnica (100% Completadas)
+### Contexto
+[`PlatosDao.eliminar()`](src/Modelo/PlatosDao.java#L86) hace `DELETE FROM platos WHERE id = ?`.
+[`Platos.java`](src/Modelo/Platos.java) no tiene campo `activo`.
 
-| Ítem | Estado | Resolución |
-|:---|:---:|:---|
-| Retirar `login.java` como fachada deprecada | ✅ **Completado** | Migrados todos los DAOs, repositorios, controladores, vistas y tests a `Usuario.java`. Archivo `login.java` eliminado. |
-| Eliminar `main()` en `FrmLogin.java` | ✅ **Completado** | Verificado que solo `Restaurante.java` contiene el punto de entrada `main()`. |
-| Elevar `javac.source` y `javac.target` a `17` | ✅ **Completado** | Actualizado `project.properties` a `17` y verificado con `ant clean test`. |
+### Tareas
 
-### Roadmap de Modernización Futura (Java 17 → 21)
+#### 5.1 Migración `009_soft_delete_platos.sql`
+```sql
+-- Migración 009: Soft delete en platos
+ALTER TABLE platos
+  ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN desactivado_en DATETIME NULL DEFAULT NULL;
+```
 
-| Característica | Aplicación concreta |
-|:---|:---|
-| **Text Blocks** (Java 15+) | Simplificar las sentencias SQL multilínea de los DAOs. |
-| **Records** (Java 16+) | Convertir `Config`, `Salas`, `Platos` y otros beans inmutables a `record`. Elimina getters, constructores y `equals`/`hashCode` repetitivos. |
-| **Pattern Matching** (Java 17+) | Simplificar el tratamiento de `instanceof SQLException` en los DAOs y handlers de error. |
-| **Virtual Threads** (Java 21) | Sustituir los `SwingWorker`s por `Thread.startVirtualThread(...)`. Un hilo virtual por operación de I/O, con coste de memoria despreciable. |
+#### 5.2 `Platos.java`
+- Agregar campos `private boolean activo = true;` y `private java.time.LocalDateTime desactivadoEn;`.
+- Getters y setters estándar.
+
+#### 5.3 `PlatosDao.java`
+- `listarPorFecha()`: agregar `AND activo = 1` a ambas variantes del SQL.
+- Renombrar `eliminar()` → `desactivar()`:
+  ```java
+  public boolean desactivar(int id) {
+      String sql = "UPDATE platos SET activo = 0, desactivado_en = NOW() WHERE id = ?";
+      ...
+  }
+  ```
+- Agregar método `reactivar(int id)`:
+  ```java
+  public boolean reactivar(int id) {
+      String sql = "UPDATE platos SET activo = 1, desactivado_en = NULL WHERE id = ?";
+      ...
+  }
+  ```
+- Agregar método `listarInactivos()` (para el panel de reactivación).
+- Mantener el método legacy `Eliminar()` redirigiendo a `desactivar()`.
+
+#### 5.4 `PlatosRepositorio.java` (interfaz)
+- Reemplazar `eliminar(int id)` por `desactivar(int id)` y agregar `reactivar(int id)`.
+
+#### 5.5 `PlatosServicio.java` / `PlatosControlador.java`
+- Actualizar llamadas de `eliminar` a `desactivar`.
+- Agregar método `reactivar(int id)`.
+
+#### 5.6 UI — `Sistema.java`
+- Renombrar el botón `btnEliminarPlato` → conservar el nombre Swing pero cambiar el `setText` a
+  `"Desactivar"` y el tooltip a `"Oculta el plato del menú sin eliminarlo"`.
+- Agregar botón `btnReactivarPlato` (solo visible para administrador):
+  - Muestra un `JDialog` con la lista de platos inactivos (consulta `listarInactivos()`).
+  - Al confirmar → `platosControlador.reactivar(idSeleccionado)` y refresca la tabla.
+
+#### 5.7 Tests
+- `PlatosDaoTest`: verificar que `desactivar` hace UPDATE (no DELETE), `listarPorFecha` excluye inactivos.
+- `PlatosServicioTest`: nuevo caso `reactivar`.
+
+---
+
+## Sprint 6 · Purga configurable de registros históricos
+
+> ⚠️ **Alto riesgo — requiere doble confirmación y log de auditoría obligatorio.**
+
+### Contexto
+No existe mecanismo de purga. La tabla `pedidos` crece indefinidamente.
+La purga debe ser configurable por el administrador (N meses), afectar solo
+pedidos `FINALIZADO` y registrar cada ejecución en el log diario.
+
+### Tareas
+
+#### 6.1 Migración `010_config_retencion.sql`
+```sql
+-- Migración 010: Política de retención de registros
+ALTER TABLE config
+  ADD COLUMN meses_retencion_pedidos INT NOT NULL DEFAULT 24
+  COMMENT 'Pedidos finalizados más antiguos que este valor en meses podrán ser purgados';
+```
+
+#### 6.2 `Config.java`
+- Agregar `private int mesesRetencionPedidos = 24;`
+- Getter / setter con validación (`>= 1`).
+
+#### 6.3 `LoginDao.java` (o `ConfigDao`)
+- En `datosEmpresa()`: incluir `meses_retencion_pedidos` en el `SELECT` y mapearlo.
+- En el `UPDATE` de configuración: incluir el nuevo campo.
+
+#### 6.4 `PedidosDao.java`
+- Agregar:
+  ```java
+  public int purgarPedidosFinalizados(int mesesAnteriores) {
+      if (mesesAnteriores < 1)
+          throw ErrorAplicacionException.validacion("El período de retención debe ser al menos 1 mes.");
+      String sql = """
+          DELETE FROM pedidos
+          WHERE estado = 'FINALIZADO'
+            AND fecha < DATE_SUB(NOW(), INTERVAL ? MONTH)
+          """;
+      // retorna filas afectadas
+  }
+  ```
+  > La FK `detalle_pedidos.id_pedido` debe tener `ON DELETE CASCADE` — verificar en `BD.sql`.
+  > Si no la tiene, primero borrar detalles y luego pedidos en la misma transacción.
+
+#### 6.5 `PedidosControlador.java`
+- Agregar `purgarPedidosFinalizados(int meses)` que llama al DAO y
+  registra en el `Logger`: `"PURGA: X pedidos finalizados eliminados (retención: Y meses)"`.
+
+#### 6.6 UI — `Sistema.java`, pestaña Configuración
+- Agregar en el panel de configuración:
+  ```
+  JLabel "Retención de historial (meses):"
+  JSpinner spMesesRetencion  (min=1, max=120, valor=24)
+  JButton btnPurgarHistorial  → solo visible para administrador
+  ```
+- **Flujo del botón:**
+  1. Leer `spMesesRetencion.getValue()`.
+  2. `JOptionPane.showConfirmDialog` → "¿Eliminar pedidos finalizados anteriores a N meses? Esta acción es irreversible."
+  3. Si confirma: segundo diálogo pidiendo contraseña del administrador (validar con `AutenticacionServicio`).
+  4. Si contraseña OK: `pedidosControlador.purgarPedidosFinalizados(N)` en `SwingWorker`.
+  5. Mostrar resultado: "Se eliminaron X registros".
+
+#### 6.7 Tests
+- `PedidosDaoTest`: test de purga con fechas artificiales.
+- `AdversarialValidationTest`: intentar purga con meses=0 → excepción.
+
+---
+
+## Sprint 7 · Re-impresión de PDF desde historial
+
+### Contexto
+Ya existe `btnPdfPedido` en el historial ([`Sistema.java:1615`](src/Vista/Sistema.java#L1615))
+que llama a `pedidosControlador.generarPdfPedido(id)`.
+Ya existe `reimprimirFacturaClienteSeleccionada()` ([`Sistema.java:2581`](src/Vista/Sistema.java#L2581))
+en el panel de clientes/dashboard.
+`GeneradorPdfPedido.generar()` ya respalda el PDF anterior con timestamp si existe
+([`GeneradorPdfPedido.java:42-55`](src/Servicio/GeneradorPdfPedido.java#L42)).
+El método `generarConTimestamp()` genera siempre un nuevo archivo sin sobreescribir.
+
+**El mecanismo ya existe. Falta conectarlo correctamente al historial.**
+
+### Tareas
+
+#### 7.1 Verificar que `btnPdfPedido` funciona para finalizados — `Sistema.java`
+- Confirmar que `txtIdHistorialPedido` se actualiza al seleccionar fila en `TablePedidos`
+  (listener `tableSelectionChanged` o similar).
+- Si no existe el listener, agregarlo:
+  ```java
+  TablePedidos.getSelectionModel().addListSelectionListener(e -> {
+      if (!e.getValueIsAdjusting() && TablePedidos.getSelectedRow() >= 0) {
+          int viewRow = TablePedidos.getSelectedRow();
+          int modelRow = TablePedidos.convertRowIndexToModel(viewRow);
+          Object idObj = TablePedidos.getModel().getValueAt(modelRow, 0);
+          txtIdHistorialPedido.setText(idObj.toString());
+          // habilitar botón solo si estado == FINALIZADO
+          Object estadoObj = TablePedidos.getModel().getValueAt(modelRow, COL_ESTADO);
+          btnPdfPedido.setEnabled("FINALIZADO".equals(estadoObj));
+      }
+  });
+  ```
+
+#### 7.2 Usar `generarConTimestamp()` para reimprimir — `PedidosControlador.java`
+- El método `generarPdfPedido(int idPedido)` actual llama a `generador.generar()` que **ya respalda**.
+- Verificar que la llamada pasa por `generarConTimestamp()` cuando se re-imprime
+  para no sobreescribir el original. Opcional: agregar segundo método en el controlador
+  `reimprimirPdfPedido(int idPedido)` que llama a `generarConTimestamp()`.
+
+#### 7.3 Tooltip en `btnPdfPedido`
+- Cambiar tooltip a `"Ver / Reimprimir factura del pedido seleccionado"`.
+
+#### 7.4 Tests — `PedidoPdfServicioTest.java`
+- Agregar test: reimprimir un pedido ya existente genera archivo con timestamp distinto.
+
+---
+
+## Sprint 8 · Dashboard visible al inicio para administrador
+
+### Contexto
+[`EstadisticasDashboard`](src/Modelo/EstadisticasDashboard.java) y el panel dashboard
+([`Sistema.java:2300`](src/Vista/Sistema.java#L2300)) ya están implementados.
+El tab del dashboard se agrega programáticamente con `initDashboardYClientes()`.
+Falta que al login de un administrador la pestaña sea la activa por defecto.
+
+### Tareas
+
+#### 8.1 `Sistema.java` constructor (~línea 106, después de `initComponents()`)
+```java
+if (politicaAcceso.esAdministrador()) {
+    initDashboardYClientes();           // ya existe
+    // seleccionar el tab del dashboard como activo inicial
+    jTabbedPane1.setSelectedComponent(panelDashboard);
+    cargarDashboardYClientes();         // ya existe
+}
+```
+
+#### 8.2 Verificar que `jTabbedPane1.setEnabled(false)` (~línea 149) no bloquea el tab
+El panel está `setEnabled(false)` hasta que el usuario inicia un pedido.
+Evaluar si el dashboard debe ser accesible sin pedido activo y, de ser así,
+excluirlo del bloqueo:
+```java
+// después de jTabbedPane1.setEnabled(false)
+if (panelDashboard != null) {
+    jTabbedPane1.setEnabledAt(jTabbedPane1.indexOfComponent(panelDashboard), true);
+}
+```
+
+#### 8.3 Tests — `DashboardYClientesTest.java`
+- Verificar que el tab del dashboard es seleccionado al construir `Sistema` con rol ADMINISTRADOR.
+
+---
+
+## Orden de ejecución recomendado
+
+```
+Sprint 1 (±4h)  → Sprint 2 (±3h)  → Sprint 3 (±2h)
+Sprint 7 (±2h)  → Sprint 8 (±1h)  → Sprint 4 (±6h)
+Sprint 5 (±5h)  → Sprint 6 (±8h)
+```
+
+Los sprints 1–3 y 7–8 no tocan la BD y se pueden liberar en un día de trabajo.
+Los sprints 4–6 requieren migraciones coordinadas con el entorno de producción.
+
+---
+
+## Migraciones pendientes (resumen)
+
+| # | Archivo | Impacto |
+|---|---------|---------|
+| 008 | `008_metodo_pago.sql` | `ALTER TABLE pedidos ADD COLUMN metodo_pago` |
+| 009 | `009_soft_delete_platos.sql` | `ALTER TABLE platos ADD COLUMN activo, desactivado_en` |
+| 010 | `010_config_retencion.sql` | `ALTER TABLE config ADD COLUMN meses_retencion_pedidos` |
+
+Ejecutar con `actualizar_bd.bat` / `actualizar_bd.sql` en el orden numérico.
+Antes de cada migración en producción: **hacer respaldo de la BD**.
+
+---
+
+## Archivos afectados por sprint
+
+| Sprint | BD | Modelo | DAO | Controlador | Servicio/PDF | Vista | Tests |
+|--------|----|--------|-----|-------------|--------------|-------|-------|
+| 1 | — | — | — | — | — | `Sistema.java` | `MejorasUIYServicioTest` |
+| 2 | — | — | — | — | — | `Sistema.java` | nuevo `FiltrosHistorialTest` |
+| 3 | — | — | — | — | — | `Sistema.java` | `PanelMesasSwingWorkerTest` |
+| 4 | `008` | `Pedidos` | `PedidosDao` | `PedidosControlador` | `GeneradorPdfPedido` | `Sistema`, `FinalizarPedidoSwingWorker` | varios |
+| 5 | `009` | `Platos` | `PlatosDao` | `PlatosControlador` | — | `Sistema.java` | `PlatosDaoTest`, `PlatosServicioTest` |
+| 6 | `010` | `Config` | `PedidosDao`, `LoginDao` | `PedidosControlador` | — | `Sistema.java` | `PedidosDaoTest` |
+| 7 | — | — | `PedidosControlador` | — | `PedidoPdfServicio` | `Sistema.java` | `PedidoPdfServicioTest` |
+| 8 | — | — | — | — | — | `Sistema.java` | `DashboardYClientesTest` |

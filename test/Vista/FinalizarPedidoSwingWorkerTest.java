@@ -22,6 +22,7 @@ import javax.swing.SwingUtilities;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -121,6 +122,28 @@ public class FinalizarPedidoSwingWorkerTest {
         assertTrue(errorRecibido.get() instanceof Modelo.ErrorAplicacionException);
         assertSame(fallo, errorRecibido.get().getCause());
         assertTrue(confirmadoRecibido.get());
+    }
+
+    @Test
+    public void metodoPagoSePasaCorrectamenteAlRepositorio() throws Exception {
+        AtomicReference<String> metodoPagoCapturado = new AtomicReference<>();
+        CountDownLatch completado = new CountDownLatch(1);
+        PedidosRepositorioFalso repositorio = new PedidosRepositorioFalso() {
+            @Override
+            public boolean actualizarEstadoConCliente(int id, String nombre, String doc, String metodoPago) {
+                metodoPagoCapturado.set(metodoPago);
+                return true;
+            }
+        };
+        PedidosControlador controlador = controlador(repositorio, archivo -> {});
+
+        SwingUtilities.invokeAndWait(() -> new FinalizarPedidoSwingWorker(controlador, 31,
+                "Juan", "V-12345678", "TARJETA",
+                resultado -> completado.countDown(),
+                (error, confirmado) -> { throw new AssertionError(error); }).execute());
+
+        assertTrue(completado.await(5, TimeUnit.SECONDS));
+        assertEquals("TARJETA", metodoPagoCapturado.get());
     }
 
     private PedidosControlador controlador(PedidosRepositorioFalso repositorio,

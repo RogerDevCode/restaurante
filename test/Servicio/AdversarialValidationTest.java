@@ -133,6 +133,26 @@ public class AdversarialValidationTest {
         assertThrows(ErrorAplicacionException.class, () -> servicio.registrar(salaNeg));
     }
 
+    @Test
+    public void purgaConMesesInvalidoLanzaExcepcion() {
+        ConsultaPedidosServicio servicio = new ConsultaPedidosServicio(new DummyPedidosRepositorio(), politicaAdmin);
+        assertThrows(ErrorAplicacionException.class, () -> servicio.purgarPedidosFinalizados(0));
+        assertThrows(ErrorAplicacionException.class, () -> servicio.purgarPedidosFinalizados(-5));
+    }
+
+    @Test
+    public void purgaPorAsistenteLanzaExcepcion() {
+        ConsultaPedidosServicio servicio = new ConsultaPedidosServicio(new DummyPedidosRepositorio(), politicaAsistente);
+        assertThrows(ErrorAplicacionException.class, () -> servicio.purgarPedidosFinalizados(12));
+    }
+
+    @Test
+    public void configRetencionInvalidaLanzaExcepcion() {
+        Modelo.Config config = new Modelo.Config();
+        assertThrows(ErrorAplicacionException.class, () -> config.setMesesRetencionPedidos(0));
+        assertThrows(ErrorAplicacionException.class, () -> config.setMesesRetencionPedidos(-2));
+    }
+
     static class DummyPedidosRepositorio implements PedidosRepositorio {
         @Override public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) { return 1; }
         @Override public Pedidos verPedido(int idPedido) { return null; }

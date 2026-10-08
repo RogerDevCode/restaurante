@@ -9,7 +9,10 @@ import java.sql.Statement;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PedidosDao implements PedidosRepositorio {
     private final ProveedorConexionJdbc conexiones;
@@ -182,7 +185,7 @@ public class PedidosDao implements PedidosRepositorio {
         }
 
         BigDecimal total = importePersistible(pedido.getTotalDecimal(), "El total del pedido");
-        if (total.compareTo(totalEsperado) != 0) {
+        if (total.compareTo(totalEsperado) != 0 && total.compareTo(subtotalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El total del pedido no coincide con el subtotal más IVA.");
         }
 
@@ -274,6 +277,57 @@ public class PedidosDao implements PedidosRepositorio {
         }
         Pedidos ped = null;
         String sql = """
+            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala,
+                   p.cliente_nombre, p.cliente_documento, p.metodo_pago
+            FROM pedidos p
+            INNER JOIN salas s ON p.id_sala = s.id
+            WHERE p.id = ?
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setInt(1, id_pedido);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (resultados.next()) {
+                    ped = new Pedidos();
+                    ped.setId(resultados.getInt("id"));
+                    ped.setId_sala(resultados.getInt("id_sala"));
+                    ped.setFecha(resultados.getString("fecha"));
+                    ped.setSala(resultados.getString("nombre_sala"));
+                    ped.setNum_mesa(resultados.getInt("num_mesa"));
+                    ped.setSubtotal(resultados.getBigDecimal("subtotal"));
+                    ped.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
+                    ped.setIvaMonto(resultados.getBigDecimal("iva_monto"));
+                    ped.setTotalDecimal(resultados.getBigDecimal("total"));
+                    ped.setSubtotalBs(resultados.getBigDecimal("subtotal_bs"));
+                    ped.setIvaBs(resultados.getBigDecimal("iva_bs"));
+                    ped.setTotalBs(resultados.getBigDecimal("total_bs"));
+                    ped.setUsuario(resultados.getString("usuario"));
+                    ped.setEstado(resultados.getString("estado"));
+                    ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
+                    try {
+                        ped.setClienteNombre(resultados.getString("cliente_nombre"));
+                        ped.setClienteDocumento(resultados.getString("cliente_documento"));
+                        ped.setMetodoPago(resultados.getString("metodo_pago"));
+                    } catch (SQLException ignoreCol) {}
+                }
+            }
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return verPedidoLegacy(id_pedido);
+            }
+            throw new DataAccessException("No se pudo consultar el pedido.", ex);
+        }
+        if (ped == null) {
+            throw new ErrorAplicacionException(
+                    "No existe el pedido " + id_pedido + ".",
+                    new IllegalStateException("La consulta no encontró el pedido solicitado."));
+        }
+        return ped;
+    }
+
+    private Pedidos verPedidoLegacy(int id_pedido) {
+        Pedidos ped = null;
+        String sql = """
             SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
             FROM pedidos p
             INNER JOIN salas s ON p.id_sala = s.id
@@ -303,7 +357,7 @@ public class PedidosDao implements PedidosRepositorio {
                 }
             }
         } catch (SQLException ex) {
-            throw new DataAccessException("No se pudo consultar el pedido.", ex);
+            throw new DataAccessException("No se pudo consultar el pedido legacy.", ex);
         }
         if (ped == null) {
             throw new ErrorAplicacionException(
@@ -317,27 +371,252 @@ public class PedidosDao implements PedidosRepositorio {
         return verPedidoDetalle(id_pedido);
     }
 
+    @Override
     public boolean actualizarEstado(int id_pedido) {
+        return actualizarEstadoConCliente(id_pedido, "Consumidor Final", "V-00000000");
+    }
+
+    @Override
+    public boolean actualizarEstadoConCliente(int id_pedido, String clienteNombre, String clienteDocumento) {
+        return actualizarEstadoConCliente(id_pedido, clienteNombre, clienteDocumento, "EFECTIVO");
+    }
+
+    @Override
+    public boolean actualizarEstadoConCliente(int id_pedido, String clienteNombre, String clienteDocumento, String metodoPago) {
         if (id_pedido <= 0) {
             throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para finalizarlo.");
         }
+        String doc = clienteDocumento == null || clienteDocumento.trim().isEmpty() ? "V-00000000" : clienteDocumento.trim();
+        String nom = clienteNombre == null || clienteNombre.trim().isEmpty() ? "Consumidor Final" : clienteNombre.trim();
+        String pago = (metodoPago == null || metodoPago.trim().isEmpty()) ? "EFECTIVO" : metodoPago.trim().toUpperCase();
+
         String sql = """
             UPDATE pedidos
-            SET estado = ?
-            WHERE id = ?
+            SET estado = ?, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?
+            WHERE id = ? AND estado = 'PENDIENTE'
             """;
-        try (Connection conexion = conexiones.getConnection();
-                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, "FINALIZADO");
-            sentencia.setInt(2, id_pedido);
-            return ErrorAplicacionException.resultadoUnaFila(
-                    sentencia.executeUpdate(), "finalizar pedido " + id_pedido);
+        try (Connection conexion = conexiones.getConnection()) {
+            boolean exito;
+            try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+                sentencia.setString(1, "FINALIZADO");
+                sentencia.setString(2, nom);
+                sentencia.setString(3, doc);
+                sentencia.setString(4, pago);
+                sentencia.setInt(5, id_pedido);
+                int filas = sentencia.executeUpdate();
+                if (filas == 0) {
+                    validarMotivoNoFinalizado(conexion, id_pedido);
+                }
+                exito = ErrorAplicacionException.resultadoUnaFila(
+                        filas, "finalizar pedido " + id_pedido);
+            } catch (SQLException ex) {
+                if (ex.getErrorCode() == 1054) {
+                    return actualizarEstadoLegacy(conexion, id_pedido);
+                }
+                throw ex;
+            }
+
+            if (exito) {
+                try {
+                    String sqlCliente = """
+                        INSERT INTO clientes (documento, nombre)
+                        VALUES (?, ?)
+                        ON DUPLICATE KEY UPDATE nombre = VALUES(nombre)
+                        """;
+                    try (PreparedStatement sCli = conexion.prepareStatement(sqlCliente)) {
+                        sCli.setString(1, doc);
+                        sCli.setString(2, nom);
+                        sCli.executeUpdate();
+                    }
+                } catch (SQLException ign) {
+                    // No bloquear si la tabla clientes no está presente
+                }
+            }
+            return exito;
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo finalizar el pedido.", ex);
         }
     }
 
+    private void validarMotivoNoFinalizado(Connection conexion, int id_pedido) throws SQLException {
+        String sqlCheck = "SELECT estado FROM pedidos WHERE id = ?";
+        try (PreparedStatement ps = conexion.prepareStatement(sqlCheck)) {
+            ps.setInt(1, id_pedido);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String est = rs.getString("estado");
+                    if ("FINALIZADO".equalsIgnoreCase(est)) {
+                        throw ErrorAplicacionException.validacion(
+                                "El pedido " + id_pedido + " ya fue finalizado previamente por otro usuario.");
+                    }
+                } else {
+                    throw ErrorAplicacionException.validacion(
+                            "No existe el pedido " + id_pedido + " para finalizar.");
+                }
+            }
+        }
+    }
+
+    private boolean actualizarEstadoLegacy(Connection conexion, int id_pedido) throws SQLException {
+        String sql = """
+            UPDATE pedidos
+            SET estado = ?
+            WHERE id = ? AND estado = 'PENDIENTE'
+            """;
+        try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, "FINALIZADO");
+            sentencia.setInt(2, id_pedido);
+            int filas = sentencia.executeUpdate();
+            if (filas == 0) {
+                validarMotivoNoFinalizado(conexion, id_pedido);
+            }
+            return ErrorAplicacionException.resultadoUnaFila(
+                    filas, "finalizar pedido " + id_pedido);
+        }
+    }
+
+    @Override
+    public boolean anularPedido(int id_pedido) {
+        if (id_pedido <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para anularlo.");
+        }
+        String sql = "UPDATE pedidos SET estado = 'ANULADO' WHERE id = ? AND estado != 'ANULADO'";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, id_pedido);
+            int filas = ps.executeUpdate();
+            if (filas == 0) {
+                // Verificar si no existe o ya estaba anulado
+                String sqlVerif = "SELECT estado FROM pedidos WHERE id = ?";
+                try (PreparedStatement psVerif = con.prepareStatement(sqlVerif)) {
+                    psVerif.setInt(1, id_pedido);
+                    try (ResultSet rs = psVerif.executeQuery()) {
+                        if (rs.next()) {
+                            if ("ANULADO".equalsIgnoreCase(rs.getString("estado"))) {
+                                throw ErrorAplicacionException.validacion("El pedido #" + id_pedido + " ya se encuentra anulado.");
+                            }
+                        } else {
+                            throw ErrorAplicacionException.validacion("No existe el pedido #" + id_pedido + " para anular.");
+                        }
+                    }
+                }
+            }
+            return filas > 0;
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo anular el pedido #" + id_pedido + ".", ex);
+        }
+    }
+
+    @Override
+    public boolean anularPedidoConAuditoria(int id_pedido, String motivo, String usuario) {
+        if (id_pedido <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para anularlo.");
+        }
+        if (motivo == null || motivo.trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("Debe indicar el motivo de la anulación del pedido.");
+        }
+        String usr = (usuario != null && !usuario.isBlank()) ? usuario.trim() : "Sistema";
+
+        String sqlUpdate = "UPDATE pedidos SET estado = 'ANULADO' WHERE id = ? AND estado != 'ANULADO'";
+        String sqlAuditoria = """
+            INSERT INTO auditoria_pedidos (id_pedido, accion, motivo, usuario, fecha_hora)
+            VALUES (?, 'ANULACION', ?, ?, CURRENT_TIMESTAMP)
+            """;
+
+        try (Connection con = conexiones.getConnection()) {
+            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
+            boolean autoCommitPrevio = con.getAutoCommit();
+            con.setAutoCommit(false);
+            try {
+                int filas;
+                try (PreparedStatement psUpdate = con.prepareStatement(sqlUpdate)) {
+                    psUpdate.setInt(1, id_pedido);
+                    filas = psUpdate.executeUpdate();
+                }
+                if (filas == 0) {
+                    String sqlVerif = "SELECT estado FROM pedidos WHERE id = ?";
+                    try (PreparedStatement psVerif = con.prepareStatement(sqlVerif)) {
+                        psVerif.setInt(1, id_pedido);
+                        try (ResultSet rs = psVerif.executeQuery()) {
+                            if (rs.next()) {
+                                if ("ANULADO".equalsIgnoreCase(rs.getString("estado"))) {
+                                    throw ErrorAplicacionException.validacion("El pedido #" + id_pedido + " ya se encuentra anulado.");
+                                }
+                            } else {
+                                throw ErrorAplicacionException.validacion("No existe el pedido #" + id_pedido + " para anular.");
+                            }
+                        }
+                    }
+                }
+
+                try (PreparedStatement psAud = con.prepareStatement(sqlAuditoria)) {
+                    psAud.setInt(1, id_pedido);
+                    psAud.setString(2, motivo.trim());
+                    psAud.setString(3, usr);
+                    psAud.executeUpdate();
+                }
+
+                con.commit();
+                return true;
+            } catch (Exception ex) {
+                con.rollback();
+                if (ex instanceof ErrorAplicacionException eae) {
+                    throw eae;
+                }
+                throw new DataAccessException("No se pudo anular el pedido de forma atómica: " + ex.getMessage(), ex);
+            } finally {
+                con.setAutoCommit(autoCommitPrevio);
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("Error de conexión al anular el pedido: " + ex.getMessage(), ex);
+        }
+    }
+
     public List<Pedidos> listarPedidos() {
+        List<Pedidos> lista = new ArrayList<>();
+        String sql = """
+            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala,
+                   p.cliente_nombre, p.cliente_documento, p.metodo_pago
+            FROM pedidos p
+            INNER JOIN salas s ON p.id_sala = s.id
+            ORDER BY p.fecha DESC
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql);
+                ResultSet resultados = sentencia.executeQuery()) {
+            while (resultados.next()) {
+                Pedidos ped = new Pedidos();
+                ped.setId(resultados.getInt("id"));
+                ped.setSala(resultados.getString("nombre_sala"));
+                ped.setNum_mesa(resultados.getInt("num_mesa"));
+                ped.setFecha(resultados.getString("fecha"));
+                ped.setSubtotal(resultados.getBigDecimal("subtotal"));
+                ped.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
+                ped.setIvaMonto(resultados.getBigDecimal("iva_monto"));
+                ped.setTotalDecimal(resultados.getBigDecimal("total"));
+                ped.setSubtotalBs(resultados.getBigDecimal("subtotal_bs"));
+                ped.setIvaBs(resultados.getBigDecimal("iva_bs"));
+                ped.setTotalBs(resultados.getBigDecimal("total_bs"));
+                ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
+                ped.setUsuario(resultados.getString("usuario"));
+                ped.setEstado(resultados.getString("estado"));
+                try {
+                    ped.setClienteNombre(resultados.getString("cliente_nombre"));
+                    ped.setClienteDocumento(resultados.getString("cliente_documento"));
+                    ped.setMetodoPago(resultados.getString("metodo_pago"));
+                } catch (SQLException ignoreCol) {}
+                lista.add(ped);
+            }
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return listarPedidosLegacy();
+            }
+            throw new DataAccessException("No se pudieron listar los pedidos.", ex);
+        }
+        return lista;
+    }
+
+    private List<Pedidos> listarPedidosLegacy() {
         List<Pedidos> lista = new ArrayList<>();
         String sql = """
             SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
@@ -361,14 +640,78 @@ public class PedidosDao implements PedidosRepositorio {
                 ped.setSubtotalBs(resultados.getBigDecimal("subtotal_bs"));
                 ped.setIvaBs(resultados.getBigDecimal("iva_bs"));
                 ped.setTotalBs(resultados.getBigDecimal("total_bs"));
+                ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
                 ped.setUsuario(resultados.getString("usuario"));
                 ped.setEstado(resultados.getString("estado"));
-                ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
                 lista.add(ped);
             }
         } catch (SQLException ex) {
-            throw new DataAccessException("No se pudieron listar los pedidos.", ex);
+            throw new DataAccessException("No se pudieron listar los pedidos legacy.", ex);
         }
         return lista;
+    }
+
+
+    @Override
+    public Map<Integer, Integer> contarMesasOcupadasPorSala() {
+        Map<Integer, Integer> ocupadasPorSala = new HashMap<>();
+        String sql = """
+            SELECT id_sala, COUNT(DISTINCT num_mesa) AS ocupadas
+            FROM pedidos
+            WHERE estado = 'PENDIENTE'
+            GROUP BY id_sala
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql);
+                ResultSet resultados = sentencia.executeQuery()) {
+            while (resultados.next()) {
+                ocupadasPorSala.put(resultados.getInt("id_sala"), resultados.getInt("ocupadas"));
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron contar las mesas ocupadas por sala.", ex);
+        }
+        return Collections.unmodifiableMap(ocupadasPorSala);
+    }
+
+    @Override
+    public int purgarPedidosFinalizados(int mesesAnteriores) {
+        if (mesesAnteriores < 1) {
+            throw ErrorAplicacionException.validacion("El período de retención debe ser al menos 1 mes.");
+        }
+        String sqlDetalles = """
+            DELETE d FROM detalle_pedidos d
+            INNER JOIN pedidos p ON d.id_pedido = p.id
+            WHERE p.estado = 'FINALIZADO'
+              AND p.fecha < DATE_SUB(NOW(), INTERVAL ? MONTH)
+            """;
+        String sqlPedidos = """
+            DELETE FROM pedidos
+            WHERE estado = 'FINALIZADO'
+              AND fecha < DATE_SUB(NOW(), INTERVAL ? MONTH)
+            """;
+        try (Connection conexion = conexiones.getConnection()) {
+            boolean autoCommitOriginal = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
+            try {
+                try (PreparedStatement psDetalles = conexion.prepareStatement(sqlDetalles)) {
+                    psDetalles.setInt(1, mesesAnteriores);
+                    psDetalles.executeUpdate();
+                }
+                int eliminados;
+                try (PreparedStatement psPedidos = conexion.prepareStatement(sqlPedidos)) {
+                    psPedidos.setInt(1, mesesAnteriores);
+                    eliminados = psPedidos.executeUpdate();
+                }
+                conexion.commit();
+                return eliminados;
+            } catch (SQLException ex) {
+                conexion.rollback();
+                throw ex;
+            } finally {
+                conexion.setAutoCommit(autoCommitOriginal);
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron purgar los pedidos finalizados.", ex);
+        }
     }
 }

@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -54,12 +55,12 @@ public class PlatosDao implements PlatosRepositorio {
             ? """
               SELECT id, nombre, precio, fecha
               FROM platos
-              WHERE fecha = ? AND nombre LIKE ?
+              WHERE fecha = ? AND nombre LIKE ? AND activo = 1
               """
             : """
               SELECT id, nombre, precio, fecha
               FROM platos
-              WHERE fecha = ?
+              WHERE fecha = ? AND activo = 1
               """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
@@ -77,17 +78,121 @@ public class PlatosDao implements PlatosRepositorio {
                 }
             }
         } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                // La columna activo no existe en BD legada — usar query sin filtro
+                return listarPorFechaLegacy(valor, fecha);
+            }
             throw new DataAccessException("No se pudieron listar los platos.", ex);
         }
         return platos;
     }
 
+    private List<Platos> listarPorFechaLegacy(String valor, String fecha) {
+        List<Platos> platos = new ArrayList<>();
+        boolean filtrarNombre = valor != null && !valor.trim().isEmpty();
+        String sql = filtrarNombre
+            ? """
+              SELECT id, nombre, precio, fecha
+              FROM platos
+              WHERE fecha = ? AND nombre LIKE ?
+              """
+            : """
+              SELECT id, nombre, precio, fecha
+              FROM platos
+              WHERE fecha = ?
+              """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, fecha);
+            if (filtrarNombre) {
+                sentencia.setString(2, "%" + (valor != null ? valor.trim() : "") + "%");
+            }
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                while (resultados.next()) {
+                    Platos plato = new Platos();
+                    plato.setId(resultados.getInt("id"));
+                    plato.setNombre(resultados.getString("nombre"));
+                    plato.setPrecioDecimal(resultados.getBigDecimal("precio"));
+                    platos.add(plato);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron listar los platos.", ex);
+        }
+        return platos;
+    }
+
+    /** Soft-delete: marca el plato como inactivo en lugar de eliminarlo físicamente. */
+    @Override
+    public boolean desactivar(int id) {
+        String sql = "UPDATE platos SET activo = 0, desactivado_en = NOW() WHERE id = ?";
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setInt(1, id);
+            return ErrorAplicacionException.resultadoUnaFila(
+                    sentencia.executeUpdate(), "desactivar plato " + id);
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return eliminarFisico(id);
+            }
+            throw new DataAccessException("No se pudo desactivar el plato.", ex);
+        }
+    }
+
+    /** Reactiva un plato previamente desactivado. */
+    @Override
+    public boolean reactivar(int id) {
+        String sql = "UPDATE platos SET activo = 1, desactivado_en = NULL WHERE id = ?";
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setInt(1, id);
+            return ErrorAplicacionException.resultadoUnaFila(
+                    sentencia.executeUpdate(), "reactivar plato " + id);
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo reactivar el plato.", ex);
+        }
+    }
+
+    /** Lista los platos desactivados para el panel de reactivación. */
+    @Override
+    public List<Platos> listarInactivos() {
+        List<Platos> platos = new ArrayList<>();
+        String sql = """
+            SELECT id, nombre, precio, fecha, desactivado_en
+            FROM platos
+            WHERE activo = 0
+            ORDER BY desactivado_en DESC
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql);
+                ResultSet resultados = sentencia.executeQuery()) {
+            while (resultados.next()) {
+                Platos plato = new Platos();
+                plato.setId(resultados.getInt("id"));
+                plato.setNombre(resultados.getString("nombre"));
+                plato.setPrecioDecimal(resultados.getBigDecimal("precio"));
+                plato.setFecha(resultados.getString("fecha"));
+                plato.setActivo(false);
+                Timestamp ts = resultados.getTimestamp("desactivado_en");
+                if (ts != null) {
+                    plato.setDesactivadoEn(ts.toLocalDateTime());
+                }
+                platos.add(plato);
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron listar los platos inactivos.", ex);
+        }
+        return platos;
+    }
+
+    /** Compatibilidad hacia atrás: delega a desactivar() — no hace DELETE físico. */
     @Override
     public boolean eliminar(int id) {
-        String sql = """
-            DELETE FROM platos
-            WHERE id = ?
-            """;
+        return desactivar(id);
+    }
+
+    private boolean eliminarFisico(int id) {
+        String sql = "DELETE FROM platos WHERE id = ?";
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setInt(1, id);
@@ -152,10 +257,10 @@ public class PlatosDao implements PlatosRepositorio {
         return listarPorFecha(nombre, fecha);
     }
 
-    /** Compatibilidad temporal con la vista Swing existente. */
+    /** Compatibilidad temporal con la vista Swing existente — ahora hace soft delete. */
     @Deprecated
     public boolean Eliminar(int id) {
-        return eliminar(id);
+        return desactivar(id);
     }
 
     /** Compatibilidad temporal con la vista Swing existente. */

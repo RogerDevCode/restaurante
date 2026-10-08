@@ -1,8 +1,12 @@
 package integracion;
 
+import Modelo.Cliente;
+import Modelo.ClienteDao;
+import Modelo.Config;
 import Modelo.DataAccessException;
 import Modelo.DetallePedido;
 import Modelo.ErrorAplicacionException;
+import Modelo.EstadisticasDashboard;
 import Modelo.LoginDao;
 import Modelo.PedidoPendienteExistenteException;
 import Modelo.Pedidos;
@@ -442,6 +446,90 @@ public class MySqlIntegrationIT {
         }
     }
 
+    @Test
+    public void testIntegracionClientesYDashboard() throws Exception {
+        ClienteDao clienteDao = new ClienteDao();
+        LoginDao loginDao = new LoginDao();
+        PedidosDao pedidosDao = new PedidosDao();
+        PlatosDao platosDao = new PlatosDao();
+
+        // 1. Probar configuración de cliente por defecto
+        Config config = loginDao.datosEmpresa();
+        assertNotNull(config);
+        config.setClienteDefaultNombre("Consumidor Empresa IT");
+        config.setClienteDefaultDoc("J-99988877-1");
+        assertTrue(loginDao.ModificarDatos(config));
+
+        Config recargada = loginDao.datosEmpresa();
+        assertEquals("Consumidor Empresa IT", recargada.getClienteDefaultNombre());
+        assertEquals("J-99988877-1", recargada.getClienteDefaultDoc());
+
+        // 2. Registrar/actualizar cliente explícito
+        String docCliente = "V-" + (10000000 + (int)(Math.random() * 80000000));
+        Cliente cliente = new Cliente(0, docCliente, "Cliente Integración VIP", "0412-1112233", "Caracas");
+        assertTrue(clienteDao.guardarOActualizar(cliente));
+
+        List<Cliente> encontrados = clienteDao.buscarClientes("Integración");
+        assertFalse(encontrados.isEmpty());
+        Cliente encontrado = encontrados.stream()
+                .filter(c -> docCliente.equals(c.getDocumento()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(encontrado);
+        assertEquals("Cliente Integración VIP", encontrado.getNombre());
+
+        // 3. Crear pedido y finalizar con asociación de cliente
+        int idSala = crearSalaPrueba();
+        int mesa = mesaPrueba();
+        Platos plato = new Platos();
+        plato.setNombre("IT-PLATO-DASH-" + UUID.randomUUID());
+        plato.setPrecioDecimal(new BigDecimal("25.00"));
+        plato.setFecha(LocalDate.now().toString());
+        assertTrue(platosDao.Registrar(plato));
+        int idPlato = idPlatoPorNombre(plato.getNombre());
+
+        DetallePedido detalle = new DetallePedido(0, plato.getNombre(), new BigDecimal("25.00"), 2, "", 0);
+        detalle.setId(idPlato);
+
+        Pedidos ped = new Pedidos();
+        ped.setId_sala(idSala);
+        ped.setNum_mesa(mesa);
+        ped.setSubtotal(new BigDecimal("50.00"));
+        ped.setIvaPorcentaje(new BigDecimal("16.00"));
+        ped.setIvaMonto(new BigDecimal("8.00"));
+        ped.setTotalDecimal(new BigDecimal("58.00"));
+        ped.setSubtotalBs(new BigDecimal("1825.00"));
+        ped.setIvaBs(new BigDecimal("292.00"));
+        ped.setTotalBs(new BigDecimal("2117.00"));
+        ped.setTasaCambio(new BigDecimal("36.5000"));
+        ped.setUsuario(USUARIO_PRUEBA);
+
+        int idPedido = pedidosDao.registrarPedidoCompleto(ped, List.of(detalle));
+        assertTrue(idPedido > 0);
+
+        // Finalizar con datos del cliente
+        boolean finalizado = pedidosDao.actualizarEstadoConCliente(idPedido, cliente.getNombre(), cliente.getDocumento());
+        assertTrue(finalizado);
+
+        // Verificar lectura del pedido con datos del cliente
+        Pedidos pedConsultado = pedidosDao.verPedido(idPedido);
+        assertNotNull(pedConsultado);
+        assertEquals("FINALIZADO", pedConsultado.getEstado());
+        assertEquals(cliente.getNombre(), pedConsultado.getClienteNombre());
+        assertEquals(cliente.getDocumento(), pedConsultado.getClienteDocumento());
+
+        // 4. Listar facturas del cliente (debe estar ordenada descendente)
+        List<Pedidos> facturas = clienteDao.listarFacturasCliente(encontrado.getDocumento());
+        assertFalse("Debe listar facturas para el cliente", facturas.isEmpty());
+        assertEquals(idPedido, facturas.get(0).getId());
+
+        // 5. Estadísticas del dashboard
+        EstadisticasDashboard stats = clienteDao.obtenerEstadisticasDashboard();
+        assertNotNull(stats);
+        assertTrue(stats.getTotalClientes() > 0);
+        assertTrue(stats.getVentasHistoricasDolares().compareTo(BigDecimal.ZERO) > 0);
+    }
+
     private static Connection conexion() throws SQLException {
         return DriverManager.getConnection(System.getProperty("DB_URL"),
                 System.getProperty("DB_USER"), System.getProperty("DB_PASSWORD"));
@@ -460,6 +548,8 @@ public class MySqlIntegrationIT {
             sentencia.executeUpdate("DELETE d FROM detalle_pedidos d INNER JOIN pedidos p ON p.id=d.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE FROM pedidos WHERE usuario='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-SALA-%'");
+            sentencia.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-PLATO-%'");
+            sentencia.executeUpdate("DELETE FROM clientes WHERE documento LIKE 'V-%' OR documento LIKE 'J-%'");
         }
     }
 

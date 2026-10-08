@@ -24,13 +24,18 @@ DROP TABLE IF EXISTS `config`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `config` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `ruc` varchar(15) COLLATE utf8_spanish_ci NOT NULL,
+  `ruc` varchar(30) COLLATE utf8_spanish_ci NOT NULL,
   `nombre` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
-  `telefono` varchar(11) COLLATE utf8_spanish_ci NOT NULL,
+  `telefono` varchar(30) COLLATE utf8_spanish_ci NOT NULL,
   `direccion` text COLLATE utf8_spanish_ci NOT NULL,
   `mensaje` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
   `tasa_dolar` decimal(12,4) NOT NULL DEFAULT 36.5000,
   `iva_porcentaje` decimal(5,2) NOT NULL DEFAULT 16.00,
+  `logo_path` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `cliente_predeterminado_nombre` varchar(150) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'Consumidor Final',
+  `cliente_predeterminado_documento` varchar(30) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'V-00000000',
+  `meses_retencion_pedidos` int(11) NOT NULL DEFAULT 24,
+  `imprimir_logo_ticket` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -41,7 +46,7 @@ CREATE TABLE `config` (
 
 LOCK TABLES `config` WRITE;
 /*!40000 ALTER TABLE `config` DISABLE KEYS */;
-INSERT INTO `config` VALUES (1,'65479877','Restaurante la Delicia','957847894','Lima - Perú','Gracias por la compra',36.5000,16.00);
+INSERT INTO `config` VALUES (1,'J-12345678-0','Restaurante la Delicia','0414-1234567','Caracas - Venezuela','Gracias por su compra',36.5000,16.00,NULL,'Consumidor Final','V-00000000',24,1);
 /*!40000 ALTER TABLE `config` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -61,6 +66,7 @@ CREATE TABLE `detalle_pedidos` (
   `id_pedido` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `id_pedido` (`id_pedido`),
+  KEY `idx_detalle_pedidos_nombre` (`nombre`),
   CONSTRAINT `detalle_pedidos_ibfk_1` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -99,8 +105,13 @@ CREATE TABLE `pedidos` (
   `subtotal_bs` decimal(14,2) NOT NULL DEFAULT 0.00,
   `iva_bs` decimal(14,2) NOT NULL DEFAULT 0.00,
   `total_bs` decimal(14,2) NULL DEFAULT NULL,
+  `cliente_nombre` varchar(150) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'Consumidor Final',
+  `cliente_documento` varchar(30) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'V-00000000',
+  `metodo_pago` varchar(30) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'EFECTIVO',
   PRIMARY KEY (`id`),
   KEY `id_sala` (`id_sala`),
+  KEY `idx_pedidos_estado_fecha` (`estado`,`fecha`),
+  KEY `idx_pedidos_cliente_doc` (`cliente_documento`),
   UNIQUE KEY `uq_pedidos_mesa_pendiente` (`id_sala_pendiente`,`num_mesa_pendiente`),
   CONSTRAINT `pedidos_ibfk_1` FOREIGN KEY (`id_sala`) REFERENCES `salas` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
@@ -112,8 +123,37 @@ CREATE TABLE `pedidos` (
 
 LOCK TABLES `pedidos` WRITE;
 /*!40000 ALTER TABLE `pedidos` DISABLE KEYS */;
-INSERT INTO `pedidos` (`id`,`id_sala`,`num_mesa`,`fecha`,`subtotal`,`iva_porcentaje`,`iva_monto`,`total`,`estado`,`usuario`,`tasa_cambio`,`subtotal_bs`,`iva_bs`,`total_bs`) VALUES (1,1,2,'2022-05-18 00:31:52',78.00,0.00,0.00,78.00,'FINALIZADO','ANGEL SIFUENTES',36.5000,2847.00,0.00,2847.00),(2,2,8,'2022-05-18 00:32:20',30.00,0.00,0.00,30.00,'PENDIENTE','ANGEL SIFUENTES',36.5000,1095.00,0.00,1095.00),(3,1,9,'2022-05-18 00:32:29',28.00,0.00,0.00,28.00,'PENDIENTE','ANGEL SIFUENTES',36.5000,1022.00,0.00,1022.00),(4,1,11,'2022-05-18 01:04:47',20.00,0.00,0.00,20.00,'PENDIENTE','ANGEL SIFUENTES',36.5000,730.00,0.00,730.00);
+INSERT INTO `pedidos` (`id`,`id_sala`,`num_mesa`,`fecha`,`subtotal`,`iva_porcentaje`,`iva_monto`,`total`,`estado`,`usuario`,`tasa_cambio`,`subtotal_bs`,`iva_bs`,`total_bs`,`cliente_nombre`,`cliente_documento`) VALUES (1,1,2,'2022-05-18 00:31:52',78.00,0.00,0.00,78.00,'FINALIZADO','ANGEL SIFUENTES',36.5000,2847.00,0.00,2847.00,'Consumidor Final','V-00000000'),(2,2,8,'2022-05-18 00:32:20',30.00,0.00,0.00,30.00,'PENDIENTE','ANGEL SIFUENTES',36.5000,1095.00,0.00,1095.00,'Consumidor Final','V-00000000'),(3,1,9,'2022-05-18 00:32:29',28.00,0.00,0.00,28.00,'PENDIENTE','ANGEL SIFUENTES',36.5000,1022.00,0.00,1022.00,'Consumidor Final','V-00000000'),(4,1,11,'2022-05-18 01:04:47',20.00,0.00,0.00,20.00,'PENDIENTE','ANGEL SIFUENTES',36.5000,730.00,0.00,730.00,'Consumidor Final','V-00000000');
 /*!40000 ALTER TABLE `pedidos` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `clientes`
+--
+
+DROP TABLE IF EXISTS `clientes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `clientes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `documento` varchar(30) COLLATE utf8_spanish_ci NOT NULL,
+  `nombre` varchar(150) COLLATE utf8_spanish_ci NOT NULL,
+  `telefono` varchar(30) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `direccion` text COLLATE utf8_spanish_ci DEFAULT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_clientes_documento` (`documento`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `clientes`
+--
+
+LOCK TABLES `clientes` WRITE;
+/*!40000 ALTER TABLE `clientes` DISABLE KEYS */;
+INSERT INTO `clientes` VALUES (1,'V-00000000','Consumidor Final',NULL,NULL,'2026-10-06 00:00:00');
+/*!40000 ALTER TABLE `clientes` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -128,6 +168,8 @@ CREATE TABLE `platos` (
   `nombre` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
   `precio` decimal(10,2) NOT NULL,
   `fecha` date DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `desactivado_en` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -138,7 +180,7 @@ CREATE TABLE `platos` (
 
 LOCK TABLES `platos` WRITE;
 /*!40000 ALTER TABLE `platos` DISABLE KEYS */;
-INSERT INTO `platos` VALUES (1,'ARROZ CON POLLO',10.00,CURRENT_DATE()),(2,'CHAUFA',20.00,CURRENT_DATE()),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,CURRENT_DATE());
+INSERT INTO `platos` VALUES (1,'ARROZ CON POLLO',10.00,CURRENT_DATE(),1,NULL),(2,'CHAUFA',20.00,CURRENT_DATE(),1,NULL),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,CURRENT_DATE(),1,NULL);
 /*!40000 ALTER TABLE `platos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -191,10 +233,92 @@ CREATE TABLE `usuarios` (
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` VALUES (1,'ANGEL SIFUENTES','info@angelsifuentes.com','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador');
+INSERT INTO `usuarios` VALUES (1,'Administrador','admin','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador'),(2,'ANGEL SIFUENTES','info@angelsifuentes.com','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador');
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+--
+-- Table structure for table `configuracion_sistema`
+--
+
+DROP TABLE IF EXISTS `configuracion_sistema`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `configuracion_sistema` (
+  `clave` varchar(80) COLLATE utf8_spanish_ci NOT NULL,
+  `valor` text COLLATE utf8_spanish_ci NOT NULL,
+  `descripcion` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `actualizado_en` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`clave`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `configuracion_sistema` WRITE;
+/*!40000 ALTER TABLE `configuracion_sistema` DISABLE KEYS */;
+INSERT INTO `configuracion_sistema` (`clave`, `valor`, `descripcion`) VALUES
+('tasa_dolar', '36.5000', 'Tasa de cambio USD / Bs'),
+('iva_porcentaje', '16.00', 'Porcentaje de IVA'),
+('impresora_tickets', 'DEFAULT', 'Impresora predeterminada para tickets'),
+('modo_salida_tickets', 'TERMICA_DIRECTA', 'Modo de salida de tickets'),
+('imprimir_logo_ticket', 'true', 'Imprimir logo en ticket térmico 80mm'),
+('cliente_predeterminado_nombre', 'Consumidor Final', 'Nombre de cliente por defecto en facturación'),
+('cliente_predeterminado_documento', 'V-00000000', 'Cédula/RIF de cliente por defecto en facturación'),
+('meses_retencion_pedidos', '24', 'Meses de retención de pedidos');
+/*!40000 ALTER TABLE `configuracion_sistema` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `auditoria_pedidos`
+--
+
+DROP TABLE IF EXISTS `auditoria_pedidos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `auditoria_pedidos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id_pedido` int(11) NOT NULL,
+  `accion` varchar(50) COLLATE utf8_spanish_ci NOT NULL,
+  `motivo` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
+  `usuario` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
+  `fecha_hora` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_auditoria_pedidos_pedido` (`id_pedido`),
+  KEY `idx_auditoria_pedidos_fecha` (`fecha_hora`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `cierres_caja`
+--
+
+DROP TABLE IF EXISTS `cierres_caja`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `cierres_caja` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tipo` varchar(20) COLLATE utf8_spanish_ci NOT NULL,
+  `fecha_jornada` date NOT NULL,
+  `fecha_hora_emision` datetime NOT NULL,
+  `usuario_emisor` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
+  `total_ventas_usd` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `total_ventas_bs` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `efectivo_esperado_bs` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `efectivo_declarado_bs` decimal(12,2) DEFAULT NULL,
+  `diferencia_bs` decimal(12,2) DEFAULT NULL,
+  `estado_conciliacion_bs` varchar(20) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `efectivo_esperado_usd` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `efectivo_declarado_usd` decimal(12,2) DEFAULT NULL,
+  `diferencia_usd` decimal(12,2) DEFAULT NULL,
+  `estado_conciliacion_usd` varchar(20) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `tasa_cambio` decimal(12,4) NOT NULL DEFAULT 36.5000,
+  `ruta_pdf` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_cierres_fecha` (`fecha_jornada`),
+  KEY `idx_cierres_tipo` (`tipo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

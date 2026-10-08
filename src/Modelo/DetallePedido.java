@@ -1,11 +1,12 @@
 package Modelo;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class DetallePedido {
     private int id;
     private String nombre;
-    private BigDecimal precio = BigDecimal.ZERO;
+    private BigDecimal precio = BigDecimal.ZERO.setScale(2);
     private int cantidad;
     private String comentario;
     private int id_pedido;
@@ -46,7 +47,7 @@ public class DetallePedido {
         if (precio == null) {
             throw ErrorAplicacionException.validacion("El precio del detalle es obligatorio.");
         }
-        this.precio = precio;
+        this.precio = precio.setScale(2, RoundingMode.HALF_UP);
     }
 
     public int getCantidad() {

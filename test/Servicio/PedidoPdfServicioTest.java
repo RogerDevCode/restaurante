@@ -17,6 +17,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -37,6 +38,24 @@ public class PedidoPdfServicioTest {
         servicio.generar(42);
 
         assertEquals(temporal.getRoot().toPath().resolve("pedido-42.pdf"), abierto.get());
+    }
+
+    @Test
+    public void reimprimirGeneraArchivoConTimestamp() {
+        AtomicReference<Path> abierto = new AtomicReference<>();
+        PedidoPdfServicio servicio = new PedidoPdfServicio(
+                id -> pedido(),
+                id -> Collections.singletonList(detalle()),
+                this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()),
+                abierto::set);
+
+        servicio.reimprimir(42);
+
+        Path archivo = abierto.get();
+        org.junit.Assert.assertNotNull(archivo);
+        assertTrue(archivo.getFileName().toString().matches("pedido-42_\\d{8}_\\d{6}(_\\d+)?\\.pdf"));
+        assertTrue(archivo.toFile().isFile());
     }
 
     @Test
@@ -71,6 +90,44 @@ public class PedidoPdfServicioTest {
             logger.setUseParentHandlers(padresAnteriores);
         }
     }
+
+    @Test
+    public void previsualizarGeneraElPdfYLoAbreEnElVisorSinImpresionDirecta() {
+        AtomicReference<Path> abiertoEnVisor = new AtomicReference<>();
+        AtomicReference<Path> impresoDirecto = new AtomicReference<>();
+        PedidoPdfServicio servicio = new PedidoPdfServicio(
+                id -> pedido(),
+                id -> Collections.singletonList(detalle()),
+                this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()),
+                impresoDirecto::set,
+                abiertoEnVisor::set);
+
+        servicio.previsualizar(42);
+
+        Path archivo = abiertoEnVisor.get();
+        org.junit.Assert.assertNotNull(archivo);
+        assertTrue(archivo.getFileName().toString().matches("pedido-42_\\d{8}_\\d{6}(_\\d+)?\\.pdf"));
+        assertNull("No debe invocarse la impresión directa al previsualizar", impresoDirecto.get());
+        assertTrue(archivo.toFile().isFile());
+    }
+
+    @Test
+    public void previsualizarFallaSiVisorLanzaErrorPropagandoCausa() {
+        IOException causa = new IOException("visor no disponible");
+        PedidoPdfServicio servicio = new PedidoPdfServicio(
+                id -> pedido(),
+                id -> Collections.singletonList(detalle()),
+                this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()),
+                path -> {},
+                path -> { throw causa; });
+
+        ErrorAplicacionException ex = org.junit.Assert.assertThrows(
+                ErrorAplicacionException.class, () -> servicio.previsualizar(42));
+        assertSame(causa, ex.getCause());
+    }
+
 
     private Pedidos pedido() {
         Pedidos pedido = new Pedidos();

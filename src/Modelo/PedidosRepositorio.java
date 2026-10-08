@@ -21,6 +21,36 @@ public interface PedidosRepositorio {
     /** Marca como finalizado un pedido existente. */
     boolean actualizarEstado(int idPedido);
 
+    /** Marca como finalizado un pedido asociándolo a los datos del cliente. */
+    default boolean actualizarEstadoConCliente(int idPedido, String clienteNombre, String clienteDocumento) {
+        return actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento, "EFECTIVO");
+    }
+
+    /** Marca como finalizado un pedido asociándolo a los datos del cliente y método de pago. */
+    default boolean actualizarEstadoConCliente(int idPedido, String clienteNombre, String clienteDocumento, String metodoPago) {
+        return actualizarEstado(idPedido);
+    }
+
     /** Devuelve el historial de pedidos ordenado por fecha descendente. */
     List<Pedidos> listarPedidos();
+
+    /** Devuelve la cantidad de mesas ocupadas (con pedidos pendientes) agrupadas por id de sala. */
+    default java.util.Map<Integer, Integer> contarMesasOcupadasPorSala() {
+        return java.util.Collections.emptyMap();
+    }
+
+    /** Purga pedidos finalizados anteriores a la cantidad de meses especificada. Retorna la cantidad eliminada. */
+    default int purgarPedidosFinalizados(int mesesAnteriores) {
+        return 0;
+    }
+
+    /** Marca como anulado un pedido existente. */
+    default boolean anularPedido(int idPedido) {
+        return false;
+    }
+
+    /** Marca como anulado un pedido existente y registra su auditoría de forma atómica. */
+    default boolean anularPedidoConAuditoria(int idPedido, String motivo, String usuario) {
+        return anularPedido(idPedido);
+    }
 }

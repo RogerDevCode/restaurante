@@ -1,0 +1,107 @@
+================================================================================
+          SISTEMA DE GESTION DE RESTAURANTE 2026 - PAQUETE EJECUTABLE
+================================================================================
+
+Esta carpeta contiene todo lo necesario para ejecutar el sistema de restaurante
+de manera autónoma en cualquier equipo sin necesidad de abrir un IDE como NetBeans.
+
+--------------------------------------------------------------------------------
+1. CONTENIDO DE LA CARPETA
+--------------------------------------------------------------------------------
+- Restaurante.jar          : Archivo ejecutable principal de la aplicación.
+- instalacion_completa_un_clic.bat : Instalador y configurador TODO EN UNO (1-clic: genera ejecutable, actualiza MySQL, instala/configura Java 21 y crea acceso directo en Escritorio).
+- instalar_acceso_directo.bat: Instalador de acceso directo y entorno para Windows 11 / 10.
+- iniciar_restaurante_silencioso.vbs : Lanzador silencioso en Windows (sin ventana negra de terminal CMD).
+- icono_restaurante.ico     : Icono en alta resolución para el acceso directo del sistema.
+- .env                     : Configuración de la base de datos (usuario: admin, clave: admin).
+- BD.sql                   : Script SQL con el esquema y datos iniciales de la base de datos.
+- actualizar_bd.sql        : Migraciones de base de datos (RIF, logo, clientes, pago, tickets, índices).
+- lib/                     : Librerías requeridas (Driver MySQL, iText PDF, AbsoluteLayout).
+- pdf/                     : Directorio donde se guardan automáticamente los tickets y facturas PDF.
+- logs/                    : Directorio donde se guardan los registros de auditoría y ejecución.
+- iniciar_restaurante.bat  : Lanzador alternativo en consola para Windows.
+- iniciar_restaurante.sh   : Lanzador para Linux / macOS.
+- LEEME_INSTRUCCIONES.txt  : Este documento.
+
+--------------------------------------------------------------------------------
+2. REQUISITOS PREVIOS
+--------------------------------------------------------------------------------
+1. Java Runtime Environment:
+   - Requiere Java 21 LTS (o compatible, ej: OpenJDK 21, Eclipse Temurin 21, Amazon Corretto 21).
+   - Comprueba tu versión ejecutando en consola: java -version
+
+2. Servidor MySQL activo:
+   - MySQL Server o MariaDB corriendo localmente (puerto 3306 por defecto).
+
+--------------------------------------------------------------------------------
+3. CONFIGURACIÓN DE LA BASE DE DATOS
+--------------------------------------------------------------------------------
+OPCIÓN A (AUTOMÁTICA EN WINDOWS - RECOMENDADA):
+   - Haz clic derecho sobre 'instalar_mysql_y_bd.bat' y selecciona "Ejecutar como administrador"
+     (o doble clic directamente).
+   - El script detecta si MySQL/MariaDB está instalado (si no, lo instala vía winget),
+     inicia el servicio, crea la base de datos 'restaurante', crea el usuario 'admin' / 'admin'
+     e importa automáticamente todo el archivo 'BD.sql'.
+
+OPCIÓN B (MANUAL):
+   Paso 1: Crear la base de datos e importar el archivo BD.sql
+      Desde la consola de MySQL o phpMyAdmin / MySQL Workbench:
+      mysql -u root -p < BD.sql
+
+Paso 2: Crear el usuario 'admin' en MySQL (si no existe) y darle permisos
+   Ejecuta las siguientes instrucciones SQL en tu servidor MySQL:
+
+   CREATE USER IF NOT EXISTS 'admin'@'localhost' IDENTIFIED BY 'admin';
+   CREATE USER IF NOT EXISTS 'admin'@'127.0.0.1' IDENTIFIED BY 'admin';
+   
+   GRANT ALL PRIVILEGES ON restaurante.* TO 'admin'@'localhost';
+   GRANT ALL PRIVILEGES ON restaurante.* TO 'admin'@'127.0.0.1';
+   FLUSH PRIVILEGES;
+
+Paso 3: Verificar el archivo .env
+   El archivo '.env' en esta carpeta ya viene preconfigurado con:
+     MYSQL_HOST=127.0.0.1
+     MYSQL_PORT=3306
+     MYSQL_DATABASE=restaurante
+     MYSQL_USER=admin
+     MYSQL_PASSWORD=admin
+
+   Si tu servidor MySQL usa otro puerto o clave, simplemente edita el archivo .env
+   con un editor de texto (Notepad, VS Code, Nano, etc.).
+
+--------------------------------------------------------------------------------
+4. CÓMO EJECUTAR LA APLICACIÓN
+--------------------------------------------------------------------------------
+En Windows 11 / 10 (MÉTODO RECOMENDADO PARA EL DUEÑO DEL RESTAURANTE):
+   1. Haz doble clic en 'instalar_acceso_directo.bat'.
+   2. El instalador verificará o instalará Java 21, configurará JAVA_HOME y
+      creará el acceso directo "Restaurante 2026" con icono en tu Escritorio y Menú Inicio.
+   3. A partir de allí, solo debes hacer doble clic en el icono del Escritorio:
+      ¡Se abrirá directamente y de forma transparente SIN ventana negra de consola!
+
+Métodos alternativos en Windows:
+   - Haz doble clic sobre 'iniciar_restaurante_silencioso.vbs' (ejecución sin consola).
+   - Haz doble clic sobre 'iniciar_restaurante.bat' (muestra consola para depuración).
+   - O desde CMD / PowerShell:
+       java -jar Restaurante.jar
+
+En Linux / macOS:
+   - Ejecuta desde la terminal:
+       ./iniciar_restaurante.sh
+   - O directamente:
+       java -jar Restaurante.jar
+
+--------------------------------------------------------------------------------
+5. USUARIOS POR DEFECTO PARA EL INICIO DE SESIÓN EN EL SISTEMA
+--------------------------------------------------------------------------------
+(Cargados en BD.sql)
+
+Rol Administrador (PRE-LLENADO POR DEFECTO EN PANTALLA):
+   - Usuario / Correo : admin
+   - Password         : admin
+   (Simplemente presione el botón "Ingresar" o Enter)
+
+Rol Asistente / Empleado:
+   - Usuario / Correo : empleado@restaurante.com
+   - Password         : user
+================================================================================

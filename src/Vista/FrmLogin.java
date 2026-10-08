@@ -187,10 +187,12 @@ public class FrmLogin extends javax.swing.JFrame {
         ayuda.setForeground(SECUNDARIO);
         ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        configurarEtiqueta(jLabel3, "Correo electrónico");
+        configurarEtiqueta(jLabel3, "Usuario / Correo");
         configurarEtiqueta(jLabel4, "Contraseña");
         configurarCampo(txtCorreo);
         configurarCampo(txtPass);
+        txtCorreo.setText("admin");
+        txtPass.setText("admin");
 
         btnIniciar.setText("Ingresar");
         btnIniciar.setFont(new Font("SansSerif", Font.BOLD, 15));

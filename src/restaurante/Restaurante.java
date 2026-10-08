@@ -29,6 +29,16 @@ public class Restaurante {
 
     public static void main(String[] args) {
         ManejadorErroresSwing.instalar();
+        infraestructura.ConfiguracionLogs.configurar();
+        infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
+        Thread.ofVirtual().name("backup-diario-inicio").start(() -> {
+            try {
+                new Servicio.ServicioRespaldoBaseDatos().crearRespaldoAutomaticoSiEsNecesario();
+            } catch (Exception ex) {
+                java.util.logging.Logger.getLogger(Restaurante.class.getName())
+                        .log(java.util.logging.Level.FINE, "Aviso en respaldo automático inicial: " + ex.getMessage());
+            }
+        });
         LoginControlador controlador = new LoginControlador(
                 new AutenticacionServicio(new LoginDao()));
         Function<Usuario, Sistema> crearSistema = usuario -> {
@@ -39,11 +49,16 @@ public class Restaurante {
                     pedidosDao::verPedido,
                     id -> pedidosDao.verPedidoDetalle(id),
                     empresaDao::datosEmpresa,
-                    new GeneradorPdfPedido(Paths.get(System.getProperty("user.home", "."))),
-                    archivo -> Desktop.getDesktop().open(archivo.toFile()));
+                    GeneradorPdfPedido.conEstructuraMensual(GeneradorPdfPedido.resolverDirectorioFacturasPorDefecto()),
+                    PedidoPdfServicio.AbridorPdf.porDefecto());
+            Servicio.CierreCajaServicio cierreServicio = new Servicio.CierreCajaServicio(
+                    new Modelo.CierreCajaDao(),
+                    empresaDao::datosEmpresa,
+                    new Servicio.GeneradorPdfCierre());
             PedidosControlador pedidosControlador = new PedidosControlador(
                     new PedidoServicio(pedidosDao), pdfServicio, politica,
-                    new ConsultaPedidosServicio(pedidosDao, politica));
+                    new ConsultaPedidosServicio(pedidosDao, politica),
+                    cierreServicio);
             return new Sistema(usuario,
                     new SalasControlador(new SalasServicio(new SalasDao(), politica)),
                     new PlatosControlador(new PlatosServicio(new PlatosDao(), politica)),

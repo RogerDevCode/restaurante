@@ -64,16 +64,19 @@ public class PlatosServicioTest {
     }
 
     @Test
-    public void propagaSinCambiarLaExcepcionDelRepositorio() {
+    public void administradorPuedeReactivarUnPlato() {
         FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
-        IllegalStateException fallo = new IllegalStateException("fallo de repositorio");
-        repositorio.fallo = fallo;
         PlatosServicio servicio = new PlatosServicio(repositorio, politica("Administrador"));
 
-        IllegalStateException propagada = assertThrows(IllegalStateException.class,
-                () -> servicio.listarPorFecha("", "2026-10-05"));
+        assertTrue(servicio.reactivar(5));
+        assertEquals(1, repositorio.escrituras.get());
+    }
 
-        assertSame(fallo, propagada);
+    @Test
+    public void asistenteNoPuedeReactivarNiDesactivar() {
+        PlatosServicio servicio = new PlatosServicio(new FakePlatosRepositorio(), politica("Asistente"));
+        assertThrows(ErrorAplicacionException.class, () -> servicio.desactivar(1));
+        assertThrows(ErrorAplicacionException.class, () -> servicio.reactivar(1));
     }
 
     private PoliticaAcceso politica(String rol) {
@@ -107,7 +110,9 @@ public class PlatosServicioTest {
             fecha.set(fechaConsulta);
             return Collections.emptyList();
         }
-        @Override public boolean eliminar(int id) { escritura(null); return true; }
+        @Override public boolean desactivar(int id) { escritura(null); return true; }
+        @Override public boolean reactivar(int id) { escritura(null); return true; }
+        @Override public List<Platos> listarInactivos() { return Collections.emptyList(); }
         @Override public boolean modificar(Platos plato) { escritura(plato); return resultado; }
         private void escritura(Platos plato) {
             escrituras.incrementAndGet();
