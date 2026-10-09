@@ -29,6 +29,26 @@ public class SalasDao implements SalasRepositorio {
             throw ErrorAplicacionException.validacion("Los datos de la sala son obligatorios.");
         }
         String sql = """
+            INSERT INTO salas (nombre, mesas, tipo)
+            VALUES (?, ?, ?)
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, sala.getNombre());
+            sentencia.setInt(2, sala.getMesas());
+            sentencia.setString(3, sala.getTipo());
+            return ErrorAplicacionException.resultadoUnaFila(
+                    sentencia.executeUpdate(), "registrar sala");
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return registrarLegacy(sala);
+            }
+            throw new DataAccessException("No se pudo registrar la sala.", ex);
+        }
+    }
+
+    private boolean registrarLegacy(Salas sala) {
+        String sql = """
             INSERT INTO salas (nombre, mesas)
             VALUES (?, ?)
             """;
@@ -45,6 +65,32 @@ public class SalasDao implements SalasRepositorio {
 
     @Override
     public List<Salas> listar() {
+        List<Salas> salas = new ArrayList<>();
+        String sql = """
+            SELECT id, nombre, mesas, tipo
+            FROM salas
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql);
+                ResultSet resultados = sentencia.executeQuery()) {
+            while (resultados.next()) {
+                Salas sala = new Salas();
+                sala.setId(resultados.getInt("id"));
+                sala.setNombre(resultados.getString("nombre"));
+                sala.setMesas(resultados.getInt("mesas"));
+                sala.setTipo(resultados.getString("tipo"));
+                salas.add(sala);
+            }
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return listarLegacy();
+            }
+            throw new DataAccessException("No se pudieron listar las salas.", ex);
+        }
+        return salas;
+    }
+
+    private List<Salas> listarLegacy() {
         List<Salas> salas = new ArrayList<>();
         String sql = """
             SELECT id, nombre, mesas
@@ -91,6 +137,28 @@ public class SalasDao implements SalasRepositorio {
         if (sala == null) {
             throw ErrorAplicacionException.validacion("Los datos de la sala son obligatorios.");
         }
+        String sql = """
+            UPDATE salas
+            SET nombre = ?, mesas = ?, tipo = ?
+            WHERE id = ?
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, sala.getNombre());
+            sentencia.setInt(2, sala.getMesas());
+            sentencia.setString(3, sala.getTipo());
+            sentencia.setInt(4, sala.getId());
+            return ErrorAplicacionException.resultadoUnaFila(
+                    sentencia.executeUpdate(), "modificar sala " + sala.getId());
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return modificarLegacy(sala);
+            }
+            throw new DataAccessException("No se pudo modificar la sala.", ex);
+        }
+    }
+
+    private boolean modificarLegacy(Salas sala) {
         String sql = """
             UPDATE salas
             SET nombre = ?, mesas = ?

@@ -201,7 +201,7 @@ public class CombinatoriaUsuarioE2EIT {
                 pedidosDao::verPedidoDetalle,
                 loginDao::datosEmpresa,
                 generadorPdf,
-                archivo -> {}
+                archivo -> true
         );
         PedidosControlador pedidosCtrl = new PedidosControlador(pedidoServicio, pdfServicio, rbacAdmin, consultaServicio);
 

@@ -237,20 +237,18 @@ public final class GeneradorPdfPedido {
                     .multiply(BigDecimal.valueOf(detalle.getCantidad())));
         }
         BigDecimal subtotalEsperado = totalDetalles;
-        BigDecimal ivaEsperado = BigDecimal.ZERO;
-        BigDecimal totalEsperado = subtotalEsperado;
-
-        if (pedido.getIvaPorcentaje() != null && pedido.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0) {
-            ivaEsperado = subtotalEsperado.multiply(pedido.getIvaPorcentaje()).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-            totalEsperado = subtotalEsperado.add(ivaEsperado).setScale(2, RoundingMode.HALF_UP);
-        }
+        BigDecimal ivaMaximo = (pedido.getIvaPorcentaje() != null && pedido.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0)
+                ? subtotalEsperado.multiply(pedido.getIvaPorcentaje()).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2);
 
         if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.UNNECESSARY).compareTo(subtotalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
         }
-        if (pedido.getIvaMonto() != null && pedido.getIvaMonto().setScale(2, RoundingMode.UNNECESSARY).compareTo(ivaEsperado) != 0) {
+        if (pedido.getIvaMonto() != null && (pedido.getIvaMonto().compareTo(BigDecimal.ZERO) < 0 || pedido.getIvaMonto().compareTo(ivaMaximo) > 0)) {
             throw ErrorAplicacionException.validacion("El monto del IVA no coincide con el porcentaje aplicado.");
         }
+        BigDecimal ivaEfectivo = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : ivaMaximo;
+        BigDecimal totalEsperado = subtotalEsperado.add(ivaEfectivo).setScale(2, RoundingMode.HALF_UP);
         if (!importeValido(pedido.getTotalDecimal())
                 || pedido.getTotalDecimal().setScale(2, RoundingMode.UNNECESSARY).compareTo(totalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles y cálculo de IVA.");
@@ -390,6 +388,20 @@ public final class GeneradorPdfPedido {
 
             sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
               .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
+
+            if (ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal baseImpUsd = ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
+                BigDecimal exentoUsd = subtotalUsd.subtract(baseImpUsd);
+                if (exentoUsd.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal baseImpBs = baseImpUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
+                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+                }
+            }
+
             sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
               .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
               .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
@@ -503,6 +515,20 @@ public final class GeneradorPdfPedido {
 
             sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
               .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
+
+            if (ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal baseImpUsd = ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
+                BigDecimal exentoUsd = subtotalUsd.subtract(baseImpUsd);
+                if (exentoUsd.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal baseImpBs = baseImpUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
+                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+                }
+            }
+
             sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
               .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
               .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");

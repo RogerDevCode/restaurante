@@ -24,6 +24,8 @@ public class Pedidos {
     private String metodoPago = "EFECTIVO";
     private BigDecimal efectivoBs;
     private BigDecimal efectivoUsd;
+    private Integer idMesonero;
+    private String mesoneroNombre;
 
     public Pedidos() {
     }
@@ -244,5 +246,21 @@ public class Pedidos {
                 throw ErrorAplicacionException.validacion(
                         "Método de pago no válido: " + metodoPago + ". Debe ser EFECTIVO, EFECTIVO_BS, EFECTIVO_USD, TRANSFERENCIA, TARJETA, PAGO_MOVIL o MIXTO.");
         }
+    }
+
+    public Integer getIdMesonero() {
+        return idMesonero;
+    }
+
+    public void setIdMesonero(Integer idMesonero) {
+        this.idMesonero = idMesonero;
+    }
+
+    public String getMesoneroNombre() {
+        return mesoneroNombre;
+    }
+
+    public void setMesoneroNombre(String mesoneroNombre) {
+        this.mesoneroNombre = mesoneroNombre != null ? mesoneroNombre.trim() : null;
     }
 }

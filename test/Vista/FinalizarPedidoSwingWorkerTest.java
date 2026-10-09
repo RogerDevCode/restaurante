@@ -42,8 +42,8 @@ public class FinalizarPedidoSwingWorkerTest {
                 return true;
             }
         };
-        PedidosControlador controlador = controlador(repositorio, archivo -> {
-            operacionesEnEdt.compareAndSet(false, SwingUtilities.isEventDispatchThread());
+        PedidosControlador controlador = controlador(repositorio, archivo -> { 
+            operacionesEnEdt.compareAndSet(false, SwingUtilities.isEventDispatchThread()); return true;
         });
 
         SwingUtilities.invokeAndWait(() -> new FinalizarPedidoSwingWorker(controlador, 31, resultado -> {
@@ -65,7 +65,7 @@ public class FinalizarPedidoSwingWorkerTest {
         CountDownLatch completado = new CountDownLatch(1);
         PedidosControlador controlador = controlador(new PedidosRepositorioFalso() {
             @Override public boolean actualizarEstado(int id) { return false; }
-        }, archivo -> pdfGenerado.set(true), pdfConsultado);
+        }, archivo -> {  pdfGenerado.set(true); return true; }, pdfConsultado);
 
         SwingUtilities.invokeAndWait(() -> new FinalizarPedidoSwingWorker(controlador, 31, resultado -> {
             finalizado.set(resultado);
@@ -109,7 +109,7 @@ public class FinalizarPedidoSwingWorkerTest {
         CountDownLatch completado = new CountDownLatch(1);
         PedidosControlador controlador = controlador(new PedidosRepositorioFalso() {
             @Override public boolean actualizarEstado(int id) { return true; }
-        }, archivo -> { throw fallo; });
+        }, archivo -> {  throw fallo; });
 
         SwingUtilities.invokeAndWait(() -> new FinalizarPedidoSwingWorker(controlador, 31,
                 resultado -> { throw new AssertionError("No se esperaba éxito"); }, (error, confirmado) -> {
@@ -135,7 +135,7 @@ public class FinalizarPedidoSwingWorkerTest {
                 return true;
             }
         };
-        PedidosControlador controlador = controlador(repositorio, archivo -> {});
+        PedidosControlador controlador = controlador(repositorio, archivo -> true);
 
         SwingUtilities.invokeAndWait(() -> new FinalizarPedidoSwingWorker(controlador, 31,
                 "Juan", "V-12345678", "TARJETA",

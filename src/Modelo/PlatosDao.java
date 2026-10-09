@@ -29,6 +29,27 @@ public class PlatosDao implements PlatosRepositorio {
     public boolean registrar(Platos pla) {
         validarPlato(pla);
         String sql = """
+            INSERT INTO platos (nombre, precio, fecha, aplica_iva)
+            VALUES (?, ?, ?, ?)
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, pla.getNombre());
+            sentencia.setBigDecimal(2, precioPersistible(pla));
+            sentencia.setString(3, pla.getFecha());
+            sentencia.setInt(4, pla.isAplicaIva() ? 1 : 0);
+            return ErrorAplicacionException.resultadoUnaFila(
+                    sentencia.executeUpdate(), "registrar plato");
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return registrarLegacy(pla);
+            }
+            throw new DataAccessException("No se pudo registrar el plato.", ex);
+        }
+    }
+
+    private boolean registrarLegacy(Platos pla) {
+        String sql = """
             INSERT INTO platos (nombre, precio, fecha)
             VALUES (?, ?, ?)
             """;
@@ -53,12 +74,12 @@ public class PlatosDao implements PlatosRepositorio {
         boolean filtrarNombre = valor != null && !valor.trim().isEmpty();
         String sql = filtrarNombre
             ? """
-              SELECT id, nombre, precio, fecha
+              SELECT id, nombre, precio, fecha, aplica_iva
               FROM platos
               WHERE fecha = ? AND nombre LIKE ? AND activo = 1
               """
             : """
-              SELECT id, nombre, precio, fecha
+              SELECT id, nombre, precio, fecha, aplica_iva
               FROM platos
               WHERE fecha = ? AND activo = 1
               """;
@@ -74,12 +95,13 @@ public class PlatosDao implements PlatosRepositorio {
                     plato.setId(resultados.getInt("id"));
                     plato.setNombre(resultados.getString("nombre"));
                     plato.setPrecioDecimal(resultados.getBigDecimal("precio"));
+                    plato.setAplicaIva(resultados.getInt("aplica_iva") != 0);
                     platos.add(plato);
                 }
             }
         } catch (SQLException ex) {
             if (ex.getErrorCode() == 1054) {
-                // La columna activo no existe en BD legada — usar query sin filtro
+                // Columnas nuevas no existen en BD legada — usar query sin filtro
                 return listarPorFechaLegacy(valor, fecha);
             }
             throw new DataAccessException("No se pudieron listar los platos.", ex);
@@ -206,6 +228,28 @@ public class PlatosDao implements PlatosRepositorio {
     @Override
     public boolean modificar(Platos pla) {
         validarPlato(pla);
+        String sql = """
+            UPDATE platos
+            SET nombre = ?, precio = ?, aplica_iva = ?
+            WHERE id = ?
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, pla.getNombre());
+            sentencia.setBigDecimal(2, precioPersistible(pla));
+            sentencia.setInt(3, pla.isAplicaIva() ? 1 : 0);
+            sentencia.setInt(4, pla.getId());
+            return ErrorAplicacionException.resultadoUnaFila(
+                    sentencia.executeUpdate(), "modificar plato " + pla.getId());
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return modificarLegacy(pla);
+            }
+            throw new DataAccessException("No se pudo modificar el plato.", ex);
+        }
+    }
+
+    private boolean modificarLegacy(Platos pla) {
         String sql = """
             UPDATE platos
             SET nombre = ?, precio = ?

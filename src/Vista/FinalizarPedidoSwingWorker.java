@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 import javax.swing.SwingWorker;
 
 /** Finaliza en background y diferencia el commit de BD de un fallo posterior del PDF. */
-final class FinalizarPedidoSwingWorker extends SwingWorker<Boolean, Void> {
+final class FinalizarPedidoSwingWorker extends SwingWorker<FinalizarPedidoSwingWorker.ResultadoFinalizacion, Void> {
     private final PedidosControlador controlador;
     private final int idPedido;
     private final String clienteNombre;
@@ -17,24 +17,24 @@ final class FinalizarPedidoSwingWorker extends SwingWorker<Boolean, Void> {
     private final String metodoPago;
     private final java.math.BigDecimal efectivoBs;
     private final java.math.BigDecimal efectivoUsd;
-    private final Consumer<Boolean> alCompletar;
+    private final Consumer<ResultadoFinalizacion> alCompletar;
     private final BiConsumer<Throwable, Boolean> alFallar;
     private volatile boolean finalizacionConfirmada;
 
     FinalizarPedidoSwingWorker(PedidosControlador controlador, int idPedido,
-            Consumer<Boolean> alCompletar, BiConsumer<Throwable, Boolean> alFallar) {
+            Consumer<ResultadoFinalizacion> alCompletar, BiConsumer<Throwable, Boolean> alFallar) {
         this(controlador, idPedido, "Consumidor Final", "V-00000000", "EFECTIVO", alCompletar, alFallar);
     }
 
     FinalizarPedidoSwingWorker(PedidosControlador controlador, int idPedido,
             String clienteNombre, String clienteDocumento,
-            Consumer<Boolean> alCompletar, BiConsumer<Throwable, Boolean> alFallar) {
+            Consumer<ResultadoFinalizacion> alCompletar, BiConsumer<Throwable, Boolean> alFallar) {
         this(controlador, idPedido, clienteNombre, clienteDocumento, "EFECTIVO", alCompletar, alFallar);
     }
 
     FinalizarPedidoSwingWorker(PedidosControlador controlador, int idPedido,
             String clienteNombre, String clienteDocumento, String metodoPago,
-            Consumer<Boolean> alCompletar, BiConsumer<Throwable, Boolean> alFallar) {
+            Consumer<ResultadoFinalizacion> alCompletar, BiConsumer<Throwable, Boolean> alFallar) {
         this(controlador, idPedido, clienteNombre, clienteDocumento, metodoPago,
                 null, null, alCompletar, alFallar);
     }
@@ -42,7 +42,7 @@ final class FinalizarPedidoSwingWorker extends SwingWorker<Boolean, Void> {
     FinalizarPedidoSwingWorker(PedidosControlador controlador, int idPedido,
             String clienteNombre, String clienteDocumento, String metodoPago,
             java.math.BigDecimal efectivoBs, java.math.BigDecimal efectivoUsd,
-            Consumer<Boolean> alCompletar, BiConsumer<Throwable, Boolean> alFallar) {
+            Consumer<ResultadoFinalizacion> alCompletar, BiConsumer<Throwable, Boolean> alFallar) {
         if (controlador == null || idPedido <= 0 || alCompletar == null || alFallar == null) {
             throw ErrorAplicacionException.validacion("El pedido y callbacks de finalización son obligatorios.");
         }
@@ -58,16 +58,18 @@ final class FinalizarPedidoSwingWorker extends SwingWorker<Boolean, Void> {
     }
 
     @Override
-    protected Boolean doInBackground() {
+    protected ResultadoFinalizacion doInBackground() {
         boolean finalizado = controlador.finalizarPedidoConCliente(idPedido, clienteNombre, clienteDocumento,
                 metodoPago, efectivoBs, efectivoUsd);
         if (!finalizado) {
-            return false;
+            return new ResultadoFinalizacion(false, false);
         }
         finalizacionConfirmada = true;
-        controlador.generarPdfPedido(idPedido);
-        return true;
+        boolean impresoDirecto = controlador.generarPdfPedido(idPedido);
+        return new ResultadoFinalizacion(true, impresoDirecto);
     }
+
+    public record ResultadoFinalizacion(boolean finalizado, boolean impresoDirecto) {}
 
     @Override
     protected void done() {

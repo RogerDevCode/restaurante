@@ -46,24 +46,25 @@ public final class PedidosControlador {
         return servicio.registrarPedidoCompleto(pedido, detalles);
     }
 
-    public void generarPdfPedido(int idPedido) {
+    public boolean generarPdfPedido(int idPedido) {
         exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
-        servicioPdf.generar(idPedido);
+        return servicioPdf.generar(idPedido);
     }
 
-    public void reimprimirPdfPedido(int idPedido) {
-        reimprimirPdfPedido(idPedido, "Reimpresión de ticket solicitada", "Sistema");
+    public boolean reimprimirPdfPedido(int idPedido) {
+        return reimprimirPdfPedido(idPedido, "Reimpresión de ticket solicitada", "Sistema");
     }
 
-    public void reimprimirPdfPedido(int idPedido, String motivo, String usuario) {
+    public boolean reimprimirPdfPedido(int idPedido, String motivo, String usuario) {
         exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         if (motivo == null || motivo.trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("Debe indicar el motivo de la reimpresión.");
         }
         String usr = (usuario != null && !usuario.isBlank()) ? usuario.trim() : "Sistema";
         try {
-            servicioPdf.reimprimir(idPedido);
+            boolean ok = servicioPdf.reimprimir(idPedido);
             consultas.registrarAuditoria(idPedido, "REIMPRESION", motivo.trim(), usr);
+            return ok;
         } catch (RuntimeException ex) {
             try {
                 consultas.registrarAuditoria(idPedido, "REIMPRESION_FALLIDA", motivo.trim() + " [FALLO: " + ex.getMessage() + "]", usr);
@@ -88,11 +89,11 @@ public final class PedidosControlador {
         servicioPdf.previsualizar(idPedido);
     }
 
-    public java.nio.file.Path imprimirCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor) {
+    public Servicio.CierreCajaServicio.ResultadoCierre imprimirCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor) {
         return imprimirCierreCaja(fecha, tipo, usuarioEmisor, null, null);
     }
 
-    public java.nio.file.Path imprimirCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efBs, java.math.BigDecimal efUsd) {
+    public Servicio.CierreCajaServicio.ResultadoCierre imprimirCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efBs, java.math.BigDecimal efUsd) {
         exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         if (cierreServicio == null) {
             throw new IllegalStateException("El servicio de cierre de caja no está configurado.");
@@ -100,11 +101,11 @@ public final class PedidosControlador {
         return cierreServicio.imprimirCierre(fecha, tipo, usuarioEmisor, efBs, efUsd);
     }
 
-    public java.nio.file.Path previsualizarCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor) {
+    public Servicio.CierreCajaServicio.ResultadoCierre previsualizarCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor) {
         return previsualizarCierreCaja(fecha, tipo, usuarioEmisor, null, null);
     }
 
-    public java.nio.file.Path previsualizarCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efBs, java.math.BigDecimal efUsd) {
+    public Servicio.CierreCajaServicio.ResultadoCierre previsualizarCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efBs, java.math.BigDecimal efUsd) {
         exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         if (cierreServicio == null) {
             throw new IllegalStateException("El servicio de cierre de caja no está configurado.");
@@ -154,6 +155,11 @@ public final class PedidosControlador {
     public Map<Integer, Integer> contarMesasOcupadasPorSala() {
         exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_SALAS);
         return consultas.contarMesasOcupadasPorSala();
+    }
+
+    public Map<Integer, String> consultarMesonerosMesasPendientes(int idSala) {
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_SALAS);
+        return consultas.consultarMesonerosMesasPendientes(idSala);
     }
 
     public int purgarPedidosFinalizados(int meses) {

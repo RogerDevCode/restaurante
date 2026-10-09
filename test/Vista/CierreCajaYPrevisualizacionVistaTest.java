@@ -175,8 +175,8 @@ public class CierreCajaYPrevisualizacionVistaTest {
                 id -> Collections.singletonList(detalleDummy),
                 () -> configDummy,
                 new GeneradorPdfPedido(temporal.getRoot().toPath()),
-                path -> reimpresionesFactura.incrementAndGet(),
-                path -> previsualizacionesFactura.incrementAndGet()
+                path -> { reimpresionesFactura.incrementAndGet(); return true; },
+                path -> { previsualizacionesFactura.incrementAndGet(); return true; }
         );
 
         Servicio.GeneradorPdfCierre generadorCierre = new Servicio.GeneradorPdfCierre(temporal.getRoot().toPath());
@@ -196,8 +196,8 @@ public class CierreCajaYPrevisualizacionVistaTest {
                 daoFalso,
                 () -> configDummy,
                 generadorCierre,
-                path -> impresionesCierre.incrementAndGet(),
-                path -> previsualizacionesCierre.incrementAndGet()
+                path -> { impresionesCierre.incrementAndGet(); return true; },
+                path -> { previsualizacionesCierre.incrementAndGet(); return true; }
         );
 
         PedidosControlador pedidosCtrl = new PedidosControlador(

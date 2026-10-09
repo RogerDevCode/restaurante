@@ -189,7 +189,7 @@ public class ModoSalidaYPdf24ImpresionTest {
                     new Servicio.PedidoServicio(pedidosRepo),
                     new PedidoPdfServicio(pedidosRepo::verPedido, pedidosRepo::verPedidoDetalle, () -> new Config(),
                             GeneradorPdfPedido.conEstructuraMensual(Path.of("tmp_facturas")),
-                            p -> {}),
+                            p -> true),
                     rbac,
                     new Servicio.ConsultaPedidosServicio(pedidosRepo, rbac)
             );

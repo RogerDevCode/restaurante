@@ -11,15 +11,21 @@ public class Platos {
     private String fecha;
     private boolean activo = true;
     private LocalDateTime desactivadoEn;
+    private boolean aplicaIva = true;
 
     public Platos() {
     }
 
     public Platos(int id, String nombre, BigDecimal precio, String fecha) {
+        this(id, nombre, precio, fecha, true);
+    }
+
+    public Platos(int id, String nombre, BigDecimal precio, String fecha, boolean aplicaIva) {
         this.id = id;
         this.nombre = nombre;
         setPrecioDecimal(precio);
         this.fecha = fecha;
+        this.aplicaIva = aplicaIva;
     }
 
     public int getId() {
@@ -71,5 +77,13 @@ public class Platos {
 
     public void setDesactivadoEn(LocalDateTime desactivadoEn) {
         this.desactivadoEn = desactivadoEn;
+    }
+
+    public boolean isAplicaIva() {
+        return aplicaIva;
+    }
+
+    public void setAplicaIva(boolean aplicaIva) {
+        this.aplicaIva = aplicaIva;
     }
 }

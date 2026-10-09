@@ -201,25 +201,25 @@ public class CierreCajaTest {
                 daoFalso,
                 () -> config,
                 generador,
-                impreso::set,
-                previsualizado::set
+                p -> { impreso.set(p); return true; },
+                p -> { previsualizado.set(p); return true; }
         );
 
         // 1. Imprimir Cierre Parcial -> debe guardar en BD
         guardadoLlamado.set(false);
-        Path resImp = servicio.imprimirCierre("2026-10-07", CierreCaja.TipoCierre.PARCIAL, "Mesonero 1");
+        var resImp = servicio.imprimirCierre("2026-10-07", CierreCaja.TipoCierre.PARCIAL, "Mesonero 1");
         assertNotNull(impreso.get());
-        assertEquals(resImp, impreso.get());
+        assertEquals(resImp.archivo(), impreso.get());
         assertNull(previsualizado.get());
         assertTrue("La impresión directa debe persistir el cierre en la base de datos", guardadoLlamado.get());
 
         // 2. Previsualizar Cierre Total -> NO debe guardar en BD
         impreso.set(null);
         guardadoLlamado.set(false);
-        Path resPrev = servicio.previsualizarCierre("2026-10-07", CierreCaja.TipoCierre.TOTAL, "Gerente");
+        var resPrev = servicio.previsualizarCierre("2026-10-07", CierreCaja.TipoCierre.TOTAL, "Gerente");
         assertNull(impreso.get());
         assertNotNull(previsualizado.get());
-        assertEquals(resPrev, previsualizado.get());
+        assertEquals(resPrev.archivo(), previsualizado.get());
         assertFalse("La previsualización NO debe insertar un cierre definitivo en la base de datos", guardadoLlamado.get());
     }
 
@@ -244,8 +244,8 @@ public class CierreCajaTest {
                 daoConFalloGuardado,
                 () -> config,
                 generador,
-                p -> {},
-                p -> {}
+                p -> true,
+                p -> true
         );
 
         assertThrows(Modelo.DataAccessException.class,
@@ -275,7 +275,7 @@ public class CierreCajaTest {
         };
         CierreCajaServicio servicio = new CierreCajaServicio(
                 daoConExcepcion, () -> config,
-                new GeneradorPdfCierre(temporal.getRoot().toPath()), p -> { }, p -> { });
+                new GeneradorPdfCierre(temporal.getRoot().toPath()), p -> true, p -> true);
 
         assertThrows(Modelo.DataAccessException.class,
                 () -> servicio.imprimirCierre("2026-10-07", CierreCaja.TipoCierre.TOTAL, "Admin"));

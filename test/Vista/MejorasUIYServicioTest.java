@@ -251,7 +251,7 @@ public class MejorasUIYServicioTest {
         ConsultaPedidosServicio servicio = new ConsultaPedidosServicio(repositorio, rbac);
         PedidosControlador ctrl = new PedidosControlador(
                 new PedidoServicio(repositorio),
-                new PedidoPdfServicio(id -> null, id -> null, () -> null, new GeneradorPdfPedido(Path.of(".")), p -> {}),
+                new PedidoPdfServicio(id -> null, id -> null, () -> null, new GeneradorPdfPedido(Path.of(".")), p -> true),
                 rbac,
                 servicio
         );
@@ -458,7 +458,7 @@ public class MejorasUIYServicioTest {
         ConsultaPedidosServicio consultas = new ConsultaPedidosServicio(repositorioPedidos, rbac);
         PedidosControlador pedidosCtrl = new PedidosControlador(
                 new PedidoServicio(repositorioPedidos),
-                new PedidoPdfServicio(id -> null, id -> null, () -> null, new GeneradorPdfPedido(Path.of(".")), p -> {}),
+                new PedidoPdfServicio(id -> null, id -> null, () -> null, new GeneradorPdfPedido(Path.of(".")), p -> true),
                 rbac,
                 consultas
         );

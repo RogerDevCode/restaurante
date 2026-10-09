@@ -60,7 +60,7 @@ public class SimularUsuario {
                     pedidosDao::verPedidoDetalle,
                     loginDao::datosEmpresa,
                     generadorPdf,
-                    archivo -> System.out.println("   📄 [Visor PDF]: Se solicitó abrir automáticamente el archivo: " + archivo.getFileName())
+                    archivo -> { System.out.println("   📄 [Visor PDF]: Se solicitó abrir automáticamente el archivo: " + archivo.getFileName()); return true; }
             );
 
             ConsultaPedidosServicio consultaPedidos = new ConsultaPedidosServicio(pedidosDao, politicaAdmin);

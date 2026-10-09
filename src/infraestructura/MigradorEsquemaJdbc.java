@@ -25,8 +25,12 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 1;
-    private static final String DEFINICION_MIGRACION = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
+    private static final int VERSION_ESQUEMA = 3;
+    private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
+    private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
+    private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
+    private static final String CHECKSUM_MIGRACION_V2 = calcularChecksum(DEFINICION_MIGRACION_V2);
+    private static final String DEFINICION_MIGRACION = "v3:platos_aplica_iva,salas_tipo";
     private static final String CHECKSUM_MIGRACION = calcularChecksum(DEFINICION_MIGRACION);
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
@@ -166,7 +170,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ",'sincronizacion_esquema_v1','" + CHECKSUM_MIGRACION + "','EN_CURSO','asegurar_esquema') "
+                    + VERSION_ESQUEMA + ",'sincronizacion_esquema_v3','" + CHECKSUM_MIGRACION + "','EN_CURSO','asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -180,10 +184,17 @@ public final class MigradorEsquemaJdbc {
     private static void validarPostcondiciones(Connection con) throws SQLException {
         DatabaseMetaData meta = con.getMetaData();
         String catalogo = con.getCatalog();
-        for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja")) {
+        for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja", "mesoneros")) {
             if (!tablaExiste(con, tabla)) throw new SQLException("Postcondición no cumplida: falta tabla " + tabla);
         }
-        for (String[] par : new String[][] {{"pedidos", "total_bs"}, {"pedidos", "metodo_pago"}, {"platos", "activo"}}) {
+        for (String[] par : new String[][] {
+                {"pedidos", "total_bs"},
+                {"pedidos", "metodo_pago"},
+                {"platos", "activo"},
+                {"pedidos", "id_mesonero"},
+                {"platos", "aplica_iva"},
+                {"salas", "tipo"}
+        }) {
             if (!columnaExiste(meta, catalogo, par[0], par[1])) {
                 throw new SQLException("Postcondición no cumplida: falta columna " + par[0] + "." + par[1]);
             }
@@ -234,6 +245,8 @@ public final class MigradorEsquemaJdbc {
                 "INT GENERATED ALWAYS AS (CASE WHEN estado = 'PENDIENTE' THEN id_sala ELSE NULL END) STORED");
         asegurarColumna(con, meta, catalogo, "pedidos", "num_mesa_pendiente",
                 "INT GENERATED ALWAYS AS (CASE WHEN estado = 'PENDIENTE' THEN num_mesa ELSE NULL END) STORED");
+        asegurarColumna(con, meta, catalogo, "pedidos", "id_mesonero", "INT NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "mesonero_nombre", "VARCHAR(150) NULL DEFAULT NULL");
 
         // 3. Columnas en config
         asegurarColumna(con, meta, catalogo, "config", "logo_path", "VARCHAR(255) NULL DEFAULT NULL");
@@ -252,10 +265,15 @@ public final class MigradorEsquemaJdbc {
         // 4. Columnas en platos
         asegurarColumna(con, meta, catalogo, "platos", "activo", "TINYINT(1) NOT NULL DEFAULT 1");
         asegurarColumna(con, meta, catalogo, "platos", "desactivado_en", "DATETIME NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "platos", "aplica_iva", "TINYINT(1) NOT NULL DEFAULT 1");
+
+        // 5. Columnas en salas (soporte para Salón vs Barra)
+        asegurarColumna(con, meta, catalogo, "salas", "tipo", "VARCHAR(20) NOT NULL DEFAULT 'SALON'");
 
         // 5. Índices de rendimiento
         asegurarIndice(con, meta, catalogo, "pedidos", "idx_pedidos_estado_fecha", "(estado, fecha)");
         asegurarIndice(con, meta, catalogo, "pedidos", "idx_pedidos_cliente_doc", "(cliente_documento)");
+        asegurarIndice(con, meta, catalogo, "pedidos", "idx_pedidos_mesonero", "(id_mesonero)");
         asegurarIndice(con, meta, catalogo, "detalle_pedidos", "idx_detalle_pedidos_nombre", "(nombre)");
         asegurarIndiceUnico(con, meta, catalogo, "usuarios", "uq_usuarios_correo", "(correo)");
         asegurarIndiceUnico(con, meta, catalogo, "pedidos", "uq_pedidos_mesa_pendiente", "(id_sala_pendiente, num_mesa_pendiente)");
@@ -268,6 +286,9 @@ public final class MigradorEsquemaJdbc {
 
         // 8. Asegurar tabla de persistencia de cierres de caja y arqueos
         asegurarTablaCierresCaja(con, meta, catalogo);
+
+        // 9. Asegurar tabla de mesoneros (CRUD, soft-delete, toggle activo)
+        asegurarTablaMesoneros(con, meta, catalogo);
     }
 
     private static void asegurarColumna(Connection con, DatabaseMetaData meta, String catalogo,
@@ -472,6 +493,25 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
                 """);
             LOGGER.info("Tabla cierres_caja verificada.");
+        }
+    }
+
+    private static void asegurarTablaMesoneros(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS mesoneros (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nombre_completo VARCHAR(150) NOT NULL,
+                    cedula VARCHAR(30) NOT NULL,
+                    telefono VARCHAR(30) NULL,
+                    activo TINYINT(1) NOT NULL DEFAULT 1,
+                    eliminado TINYINT(1) NOT NULL DEFAULT 0,
+                    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_mesoneros_activo (activo),
+                    INDEX idx_mesoneros_eliminado (eliminado)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+            LOGGER.info("Tabla mesoneros verificada.");
         }
     }
 }

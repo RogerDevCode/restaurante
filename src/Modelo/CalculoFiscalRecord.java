@@ -17,7 +17,11 @@ public record CalculoFiscalRecord(
         BigDecimal tasaCambio,
         BigDecimal subtotalBs,
         BigDecimal ivaBs,
-        BigDecimal totalBs) {
+        BigDecimal totalBs,
+        BigDecimal baseImponibleUsd,
+        BigDecimal exentoUsd,
+        BigDecimal baseImponibleBs,
+        BigDecimal exentoBs) {
 
     public CalculoFiscalRecord {
         Objects.requireNonNull(subtotalUsd, "El subtotal en USD no puede ser nulo.");
@@ -28,9 +32,19 @@ public record CalculoFiscalRecord(
         Objects.requireNonNull(subtotalBs, "El subtotal en Bs. no puede ser nulo.");
         Objects.requireNonNull(ivaBs, "El monto de IVA en Bs. no puede ser nulo.");
         Objects.requireNonNull(totalBs, "El total en Bs. no puede ser nulo.");
+        Objects.requireNonNull(baseImponibleUsd, "La base imponible en USD no puede ser nula.");
+        Objects.requireNonNull(exentoUsd, "El monto exento en USD no puede ser nulo.");
+        Objects.requireNonNull(baseImponibleBs, "La base imponible en Bs. no puede ser nula.");
+        Objects.requireNonNull(exentoBs, "El monto exento en Bs. no puede ser nulo.");
 
         if (subtotalUsd.compareTo(BigDecimal.ZERO) < 0) {
             throw ErrorAplicacionException.validacion("El subtotal en USD no puede ser negativo.");
+        }
+        if (baseImponibleUsd.compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("La base imponible en USD no puede ser negativa.");
+        }
+        if (exentoUsd.compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("El monto exento en USD no puede ser negativo.");
         }
         if (ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0 || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0) {
             throw ErrorAplicacionException.validacion("El porcentaje de IVA debe estar entre 0.00% y 100.00%.");
@@ -43,18 +57,45 @@ public record CalculoFiscalRecord(
         }
     }
 
+    public CalculoFiscalRecord(
+            BigDecimal subtotalUsd,
+            BigDecimal ivaPorcentaje,
+            BigDecimal ivaUsd,
+            BigDecimal totalUsd,
+            BigDecimal tasaCambio,
+            BigDecimal subtotalBs,
+            BigDecimal ivaBs,
+            BigDecimal totalBs) {
+        this(subtotalUsd, ivaPorcentaje, ivaUsd, totalUsd, tasaCambio, subtotalBs, ivaBs, totalBs,
+                subtotalUsd, BigDecimal.ZERO.setScale(2), subtotalBs, BigDecimal.ZERO.setScale(2));
+    }
+
     /**
-     * Calcula de forma atómica y precisa los montos fiscales a partir del subtotal neto,
-     * el porcentaje de IVA y la tasa de cambio del día.
-     *
-     * @param subtotalUsd Base imponible acumulada en USD
-     * @param ivaPorcentaje Porcentaje de IVA aplicable (ej. 16.00)
-     * @param tasaCambio Tasa de cambio oficial ($ a Bs.)
-     * @return CalculoFiscalRecord con todos los valores redondeados a 2 decimales (HALF_UP)
+     * Calcula los montos fiscales asumiendo que todo el subtotal está gravado con IVA.
      */
     public static CalculoFiscalRecord calcular(BigDecimal subtotalUsd, BigDecimal ivaPorcentaje, BigDecimal tasaCambio) {
         if (subtotalUsd != null && subtotalUsd.compareTo(BigDecimal.ZERO) < 0) {
             throw ErrorAplicacionException.validacion("El subtotal en USD no puede ser negativo.");
+        }
+        return calcular(subtotalUsd, BigDecimal.ZERO, ivaPorcentaje, tasaCambio);
+    }
+
+    /**
+     * Calcula de forma atómica y precisa los montos fiscales discriminando entre base imponible
+     * (platos gravados) y montos exentos (platos sin IVA).
+     *
+     * @param baseImponibleUsd Monto total de platos gravados con IVA en USD
+     * @param exentoUsd Monto total de platos exentos (sin IVA) en USD
+     * @param ivaPorcentaje Porcentaje de IVA aplicable (ej. 16.00)
+     * @param tasaCambio Tasa de cambio oficial ($ a Bs.)
+     * @return CalculoFiscalRecord con todos los valores redondeados a 2 decimales (HALF_UP)
+     */
+    public static CalculoFiscalRecord calcular(BigDecimal baseImponibleUsd, BigDecimal exentoUsd, BigDecimal ivaPorcentaje, BigDecimal tasaCambio) {
+        if (baseImponibleUsd != null && baseImponibleUsd.compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("La base imponible en USD no puede ser negativa.");
+        }
+        if (exentoUsd != null && exentoUsd.compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("El monto exento en USD no puede ser negativo.");
         }
         if (ivaPorcentaje != null) {
             if (ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0 || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0) {
@@ -68,18 +109,22 @@ public record CalculoFiscalRecord(
             throw ErrorAplicacionException.validacion("La tasa de cambio debe ser positiva.");
         }
 
-        BigDecimal subUsd = subtotalUsd != null ? subtotalUsd.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+        BigDecimal baseUsd = baseImponibleUsd != null ? baseImponibleUsd.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+        BigDecimal exUsd = exentoUsd != null ? exentoUsd.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+        BigDecimal subUsd = baseUsd.add(exUsd).setScale(2, RoundingMode.HALF_UP);
         BigDecimal ivaPct = ivaPorcentaje != null ? ivaPorcentaje.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
         BigDecimal tasa = tasaCambio != null && tasaCambio.compareTo(BigDecimal.ZERO) > 0 ? tasaCambio : new BigDecimal("36.5000");
 
         BigDecimal cien = new BigDecimal("100");
-        BigDecimal ivaUsd = subUsd.multiply(ivaPct).divide(cien, 2, RoundingMode.HALF_UP);
+        BigDecimal ivaUsd = baseUsd.multiply(ivaPct).divide(cien, 2, RoundingMode.HALF_UP);
         BigDecimal totalUsd = subUsd.add(ivaUsd).setScale(2, RoundingMode.HALF_UP);
 
+        BigDecimal baseBs = baseUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal exBs = exUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
         BigDecimal subBs = subUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
         BigDecimal ivaBs = ivaUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
         BigDecimal totBs = totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
 
-        return new CalculoFiscalRecord(subUsd, ivaPct, ivaUsd, totalUsd, tasa, subBs, ivaBs, totBs);
+        return new CalculoFiscalRecord(subUsd, ivaPct, ivaUsd, totalUsd, tasa, subBs, ivaBs, totBs, baseUsd, exUsd, baseBs, exBs);
     }
 }

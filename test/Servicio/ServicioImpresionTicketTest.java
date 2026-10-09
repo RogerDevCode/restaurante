@@ -127,7 +127,7 @@ public class ServicioImpresionTicketTest {
         assertEquals("DEFAULT", ServicioImpresionTicket.resolverNombreRealImpresora(null));
         assertEquals("DEFAULT", ServicioImpresionTicket.resolverNombreRealImpresora("   "));
         assertEquals("DEFAULT", ServicioImpresionTicket.resolverNombreRealImpresora("DEFAULT"));
-        assertEquals("XP-80T", ServicioImpresionTicket.resolverNombreRealImpresora("XP-80T"));
+        assertNull(ServicioImpresionTicket.resolverNombreRealImpresora("XP-80T"));
     }
 
     @Test

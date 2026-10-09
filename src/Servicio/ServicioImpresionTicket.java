@@ -73,7 +73,7 @@ public final class ServicioImpresionTicket {
                     }
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception ignored) { LOGGER.log(Level.FINE, "Error silenciado: " + ignored.getMessage(), ignored); 
         }
         return props;
     }
@@ -139,7 +139,7 @@ public final class ServicioImpresionTicket {
                 return imp;
             }
         }
-        return nombreConfigurado.trim();
+        return null;
     }
 
     private static volatile Modelo.ModoSalidaTicket modoGlobal = Modelo.ModoSalidaTicket.TERMICA_DIRECTA;
@@ -159,7 +159,7 @@ public final class ServicioImpresionTicket {
         for (java.util.function.Consumer<Modelo.ModoSalidaTicket> listener : listenersModo) {
             try {
                 listener.accept(modo);
-            } catch (Exception ignored) {
+            } catch (Exception ignored) { LOGGER.log(Level.FINE, "Error silenciado: " + ignored.getMessage(), ignored); 
             }
         }
     }
@@ -186,7 +186,7 @@ public final class ServicioImpresionTicket {
         for (java.util.function.Consumer<String> listener : listenersImpresora) {
             try {
                 listener.accept(impresoraGlobal);
-            } catch (Exception ignored) {
+            } catch (Exception ignored) { LOGGER.log(Level.FINE, "Error silenciado: " + ignored.getMessage(), ignored); 
             }
         }
     }
@@ -203,19 +203,21 @@ public final class ServicioImpresionTicket {
 
     /**
      * Procesa la salida del archivo PDF generado según el modo global y la impresora configurada.
+     * @return true si el ticket se imprimió o despachó directamente según el modo elegido; false si se tuvo que degradar al visor de emergencia.
      */
-    public static void procesarSalida(Path archivoPdf) throws IOException {
+    public static boolean procesarSalida(Path archivoPdf) throws IOException {
         String imp = !"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada();
-        procesarSalida(archivoPdf, modoGlobal, imp);
+        return procesarSalida(archivoPdf, modoGlobal, imp);
     }
 
     /**
      * Procesa la salida del archivo PDF generado según el modo especificado.
+     * @return true si el ticket se imprimió o despachó directamente según el modo elegido; false si se tuvo que degradar al visor de emergencia.
      */
-    public static void procesarSalida(Path archivoPdf, Modelo.ModoSalidaTicket modo, String impresoraConfigurada) throws IOException {
+    public static boolean procesarSalida(Path archivoPdf, Modelo.ModoSalidaTicket modo, String impresoraConfigurada) throws IOException {
         if (archivoPdf == null || !Files.isRegularFile(archivoPdf)) {
             LOGGER.warning("Archivo PDF de ticket nulo o inexistente.");
-            return;
+            return false;
         }
         if (modo == null) {
             modo = modoGlobal;
@@ -230,22 +232,25 @@ public final class ServicioImpresionTicket {
                 boolean exito = imprimirEnWindows(archivoPdf, imp);
                 if (exito) {
                     LOGGER.info(() -> "Ticket impreso directamente con éxito en: " + imp);
+                    return true;
                 } else {
                     LOGGER.warning(() -> "No se pudo imprimir directamente a " + imp + ". Abriendo visor como alternativa.");
-                    abrirVisor(archivoPdf);
+                    return abrirVisor(archivoPdf);
                 }
             }
             case PDF24_CREATOR -> {
                 boolean exito = despacharPdf24(archivoPdf);
                 if (!exito) {
                     LOGGER.warning("No se pudo despachar a PDF24 Creator. Abriendo visor estándar como alternativa.");
-                    abrirVisor(archivoPdf);
+                    return abrirVisor(archivoPdf);
                 }
+                return true;
             }
             case VISOR_PDF -> {
-                abrirVisor(archivoPdf);
-            }
+                    return abrirVisor(archivoPdf);
+                }
         }
+        return false;
     }
 
     /**
@@ -350,6 +355,14 @@ public final class ServicioImpresionTicket {
                 LOGGER.log(Level.FINE, () -> "No se encontró PrintService para: " + nombreImpresora);
                 return false;
             }
+            
+            // N5: Evitar que impresoras virtuales bloqueen el hilo con un diálogo "Guardar como..."
+            String lowerName = target.getName().toLowerCase();
+            if (lowerName.contains("pdf") || lowerName.contains("xps") || lowerName.contains("onenote")) {
+                LOGGER.warning(() -> "Impresora virtual detectada (" + target.getName() + "). Se aborta Java Spooler para evitar bloqueos del sistema.");
+                return false;
+            }
+            
             try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.pdmodel.PDDocument.load(archivoPdf.toFile())) {
                 java.awt.print.PrinterJob job = java.awt.print.PrinterJob.getPrinterJob();
                 job.setPrintService(target);
@@ -359,7 +372,7 @@ public final class ServicioImpresionTicket {
                 LOGGER.info(() -> "Ticket enviado exitosamente al spooler vía PDFBox/PrinterJob: " + target.getName());
                 return true;
             }
-        } catch (Throwable ex) {
+        } catch (Exception | LinkageError ex) {
             LOGGER.log(Level.WARNING, "Fallo al imprimir directamente vía PDFBox/PrinterJob: " + ex.getMessage(), ex);
             return false;
         }
@@ -382,64 +395,93 @@ public final class ServicioImpresionTicket {
 
             // 2. Si no fue posible vía Java Spooler, intentar comando PowerShell con captura estricta de error
             if (nombreImpresora != null && !nombreImpresora.isBlank() && !"DEFAULT".equalsIgnoreCase(nombreImpresora)) {
+                Process proceso = null;
                 try {
                     String cmd = String.format(
                             "$ErrorActionPreference = 'Stop'; try { Start-Process -FilePath '%s' -Verb PrintTo -ArgumentList '%s' -WindowStyle Hidden -Wait; exit 0 } catch { exit 1 }",
                             rutaAbsoluta.replace("'", "''"),
                             nombreImpresora.replace("'", "''"));
-                    Process proceso = new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", cmd).start();
+                    proceso = new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", cmd).start();
                     boolean finalizo = proceso.waitFor(7, TimeUnit.SECONDS);
                     if (finalizo && proceso.exitValue() == 0) {
                         return true;
                     }
+                    if (!finalizo) {
+                        LOGGER.warning("Timeout (7s) agotado en PrintTo hacia " + nombreImpresora + ". Terminando proceso.");
+                        proceso.destroyForcibly();
+                    }
                 } catch (Exception ex) {
                     LOGGER.log(Level.WARNING, "Aviso en PrintTo hacia " + nombreImpresora + ": " + ex.getMessage(), ex);
+                    if (proceso != null && proceso.isAlive()) {
+                        proceso.destroyForcibly();
+                    }
                 }
             }
 
-            // 3. Intentar Desktop.print nativo (solo si la plataforma lo soporta y no lanzó error)
-            try {
-                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.PRINT)) {
-                    Desktop.getDesktop().print(archivoPdf.toFile());
-                    return true;
-                }
-            } catch (Exception ex) {
-                LOGGER.log(Level.FINE, "Desktop.print no disponible o devolvió advertencia: " + ex.getMessage(), ex);
-            }
+            // Desktop.print eliminado (Punto 2): retornaba true ciegamente sin garantizar que se imprimiera.
+            // Se confía en el fallback de PowerShell (Paso 3) que sí permite tracking.
 
             // 4. Fallback PowerShell: imprimir a la predeterminada de Windows con trampa de error
+            Process procesoFallback = null;
             try {
                 String cmd = String.format(
                         "$ErrorActionPreference = 'Stop'; try { Start-Process -FilePath '%s' -Verb Print -WindowStyle Hidden -Wait; exit 0 } catch { exit 1 }",
                         rutaAbsoluta.replace("'", "''"));
-                Process proceso = new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", cmd).start();
-                boolean finalizo = proceso.waitFor(7, TimeUnit.SECONDS);
-                if (finalizo && proceso.exitValue() == 0) {
+                procesoFallback = new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", cmd).start();
+                boolean finalizo = procesoFallback.waitFor(7, TimeUnit.SECONDS);
+                if (finalizo && procesoFallback.exitValue() == 0) {
                     return true;
+                }
+                if (!finalizo) {
+                    LOGGER.warning("Timeout (7s) agotado en Print de PowerShell predeterminado. Terminando proceso.");
+                    procesoFallback.destroyForcibly();
                 }
             } catch (Exception ex) {
                 LOGGER.log(Level.WARNING, "Aviso en Print por PowerShell: " + ex.getMessage(), ex);
+                if (procesoFallback != null && procesoFallback.isAlive()) {
+                    procesoFallback.destroyForcibly();
+                }
             }
-        }
-
-        // Si no es Windows (Linux con comando lp)
-        try {
-            Process proceso = new ProcessBuilder("lp", rutaAbsoluta).start();
-            if (proceso.waitFor(3, TimeUnit.SECONDS) && proceso.exitValue() == 0) {
+        } else {
+            // Entorno no Windows (Linux/Unix): intentar spooler nativo Java primero o comando lp
+            if (imprimirDirectoJavaSpooler(archivoPdf, nombreImpresora)) {
                 return true;
             }
-        } catch (Exception ignored) {
+            Process procesoLp = null;
+            try {
+                ProcessBuilder pb;
+                if (nombreImpresora != null && !nombreImpresora.isBlank() && !"DEFAULT".equalsIgnoreCase(nombreImpresora)) {
+                    pb = new ProcessBuilder("lp", "-d", nombreImpresora, rutaAbsoluta);
+                } else {
+                    pb = new ProcessBuilder("lp", rutaAbsoluta);
+                }
+                procesoLp = pb.start();
+                boolean finalizo = procesoLp.waitFor(3, TimeUnit.SECONDS);
+                if (finalizo && procesoLp.exitValue() == 0) {
+                    return true;
+                }
+                if (!finalizo) {
+                    procesoLp.destroyForcibly();
+                }
+            } catch (Exception ex) {
+                LOGGER.log(Level.FINE, "Aviso ejecutando lp en Linux: " + ex.getMessage(), ex);
+                if (procesoLp != null && procesoLp.isAlive()) {
+                    procesoLp.destroyForcibly();
+                }
+            }
         }
 
         return false;
     }
 
     /** Abre el PDF en el visor predeterminado del sistema operativo. */
-    public static void abrirVisor(Path archivoPdf) throws IOException {
+    public static boolean abrirVisor(Path archivoPdf) throws IOException {
         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
             Desktop.getDesktop().open(archivoPdf.toFile());
+            return true;
         } else {
             LOGGER.info(() -> "Entorno sin Desktop.open soportado. Archivo generado en: " + archivoPdf.toAbsolutePath());
+            return false;
         }
     }
 
@@ -486,8 +528,7 @@ public final class ServicioImpresionTicket {
                 String impReal = resolverNombreRealImpresora(impresora != null ? impresora : (!"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada()));
                 boolean ok = imprimirEnWindows(tempTicket, impReal);
                 if (!ok) {
-                    abrirVisor(tempTicket);
-                    return false;
+                    return abrirVisor(tempTicket);
                 }
                 return true;
             } else if (modo == Modelo.ModoSalidaTicket.PDF24_CREATOR) {

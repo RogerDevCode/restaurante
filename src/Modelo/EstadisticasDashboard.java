@@ -50,6 +50,7 @@ public class EstadisticasDashboard {
 
     private List<ItemEstadistica> topPlatos = new ArrayList<>();
     private List<ItemEstadistica> topSalas = new ArrayList<>();
+    private List<ItemEstadistica> estadisticasMesoneros = new ArrayList<>();
 
     public EstadisticasDashboard() {
     }
@@ -152,5 +153,13 @@ public class EstadisticasDashboard {
     public BigDecimal getTicketPromedioHistoricoBs() {
         if (pedidosHistoricos <= 0) return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         return ventasHistoricasBs.divide(BigDecimal.valueOf(pedidosHistoricos), 2, RoundingMode.HALF_UP);
+    }
+
+    public List<ItemEstadistica> getEstadisticasMesoneros() {
+        return estadisticasMesoneros;
+    }
+
+    public void setEstadisticasMesoneros(List<ItemEstadistica> estadisticasMesoneros) {
+        this.estadisticasMesoneros = estadisticasMesoneros != null ? estadisticasMesoneros : new ArrayList<>();
     }
 }

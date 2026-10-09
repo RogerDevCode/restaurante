@@ -133,7 +133,7 @@ public class AdversarialCarritoCantidadTest {
                 pedidosRepo::verPedidoDetalle,
                 () -> loginDaoFalso.datosEmpresa(),
                 generadorPdf,
-                f -> {}
+                f -> true
         );
         ConsultaPedidosServicio consultaServicio = new ConsultaPedidosServicio(pedidosRepo, rbac);
         pedidosCtrl = new PedidosControlador(

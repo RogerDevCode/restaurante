@@ -127,6 +127,11 @@ public final class ConsultaPedidosServicio {
         return repositorio.contarMesasOcupadasPorSala();
     }
 
+    public Map<Integer, String> consultarMesonerosMesasPendientes(int idSala) {
+        exigir(PoliticaAcceso.Accion.CONSULTAR_SALAS);
+        return repositorio.consultarMesonerosMesasPendientes(idSala);
+    }
+
     public int purgarPedidosFinalizados(int mesesAnteriores) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         if (!politica.esAdministrador()) {

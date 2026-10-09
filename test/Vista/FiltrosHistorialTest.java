@@ -198,7 +198,7 @@ public class FiltrosHistorialTest {
         ConsultaPedidosServicio consultas = new ConsultaPedidosServicio(pedidosRepo, rbac);
         PedidosControlador pedidosCtrl = new PedidosControlador(
                 new PedidoServicio(pedidosRepo),
-                new PedidoPdfServicio(id -> null, id -> null, () -> null, new GeneradorPdfPedido(Path.of(".")), p -> {}),
+                new PedidoPdfServicio(id -> null, id -> null, () -> null, new GeneradorPdfPedido(Path.of(".")), p -> true),
                 rbac,
                 consultas
         );

@@ -73,7 +73,7 @@ public class SimulacionUsuarioE2EIT {
                     pedidosDao::verPedidoDetalle,
                     loginDao::datosEmpresa,
                     generadorPdf,
-                    archivo -> { /* Apertura simulada */ }
+                    archivo -> true
             );
 
             ConsultaPedidosServicio consultaPedidos = new ConsultaPedidosServicio(pedidosDao, politicaAdmin);

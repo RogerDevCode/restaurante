@@ -10,6 +10,8 @@ import Modelo.DetallePedido;
 import Modelo.ErrorAplicacionException;
 import Modelo.EstadisticasDashboard;
 import Modelo.LoginDao;
+import Modelo.Mesonero;
+import Modelo.MesoneroDao;
 import Modelo.PedidoPendienteExistenteException;
 import Modelo.Pedidos;
 import Modelo.PedidosDao;
@@ -265,7 +267,7 @@ public class MySqlIntegrationIT {
         }
         Path directorio = Files.createTempDirectory("restaurante-pdf-mysql-it-");
         Path pdf = directorio.resolve("pedido-" + idPedido + ".pdf");
-        PedidoPdfServicio servicio = servicioPdfReal(directorio, archivo -> { });
+        PedidoPdfServicio servicio = servicioPdfReal(directorio, archivo -> true);
 
         servicio.generar(idPedido);
 
@@ -791,6 +793,82 @@ public class MySqlIntegrationIT {
                 return resultado.getInt(1);
             }
         }
+    }
+
+    @Test
+    public void mesoneroCrudYVacacionesYSoftDelete() {
+        MesoneroDao dao = new MesoneroDao();
+        String cedulaUnica = "V-IT-" + System.currentTimeMillis();
+        Mesonero m = new Mesonero("Mesonero IT Test", cedulaUnica, "04141112233", true);
+
+        int id = dao.registrar(m);
+        assertTrue("El ID generado debe ser mayor a 0", id > 0);
+
+        Mesonero recuperado = dao.buscarPorId(id);
+        assertNotNull(recuperado);
+        assertEquals("Mesonero IT Test", recuperado.getNombreCompleto());
+        assertTrue(recuperado.isActivo());
+        assertFalse(recuperado.isEliminado());
+
+        // Modificar
+        recuperado.setNombreCompleto("Mesonero IT Modificado");
+        recuperado.setTelefono("04149998877");
+        assertTrue(dao.modificar(recuperado));
+        assertEquals("Mesonero IT Modificado", dao.buscarPorId(id).getNombreCompleto());
+
+        // Alternar a vacaciones / inactivo
+        assertTrue(dao.cambiarActivo(id, false));
+        assertFalse(dao.buscarPorId(id).isActivo());
+        assertFalse("No debe aparecer en listarActivos() mientras esté de vacaciones",
+                dao.listarActivos().stream().anyMatch(mes -> mes.getId() == id));
+        assertTrue("Debe aparecer en listarTodos()",
+                dao.listarTodos().stream().anyMatch(mes -> mes.getId() == id));
+
+        // Reactivar
+        assertTrue(dao.cambiarActivo(id, true));
+        assertTrue(dao.listarActivos().stream().anyMatch(mes -> mes.getId() == id));
+
+        // Soft-delete
+        assertTrue(dao.eliminarLogico(id));
+        assertFalse("No debe aparecer en listarActivos()",
+                dao.listarActivos().stream().anyMatch(mes -> mes.getId() == id));
+        assertFalse("No debe aparecer en listarTodos() tras eliminación lógica",
+                dao.listarTodos().stream().anyMatch(mes -> mes.getId() == id));
+    }
+
+    @Test
+    public void pedidoConMesoneroAsignadoSeRegistraYConsultaMesasPendientes() throws Exception {
+        MesoneroDao mDao = new MesoneroDao();
+        PedidosDao pDao = new PedidosDao();
+        int idSala = crearSalaPrueba();
+
+        String cedula = "V-PED-" + System.currentTimeMillis();
+        Mesonero m = new Mesonero("Mesonero Pedido IT", cedula, "04120000000", true);
+        int idMesonero = mDao.registrar(m);
+
+        int mesa = mesaPrueba();
+        Pedidos p = pedido(idSala, mesa);
+        p.setIdMesonero(idMesonero);
+        p.setMesoneroNombre("Mesonero Pedido IT");
+
+        int idPedido = pDao.registrarPedidoCompleto(p, detallesValidos());
+        assertTrue(idPedido > 0);
+
+        // Consultar mesas pendientes con mesoneros
+        java.util.Map<Integer, String> mesonerosPendientes = pDao.consultarMesonerosMesasPendientes(idSala);
+        assertEquals("Mesonero Pedido IT", mesonerosPendientes.get(mesa));
+
+        // Finalizar y verificar estadísticas dashboard
+        pDao.actualizarEstadoConCliente(idPedido, "Cliente Mesonero", "V-12345");
+        ClienteDao cDao = new ClienteDao();
+        EstadisticasDashboard stats = cDao.obtenerEstadisticasDashboard();
+        assertNotNull(stats.getEstadisticasMesoneros());
+        assertTrue("Las estadísticas deben incluir al mesonero",
+                stats.getEstadisticasMesoneros().stream()
+                        .anyMatch(item -> item.getNombre().contains("Mesonero Pedido IT")));
+
+        // Limpiar mesonero
+        mDao.eliminarLogico(idMesonero);
     }
 
     private int mesaPrueba() {

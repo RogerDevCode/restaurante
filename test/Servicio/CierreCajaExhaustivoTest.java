@@ -328,21 +328,21 @@ public class CierreCajaExhaustivoTest {
                 daoFalso,
                 () -> config,
                 generador,
-                impresoDirecto::set,
-                visorAbierto::set
+                p -> { impresoDirecto.set(p); return true; },
+                p -> { visorAbierto.set(p); return true; }
         );
 
         // 1. Probar previsualizar
-        Path resultadoPrev = servicio.previsualizarCierre("2026-10-07", CierreCaja.TipoCierre.PARCIAL, "Admin");
+        var resultadoPrev = servicio.previsualizarCierre("2026-10-07", CierreCaja.TipoCierre.PARCIAL, "Admin");
         assertNotNull(resultadoPrev);
-        assertEquals(resultadoPrev, visorAbierto.get());
+        assertEquals(resultadoPrev.archivo(), visorAbierto.get());
         assertNull("La previsualización no debe enviar a la impresora directa", impresoDirecto.get());
 
         // 2. Probar imprimir directo
         visorAbierto.set(null);
-        Path resultadoImp = servicio.imprimirCierre("2026-10-07", CierreCaja.TipoCierre.TOTAL, "Supervisor");
+        var resultadoImp = servicio.imprimirCierre("2026-10-07", CierreCaja.TipoCierre.TOTAL, "Supervisor");
         assertNotNull(resultadoImp);
-        assertEquals(resultadoImp, impresoDirecto.get());
+        assertEquals(resultadoImp.archivo(), impresoDirecto.get());
         assertNull("La impresión directa no debe abrir el visor", visorAbierto.get());
     }
 

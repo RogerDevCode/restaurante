@@ -48,18 +48,20 @@ public class CierreCajaServicio {
         this.visor = visor;
     }
 
+    public record ResultadoCierre(Path archivo, boolean impresoDirecto) {}
+
     /**
      * Genera el Cierre de Caja e imprime directamente a la tickera de 80 mm.
      */
-    public Path imprimirCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor) {
+    public ResultadoCierre imprimirCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor) {
         return imprimirCierre(fecha, tipo, usuarioEmisor, null, null);
     }
 
-    public Path imprimirCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efectivoDeclaradoBs) {
+    public ResultadoCierre imprimirCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efectivoDeclaradoBs) {
         return imprimirCierre(fecha, tipo, usuarioEmisor, efectivoDeclaradoBs, null);
     }
 
-    public Path imprimirCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efectivoDeclaradoBs, java.math.BigDecimal efectivoDeclaradoUsd) {
+    public ResultadoCierre imprimirCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efectivoDeclaradoBs, java.math.BigDecimal efectivoDeclaradoUsd) {
         Config config = consultaConfig.obtener();
         if (config == null) {
             throw ErrorAplicacionException.validacion("No existe la configuración del restaurante para emitir el cierre de caja.");
@@ -81,12 +83,13 @@ public class CierreCajaServicio {
             eliminarPdfSiExiste(archivo, error);
             throw error;
         }
+        boolean exito;
         try {
-            impresor.abrir(archivo);
+            exito = impresor.abrir(archivo);
         } catch (IOException ex) {
             throw new ErrorAplicacionException("El ticket de cierre se generó, pero falló el envío a la impresora.", ex);
         }
-        return archivo;
+        return new ResultadoCierre(archivo, exito);
     }
 
     private void eliminarPdfSiExiste(Path archivo, RuntimeException errorOriginal) {
@@ -105,15 +108,15 @@ public class CierreCajaServicio {
     /**
      * Genera el Cierre de Caja y abre la previsualización en pantalla (visor PDF).
      */
-    public Path previsualizarCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor) {
+    public ResultadoCierre previsualizarCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor) {
         return previsualizarCierre(fecha, tipo, usuarioEmisor, null, null);
     }
 
-    public Path previsualizarCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efectivoDeclaradoBs) {
+    public ResultadoCierre previsualizarCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efectivoDeclaradoBs) {
         return previsualizarCierre(fecha, tipo, usuarioEmisor, efectivoDeclaradoBs, null);
     }
 
-    public Path previsualizarCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efectivoDeclaradoBs, java.math.BigDecimal efectivoDeclaradoUsd) {
+    public ResultadoCierre previsualizarCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efectivoDeclaradoBs, java.math.BigDecimal efectivoDeclaradoUsd) {
         Config config = consultaConfig.obtener();
         if (config == null) {
             throw ErrorAplicacionException.validacion("No existe la configuración del restaurante para previsualizar el cierre de caja.");
@@ -127,12 +130,13 @@ public class CierreCajaServicio {
         }
         Path archivo = generador.generar(cierre, config);
         // Las previsualizaciones no se insertan en la tabla de auditoría cierres_caja
+        boolean exito;
         try {
-            visor.abrir(archivo);
+            exito = visor.abrir(archivo);
         } catch (IOException ex) {
             throw new ErrorAplicacionException("El ticket de cierre se generó, pero no se pudo abrir en el visor.", ex);
         }
-        return archivo;
+        return new ResultadoCierre(archivo, exito);
     }
 
     public CierreCaja obtenerDatosCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor) {

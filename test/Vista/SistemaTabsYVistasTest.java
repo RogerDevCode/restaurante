@@ -149,7 +149,7 @@ public class SistemaTabsYVistasTest {
                 pedidosRepo::verPedidoDetalle,
                 () -> loginDaoFalso.datosEmpresa(),
                 generadorPdf,
-                f -> {}
+                f -> true
         );
         ConsultaPedidosServicio consultaServicioAdmin = new ConsultaPedidosServicio(pedidosRepo, rbacAdmin);
         pedidosCtrlAdmin = new PedidosControlador(

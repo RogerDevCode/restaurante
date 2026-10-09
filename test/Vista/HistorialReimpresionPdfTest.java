@@ -205,8 +205,8 @@ public class HistorialReimpresionPdfTest {
                 id -> Collections.singletonList(detalleDummy),
                 () -> configDummy,
                 new GeneradorPdfPedido(temporal.getRoot().toPath()),
-                path -> reimpresionesSolicitadas.incrementAndGet(),
-                path -> previsualizacionesSolicitadas.incrementAndGet()
+                path -> { reimpresionesSolicitadas.incrementAndGet(); return true; },
+                path -> { previsualizacionesSolicitadas.incrementAndGet(); return true; }
         );
 
         PedidosControlador pedidosCtrl = new PedidosControlador(

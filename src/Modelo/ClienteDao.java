@@ -368,6 +368,39 @@ public class ClienteDao implements ClienteRepositorio {
                 stats.setTopSalas(new ArrayList<>());
             }
 
+            // 7. Estadísticas de Mesoneros (Ventas y pedidos atendidos, incluyendo pedidos sin mesonero asignado)
+            try {
+                String sqlMesoneros = """
+                    SELECT
+                        COALESCE(p.mesonero_nombre, 'Sin Mesonero Asignado') AS nombre_mesonero,
+                        COUNT(p.id) AS cant,
+                        SUM(p.total) AS total_usd,
+                        SUM(COALESCE(p.total_bs, 0.00)) AS total_bs
+                    FROM pedidos p
+                    WHERE p.estado = 'FINALIZADO'
+                    GROUP BY nombre_mesonero
+                    ORDER BY total_usd DESC
+                    """;
+                List<EstadisticasDashboard.ItemEstadistica> statsMesoneros = new ArrayList<>();
+                try (PreparedStatement s = conexion.prepareStatement(sqlMesoneros);
+                        ResultSet rs = s.executeQuery()) {
+                    while (rs.next()) {
+                        statsMesoneros.add(new EstadisticasDashboard.ItemEstadistica(
+                                rs.getString("nombre_mesonero"),
+                                rs.getInt("cant"),
+                                rs.getBigDecimal("total_usd"),
+                                rs.getBigDecimal("total_bs")
+                        ));
+                    }
+                }
+                stats.setEstadisticasMesoneros(statsMesoneros);
+            } catch (SQLException exMesoneros) {
+                // Si la columna aún no existiera por migración pendiente, retornar lista vacía
+                java.util.logging.Logger.getLogger(ClienteDao.class.getName())
+                        .log(java.util.logging.Level.WARNING, "Aviso consultando estadísticas de mesoneros: " + exMesoneros.getMessage());
+                stats.setEstadisticasMesoneros(new ArrayList<>());
+            }
+
         } catch (SQLException ex) {
             java.util.logging.Logger.getLogger(ClienteDao.class.getName())
                     .log(java.util.logging.Level.SEVERE, "Error crítico de conexión al cargar estadísticas del dashboard", ex);

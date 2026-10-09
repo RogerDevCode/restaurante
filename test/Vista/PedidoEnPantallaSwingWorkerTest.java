@@ -88,7 +88,7 @@ public class PedidoEnPantallaSwingWorkerTest {
         PedidoPdfServicio pdf = new PedidoPdfServicio(
                 id -> pedido(id), id -> Collections.singletonList(detalle()),
                 () -> { throw new AssertionError("No utilizado"); },
-                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> { });
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> true);
         return new PedidosControlador(new PedidoServicio(repositorio), pdf, politica,
                 new ConsultaPedidosServicio(repositorio, politica));
     }

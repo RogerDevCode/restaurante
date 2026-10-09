@@ -13,8 +13,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class PedidosDao implements PedidosRepositorio {
+    private static final Logger LOGGER = Logger.getLogger(PedidosDao.class.getName());
     private final ProveedorConexionJdbc conexiones;
 
     public PedidosDao() {
@@ -67,8 +69,8 @@ public class PedidosDao implements PedidosRepositorio {
         }
 
         String sqlPedido = """
-            INSERT INTO pedidos (id_sala, num_mesa, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO pedidos (id_sala, num_mesa, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         String sqlDetalle = """
             INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido)
@@ -91,6 +93,12 @@ public class PedidosDao implements PedidosRepositorio {
                     sentenciaPedido.setBigDecimal(9, pedido.getSubtotalBs());
                     sentenciaPedido.setBigDecimal(10, pedido.getIvaBs());
                     sentenciaPedido.setBigDecimal(11, pedido.getTotalBs());
+                    if (pedido.getIdMesonero() != null && pedido.getIdMesonero() > 0) {
+                        sentenciaPedido.setInt(12, pedido.getIdMesonero());
+                    } else {
+                        sentenciaPedido.setNull(12, java.sql.Types.INTEGER);
+                    }
+                    sentenciaPedido.setString(13, pedido.getMesoneroNombre());
                     if (sentenciaPedido.executeUpdate() != 1) {
                         throw new SQLException("No se pudo insertar el encabezado del pedido.");
                     }
@@ -134,12 +142,80 @@ public class PedidosDao implements PedidosRepositorio {
                             && mensaje.contains("uq_pedidos_mesa_pendiente")) {
                         throw new PedidoPendienteExistenteException(pedido.getNum_mesa(), errorSql);
                     }
+                    if (errorSql.getErrorCode() == 1054) {
+                        return registrarPedidoCompletoLegacy(conexion, pedido, detalles);
+                    }
                     throw new DataAccessException("No se pudo guardar el pedido completo.", errorSql);
                 }
                 throw new ErrorAplicacionException("Falló el guardado completo del pedido.", error);
             }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo abrir la conexión para guardar el pedido.", ex);
+        }
+    }
+
+    private int registrarPedidoCompletoLegacy(Connection conexion, Pedidos pedido, List<DetallePedido> detalles) throws SQLException {
+        String sqlPedido = """
+            INSERT INTO pedidos (id_sala, num_mesa, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+        String sqlDetalle = """
+            INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido)
+            VALUES (?, ?, ?, ?, ?)
+            """;
+        try {
+            int idPedido;
+            try (PreparedStatement sentenciaPedido = conexion.prepareStatement(sqlPedido, Statement.RETURN_GENERATED_KEYS)) {
+                sentenciaPedido.setInt(1, pedido.getId_sala());
+                sentenciaPedido.setInt(2, pedido.getNum_mesa());
+                sentenciaPedido.setBigDecimal(3, importePersistible(pedido.getSubtotal(), "El subtotal del pedido"));
+                sentenciaPedido.setBigDecimal(4, pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : BigDecimal.ZERO);
+                sentenciaPedido.setBigDecimal(5, pedido.getIvaMonto() != null ? pedido.getIvaMonto() : BigDecimal.ZERO);
+                sentenciaPedido.setBigDecimal(6, importePersistible(pedido.getTotalDecimal(), "El total del pedido"));
+                sentenciaPedido.setString(7, pedido.getUsuario());
+                sentenciaPedido.setBigDecimal(8, pedido.getTasaCambio());
+                sentenciaPedido.setBigDecimal(9, pedido.getSubtotalBs());
+                sentenciaPedido.setBigDecimal(10, pedido.getIvaBs());
+                sentenciaPedido.setBigDecimal(11, pedido.getTotalBs());
+                if (sentenciaPedido.executeUpdate() != 1) {
+                    throw new SQLException("No se pudo insertar el encabezado del pedido legacy.");
+                }
+                try (ResultSet claves = sentenciaPedido.getGeneratedKeys()) {
+                    if (!claves.next()) {
+                        throw new SQLException("La base de datos no devolvió el ID del pedido.");
+                    }
+                    idPedido = claves.getInt(1);
+                }
+            }
+
+            try (PreparedStatement sentenciaDetalle = conexion.prepareStatement(sqlDetalle)) {
+                for (DetallePedido detalle : detalles) {
+                    sentenciaDetalle.setString(1, detalle.getNombre());
+                    sentenciaDetalle.setBigDecimal(2, importePersistible(
+                            detalle.getPrecioDecimal(), "El precio de cada plato"));
+                    sentenciaDetalle.setInt(3, detalle.getCantidad());
+                    sentenciaDetalle.setString(4, detalle.getComentario());
+                    sentenciaDetalle.setInt(5, idPedido);
+                    if (sentenciaDetalle.executeUpdate() != 1) {
+                        throw new SQLException("No se pudo insertar uno de los detalles del pedido.");
+                    }
+                }
+            }
+            conexion.commit();
+            return idPedido;
+        } catch (SQLException ex) {
+            try {
+                conexion.rollback();
+            } catch (SQLException rb) {
+                ex.addSuppressed(rb);
+            }
+            String mensaje = ex.getMessage();
+            if (ex.getErrorCode() == 1062
+                    && mensaje != null
+                    && mensaje.contains("uq_pedidos_mesa_pendiente")) {
+                throw new PedidoPendienteExistenteException(pedido.getNum_mesa(), ex);
+            }
+            throw new DataAccessException("No se pudo guardar el pedido completo (modo compatibilidad).", ex);
         }
     }
 
@@ -166,26 +242,23 @@ public class PedidosDao implements PedidosRepositorio {
 
         BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
         BigDecimal subtotalEsperado = sumaDetalles;
-        BigDecimal ivaEsperado = BigDecimal.ZERO;
-        BigDecimal totalEsperado = subtotalEsperado;
-
-        if (ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0) {
-            ivaEsperado = subtotalEsperado.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-            totalEsperado = subtotalEsperado.add(ivaEsperado).setScale(2, RoundingMode.HALF_UP);
-        }
+        BigDecimal ivaMaximo = (ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0)
+                ? subtotalEsperado.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2);
 
         BigDecimal subtotal = importePersistible(pedido.getSubtotal() != null ? pedido.getSubtotal() : subtotalEsperado, "El subtotal del pedido");
         if (subtotal.compareTo(subtotalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
         }
 
-        BigDecimal ivaMonto = importePersistible(pedido.getIvaMonto() != null ? pedido.getIvaMonto() : ivaEsperado, "El monto del IVA");
-        if (ivaMonto.compareTo(ivaEsperado) != 0) {
+        BigDecimal ivaMonto = importePersistible(pedido.getIvaMonto() != null ? pedido.getIvaMonto() : ivaMaximo, "El monto del IVA");
+        if (ivaMonto.compareTo(BigDecimal.ZERO) < 0 || ivaMonto.compareTo(ivaMaximo) > 0) {
             throw ErrorAplicacionException.validacion("El monto del IVA no coincide con el porcentaje aplicado.");
         }
 
+        BigDecimal totalEsperado = subtotal.add(ivaMonto).setScale(2, RoundingMode.HALF_UP);
         BigDecimal total = importePersistible(pedido.getTotalDecimal(), "El total del pedido");
-        if (total.compareTo(totalEsperado) != 0 && total.compareTo(subtotalEsperado) != 0) {
+        if (total.compareTo(totalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El total del pedido no coincide con el subtotal más IVA.");
         }
 
@@ -219,7 +292,7 @@ public class PedidosDao implements PedidosRepositorio {
             pedido.setSubtotal(subtotalEsperado);
         }
         if (pedido.getIvaMonto() == null) {
-            pedido.setIvaMonto(ivaEsperado);
+            pedido.setIvaMonto(ivaMonto);
         }
     }
 
@@ -278,7 +351,7 @@ public class PedidosDao implements PedidosRepositorio {
         Pedidos ped = null;
         String sql = """
             SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala,
-                   p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd
+                   p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd, p.id_mesonero, p.mesonero_nombre
             FROM pedidos p
             INNER JOIN salas s ON p.id_sala = s.id
             WHERE p.id = ?
@@ -310,6 +383,11 @@ public class PedidosDao implements PedidosRepositorio {
                         ped.setMetodoPago(resultados.getString("metodo_pago"));
                         ped.setEfectivoBs(resultados.getBigDecimal("efectivo_bs"));
                         ped.setEfectivoUsd(resultados.getBigDecimal("efectivo_usd"));
+                        int idM = resultados.getInt("id_mesonero");
+                        if (!resultados.wasNull()) {
+                            ped.setIdMesonero(idM);
+                        }
+                        ped.setMesoneroNombre(resultados.getString("mesonero_nombre"));
                     } catch (SQLException ignoreCol) {}
                 }
             }
@@ -621,7 +699,7 @@ public class PedidosDao implements PedidosRepositorio {
         List<Pedidos> lista = new ArrayList<>();
         String sql = """
             SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala,
-                   p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd
+                   p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd, p.id_mesonero, p.mesonero_nombre
             FROM pedidos p
             INNER JOIN salas s ON p.id_sala = s.id
             ORDER BY p.fecha DESC
@@ -651,6 +729,11 @@ public class PedidosDao implements PedidosRepositorio {
                     ped.setMetodoPago(resultados.getString("metodo_pago"));
                     ped.setEfectivoBs(resultados.getBigDecimal("efectivo_bs"));
                     ped.setEfectivoUsd(resultados.getBigDecimal("efectivo_usd"));
+                    int idM = resultados.getInt("id_mesonero");
+                    if (!resultados.wasNull()) {
+                        ped.setIdMesonero(idM);
+                    }
+                    ped.setMesoneroNombre(resultados.getString("mesonero_nombre"));
                 } catch (SQLException ignoreCol) {}
                 lista.add(ped);
             }
@@ -718,6 +801,34 @@ public class PedidosDao implements PedidosRepositorio {
             throw new DataAccessException("No se pudieron contar las mesas ocupadas por sala.", ex);
         }
         return Collections.unmodifiableMap(ocupadasPorSala);
+    }
+
+    @Override
+    public Map<Integer, String> consultarMesonerosMesasPendientes(int idSala) {
+        if (idSala <= 0) return Collections.emptyMap();
+        Map<Integer, String> resultado = new HashMap<>();
+        String sql = """
+            SELECT num_mesa, mesonero_nombre
+            FROM pedidos
+            WHERE id_sala = ? AND estado = 'PENDIENTE'
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setInt(1, idSala);
+            try (ResultSet rs = sentencia.executeQuery()) {
+                while (rs.next()) {
+                    int numMesa = rs.getInt("num_mesa");
+                    String nombre = rs.getString("mesonero_nombre");
+                    resultado.put(numMesa, nombre);
+                }
+            }
+        } catch (SQLException ex) {
+            // Si la columna aún no existiera por migración pendiente, retornar mapa vacío de forma segura
+            if (ex.getErrorCode() != 1054) {
+                LOGGER.warning("Aviso consultando mesoneros de mesas pendientes: " + ex.getMessage());
+            }
+        }
+        return Collections.unmodifiableMap(resultado);
     }
 
     @Override

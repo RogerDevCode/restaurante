@@ -33,7 +33,7 @@ public class PedidoPdfServicioTest {
                 id -> Collections.singletonList(detalle()),
                 this::configuracion,
                 new GeneradorPdfPedido(temporal.getRoot().toPath()),
-                abierto::set);
+                p -> { abierto.set(p); return true; });
 
         servicio.generar(42);
 
@@ -48,7 +48,7 @@ public class PedidoPdfServicioTest {
                 id -> Collections.singletonList(detalle()),
                 this::configuracion,
                 new GeneradorPdfPedido(temporal.getRoot().toPath()),
-                abierto::set);
+                p -> { abierto.set(p); return true; });
 
         servicio.reimprimir(42);
 
@@ -100,8 +100,8 @@ public class PedidoPdfServicioTest {
                 id -> Collections.singletonList(detalle()),
                 this::configuracion,
                 new GeneradorPdfPedido(temporal.getRoot().toPath()),
-                impresoDirecto::set,
-                abiertoEnVisor::set);
+                p -> { impresoDirecto.set(p); return true; },
+                p -> { abiertoEnVisor.set(p); return true; });
 
         servicio.previsualizar(42);
 
@@ -120,7 +120,7 @@ public class PedidoPdfServicioTest {
                 id -> Collections.singletonList(detalle()),
                 this::configuracion,
                 new GeneradorPdfPedido(temporal.getRoot().toPath()),
-                path -> {},
+                path -> true,
                 path -> { throw causa; });
 
         ErrorAplicacionException ex = org.junit.Assert.assertThrows(

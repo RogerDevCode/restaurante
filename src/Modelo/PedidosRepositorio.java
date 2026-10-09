@@ -45,6 +45,11 @@ public interface PedidosRepositorio {
         return java.util.Collections.emptyMap();
     }
 
+    /** Devuelve un mapa de numeroMesa -> mesoneroNombre (o ID) de los pedidos pendientes en una sala. */
+    default java.util.Map<Integer, String> consultarMesonerosMesasPendientes(int idSala) {
+        return java.util.Collections.emptyMap();
+    }
+
     /** Purga pedidos finalizados anteriores a la cantidad de meses especificada. Retorna la cantidad eliminada. */
     default int purgarPedidosFinalizados(int mesesAnteriores) {
         return 0;

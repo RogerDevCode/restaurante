@@ -82,7 +82,7 @@ public class ListaPedidosSwingWorkerTest {
                 id -> Collections.emptyList(),
                 () -> { throw new AssertionError("No utilizado"); },
                 new GeneradorPdfPedido(temporal.getRoot().toPath()),
-                archivo -> { });
+                archivo -> true);
         return new PedidosControlador(new PedidoServicio(repositorio), pdf, politica,
                 new ConsultaPedidosServicio(repositorio, politica));
     }

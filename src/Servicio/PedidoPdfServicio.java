@@ -44,7 +44,7 @@ public final class PedidoPdfServicio {
         this.visor = visor;
     }
 
-    public void generar(int idPedido) {
+    public boolean generar(int idPedido) {
         if (idPedido <= 0) {
             throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para generar el PDF.");
         }
@@ -65,7 +65,7 @@ public final class PedidoPdfServicio {
         }
         Path archivo = generador.generar(pedido, datosConfiguracion, lineas);
         try {
-            abridor.abrir(archivo);
+            return abridor.abrir(archivo);
         } catch (IOException error) {
             throw new ErrorAplicacionException("El PDF se generó, pero no se pudo abrir automáticamente.", error);
         } catch (RuntimeException error) {
@@ -76,7 +76,7 @@ public final class PedidoPdfServicio {
         }
     }
 
-    public void reimprimir(int idPedido) {
+    public boolean reimprimir(int idPedido) {
         if (idPedido <= 0) {
             throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para generar el PDF.");
         }
@@ -97,7 +97,7 @@ public final class PedidoPdfServicio {
         }
         Path archivo = generador.generarConTimestamp(pedido, datosConfiguracion, lineas);
         try {
-            abridor.abrir(archivo);
+            return abridor.abrir(archivo);
         } catch (IOException error) {
             throw new ErrorAplicacionException("El PDF se generó, pero no se pudo abrir automáticamente.", error);
         } catch (RuntimeException error) {
@@ -157,7 +157,7 @@ public final class PedidoPdfServicio {
 
     @FunctionalInterface
     public interface AbridorPdf {
-        void abrir(Path archivo) throws IOException;
+        boolean abrir(Path archivo) throws IOException;
 
         static AbridorPdf porDefecto() {
             return ServicioImpresionTicket::procesarSalida;

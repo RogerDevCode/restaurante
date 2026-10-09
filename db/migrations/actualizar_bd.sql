@@ -13,7 +13,7 @@ BEGIN
 
     -- 2. Columna logo_path en config
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'logo_path'
     ) THEN
         ALTER TABLE config ADD COLUMN logo_path VARCHAR(255) NULL DEFAULT NULL;
@@ -21,7 +21,7 @@ BEGIN
 
     -- 3. Columna tasa_dolar en config
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'tasa_dolar'
     ) THEN
         ALTER TABLE config ADD COLUMN tasa_dolar DECIMAL(12,4) NOT NULL DEFAULT 36.5000;
@@ -29,7 +29,7 @@ BEGIN
 
     -- 4. Columna iva_porcentaje en config
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'iva_porcentaje'
     ) THEN
         ALTER TABLE config ADD COLUMN iva_porcentaje DECIMAL(5,2) NOT NULL DEFAULT 16.00;
@@ -37,14 +37,14 @@ BEGIN
 
     -- 5. Columnas bimonetarias en pedidos
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'tasa_cambio'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN tasa_cambio DECIMAL(12,4) NULL DEFAULT NULL AFTER total;
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'total_bs'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN total_bs DECIMAL(14,2) NULL DEFAULT NULL AFTER tasa_cambio;
@@ -52,35 +52,35 @@ BEGIN
 
     -- 6. Columnas fiscales en pedidos
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'subtotal'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER total_bs;
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'iva_porcentaje'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN iva_porcentaje DECIMAL(5,2) NOT NULL DEFAULT 16.00 AFTER subtotal;
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'iva_monto'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN iva_monto DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER iva_porcentaje;
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'subtotal_bs'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN subtotal_bs DECIMAL(14,2) NOT NULL DEFAULT 0.00 AFTER iva_monto;
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'iva_bs'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN iva_bs DECIMAL(14,2) NOT NULL DEFAULT 0.00 AFTER subtotal_bs;
@@ -88,7 +88,7 @@ BEGIN
 
     -- 7. Correo único en usuarios
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.statistics 
+        SELECT 1 FROM information_schema.statistics
         WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND index_name = 'uq_usuarios_correo'
     ) THEN
         ALTER TABLE usuarios ADD UNIQUE KEY uq_usuarios_correo (correo);
@@ -96,7 +96,7 @@ BEGIN
 
     -- 8. Un único pedido pendiente por mesa (columnas generadas NULL para finalizados)
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'id_sala_pendiente'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN id_sala_pendiente INT
@@ -104,7 +104,7 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'num_mesa_pendiente'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN num_mesa_pendiente INT
@@ -113,14 +113,14 @@ BEGIN
 
     -- 9. Cliente predeterminado en config
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'cliente_predeterminado_nombre'
     ) THEN
         ALTER TABLE config ADD COLUMN cliente_predeterminado_nombre VARCHAR(150) NOT NULL DEFAULT 'Consumidor Final';
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'cliente_predeterminado_documento'
     ) THEN
         ALTER TABLE config ADD COLUMN cliente_predeterminado_documento VARCHAR(30) NOT NULL DEFAULT 'V-00000000';
@@ -128,14 +128,14 @@ BEGIN
 
     -- 10. Datos de cliente en pedidos
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'cliente_nombre'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN cliente_nombre VARCHAR(150) NOT NULL DEFAULT 'Consumidor Final';
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'cliente_documento'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN cliente_documento VARCHAR(30) NOT NULL DEFAULT 'V-00000000';
@@ -155,7 +155,7 @@ BEGIN
 
     -- 12. Método de pago en pedidos
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'metodo_pago'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN metodo_pago VARCHAR(30) NOT NULL DEFAULT 'EFECTIVO' AFTER cliente_documento;
@@ -163,14 +163,14 @@ BEGIN
 
     -- 13. Soft delete en platos (activo y desactivado_en)
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'platos' AND column_name = 'activo'
     ) THEN
         ALTER TABLE platos ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1;
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'platos' AND column_name = 'desactivado_en'
     ) THEN
         ALTER TABLE platos ADD COLUMN desactivado_en DATETIME NULL DEFAULT NULL;
@@ -178,7 +178,7 @@ BEGIN
 
     -- 14. Política de retención de registros en config
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'meses_retencion_pedidos'
     ) THEN
         ALTER TABLE config ADD COLUMN meses_retencion_pedidos INT NOT NULL DEFAULT 24
@@ -187,21 +187,21 @@ BEGIN
 
     -- 15. Índices de rendimiento para reportes, filtros y purga histórica
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.statistics 
+        SELECT 1 FROM information_schema.statistics
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND index_name = 'idx_pedidos_estado_fecha'
     ) THEN
         ALTER TABLE pedidos ADD INDEX idx_pedidos_estado_fecha (estado, fecha);
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.statistics 
+        SELECT 1 FROM information_schema.statistics
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND index_name = 'idx_pedidos_cliente_doc'
     ) THEN
         ALTER TABLE pedidos ADD INDEX idx_pedidos_cliente_doc (cliente_documento);
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.statistics 
+        SELECT 1 FROM information_schema.statistics
         WHERE table_schema = DATABASE() AND table_name = 'detalle_pedidos' AND index_name = 'idx_detalle_pedidos_nombre'
     ) THEN
         ALTER TABLE detalle_pedidos ADD INDEX idx_detalle_pedidos_nombre (nombre);
@@ -209,7 +209,7 @@ BEGIN
 
     -- 16. Opción de impresión de logo en tickera térmica (80mm)
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'imprimir_logo_ticket'
     ) THEN
         ALTER TABLE config ADD COLUMN imprimir_logo_ticket TINYINT(1) NOT NULL DEFAULT 1
@@ -218,7 +218,7 @@ BEGIN
 
     -- 17. Impresora del sistema para tickets de 80mm
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'impresora_tickets'
     ) THEN
         ALTER TABLE config ADD COLUMN impresora_tickets VARCHAR(150) NOT NULL DEFAULT 'DEFAULT'
@@ -227,7 +227,7 @@ BEGIN
 
     -- 18. Modo de salida de tickets (TERMICA_DIRECTA, VISOR_PDF, PDF24_CREATOR)
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'modo_salida_tickets'
     ) THEN
         ALTER TABLE config ADD COLUMN modo_salida_tickets VARCHAR(50) NOT NULL DEFAULT 'TERMICA_DIRECTA'
@@ -317,17 +317,66 @@ BEGIN
 
     -- 22. Desglose de efectivo en pedidos para pagos mixtos y arqueo multi-moneda
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'efectivo_bs'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN efectivo_bs DECIMAL(14,2) NULL DEFAULT NULL;
     END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'efectivo_usd'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN efectivo_usd DECIMAL(14,2) NULL DEFAULT NULL;
+    END IF;
+
+    -- 23. Tabla de mesoneros y columnas de mesonero en pedidos
+    CREATE TABLE IF NOT EXISTS mesoneros (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre_completo VARCHAR(150) NOT NULL,
+        cedula VARCHAR(30) NOT NULL,
+        telefono VARCHAR(30) NULL,
+        activo TINYINT(1) NOT NULL DEFAULT 1,
+        eliminado TINYINT(1) NOT NULL DEFAULT 0,
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_mesoneros_activo (activo),
+        INDEX idx_mesoneros_eliminado (eliminado)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'id_mesonero'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN id_mesonero INT NULL DEFAULT NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'mesonero_nombre'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN mesonero_nombre VARCHAR(150) NULL DEFAULT NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND index_name = 'idx_pedidos_mesonero'
+    ) THEN
+        ALTER TABLE pedidos ADD INDEX idx_pedidos_mesonero (id_mesonero);
+    END IF;
+
+    -- 24. Soporte para IVA por plato y salas de tipo Barra
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'platos' AND column_name = 'aplica_iva'
+    ) THEN
+        ALTER TABLE platos ADD COLUMN aplica_iva TINYINT(1) NOT NULL DEFAULT 1;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'salas' AND column_name = 'tipo'
+    ) THEN
+        ALTER TABLE salas ADD COLUMN tipo VARCHAR(20) NOT NULL DEFAULT 'SALON';
     END IF;
 END$$
 DELIMITER ;

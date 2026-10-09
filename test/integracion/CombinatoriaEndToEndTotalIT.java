@@ -220,7 +220,7 @@ public class CombinatoriaEndToEndTotalIT {
                     pedidosDao::verPedidoDetalle,
                     loginDao::datosEmpresa,
                     generadorPdf,
-                    f -> {}
+                    f -> true
             );
             ConsultaPedidosServicio consultaAdmin = new ConsultaPedidosServicio(pedidosDao, rbacAdmin);
             PedidosControlador pedidosCtrlAdmin = new PedidosControlador(new PedidoServicio(pedidosDao), pdfServicioAdmin, rbacAdmin, consultaAdmin);

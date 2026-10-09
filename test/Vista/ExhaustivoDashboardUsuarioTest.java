@@ -383,7 +383,7 @@ public class ExhaustivoDashboardUsuarioTest {
         ConsultaPedidosServicio consultas = new ConsultaPedidosServicio(pedidosRepo, politicaAdmin);
         PedidosControlador pedidosCtrl = new PedidosControlador(
                 new PedidoServicio(pedidosRepo),
-                new PedidoPdfServicio(id -> null, id -> null, () -> null, new GeneradorPdfPedido(Path.of(".")), p -> {}),
+                new PedidoPdfServicio(id -> null, id -> null, () -> null, new GeneradorPdfPedido(Path.of(".")), p -> true),
                 politicaAdmin,
                 consultas
         );

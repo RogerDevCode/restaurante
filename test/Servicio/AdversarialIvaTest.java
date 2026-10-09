@@ -290,6 +290,29 @@ public class AdversarialIvaTest {
     }
 
     @Test
+    public void testCalculoFiscalPlatosExentosYGravados() {
+        // 1 plato gravado ($10) + 1 plato exento ($5)
+        BigDecimal gravado = new BigDecimal("10.00");
+        BigDecimal exento = new BigDecimal("5.00");
+        BigDecimal ivaPorcentaje = new BigDecimal("16.00");
+        BigDecimal tasa = new BigDecimal("40.0000");
+
+        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(gravado, exento, ivaPorcentaje, tasa);
+
+        assertEquals(new BigDecimal("15.00"), fiscal.subtotalUsd());
+        assertEquals(new BigDecimal("10.00"), fiscal.baseImponibleUsd());
+        assertEquals(new BigDecimal("5.00"), fiscal.exentoUsd());
+        assertEquals(new BigDecimal("1.60"), fiscal.ivaUsd()); // 16% de 10.00
+        assertEquals(new BigDecimal("16.60"), fiscal.totalUsd()); // 15.00 + 1.60
+
+        assertEquals(new BigDecimal("600.00"), fiscal.subtotalBs()); // 15.00 * 40
+        assertEquals(new BigDecimal("400.00"), fiscal.baseImponibleBs()); // 10.00 * 40
+        assertEquals(new BigDecimal("200.00"), fiscal.exentoBs()); // 5.00 * 40
+        assertEquals(new BigDecimal("64.00"), fiscal.ivaBs()); // 1.60 * 40
+        assertEquals(new BigDecimal("664.00"), fiscal.totalBs()); // 16.60 * 40
+    }
+
+    @Test
     public void generadorPdfCompatibleConPedidoSinIvaLegacy() throws Exception {
         Path destino = temporal.newFolder("pdf-legacy").toPath();
         GeneradorPdfPedido generador = new GeneradorPdfPedido(destino);

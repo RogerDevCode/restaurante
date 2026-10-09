@@ -41,7 +41,7 @@ public class PedidosControladorTest {
                 id -> Collections.singletonList(detalle()),
                 this::configuracion,
                 new GeneradorPdfPedido(temporal.getRoot().toPath()),
-                archivoAbierto::set);
+                p -> { archivoAbierto.set(p); return true; });
         PedidoServicio servicioRegistro = new PedidoServicio(new PedidosRepositorioFalso() {
             @Override
             public int registrarPedidoCompleto(Pedidos pedido, java.util.List<DetallePedido> detalles) {
@@ -111,7 +111,7 @@ public class PedidosControladorTest {
         PedidoServicio servicio = new PedidoServicio(repositorio);
         PedidoPdfServicio pdf = new PedidoPdfServicio(
                 this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
-                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> { });
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> true);
         ConsultaPedidosServicio consultas = new ConsultaPedidosServicio(
                 repositorio, politica("Administrador"));
         PedidosControlador controlador = new PedidosControlador(
@@ -132,7 +132,7 @@ public class PedidosControladorTest {
                 this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
                 new GeneradorPdfPedido(temporal.getRoot().toPath()),
                 path -> { throw new AssertionError("No debe imprimir directo"); },
-                path -> idPrevisualizado.set(42));
+                path -> { idPrevisualizado.set(42); return true; });
         PedidosControlador controlador = new PedidosControlador(
                 new PedidoServicio(new PedidosRepositorioFalso()),
                 pdf, politica("Administrador"),
@@ -162,13 +162,13 @@ public class PedidosControladorTest {
                 daoFalso,
                 this::configuracion,
                 generador,
-                path -> accionCierre.set("IMPRIMIR"),
-                path -> accionCierre.set("PREVISUALIZAR")
+                path -> { accionCierre.set("IMPRIMIR"); return true; },
+                path -> { accionCierre.set("PREVISUALIZAR"); return true; }
         );
 
         PedidoPdfServicio pdf = new PedidoPdfServicio(
                 this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
-                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> { });
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> true);
         PedidosControlador controlador = new PedidosControlador(
                 new PedidoServicio(new PedidosRepositorioFalso()),
                 pdf, politica("Administrador"),
@@ -176,12 +176,12 @@ public class PedidosControladorTest {
                 cierreServicio);
 
         // 1. Previsualizar Corte X
-        Path resPrev = controlador.previsualizarCierreCaja("2026-10-07", Modelo.CierreCaja.TipoCierre.PARCIAL, "Admin");
+        var resPrev = controlador.previsualizarCierreCaja("2026-10-07", Modelo.CierreCaja.TipoCierre.PARCIAL, "Admin");
         assertNotNull(resPrev);
         assertEquals("PREVISUALIZAR", accionCierre.get());
 
         // 2. Imprimir Corte Z
-        Path resImp = controlador.imprimirCierreCaja("2026-10-07", Modelo.CierreCaja.TipoCierre.TOTAL, "Admin");
+        var resImp = controlador.imprimirCierreCaja("2026-10-07", Modelo.CierreCaja.TipoCierre.TOTAL, "Admin");
         assertNotNull(resImp);
         assertEquals("IMPRIMIR", accionCierre.get());
     }
@@ -191,7 +191,7 @@ public class PedidosControladorTest {
         PedidosControlador controladorSinCierre = new PedidosControlador(
                 new PedidoServicio(new PedidosRepositorioFalso()),
                 new PedidoPdfServicio(this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
-                        new GeneradorPdfPedido(temporal.getRoot().toPath()), a -> {}),
+                        new GeneradorPdfPedido(temporal.getRoot().toPath()), a -> true),
                 politica("Administrador"),
                 new ConsultaPedidosServicio(new PedidosRepositorioFalso(), politica("Administrador")),
                 null);
@@ -216,7 +216,7 @@ public class PedidosControladorTest {
 
         PedidoPdfServicio pdf = new PedidoPdfServicio(
                 this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
-                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> { });
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> true);
         ConsultaPedidosServicio consultas = new ConsultaPedidosServicio(
                 new PedidosRepositorioFalso(), politica("Administrador"), daoAuditoria);
         PedidosControlador controlador = new PedidosControlador(
@@ -241,7 +241,7 @@ public class PedidosControladorTest {
         PedidoPdfServicio pdfConError = new PedidoPdfServicio(
                 id -> { throw new RuntimeException("Error impresora"); },
                 id -> Collections.singletonList(detalle()), this::configuracion,
-                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> { });
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> true);
         ConsultaPedidosServicio consultas = new ConsultaPedidosServicio(
                 new PedidosRepositorioFalso(), politica("Administrador"), daoAuditoria);
         PedidosControlador controlador = new PedidosControlador(

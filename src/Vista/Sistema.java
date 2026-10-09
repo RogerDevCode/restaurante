@@ -21,8 +21,11 @@ import Modelo.PedidoPendienteExistenteException;
 import Modelo.Platos;
 import Modelo.Salas;
 import Modelo.Usuario;
+import Modelo.Mesonero;
+import Modelo.MesoneroDao;
 import Servicio.AutenticacionServicio;
 import Servicio.PoliticaAcceso;
+import Servicio.ServicioMesoneroNombre;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Image;
@@ -108,6 +111,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnRefrescarImpresoras;
     private javax.swing.JButton btnProbarImpresion;
     private boolean sincronizandoModoSalida = false;
+    private boolean sincronizandoImpresora = false;
     private javax.swing.JButton btnReactivarPlato;
     private javax.swing.JSpinner spMesesRetencion;
     private javax.swing.JButton btnPurgarHistorial;
@@ -132,7 +136,21 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnAuditoriaPedido;
     private javax.swing.JLabel lblBannerTasa;
     private javax.swing.JLabel lblFechaTasaConfig;
-
+    private final MesoneroDao mesoneroDao = new MesoneroDao();
+    private javax.swing.JComboBox<Object> cbMesoneroPedido;
+    private javax.swing.JTextField txtMesoneroId;
+    private javax.swing.JTextField txtMesoneroNombre;
+    private javax.swing.JTextField txtMesoneroCedula;
+    private javax.swing.JTextField txtMesoneroTelefono;
+    private javax.swing.JCheckBox chkMesoneroActivo;
+    private javax.swing.JTable tableMesonerosConfig;
+    private javax.swing.JTable tableMesonerosDashboard;
+    private javax.swing.JTextField txtMesoneroFinalizar;
+    private final Map<Integer, Boolean> platoAplicaIvaMap = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<Integer, String> salaTipoMap = new java.util.concurrent.ConcurrentHashMap<>();
+    private boolean salaActualEsBarra = false;
+    private javax.swing.JCheckBox chkAplicaIvaPlato;
+    private javax.swing.JComboBox<String> cbTipoSala;
 
     public Sistema(Usuario priv, SalasControlador salasControlador, PlatosControlador platosControlador,
             PedidosControlador pedidosControlador) {
@@ -240,6 +258,7 @@ public final class Sistema extends javax.swing.JFrame {
             });
         }
         actualizarEstadoBotonesCarrito();
+        cargarComboMesoneros();
 
         btnEliminarPlato.setText("Desactivar");
         btnEliminarPlato.setToolTipText("Oculta el plato del menú sin eliminarlo");
@@ -404,7 +423,11 @@ public final class Sistema extends javax.swing.JFrame {
                         "Ingrese el motivo de la reimpresión del pedido #" + id + ":", "Copia para el cliente");
                 if (motivo == null) return;
                 String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
-                pedidosControlador.reimprimirPdfPedido(id, motivo, usr);
+                boolean impreso = pedidosControlador.reimprimirPdfPedido(id, motivo, usr);
+                if (!impreso) {
+                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
+                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
+                }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                         "Error", JOptionPane.ERROR_MESSAGE);
@@ -572,11 +595,7 @@ public final class Sistema extends javax.swing.JFrame {
         cbImpresorasConfig = new javax.swing.JComboBox<>();
         cbImpresorasConfig.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
         cbImpresorasConfig.setBounds(30, 45, 360, 32);
-        cbImpresorasConfig.addActionListener(e -> {
-            if (cbImpresorasConfig.getSelectedItem() != null) {
-                Servicio.ServicioImpresionTicket.setImpresoraGlobal(cbImpresorasConfig.getSelectedItem().toString());
-            }
-        });
+        
         panelImpresionConfig.add(cbImpresorasConfig);
 
         btnRefrescarImpresoras = new javax.swing.JButton("Actualizar");
@@ -598,11 +617,7 @@ public final class Sistema extends javax.swing.JFrame {
         cbModoSalidaConfig = new javax.swing.JComboBox<>(Modelo.ModoSalidaTicket.values());
         cbModoSalidaConfig.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
         cbModoSalidaConfig.setBounds(30, 120, 360, 32);
-        cbModoSalidaConfig.addActionListener(e -> {
-            if (!sincronizandoModoSalida && cbModoSalidaConfig.getSelectedItem() instanceof Modelo.ModoSalidaTicket m) {
-                cambiarModoSalidaGlobal(m);
-            }
-        });
+        
         panelImpresionConfig.add(cbModoSalidaConfig);
 
         chkImprimirLogoTicket = new javax.swing.JCheckBox("Imprimir Logo en Tickera de 80 mm");
@@ -640,6 +655,7 @@ public final class Sistema extends javax.swing.JFrame {
         tabConfigDerecha.addTab("Impresión y Tickets", panelImpresionConfig);
         tabConfigDerecha.addTab("Logo e Ícono", panelLogoConfig);
         tabConfigDerecha.addTab("Base de Datos y Respaldos", crearPanelRespaldoConfig());
+        tabConfigDerecha.addTab("Mesoneros", crearPanelMesonerosConfig());
 
         jPanel7.add(tabConfigDerecha, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 60, 580, 490));
 
@@ -694,6 +710,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         initPanelMesasMejorado();
         initDashboardYClientes();
+        initIvaPlatosYBarraSalas();
 
         if (politicaAcceso.esAdministrador() && panelDashboard != null) {
             int idxDashboard = jTabbedPane1.indexOfComponent(panelDashboard);
@@ -1321,6 +1338,25 @@ public final class Sistema extends javax.swing.JFrame {
         pnlBotonesCantidad.add(btnMenosCantidad);
         pnlBotonesCantidad.add(btnMasCantidad);
 
+        javax.swing.JPanel pnlMesoneroPedido = new javax.swing.JPanel(new java.awt.BorderLayout(0, 3));
+        pnlMesoneroPedido.setOpaque(false);
+        javax.swing.JLabel lblMesoneroPedido = new javax.swing.JLabel("Mesonero asignado (opcional):");
+        lblMesoneroPedido.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        cbMesoneroPedido = new javax.swing.JComboBox<>();
+        cbMesoneroPedido.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        cbMesoneroPedido.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Mesonero m) {
+                    setText(m.getNombreCompleto() + " (" + m.getCedula() + ")");
+                }
+                return this;
+            }
+        });
+        pnlMesoneroPedido.add(lblMesoneroPedido, java.awt.BorderLayout.NORTH);
+        pnlMesoneroPedido.add(cbMesoneroPedido, java.awt.BorderLayout.CENTER);
+
         javax.swing.GroupLayout jPanel23Layout = new javax.swing.GroupLayout(jPanel23);
         jPanel23.setLayout(jPanel23Layout);
         jPanel23Layout.setHorizontalGroup(
@@ -1342,10 +1378,12 @@ public final class Sistema extends javax.swing.JFrame {
                         .addGroup(jPanel23Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addComponent(jScrollPane11, javax.swing.GroupLayout.PREFERRED_SIZE, 570, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(jPanel23Layout.createSequentialGroup()
-                                .addGroup(jPanel23Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(txtTempIdSala)
-                                    .addComponent(txtTempNumMesa, javax.swing.GroupLayout.DEFAULT_SIZE, 117, Short.MAX_VALUE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 323, Short.MAX_VALUE)
+                                .addGroup(jPanel23Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(pnlMesoneroPedido, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGroup(jPanel23Layout.createSequentialGroup()
+                                        .addComponent(txtTempIdSala, javax.swing.GroupLayout.PREFERRED_SIZE, 0, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(txtTempNumMesa, javax.swing.GroupLayout.PREFERRED_SIZE, 0, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 180, Short.MAX_VALUE)
                                 .addGroup(jPanel23Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel23Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                         .addComponent(jLabel11)
@@ -1376,10 +1414,10 @@ public final class Sistema extends javax.swing.JFrame {
                         .addComponent(jScrollPane11, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
                         .addGap(18, 18, 18)
                         .addGroup(jPanel23Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(pnlMesoneroPedido, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(jPanel23Layout.createSequentialGroup()
-                                .addComponent(txtTempIdSala, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(14, 14, 14)
-                                .addComponent(txtTempNumMesa, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(txtTempIdSala, javax.swing.GroupLayout.PREFERRED_SIZE, 0, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(txtTempNumMesa, javax.swing.GroupLayout.PREFERRED_SIZE, 0, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(jPanel23Layout.createSequentialGroup()
                                 .addComponent(jLabel11)
                                 .addGap(14, 14, 14)
@@ -1466,6 +1504,15 @@ public final class Sistema extends javax.swing.JFrame {
 
         txtNumMesaFinalizar.setEditable(false);
         jPanel25.add(txtNumMesaFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(180, 450, 240, 30));
+
+        javax.swing.JLabel lblMesoneroFin = new javax.swing.JLabel("Mesonero:");
+        lblMesoneroFin.setFont(new java.awt.Font("Times New Roman", 1, 18));
+        jPanel25.add(lblMesoneroFin, new org.netbeans.lib.awtextra.AbsoluteConstraints(440, 350, -1, -1));
+
+        txtMesoneroFinalizar = new javax.swing.JTextField();
+        txtMesoneroFinalizar.setEditable(false);
+        txtMesoneroFinalizar.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel25.add(txtMesoneroFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(540, 350, 220, 30));
 
         btnPdfPedido.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/pdf.png"))); // NOI18N
         btnPdfPedido.addActionListener(new java.awt.event.ActionListener() {
@@ -2142,7 +2189,11 @@ public final class Sistema extends javax.swing.JFrame {
                         "Ingrese el motivo de la reimpresión del pedido #" + id + ":", "Copia para el cliente");
                 if (motivo == null) return;
                 String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
-                pedidosControlador.reimprimirPdfPedido(id, motivo, usr);
+                boolean impreso = pedidosControlador.reimprimirPdfPedido(id, motivo, usr);
+                if (!impreso) {
+                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
+                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
+                }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                         "Error", JOptionPane.ERROR_MESSAGE);
@@ -2189,6 +2240,20 @@ public final class Sistema extends javax.swing.JFrame {
         txtIdSala.setText(tableSala.getValueAt(fila, 0).toString());
         txtNombreSala.setText(tableSala.getValueAt(fila, 1).toString());
         txtMesas.setText(tableSala.getValueAt(fila, 2).toString());
+        try {
+            int idSala = Integer.parseInt(tableSala.getValueAt(fila, 0).toString());
+            String tipo = salaTipoMap.getOrDefault(idSala, "SALON");
+            if (tableSala.getColumnCount() > 3 && tableSala.getValueAt(fila, 3) != null) {
+                tipo = tableSala.getValueAt(fila, 3).toString();
+            }
+            boolean esBarra = "BARRA".equalsIgnoreCase(tipo);
+            if (cbTipoSala != null) {
+                cbTipoSala.setSelectedItem(esBarra ? "BARRA" : "SALÓN");
+            }
+            if (jLabel19 != null) {
+                jLabel19.setText(esBarra ? "Puestos:" : "Mesas:");
+            }
+        } catch (Exception ignored) {}
     }//GEN-LAST:event_tableSalaMouseClicked
 
     private void txtIdConfigActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtIdConfigActionPerformed
@@ -2204,6 +2269,9 @@ public final class Sistema extends javax.swing.JFrame {
             try {
                 sl.setNombre(txtNombreSala.getText().trim());
                 sl.setMesas(Integer.parseInt(txtMesas.getText().trim()));
+                if (cbTipoSala != null) {
+                    sl.setTipo(String.valueOf(cbTipoSala.getSelectedItem()));
+                }
                 if (salasControlador.registrar(sl)) {
                     JOptionPane.showMessageDialog(this, "Sala registrada.");
                     LimpiarSala();
@@ -2229,6 +2297,9 @@ public final class Sistema extends javax.swing.JFrame {
                     sl.setId(Integer.parseInt(txtIdSala.getText().trim()));
                     if (!txtMesas.getText().trim().isEmpty()) {
                         sl.setMesas(Integer.parseInt(txtMesas.getText().trim()));
+                    }
+                    if (cbTipoSala != null) {
+                        sl.setTipo(String.valueOf(cbTipoSala.getSelectedItem()));
                     }
                     if (salasControlador.modificar(sl)) {
                         JOptionPane.showMessageDialog(this, "Sala modificada.");
@@ -2337,13 +2408,18 @@ public final class Sistema extends javax.swing.JFrame {
             String precioStr = String.format(java.util.Locale.US, "%.2f", precio2Dec);
             lista.add(precioStr);
             lista.add(precioStr);
-            Object[] O = new Object[6];
+            boolean aplicaIva = platoAplicaIvaMap.getOrDefault(id, true);
+            boolean tieneColumnaIva = tmp.getColumnCount() >= 7;
+            Object[] O = new Object[tieneColumnaIva ? 7 : 6];
             O[0] = lista.get(1);
             O[1] = lista.get(2);
             O[2] = lista.get(3);
             O[3] = lista.get(4);
             O[4] = lista.get(5);
             O[5] = "";
+            if (tieneColumnaIva) {
+                O[6] = aplicaIva ? "Sí (16%)" : "Exento (0%)";
+            }
             tmp.addRow(O);
             tableMenu.setModel(tmp);
             TotalPagar(tableMenu, totalMenu);
@@ -2594,7 +2670,9 @@ public final class Sistema extends javax.swing.JFrame {
             long version = versionPedidoPantalla;
             btnFinalizar.setEnabled(false);
             new FinalizarPedidoSwingWorker(pedidosControlador, idPedido, clienteNombre, clienteDoc, metodoPagoSel,
-                    efectivoPagoBs, efectivoPagoUsd, finalizado -> {
+                    efectivoPagoBs, efectivoPagoUsd, resultado -> {
+                boolean finalizado = resultado.finalizado();
+                boolean impresoDirecto = resultado.impresoDirecto();
                 boolean mismoPedido = version == versionPedidoPantalla
                         && String.valueOf(idPedido).equals(txtIdPedido.getText());
                 if (finalizado) {
@@ -2604,8 +2682,13 @@ public final class Sistema extends javax.swing.JFrame {
                         if (btnPrevisualizarPedido != null) btnPrevisualizarPedido.setEnabled(true);
                     }
                     ListarPedidos();
-                    JOptionPane.showMessageDialog(this, "Pedido finalizado y PDF generado a nombre de " + clienteNombre + ".",
-                            "Pedido finalizado", JOptionPane.INFORMATION_MESSAGE);
+                    if (impresoDirecto) {
+                        JOptionPane.showMessageDialog(this, "Pedido finalizado y PDF generado a nombre de " + clienteNombre + ".",
+                                "Pedido finalizado", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Pedido finalizado a nombre de " + clienteNombre + ".\\nSin embargo, falló el envío a la impresora (degradado a visor PDF).",
+                                "Pedido finalizado - Impresión degradada", JOptionPane.WARNING_MESSAGE);
+                    }
                 } else {
                     if (mismoPedido) btnFinalizar.setEnabled(true);
                     JOptionPane.showMessageDialog(this, "El pedido no se finalizó.",
@@ -2690,6 +2773,7 @@ public final class Sistema extends javax.swing.JFrame {
             pla.setNombre(txtNombrePlato.getText());
             pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText()));
             pla.setFecha(fechaActual());
+            pla.setAplicaIva(chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected());
             if (platosControlador.registrar(pla)) {
                 JOptionPane.showMessageDialog(null, "Plato Registrado");
                 ListarPlatos(TablePlatos);
@@ -2714,6 +2798,7 @@ public final class Sistema extends javax.swing.JFrame {
                     pla.setNombre(txtNombrePlato.getText().trim());
                     pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText().trim()));
                     pla.setId(Integer.parseInt(txtIdPlato.getText().trim()));
+                    pla.setAplicaIva(chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected());
                     if (platosControlador.modificar(pla)) {
                         JOptionPane.showMessageDialog(null, "Plato Modificado");
                         ListarPlatos(TablePlatos);
@@ -2770,6 +2855,17 @@ public final class Sistema extends javax.swing.JFrame {
         txtIdPlato.setText(TablePlatos.getValueAt(fila, 0).toString());
         txtNombrePlato.setText(TablePlatos.getValueAt(fila, 1).toString());
         txtPrecioPlato.setText(TablePlatos.getValueAt(fila, 2).toString());
+        try {
+            int idPlato = Integer.parseInt(TablePlatos.getValueAt(fila, 0).toString());
+            boolean aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
+            if (TablePlatos.getColumnCount() > 3 && TablePlatos.getValueAt(fila, 3) != null) {
+                String val = TablePlatos.getValueAt(fila, 3).toString().toLowerCase(java.util.Locale.ROOT);
+                aplicaIva = !val.contains("exento") && !val.contains("no");
+            }
+            if (chkAplicaIvaPlato != null) {
+                chkAplicaIvaPlato.setSelected(aplicaIva);
+            }
+        } catch (Exception ignored) {}
     }//GEN-LAST:event_TablePlatosMouseClicked
 
 
@@ -2910,16 +3006,47 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void TotalPagar(JTable tabla, JLabel label) {
         Totalpagar = BigDecimal.ZERO.setScale(2);
+        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
+        BigDecimal exento = BigDecimal.ZERO.setScale(2);
         int numFila = tabla.getRowCount();
         for (int i = 0; i < numFila; i++) {
             BigDecimal subtotal = importeMonetario(tabla.getModel().getValueAt(i, 4));
+            boolean itemAplicaIva = true;
+            if (tabla.getModel().getColumnCount() > 6 && tabla.getModel().getValueAt(i, 6) != null) {
+                String valIva = tabla.getModel().getValueAt(i, 6).toString().toLowerCase(java.util.Locale.ROOT);
+                if (valIva.contains("exento") || valIva.contains("no") || valIva.equals("false") || valIva.equals("0")) {
+                    itemAplicaIva = false;
+                }
+            } else {
+                Object idObj = tabla.getModel().getValueAt(i, 0);
+                if (idObj != null) {
+                    try {
+                        int idPlato = Integer.parseInt(idObj.toString());
+                        itemAplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (itemAplicaIva) {
+                baseImponible = baseImponible.add(subtotal);
+            } else {
+                exento = exento.add(subtotal);
+            }
             Totalpagar = Totalpagar.add(subtotal);
         }
         Totalpagar = Totalpagar.setScale(2, RoundingMode.HALF_UP);
+        baseImponible = baseImponible.setScale(2, RoundingMode.HALF_UP);
+        exento = exento.setScale(2, RoundingMode.HALF_UP);
         String totalUsdStr = String.format(java.util.Locale.US, "%.2f", Totalpagar);
         label.setText("$ " + totalUsdStr);
-        label.setToolTipText("Consumo en mesa: $ " + totalUsdStr
-                + " (IVA y total en Bs. se calculan al facturar)");
+        if (exento.signum() > 0) {
+            label.setToolTipText("Consumo en mesa: $ " + totalUsdStr
+                    + " (Base Imponible: $ " + String.format(java.util.Locale.US, "%.2f", baseImponible)
+                    + ", Exento: $ " + String.format(java.util.Locale.US, "%.2f", exento)
+                    + " - IVA y total en Bs. se calculan al facturar)");
+        } else {
+            label.setToolTipText("Consumo en mesa: $ " + totalUsdStr
+                    + " (IVA y total en Bs. se calculan al facturar)");
+        }
     }
 
     private void LimpiarTableMenu() {
@@ -3154,7 +3281,10 @@ public final class Sistema extends javax.swing.JFrame {
         splitPrincipal.setDividerLocation(300);
         splitPrincipal.setOpaque(false);
 
-        // Panel Izquierdo: Top Platos
+        // Panel Izquierdo: Tabbed con Top Platos y Rendimiento Mesoneros
+        javax.swing.JTabbedPane tabLeftDashboard = new javax.swing.JTabbedPane();
+        tabLeftDashboard.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+
         javax.swing.JPanel pnlTopPlatos = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
         pnlTopPlatos.setBackground(java.awt.Color.WHITE);
         pnlTopPlatos.setBorder(javax.swing.BorderFactory.createTitledBorder(
@@ -3173,7 +3303,30 @@ public final class Sistema extends javax.swing.JFrame {
         });
         tableTopPlatos.setRowHeight(22);
         pnlTopPlatos.add(new javax.swing.JScrollPane(tableTopPlatos), java.awt.BorderLayout.CENTER);
-        splitPrincipal.setLeftComponent(pnlTopPlatos);
+        tabLeftDashboard.addTab("Top Platos", pnlTopPlatos);
+
+        javax.swing.JPanel pnlMesonerosDashboard = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
+        pnlMesonerosDashboard.setBackground(java.awt.Color.WHITE);
+        pnlMesonerosDashboard.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                "Atención por Mesonero",
+                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
+                javax.swing.border.TitledBorder.DEFAULT_POSITION,
+                new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13),
+                new java.awt.Color(40, 40, 40)));
+
+        tableMesonerosDashboard = new javax.swing.JTable(new javax.swing.table.DefaultTableModel(
+                new Object[][]{}, new String[]{"Mesonero / Atención", "Pedidos", "Total ($)", "Total (Bs.)"}
+        ) {
+            @Override
+            public boolean isCellEditable(int r, int c) { return false; }
+        });
+        tableMesonerosDashboard.setRowHeight(22);
+        pnlMesonerosDashboard.add(new javax.swing.JScrollPane(tableMesonerosDashboard), java.awt.BorderLayout.CENTER);
+        tabLeftDashboard.addTab("Mesoneros", pnlMesonerosDashboard);
+
+        splitPrincipal.setDividerLocation(360);
+        splitPrincipal.setLeftComponent(tabLeftDashboard);
 
         // Panel Derecho: Clientes y Facturas
         javax.swing.JPanel pnlClientesYFacturas = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
@@ -3374,6 +3527,19 @@ public final class Sistema extends javax.swing.JFrame {
                     modelPlatos.addRow(new Object[]{item.getNombre(), item.getCantidad(), "$ " + String.format(java.util.Locale.US, "%.2f", item.getTotalDolares())});
                 }
             }
+
+            if (tableMesonerosDashboard != null && stats.getEstadisticasMesoneros() != null) {
+                javax.swing.table.DefaultTableModel modelMesoneros = (javax.swing.table.DefaultTableModel) tableMesonerosDashboard.getModel();
+                modelMesoneros.setRowCount(0);
+                for (Modelo.EstadisticasDashboard.ItemEstadistica item : stats.getEstadisticasMesoneros()) {
+                    modelMesoneros.addRow(new Object[]{
+                        item.getNombre(),
+                        item.getCantidad(),
+                        "$ " + String.format(java.util.Locale.US, "%.2f", item.getTotalDolares()),
+                        "Bs. " + String.format(java.util.Locale.US, "%.2f", item.getTotalBs())
+                    });
+                }
+            }
         }
         mostrarClientesEnTabla(datos.getClientes());
     }
@@ -3498,7 +3664,11 @@ public final class Sistema extends javax.swing.JFrame {
                     "Ingrese el motivo de la reimpresión del pedido #" + idPedido + ":", "Copia solicitada por cliente");
             if (motivo == null) return;
             String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
-            pedidosControlador.reimprimirPdfPedido(idPedido, motivo, usr);
+            boolean impreso = pedidosControlador.reimprimirPdfPedido(idPedido, motivo, usr);
+                if (!impreso) {
+                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
+                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
+                }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                     "Error", JOptionPane.ERROR_MESSAGE);
@@ -3747,27 +3917,32 @@ public final class Sistema extends javax.swing.JFrame {
         if (cbImpresorasConfig == null) {
             return;
         }
-        cbImpresorasConfig.removeAllItems();
-        cbImpresorasConfig.addItem("DEFAULT");
-        java.util.List<String> lista = Servicio.ServicioImpresionTicket.listarImpresorasDisponibles();
-        for (String imp : lista) {
-            cbImpresorasConfig.addItem(imp);
-        }
-        if (seleccionPrevia != null && !seleccionPrevia.trim().isEmpty()) {
-            boolean encontrado = false;
-            for (int i = 0; i < cbImpresorasConfig.getItemCount(); i++) {
-                if (seleccionPrevia.equalsIgnoreCase(cbImpresorasConfig.getItemAt(i))) {
-                    cbImpresorasConfig.setSelectedIndex(i);
-                    encontrado = true;
-                    break;
+        sincronizandoImpresora = true;
+        try {
+            cbImpresorasConfig.removeAllItems();
+            cbImpresorasConfig.addItem("DEFAULT");
+            java.util.List<String> lista = Servicio.ServicioImpresionTicket.listarImpresorasDisponibles();
+            for (String imp : lista) {
+                cbImpresorasConfig.addItem(imp);
+            }
+            if (seleccionPrevia != null && !seleccionPrevia.trim().isEmpty()) {
+                boolean encontrado = false;
+                for (int i = 0; i < cbImpresorasConfig.getItemCount(); i++) {
+                    if (seleccionPrevia.equalsIgnoreCase(cbImpresorasConfig.getItemAt(i))) {
+                        cbImpresorasConfig.setSelectedIndex(i);
+                        encontrado = true;
+                        break;
+                    }
                 }
+                if (!encontrado && !"DEFAULT".equalsIgnoreCase(seleccionPrevia)) {
+                    cbImpresorasConfig.addItem(seleccionPrevia);
+                    cbImpresorasConfig.setSelectedItem(seleccionPrevia);
+                }
+            } else {
+                cbImpresorasConfig.setSelectedIndex(0);
             }
-            if (!encontrado && !"DEFAULT".equalsIgnoreCase(seleccionPrevia)) {
-                cbImpresorasConfig.addItem(seleccionPrevia);
-                cbImpresorasConfig.setSelectedItem(seleccionPrevia);
-            }
-        } else {
-            cbImpresorasConfig.setSelectedIndex(0);
+        } finally {
+            sincronizandoImpresora = false;
         }
     }
 
@@ -3779,16 +3954,41 @@ public final class Sistema extends javax.swing.JFrame {
                 ? m
                 : Servicio.ServicioImpresionTicket.getModoGlobal();
 
-        boolean ok = Servicio.ServicioImpresionTicket.imprimirTicketPrueba(imp, modo);
-        if (ok) {
-            JOptionPane.showMessageDialog(this,
-                    "Ticket de prueba generado y enviado correctamente.\n• Impresora: " + imp + "\n• Modo: " + modo.getEtiqueta(),
-                    "Impresión de Prueba Exitosa", JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            JOptionPane.showMessageDialog(this,
-                    "No se pudo completar la prueba de impresión hacia '" + imp + "'. Revise la conexión de la tickera.",
-                    "Error de Impresión", JOptionPane.WARNING_MESSAGE);
+        if (btnProbarImpresion != null) {
+            btnProbarImpresion.setEnabled(false);
         }
+        setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
+
+        new javax.swing.SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() {
+                return Servicio.ServicioImpresionTicket.imprimirTicketPrueba(imp, modo);
+            }
+
+            @Override
+            protected void done() {
+                setCursor(java.awt.Cursor.getDefaultCursor());
+                if (btnProbarImpresion != null) {
+                    btnProbarImpresion.setEnabled(true);
+                }
+                try {
+                    boolean ok = get();
+                    if (ok) {
+                        JOptionPane.showMessageDialog(Sistema.this,
+                                "Ticket de prueba generado y enviado correctamente.\n• Impresora: " + imp + "\n• Modo: " + modo.getEtiqueta(),
+                                "Impresión de Prueba Exitosa", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(Sistema.this,
+                                "No se pudo completar la prueba de impresión hacia '" + imp + "'. Revise la conexión de la tickera.",
+                                "Error de Impresión", JOptionPane.WARNING_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(Sistema.this,
+                            "Error ejecutando la prueba de impresión: " + mensajeError(ex),
+                            "Error de Impresión", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     public void solicitarCierreCaja(Modelo.CierreCaja.TipoCierre tipo) {
@@ -3909,21 +4109,21 @@ public final class Sistema extends javax.swing.JFrame {
             boolean esImpresionDirecta = (seleccion == 0);
 
             final String fFecha = fecha;
-            new javax.swing.SwingWorker<java.nio.file.Path, Void>() {
+            new javax.swing.SwingWorker<Servicio.CierreCajaServicio.ResultadoCierre, Void>() {
                 @Override
-                protected java.nio.file.Path doInBackground() throws Exception {
+                protected Servicio.CierreCajaServicio.ResultadoCierre doInBackground() throws Exception {
                     if (cierreCajaServicio == null) {
                         cierreCajaServicio = new Servicio.CierreCajaServicio(
                                 new Modelo.CierreCajaDao(),
                                 () -> conf != null ? conf : lgDao.datosEmpresa(),
                                 new Servicio.GeneradorPdfCierre());
                     }
-                    java.nio.file.Path rutaGenerada;
+                    Servicio.CierreCajaServicio.ResultadoCierre resultadoGenerado;
                     try {
                         if (esImpresionDirecta) {
-                            rutaGenerada = cierreCajaServicio.imprimirCierre(fFecha, tipo, usuarioEmisor, fEfBs, fEfUsd);
+                            resultadoGenerado = cierreCajaServicio.imprimirCierre(fFecha, tipo, usuarioEmisor, fEfBs, fEfUsd);
                         } else {
-                            rutaGenerada = cierreCajaServicio.previsualizarCierre(fFecha, tipo, usuarioEmisor, fEfBs, fEfUsd);
+                            resultadoGenerado = cierreCajaServicio.previsualizarCierre(fFecha, tipo, usuarioEmisor, fEfBs, fEfUsd);
                         }
                     } finally {
                         if (tipo == Modelo.CierreCaja.TipoCierre.TOTAL) {
@@ -3935,17 +4135,28 @@ public final class Sistema extends javax.swing.JFrame {
                             }
                         }
                     }
-                    return rutaGenerada;
+                    return resultadoGenerado;
                 }
 
                 @Override
                 protected void done() {
                     try {
-                        java.nio.file.Path archivo = get();
+                        Servicio.CierreCajaServicio.ResultadoCierre resultado = get();
                         if (esImpresionDirecta) {
+                            Modelo.ModoSalidaTicket modoActual = Servicio.ServicioImpresionTicket.getModoGlobal();
+                            String detalleDestino;
+                            if (resultado.impresoDirecto()) {
+                                detalleDestino = switch (modoActual) {
+                                    case TERMICA_DIRECTA -> "enviado a la impresora térmica (" + Servicio.ServicioImpresionTicket.getImpresoraGlobal() + ").";
+                                    case PDF24_CREATOR -> "despachado a PDF24 Creator.";
+                                    case VISOR_PDF -> "abierto en el visor de documentos PDF.";
+                                };
+                            } else {
+                                detalleDestino = "falló el envío a la impresora, degradado a visor PDF.";
+                            }
                             JOptionPane.showMessageDialog(Sistema.this,
-                                    "Ticket de " + tipo.getEtiqueta() + " enviado a la impresora térmica de 80 mm.\nArchivo: " + archivo.getFileName(),
-                                    "Cierre Impreso", JOptionPane.INFORMATION_MESSAGE);
+                                    "Ticket de " + tipo.getEtiqueta() + " procesado (" + detalleDestino + ")\nArchivo: " + resultado.archivo().getFileName(),
+                                    "Cierre de Caja", JOptionPane.INFORMATION_MESSAGE);
                         }
                     } catch (Exception ex) {
                         JOptionPane.showMessageDialog(Sistema.this,
@@ -4258,6 +4469,294 @@ public final class Sistema extends javax.swing.JFrame {
         return panel;
     }
 
+    private javax.swing.JPanel crearPanelMesonerosConfig() {
+        javax.swing.JPanel panel = new javax.swing.JPanel(null);
+        panel.setBackground(new java.awt.Color(255, 255, 255));
+
+        javax.swing.JLabel lblTitulo = new javax.swing.JLabel("Gestión de Mesoneros / Personal de Atención");
+        lblTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13));
+        lblTitulo.setBounds(15, 10, 400, 20);
+        panel.add(lblTitulo);
+
+        txtMesoneroId = new javax.swing.JTextField();
+        txtMesoneroId.setVisible(false);
+
+        javax.swing.JLabel lblNom = new javax.swing.JLabel("Nombre Completo *:");
+        lblNom.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        lblNom.setBounds(15, 35, 130, 18);
+        panel.add(lblNom);
+
+        txtMesoneroNombre = new javax.swing.JTextField();
+        txtMesoneroNombre.setBounds(15, 55, 190, 26);
+        panel.add(txtMesoneroNombre);
+
+        javax.swing.JLabel lblCed = new javax.swing.JLabel("Cédula / Documento *:");
+        lblCed.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        lblCed.setBounds(215, 35, 140, 18);
+        panel.add(lblCed);
+
+        txtMesoneroCedula = new javax.swing.JTextField();
+        txtMesoneroCedula.setBounds(215, 55, 140, 26);
+        panel.add(txtMesoneroCedula);
+
+        javax.swing.JLabel lblTel = new javax.swing.JLabel("Teléfono:");
+        lblTel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        lblTel.setBounds(365, 35, 100, 18);
+        panel.add(lblTel);
+
+        txtMesoneroTelefono = new javax.swing.JTextField();
+        txtMesoneroTelefono.setBounds(365, 55, 120, 26);
+        panel.add(txtMesoneroTelefono);
+
+        chkMesoneroActivo = new javax.swing.JCheckBox("Activo", true);
+        chkMesoneroActivo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        chkMesoneroActivo.setBackground(java.awt.Color.WHITE);
+        chkMesoneroActivo.setToolTipText("Desmarcar si sale de vacaciones o está temporalmente inactivo");
+        chkMesoneroActivo.setBounds(495, 55, 75, 26);
+        panel.add(chkMesoneroActivo);
+
+        javax.swing.JButton btnGuardar = new javax.swing.JButton("Guardar");
+        btnGuardar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnGuardar.setBounds(15, 90, 95, 28);
+        btnGuardar.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnGuardar.addActionListener(e -> guardarMesoneroConfig());
+        panel.add(btnGuardar);
+
+        javax.swing.JButton btnModificar = new javax.swing.JButton("Modificar");
+        btnModificar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnModificar.setBounds(118, 90, 95, 28);
+        btnModificar.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnModificar.addActionListener(e -> modificarMesoneroConfig());
+        panel.add(btnModificar);
+
+        javax.swing.JButton btnVacaciones = new javax.swing.JButton("Vacaciones");
+        btnVacaciones.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        btnVacaciones.setToolTipText("Alternar estado Activo / Vacaciones del mesonero seleccionado");
+        btnVacaciones.setBounds(221, 90, 110, 28);
+        btnVacaciones.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnVacaciones.addActionListener(e -> alternarVacacionesMesoneroConfig());
+        panel.add(btnVacaciones);
+
+        javax.swing.JButton btnEliminar = new javax.swing.JButton("Eliminar");
+        btnEliminar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        btnEliminar.setForeground(new java.awt.Color(180, 0, 0));
+        btnEliminar.setToolTipText("Eliminar lógicamente (soft-delete)");
+        btnEliminar.setBounds(339, 90, 95, 28);
+        btnEliminar.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnEliminar.addActionListener(e -> eliminarMesoneroConfig());
+        panel.add(btnEliminar);
+
+        javax.swing.JButton btnNuevo = new javax.swing.JButton("Nuevo");
+        btnNuevo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        btnNuevo.setBounds(442, 90, 85, 28);
+        btnNuevo.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnNuevo.addActionListener(e -> limpiarFormularioMesonero());
+        panel.add(btnNuevo);
+
+        tableMesonerosConfig = new javax.swing.JTable(new javax.swing.table.DefaultTableModel(
+                new Object[][]{},
+                new String[]{"ID", "Nombre Completo", "Cédula", "Teléfono", "Estado"}
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        });
+        tableMesonerosConfig.setRowHeight(22);
+        tableMesonerosConfig.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                seleccionarMesoneroDeTabla();
+            }
+        });
+
+        javax.swing.JScrollPane scrollTabla = new javax.swing.JScrollPane(tableMesonerosConfig);
+        scrollTabla.setBounds(15, 130, 545, 310);
+        panel.add(scrollTabla);
+
+        listarMesonerosConfig();
+        return panel;
+    }
+
+    private void listarMesonerosConfig() {
+        if (tableMesonerosConfig == null) return;
+        DefaultTableModel model = (DefaultTableModel) tableMesonerosConfig.getModel();
+        model.setRowCount(0);
+        try {
+            List<Mesonero> lista = mesoneroDao.listarTodos();
+            for (Mesonero m : lista) {
+                model.addRow(new Object[]{
+                    m.getId(),
+                    m.getNombreCompleto(),
+                    m.getCedula(),
+                    m.getTelefono() != null ? m.getTelefono() : "",
+                    m.isActivo() ? "Activo" : "Vacaciones / Inactivo"
+                });
+            }
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(Sistema.class.getName())
+                    .log(java.util.logging.Level.WARNING, "Error al listar mesoneros: " + ex.getMessage());
+        }
+    }
+
+    private void limpiarFormularioMesonero() {
+        if (txtMesoneroId != null) txtMesoneroId.setText("");
+        if (txtMesoneroNombre != null) txtMesoneroNombre.setText("");
+        if (txtMesoneroCedula != null) txtMesoneroCedula.setText("");
+        if (txtMesoneroTelefono != null) txtMesoneroTelefono.setText("");
+        if (chkMesoneroActivo != null) chkMesoneroActivo.setSelected(true);
+        if (tableMesonerosConfig != null) tableMesonerosConfig.clearSelection();
+    }
+
+    private void seleccionarMesoneroDeTabla() {
+        if (tableMesonerosConfig == null) return;
+        int fila = tableMesonerosConfig.getSelectedRow();
+        if (fila >= 0) {
+            int modelRow = tableMesonerosConfig.convertRowIndexToModel(fila);
+            Object id = tableMesonerosConfig.getModel().getValueAt(modelRow, 0);
+            Object nom = tableMesonerosConfig.getModel().getValueAt(modelRow, 1);
+            Object ced = tableMesonerosConfig.getModel().getValueAt(modelRow, 2);
+            Object tel = tableMesonerosConfig.getModel().getValueAt(modelRow, 3);
+            Object est = tableMesonerosConfig.getModel().getValueAt(modelRow, 4);
+
+            if (txtMesoneroId != null) txtMesoneroId.setText(id != null ? id.toString() : "");
+            if (txtMesoneroNombre != null) txtMesoneroNombre.setText(nom != null ? nom.toString() : "");
+            if (txtMesoneroCedula != null) txtMesoneroCedula.setText(ced != null ? ced.toString() : "");
+            if (txtMesoneroTelefono != null) txtMesoneroTelefono.setText(tel != null ? tel.toString() : "");
+            if (chkMesoneroActivo != null) chkMesoneroActivo.setSelected(est != null && est.toString().startsWith("Activo"));
+        }
+    }
+
+    private void guardarMesoneroConfig() {
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) return;
+        String nombre = txtMesoneroNombre.getText().trim();
+        String cedula = txtMesoneroCedula.getText().trim();
+        String telefono = txtMesoneroTelefono.getText().trim();
+        boolean activo = chkMesoneroActivo.isSelected();
+
+        if (nombre.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El nombre completo del mesonero es obligatorio.", "Validación", JOptionPane.WARNING_MESSAGE);
+            txtMesoneroNombre.requestFocus();
+            return;
+        }
+        if (cedula.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "La cédula / documento del mesonero es obligatoria.", "Validación", JOptionPane.WARNING_MESSAGE);
+            txtMesoneroCedula.requestFocus();
+            return;
+        }
+
+        try {
+            Mesonero m = new Mesonero(nombre, cedula, telefono, activo);
+            mesoneroDao.registrar(m);
+            JOptionPane.showMessageDialog(this, "Mesonero '" + nombre + "' registrado con éxito.", "Registro exitoso", JOptionPane.INFORMATION_MESSAGE);
+            limpiarFormularioMesonero();
+            listarMesonerosConfig();
+            cargarComboMesoneros();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al registrar mesonero: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void modificarMesoneroConfig() {
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) return;
+        String idStr = txtMesoneroId.getText().trim();
+        if (idStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Seleccione un mesonero de la tabla para modificar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int id = Integer.parseInt(idStr);
+        String nombre = txtMesoneroNombre.getText().trim();
+        String cedula = txtMesoneroCedula.getText().trim();
+        String telefono = txtMesoneroTelefono.getText().trim();
+        boolean activo = chkMesoneroActivo.isSelected();
+
+        if (nombre.isEmpty() || cedula.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El nombre completo y la cédula son obligatorios.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            Mesonero m = new Mesonero(id, nombre, cedula, telefono, activo, false);
+            boolean ok = mesoneroDao.modificar(m);
+            if (ok) {
+                JOptionPane.showMessageDialog(this, "Mesonero actualizado correctamente.", "Actualizado", JOptionPane.INFORMATION_MESSAGE);
+                limpiarFormularioMesonero();
+                listarMesonerosConfig();
+                cargarComboMesoneros();
+            } else {
+                JOptionPane.showMessageDialog(this, "No se pudo actualizar el mesonero.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al modificar mesonero: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void alternarVacacionesMesoneroConfig() {
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) return;
+        String idStr = txtMesoneroId.getText().trim();
+        if (idStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Seleccione un mesonero de la tabla para alternar su estado.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int id = Integer.parseInt(idStr);
+        boolean actual = chkMesoneroActivo.isSelected();
+        boolean nuevo = !actual;
+
+        try {
+            boolean ok = mesoneroDao.cambiarActivo(id, nuevo);
+            if (ok) {
+                String estadoStr = nuevo ? "Activo / Disponible" : "De Vacaciones / Inactivo";
+                JOptionPane.showMessageDialog(this, "El estado del mesonero se cambió a: " + estadoStr, "Estado actualizado", JOptionPane.INFORMATION_MESSAGE);
+                chkMesoneroActivo.setSelected(nuevo);
+                listarMesonerosConfig();
+                cargarComboMesoneros();
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al alternar estado: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void eliminarMesoneroConfig() {
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) return;
+        String idStr = txtMesoneroId.getText().trim();
+        if (idStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Seleccione un mesonero de la tabla para eliminar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int id = Integer.parseInt(idStr);
+        String nombre = txtMesoneroNombre.getText().trim();
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "¿Está seguro de eliminar al mesonero '" + nombre + "'?\nNo se borrarán los pedidos históricos que atendió.",
+                "Confirmar Eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                boolean ok = mesoneroDao.eliminarLogico(id);
+                if (ok) {
+                    JOptionPane.showMessageDialog(this, "Mesonero eliminado correctamente.", "Eliminado", JOptionPane.INFORMATION_MESSAGE);
+                    limpiarFormularioMesonero();
+                    listarMesonerosConfig();
+                    cargarComboMesoneros();
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al eliminar mesonero: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void cargarComboMesoneros() {
+        if (cbMesoneroPedido == null) return;
+        cbMesoneroPedido.removeAllItems();
+        cbMesoneroPedido.addItem("- Sin Mesonero Asignado -");
+        try {
+            List<Mesonero> activos = mesoneroDao.listarActivos();
+            for (Mesonero m : activos) {
+                cbMesoneroPedido.addItem(m);
+            }
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(Sistema.class.getName())
+                    .log(java.util.logging.Level.WARNING, "Error al cargar mesoneros activos: " + ex.getMessage());
+        }
+        cbMesoneroPedido.setSelectedIndex(0);
+    }
+
     void ejecutarCreacionRespaldo() {
         if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) return;
 
@@ -4457,11 +4956,17 @@ public final class Sistema extends javax.swing.JFrame {
     private void mostrarSalasEnTabla(List<Salas> Listar) {
         modelo = (DefaultTableModel) tableSala.getModel();
         modelo.setRowCount(0);
-        Object[] ob = new Object[3];
+        boolean tieneColumnaTipo = tableSala.getColumnCount() >= 4;
+        Object[] ob = new Object[tieneColumnaTipo ? 4 : 3];
         for (int i = 0; i < Listar.size(); i++) {
-            ob[0] = Listar.get(i).getId();
-            ob[1] = Listar.get(i).getNombre();
-            ob[2] = Listar.get(i).getMesas();
+            Salas s = Listar.get(i);
+            salaTipoMap.put(s.getId(), s.getTipo());
+            ob[0] = s.getId();
+            ob[1] = s.getNombre();
+            ob[2] = s.getMesas();
+            if (tieneColumnaTipo) {
+                ob[3] = s.esBarra() ? "Barra" : "Salón";
+            }
             modelo.addRow(ob);
         }
         colorHeader(tableSala);
@@ -4487,12 +4992,21 @@ public final class Sistema extends javax.swing.JFrame {
         txtIdSala.setText("");
         txtNombreSala.setText("");
         txtMesas.setText("");
+        if (cbTipoSala != null) {
+            cbTipoSala.setSelectedIndex(0);
+        }
+        if (jLabel19 != null) {
+            jLabel19.setText("Mesas:");
+        }
     }
 
     private void LimpiarPlatos() {
         txtIdPlato.setText("");
         txtNombrePlato.setText("");
         txtPrecioPlato.setText("");
+        if (chkAplicaIvaPlato != null) {
+            chkAplicaIvaPlato.setSelected(true);
+        }
     }
 
     private void panelSalas() {
@@ -4509,25 +5023,86 @@ public final class Sistema extends javax.swing.JFrame {
             // Si la consulta falla o no hay permisos, continuar con 0
         }
         for (int i = 0; i < Listar.size(); i++) {
-            int id = Listar.get(i).getId();
-            String nombre = Listar.get(i).getNombre();
-            int cantidad = Listar.get(i).getMesas();
+            Salas s = Listar.get(i);
+            int id = s.getId();
+            String nombre = s.getNombre();
+            int cantidad = s.getMesas();
+            boolean esBarra = s.esBarra();
+            salaTipoMap.put(id, s.getTipo());
+
             int ocupadas = ocupadasPorSala.getOrDefault(id, 0);
-            String textoBoton = nombre + " (" + ocupadas + "/" + cantidad + " ocupadas)";
+            String unidad = esBarra ? "puestos" : "mesas";
+            String textoBoton = esBarra
+                    ? nombre + " (" + ocupadas + "/" + cantidad + " puestos)"
+                    : nombre + " (" + ocupadas + "/" + cantidad + " ocupadas)";
             JButton boton = new JButton(textoBoton, new ImageIcon(getClass().getResource("/Img/salas.png")));
-            boton.setToolTipText(nombre + " - " + ocupadas + " de " + cantidad + " mesas ocupadas");
+            boton.setToolTipText(nombre + (esBarra ? " [BARRA]" : "") + " - " + ocupadas + " de " + cantidad + " " + (esBarra ? "puestos ocupados" : "mesas ocupadas"));
             boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
             boton.setHorizontalTextPosition(JButton.CENTER);
             boton.setVerticalTextPosition(JButton.BOTTOM);
             boton.setBackground(new Color(204, 204, 204));
             PanelSalas.add(boton);
             boton.addActionListener((ActionEvent e) -> {
-                panelMesas(id, nombre, cantidad);
+                panelMesas(id, nombre, cantidad, esBarra);
                 jTabbedPane1.setSelectedIndex(2);
             });
         }
         PanelSalas.revalidate();
         PanelSalas.repaint();
+    }
+
+    private void initIvaPlatosYBarraSalas() {
+        // 1. Checkbox Aplica IVA en formulario de Platos (Tab 2)
+        if (jPanel11 != null) {
+            chkAplicaIvaPlato = new javax.swing.JCheckBox("Aplica IVA (16%)", true);
+            chkAplicaIvaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+            chkAplicaIvaPlato.setBackground(new java.awt.Color(204, 204, 204));
+            chkAplicaIvaPlato.setOpaque(false);
+            chkAplicaIvaPlato.setFocusable(false);
+            chkAplicaIvaPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            chkAplicaIvaPlato.setToolTipText("Marcar si el plato genera IVA o desmarcar si está exento");
+            jPanel11.add(chkAplicaIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 220, 170, 25));
+        }
+
+        // 2. Combo Tipo de Sala en formulario de Salas (Tab 8)
+        if (jPanel10 != null) {
+            javax.swing.JLabel lblTipoSala = new javax.swing.JLabel("Tipo:");
+            lblTipoSala.setFont(new java.awt.Font("Times New Roman", java.awt.Font.BOLD | java.awt.Font.ITALIC, 14));
+            jPanel10.add(lblTipoSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 185, 60, 25));
+
+            cbTipoSala = new javax.swing.JComboBox<>(new String[]{"SALÓN", "BARRA"});
+            cbTipoSala.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+            cbTipoSala.setBackground(java.awt.Color.WHITE);
+            cbTipoSala.setToolTipText("Selecciona si el espacio es un Salón tradicional (mesas) o Barra (puestos)");
+            cbTipoSala.addActionListener(e -> {
+                boolean esBarra = "BARRA".equalsIgnoreCase(String.valueOf(cbTipoSala.getSelectedItem()));
+                if (jLabel19 != null) {
+                    jLabel19.setText(esBarra ? "Puestos:" : "Mesas:");
+                }
+            });
+            jPanel10.add(cbTipoSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 185, 190, 28));
+        }
+
+        // 3. Agregar columna IVA a TablePlatos si no la tiene
+        if (TablePlatos != null && TablePlatos.getModel() instanceof DefaultTableModel modelPlatos) {
+            if (modelPlatos.getColumnCount() == 3) {
+                modelPlatos.addColumn("IVA");
+            }
+        }
+
+        // 4. Agregar columna Tipo a tableSala si no la tiene
+        if (tableSala != null && tableSala.getModel() instanceof DefaultTableModel modelSala) {
+            if (modelSala.getColumnCount() == 3) {
+                modelSala.addColumn("Tipo");
+            }
+        }
+
+        // 5. Agregar columna IVA a tableMenu si no la tiene
+        if (tableMenu != null && tableMenu.getModel() instanceof DefaultTableModel modelMenu) {
+            if (modelMenu.getColumnCount() == 6) {
+                modelMenu.addColumn("IVA");
+            }
+        }
     }
 
     private void initPanelMesasMejorado() {
@@ -4601,17 +5176,24 @@ public final class Sistema extends javax.swing.JFrame {
         return label;
     }
 
-    //crear mesas
+    //crear mesas / puestos
     private void panelMesas(int id_sala, int cant) {
-        panelMesas(id_sala, "SALA " + id_sala, cant);
+        panelMesas(id_sala, "SALA " + id_sala, cant, false);
     }
 
     private void panelMesas(int id_sala, String nombreSala, int cant) {
+        boolean esBarra = "BARRA".equalsIgnoreCase(salaTipoMap.getOrDefault(id_sala, "SALON"));
+        panelMesas(id_sala, nombreSala, cant, esBarra);
+    }
+
+    private void panelMesas(int id_sala, String nombreSala, int cant, boolean esBarra) {
         this.idSalaActualMesas = id_sala;
         this.nombreSalaActualMesas = nombreSala;
         this.cantMesasActual = cant;
+        this.salaActualEsBarra = esBarra;
         if (lblTituloSalaMesas != null) {
-            lblTituloSalaMesas.setText("Cargando mesas de: " + (nombreSala != null ? nombreSala : ("SALA " + id_sala)) + "...");
+            String etiqueta = esBarra ? "puestos de la Barra: " : "mesas de: ";
+            lblTituloSalaMesas.setText("Cargando " + etiqueta + (nombreSala != null ? nombreSala : ("SALA " + id_sala)) + "...");
         }
         if (btnActualizarMesas != null) {
             btnActualizarMesas.setEnabled(true);
@@ -4621,9 +5203,9 @@ public final class Sistema extends javax.swing.JFrame {
         PanelMesas.repaint();
         long version = ++versionPanelMesas;
         new PanelMesasSwingWorker(pedidosControlador, id_sala, cant,
-                estados -> {
+                datos -> {
                     if (version == versionPanelMesas) {
-                        mostrarPanelMesas(id_sala, nombreSala, cant, estados);
+                        mostrarPanelMesas(id_sala, nombreSala, cant, datos);
                     }
                 }, error -> {
                     if (version == versionPanelMesas) {
@@ -4633,15 +5215,22 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void mostrarPanelMesas(int id_sala, int cant, Map<Integer, Integer> estados) {
-        mostrarPanelMesas(id_sala, "SALA " + id_sala, cant, estados);
+        mostrarPanelMesas(id_sala, "SALA " + id_sala, cant, new PanelMesasSwingWorker.DatosMesasSala(estados, Collections.emptyMap()));
     }
 
     private void mostrarPanelMesas(int id_sala, String nombreSala, int cant, Map<Integer, Integer> estados) {
+        mostrarPanelMesas(id_sala, nombreSala, cant, new PanelMesasSwingWorker.DatosMesasSala(estados, Collections.emptyMap()));
+    }
+
+    private void mostrarPanelMesas(int id_sala, String nombreSala, int cant, PanelMesasSwingWorker.DatosMesasSala datos) {
         this.idSalaActualMesas = id_sala;
         this.nombreSalaActualMesas = nombreSala;
         this.cantMesasActual = cant;
+        boolean esBarra = this.salaActualEsBarra || "BARRA".equalsIgnoreCase(salaTipoMap.getOrDefault(id_sala, "SALON"));
         if (lblTituloSalaMesas != null) {
-            lblTituloSalaMesas.setText("Mesas de: " + (nombreSala != null ? nombreSala : ("SALA " + id_sala)) + " (" + cant + " mesas)");
+            String etiqueta = esBarra ? "Puestos de la Barra: " : "Mesas de: ";
+            String unidad = esBarra ? " puestos" : " mesas";
+            lblTituloSalaMesas.setText(etiqueta + (nombreSala != null ? nombreSala : ("SALA " + id_sala)) + " (" + cant + unidad + ")");
         }
         if (lblUltimaCargaMesas != null) {
             lblUltimaCargaMesas.setText("Última actualización: "
@@ -4650,17 +5239,37 @@ public final class Sistema extends javax.swing.JFrame {
         if (btnActualizarMesas != null) {
             btnActualizarMesas.setEnabled(true);
         }
+        Map<Integer, Integer> estados = datos != null ? datos.getPedidosPendientes() : Collections.emptyMap();
+        Map<Integer, String> mesonerosMesas = datos != null ? datos.getMesonerosMesas() : Collections.emptyMap();
+        Map<String, String> nombresVisuales = ServicioMesoneroNombre.resolverNombresVisualesDesdeStrings(mesonerosMesas.values());
+
         List<JButton> botonesMesa = new ArrayList<>();
         for (int i = 1; i <= cant; i++) {
             int num_mesa = i;
-            JButton boton = new JButton("MESA N°: " + i, new ImageIcon(getClass().getResource("/Img/mesa.png")));
+            JButton boton = new JButton();
+            boton.setIcon(new ImageIcon(getClass().getResource("/Img/mesa.png")));
             boton.setHorizontalTextPosition(JButton.CENTER);
             boton.setVerticalTextPosition(JButton.BOTTOM);
             int verificar = estados.getOrDefault(num_mesa, 0);
+            String nombreMesonero = mesonerosMesas.get(num_mesa);
+            String visual = (nombreMesonero != null && !nombreMesonero.isBlank())
+                    ? nombresVisuales.getOrDefault(nombreMesonero.trim(), ServicioMesoneroNombre.extraerPrimerNombre(nombreMesonero))
+                    : null;
+
+            String prefijo = esBarra ? "PUESTO N°: " : "MESA N°: ";
             if (verificar > 0) {
                 boton.setBackground(new Color(255, 51, 51));
+                if (visual != null && !visual.isBlank()) {
+                    boton.setText("<html><center>" + prefijo + i + "<br><font color='#FFFF99' size='2'><b>" + visual + "</b></font></center></html>");
+                    boton.setToolTipText((esBarra ? "Puesto Ocupado" : "Ocupada") + " - Atendida por: " + nombreMesonero);
+                } else {
+                    boton.setText(prefijo + i);
+                    boton.setToolTipText((esBarra ? "Puesto Ocupado" : "Ocupada") + " (Sin mesonero asignado)");
+                }
             } else {
                 boton.setBackground(new Color(0, 102, 102));
+                boton.setText(prefijo + i);
+                boton.setToolTipText((esBarra ? "Puesto " : "Mesa ") + i + " Disponible");
             }
             boton.setForeground(Color.WHITE);
             boton.setFocusable(false);
@@ -4670,7 +5279,7 @@ public final class Sistema extends javax.swing.JFrame {
                 if (verificar > 0) {
                     if (!politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
                         JOptionPane.showMessageDialog(this,
-                                "Esta mesa tiene un pedido pendiente. Solicita a un administrador que lo gestione.",
+                                "Este espacio tiene un pedido pendiente. Solicita a un administrador que lo gestione.",
                                 "Pedido pendiente", JOptionPane.WARNING_MESSAGE);
                         return;
                     }
@@ -4682,9 +5291,10 @@ public final class Sistema extends javax.swing.JFrame {
                     ListarPlatos(tblTemPlatos);
                     txtTempIdSala.setText("" + id_sala);
                     txtTempNumMesa.setText("" + num_mesa);
+                    cargarComboMesoneros();
                     jPanel23.setBorder(javax.swing.BorderFactory.createTitledBorder(
                             javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 102, 102)),
-                            "PEDIDO - " + (nombreSala != null ? nombreSala : ("SALA " + id_sala)) + " | MESA " + num_mesa,
+                            "PEDIDO - " + (nombreSala != null ? nombreSala : ("SALA " + id_sala)) + " | " + (esBarra ? "PUESTO " : "MESA ") + num_mesa,
                             javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                             javax.swing.border.TitledBorder.DEFAULT_POSITION,
                             new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14),
@@ -4734,9 +5344,11 @@ public final class Sistema extends javax.swing.JFrame {
     private void mostrarPlatosEnTabla(JTable tabla, List<Platos> Listar) {
         modelo = (DefaultTableModel) tabla.getModel();
         modelo.setRowCount(0);
-        Object[] ob = new Object[3];
+        boolean tieneColumnaIva = tabla.getColumnCount() >= 4;
+        Object[] ob = new Object[tieneColumnaIva ? 4 : 3];
         for (int i = 0; i < Listar.size(); i++) {
             Platos p = Listar.get(i);
+            platoAplicaIvaMap.put(p.getId(), p.isAplicaIva());
             ob[0] = p.getId();
             ob[1] = p.getNombre();
             BigDecimal precioUsd = p.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
@@ -4745,6 +5357,9 @@ public final class Sistema extends javax.swing.JFrame {
                 ob[2] = "$ " + precioStr;
             } else {
                 ob[2] = precioStr;
+            }
+            if (tieneColumnaIva) {
+                ob[3] = p.isAplicaIva() ? "Sí (16%)" : "Exento (0%)";
             }
             modelo.addRow(ob);
         }
@@ -4764,7 +5379,34 @@ public final class Sistema extends javax.swing.JFrame {
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
         BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
         BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
-        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(Totalpagar, ivaPorcentaje, tasa);
+
+        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
+        BigDecimal exento = BigDecimal.ZERO.setScale(2);
+        for (int i = 0; i < tableMenu.getRowCount(); i++) {
+            BigDecimal subtotal = importeMonetario(tableMenu.getValueAt(i, 4));
+            boolean itemAplicaIva = true;
+            if (tableMenu.getColumnCount() > 6 && tableMenu.getValueAt(i, 6) != null) {
+                String valIva = tableMenu.getValueAt(i, 6).toString().toLowerCase(java.util.Locale.ROOT);
+                if (valIva.contains("exento") || valIva.contains("no") || valIva.equals("false") || valIva.equals("0")) {
+                    itemAplicaIva = false;
+                }
+            } else {
+                Object idObj = tableMenu.getValueAt(i, 0);
+                if (idObj != null) {
+                    try {
+                        int idPlato = Integer.parseInt(idObj.toString());
+                        itemAplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (itemAplicaIva) {
+                baseImponible = baseImponible.add(subtotal);
+            } else {
+                exento = exento.add(subtotal);
+            }
+        }
+
+        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(baseImponible, exento, ivaPorcentaje, tasa);
 
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(id_sala);
@@ -4778,6 +5420,10 @@ public final class Sistema extends javax.swing.JFrame {
         pedido.setIvaBs(fiscal.ivaBs());
         pedido.setTotalBs(fiscal.totalBs());
         pedido.setUsuario(LabelVendedor.getText());
+        if (cbMesoneroPedido != null && cbMesoneroPedido.getSelectedItem() instanceof Mesonero m) {
+            pedido.setIdMesonero(m.getId());
+            pedido.setMesoneroNombre(m.getNombreCompleto());
+        }
 
         List<DetallePedido> detalles = new ArrayList<>();
         for (int i = 0; i < tableMenu.getRowCount(); i++) {
@@ -4868,15 +5514,39 @@ public final class Sistema extends javax.swing.JFrame {
         String ivaPctStr = String.format(java.util.Locale.US, "%.2f", ivaPct);
 
         totalFinalizar.setText("Bs. " + totalBsStr + " ($ " + totalUsdStr + ")");
-        totalFinalizar.setToolTipText("Subtotal: $ " + subtotalUsdStr
-                + " | IVA (" + ivaPctStr + "%): $ " + ivaUsdStr
-                + " | Total a Pagar: $ " + totalUsdStr
-                + " (Bs. " + totalBsStr + ")");
+        if (ivaPct.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal baseImpUsd = ivaUsd.multiply(new BigDecimal("100")).divide(ivaPct, 2, RoundingMode.HALF_UP);
+            BigDecimal exentoUsd = subtotalUsd.subtract(baseImpUsd);
+            if (exentoUsd.compareTo(BigDecimal.ZERO) > 0) {
+                totalFinalizar.setToolTipText("Subtotal: $ " + subtotalUsdStr
+                        + " (Base Imponible: $ " + String.format(java.util.Locale.US, "%.2f", baseImpUsd)
+                        + ", Exento: $ " + String.format(java.util.Locale.US, "%.2f", exentoUsd) + ")"
+                        + " | IVA (" + ivaPctStr + "%): $ " + ivaUsdStr
+                        + " | Total a Pagar: $ " + totalUsdStr
+                        + " (Bs. " + totalBsStr + ")");
+            } else {
+                totalFinalizar.setToolTipText("Subtotal: $ " + subtotalUsdStr
+                        + " | IVA (" + ivaPctStr + "%): $ " + ivaUsdStr
+                        + " | Total a Pagar: $ " + totalUsdStr
+                        + " (Bs. " + totalBsStr + ")");
+            }
+        } else {
+            totalFinalizar.setToolTipText("Subtotal: $ " + subtotalUsdStr
+                    + " | Total a Pagar: $ " + totalUsdStr
+                    + " (Bs. " + totalBsStr + ")");
+        }
 
         txtFechaHora.setText("" + ped.getFecha());
         txtSalaFinalizar.setText("" + ped.getSala());
         txtNumMesaFinalizar.setText("" + ped.getNum_mesa());
+        if (ped.getSala() != null && ped.getSala().toUpperCase(java.util.Locale.ROOT).contains("BARRA")) {
+            txtNumMesaFinalizar.setToolTipText("Puesto N° " + ped.getNum_mesa());
+        }
         txtIdPedido.setText("" + ped.getId());
+        if (txtMesoneroFinalizar != null) {
+            String mNom = ped.getMesoneroNombre();
+            txtMesoneroFinalizar.setText((mNom != null && !mNom.isBlank()) ? mNom : "Sin Mesonero Asignado");
+        }
 
         modelo = (DefaultTableModel) tableFinalizar.getModel();
         modelo.setRowCount(0);

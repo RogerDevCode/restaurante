@@ -31,7 +31,7 @@ public class PanelMesasSwingWorkerTest {
     public void buscaTodasLasMesasFueraDelEdtYEntregaElMapaEnEdt() throws Exception {
         AtomicBoolean consultaEnEdt = new AtomicBoolean();
         AtomicInteger consultas = new AtomicInteger();
-        AtomicReference<Map<Integer, Integer>> resultado = new AtomicReference<>();
+        AtomicReference<PanelMesasSwingWorker.DatosMesasSala> resultado = new AtomicReference<>();
         CountDownLatch completado = new CountDownLatch(1);
         PedidosControlador controlador = controlador(new PedidosRepositorioFalso() {
             @Override public int verificarStado(int mesa, int idSala) {
@@ -50,8 +50,8 @@ public class PanelMesasSwingWorkerTest {
         assertTrue(completado.await(5, TimeUnit.SECONDS));
         assertFalse(consultaEnEdt.get());
         assertEquals(3, consultas.get());
-        assertEquals(Integer.valueOf(92), resultado.get().get(2));
-        assertEquals(Integer.valueOf(0), resultado.get().get(1));
+        assertEquals(Integer.valueOf(92), resultado.get().getPedidosPendientes().get(2));
+        assertEquals(Integer.valueOf(0), resultado.get().getPedidosPendientes().get(1));
     }
 
     @Test
@@ -82,7 +82,7 @@ public class PanelMesasSwingWorkerTest {
     @Test
     public void callbackAlCompletarRecibeMapaCorrectoParaTodasLasMesas() throws Exception {
         CountDownLatch completado = new CountDownLatch(1);
-        AtomicReference<Map<Integer, Integer>> mapaRecibido = new AtomicReference<>();
+        AtomicReference<PanelMesasSwingWorker.DatosMesasSala> mapaRecibido = new AtomicReference<>();
         PedidosControlador controlador = controlador(new PedidosRepositorioFalso() {
             @Override
             public int verificarStado(int mesa, int idSala) {
@@ -101,7 +101,7 @@ public class PanelMesasSwingWorkerTest {
         }).execute());
 
         assertTrue(completado.await(5, TimeUnit.SECONDS));
-        Map<Integer, Integer> estados = mapaRecibido.get();
+        Map<Integer, Integer> estados = mapaRecibido.get().getPedidosPendientes();
         assertEquals(5, estados.size());
         assertEquals(Integer.valueOf(101), estados.get(1));
         assertEquals(Integer.valueOf(0), estados.get(2));
@@ -117,7 +117,7 @@ public class PanelMesasSwingWorkerTest {
         PedidoPdfServicio pdf = new PedidoPdfServicio(
                 id -> null, id -> java.util.Collections.emptyList(),
                 () -> { throw new AssertionError("No utilizado"); },
-                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> { });
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), archivo -> true);
         return new PedidosControlador(new PedidoServicio(repositorio), pdf, politica,
                 new ConsultaPedidosServicio(repositorio, politica));
     }
