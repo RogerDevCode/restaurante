@@ -111,6 +111,9 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnPrevisualizarPedido;
     private javax.swing.JButton btnCierreParcial;
     private javax.swing.JButton btnCierreTotal;
+    private javax.swing.JTextField txtCantidadManual;
+    private int platoSeleccionadoIdFoco = -1;
+    private boolean isUpdatingUI = false;
     private Servicio.CierreCajaServicio cierreCajaServicio;
     private javax.swing.JLabel lblTituloSalaMesas;
     private javax.swing.JLabel lblUltimaCargaMesas;
@@ -1273,6 +1276,36 @@ public final class Sistema extends javax.swing.JFrame {
             tblTemPlatos.getColumnModel().getColumn(2).setPreferredWidth(150);
             tblTemPlatos.getColumnModel().getColumn(2).setMaxWidth(200);
         }
+        
+        tblTemPlatos.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                if (evt.getClickCount() >= 1) {
+                    // Click en tblTemPlatos: Si el plato ya está en el carrito, sumarle 1 y seleccionarlo
+                    int row = tblTemPlatos.rowAtPoint(evt.getPoint());
+                    if (row >= 0) {
+                        int id = Integer.parseInt(tblTemPlatos.getValueAt(row, 0).toString());
+                        // Revisar si ya está en el tableMenu
+                        DefaultTableModel tmp = (DefaultTableModel) tableMenu.getModel();
+                        boolean found = false;
+                        for (int i = 0; i < tmp.getRowCount(); i++) {
+                            if (Integer.parseInt(tmp.getValueAt(i, 0).toString()) == id) {
+                                found = true;
+                                int cantActual = Integer.parseInt(tmp.getValueAt(i, 2).toString());
+                                setCantidadPlatoSeleccionadoById(id, cantActual + 1);
+                                tableMenu.setRowSelectionInterval(i, i);
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            // If not found, we simulate the "Añadir" button action
+                            btnAddPlato.doClick();
+                        }
+                    }
+                }
+            }
+        });
+
 
         btnAddPlato.setBackground(new java.awt.Color(0, 0, 0));
         btnAddPlato.setFont(new java.awt.Font("Arial Black", 1, 24)); // NOI18N
@@ -1411,10 +1444,63 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
 
-        javax.swing.JPanel pnlBotonesCantidad = new javax.swing.JPanel(new java.awt.GridLayout(1, 2, 4, 0));
+
+        txtCantidadManual = new javax.swing.JTextField("1");
+        txtCantidadManual.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtCantidadManual.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
+        txtCantidadManual.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                if (tableMenu.getSelectedRow() >= 0) {
+                    platoSeleccionadoIdFoco = Integer.parseInt(tableMenu.getValueAt(tableMenu.getSelectedRow(), 0).toString());
+                } else {
+                    platoSeleccionadoIdFoco = -1;
+                }
+            }
+            @Override
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                aplicarCantidadManual(txtCantidadManual.getText(), platoSeleccionadoIdFoco);
+            }
+        });
+        txtCantidadManual.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                    if (tableMenu.getSelectedRow() >= 0) {
+                        int currentId = Integer.parseInt(tableMenu.getValueAt(tableMenu.getSelectedRow(), 0).toString());
+                        aplicarCantidadManual(txtCantidadManual.getText(), currentId);
+                    }
+                }
+            }
+        });
+
+        javax.swing.JPanel pnlBotonesCantidad = new javax.swing.JPanel(new java.awt.BorderLayout(0, 4));
         pnlBotonesCantidad.setOpaque(false);
-        pnlBotonesCantidad.add(btnMenosCantidad);
-        pnlBotonesCantidad.add(btnMasCantidad);
+
+        javax.swing.JPanel pnlControl = new javax.swing.JPanel(new java.awt.BorderLayout(4, 0));
+        pnlControl.setOpaque(false);
+        pnlControl.add(btnMenosCantidad, java.awt.BorderLayout.WEST);
+        pnlControl.add(txtCantidadManual, java.awt.BorderLayout.CENTER);
+        pnlControl.add(btnMasCantidad, java.awt.BorderLayout.EAST);
+        pnlBotonesCantidad.add(pnlControl, java.awt.BorderLayout.NORTH);
+
+        javax.swing.JPanel pnlGrilla = new javax.swing.JPanel(new java.awt.GridLayout(2, 5, 2, 2));
+        pnlGrilla.setOpaque(false);
+        for (int i = 1; i <= 10; i++) {
+            javax.swing.JButton btnNum = new javax.swing.JButton(String.valueOf(i));
+            btnNum.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+            btnNum.setMargin(new java.awt.Insets(2, 2, 2, 2));
+            int qty = i;
+            btnNum.addActionListener(e -> {
+                if (tableMenu.getSelectedRow() >= 0) {
+                    int currentId = Integer.parseInt(tableMenu.getValueAt(tableMenu.getSelectedRow(), 0).toString());
+                    aplicarCantidadManual(String.valueOf(qty), currentId);
+                }
+            });
+            pnlGrilla.add(btnNum);
+        }
+        pnlBotonesCantidad.add(pnlGrilla, java.awt.BorderLayout.CENTER);
+
 
         javax.swing.JPanel pnlMesoneroPedido = new javax.swing.JPanel(new java.awt.BorderLayout(0, 3));
         pnlMesoneroPedido.setOpaque(false);
@@ -1449,7 +1535,7 @@ public final class Sistema extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(jPanel23Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, 80, Short.MAX_VALUE)
-                            .addComponent(pnlBotonesCantidad, javax.swing.GroupLayout.DEFAULT_SIZE, 80, Short.MAX_VALUE)
+                            .addComponent(pnlBotonesCantidad, javax.swing.GroupLayout.DEFAULT_SIZE, 180, Short.MAX_VALUE)
                             .addComponent(btnEliminarTempPlato, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel23Layout.createSequentialGroup()
                         .addGap(0, 3, Short.MAX_VALUE)
@@ -1484,7 +1570,7 @@ public final class Sistema extends javax.swing.JFrame {
                             .addGroup(jPanel23Layout.createSequentialGroup()
                                 .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(pnlBotonesCantidad, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(pnlBotonesCantidad, javax.swing.GroupLayout.PREFERRED_SIZE, 65, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(btnEliminarTempPlato, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addComponent(jScrollPane12, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -2472,12 +2558,7 @@ public final class Sistema extends javax.swing.JFrame {
             for (int i = 0; i < tableMenu.getRowCount(); i++) {
                 if (tableMenu.getValueAt(i, 0).equals(id)) {
                     int cantActual = Integer.parseInt(tableMenu.getValueAt(i, 2).toString());
-                    int nuevoCantidad = cantActual + 1;
-                    BigDecimal nuevoSub = precio.multiply(BigDecimal.valueOf(nuevoCantidad)).setScale(2, RoundingMode.HALF_UP);
-                    tmp.setValueAt(nuevoCantidad, i, 2);
-                    tmp.setValueAt(String.format(java.util.Locale.US, "%.2f", nuevoSub), i, 4);
-                    TotalPagar(tableMenu, totalMenu);
-                    actualizarEstadoBotonesCarrito();
+                    setCantidadPlatoSeleccionadoById(id, cantActual + 1);
                     return;
                 }
             }
@@ -2563,6 +2644,38 @@ public final class Sistema extends javax.swing.JFrame {
         actualizarEstadoBotonesCarrito();
     }//GEN-LAST:event_btnEliminarTempPlatoActionPerformed
 
+    private void aplicarCantidadManual(String qtyText, int platoId) {
+        if (platoId == -1) return;
+        try {
+            int nuevaCant = Integer.parseInt(qtyText.trim());
+            if (nuevaCant <= 0) nuevaCant = 1; // Minimum 1
+            setCantidadPlatoSeleccionadoById(platoId, nuevaCant);
+        } catch (NumberFormatException e) {
+            // Revert to old value
+            actualizarEstadoBotonesCarrito();
+        }
+    }
+
+    private void setCantidadPlatoSeleccionadoById(int platoId, int nuevaCant) {
+        javax.swing.table.DefaultTableModel tmp = (javax.swing.table.DefaultTableModel) tableMenu.getModel();
+        for (int i = 0; i < tmp.getRowCount(); i++) {
+            if (Integer.parseInt(tmp.getValueAt(i, 0).toString()) == platoId) {
+                java.math.BigDecimal precio = importeMonetario(tmp.getValueAt(i, 3));
+                tmp.setValueAt(nuevaCant, i, 2);
+                tmp.setValueAt(String.format(java.util.Locale.US, "%.2f", precio.multiply(new java.math.BigDecimal(nuevaCant))), i, 4);
+                TotalPagar(tableMenu, totalMenu);
+                tableMenu.setRowSelectionInterval(i, i); // Ensure selection is collapsed
+                if (tableMenu.getSelectedRow() == i) {
+                    isUpdatingUI = true;
+                    if(txtCantidadManual != null) txtCantidadManual.setText(String.valueOf(nuevaCant));
+                    isUpdatingUI = false;
+                }
+                break;
+            }
+        }
+    }
+
+
     public void aumentarCantidadSeleccionada() {
         int fila = tableMenu.getSelectedRow();
         if (fila < 0) {
@@ -2638,6 +2751,17 @@ public final class Sistema extends javax.swing.JFrame {
         if (btnMasCantidad != null) btnMasCantidad.setEnabled(haySeleccion);
         if (btnMenosCantidad != null) btnMenosCantidad.setEnabled(haySeleccion);
         if (btnEliminarTempPlato != null) btnEliminarTempPlato.setEnabled(haySeleccion);
+        if (txtCantidadManual != null) {
+            txtCantidadManual.setEnabled(haySeleccion);
+            if (haySeleccion && !isUpdatingUI) {
+                isUpdatingUI = true;
+                Object val = tableMenu.getValueAt(tableMenu.getSelectedRow(), 2);
+                txtCantidadManual.setText(val != null ? val.toString() : "1");
+                isUpdatingUI = false;
+            } else if (!haySeleccion) {
+                txtCantidadManual.setText("");
+            }
+        }
     }
 
     public javax.swing.JButton getBtnMasCantidad() {
