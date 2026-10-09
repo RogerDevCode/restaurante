@@ -7,11 +7,15 @@ import infraestructura.ProveedorConexionJdbc;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -24,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,16 +45,15 @@ public class ServicioRespaldoBaseDatos {
     public static final Path DIRECTORIO_RESPALDOS_DEFAULT = Paths.get("respaldos");
     public static final String MAGIC_HEADER = "-- RESTAURANTE_2026_BACKUP_SQL";
     public static final String MAGIC_FOOTER = "-- FIN DEL RESPALDO RESTAURANTE 2026";
-    private static final DateTimeFormatter FORMATO_ARCHIVO = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+    private static final DateTimeFormatter FORMATO_ARCHIVO = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS");
     private static final DateTimeFormatter FORMATO_FECHA_DIA = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-    private static final Pattern SQL_INSERT_RESPALDO = Pattern.compile(
-            "(?is)^INSERT\\s+INTO\\s+`[^`]+`\\s+VALUES\\s*"
-            + "\\((?:NULL|-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|'(?:\\\\.|[^'\\\\])*')"
-            + "(?:\\s*,\\s*(?:NULL|-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|'(?:\\\\.|[^'\\\\])*'))*\\)"
-            + "(?:\\s*,\\s*\\((?:NULL|-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|'(?:\\\\.|[^'\\\\])*')"
-            + "(?:\\s*,\\s*(?:NULL|-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|'(?:\\\\.|[^'\\\\])*'))*\\))*$"
-    );
+    private static final Pattern SQL_INSERT_RESPALDO_HEAD = Pattern.compile(
+            "(?is)^INSERT\\s+INTO\\s+`[^`]+`(?:\\s*\\(([^)]*)\\))?\\s+VALUES\\s*(.*)$");
+    private static final Pattern SQL_INSERT_COLUMNS = Pattern.compile(
+            "(?is)^\\s*`[^`]+`(?:\\s*,\\s*`[^`]+`)*\\s*$");
+    private static final Pattern SQL_LITERAL_RESPALDO = Pattern.compile(
+            "(?is)^(?:NULL|-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|'(?:\\\\.|[^'\\\\])*')$");
     private static final Pattern SQL_DROP_TABLA_RESPALDO = Pattern.compile("(?is)^DROP\\s+TABLE\\s+IF\\s+EXISTS\\s+`[^`]+`$");
     private static final Pattern SQL_CREATE_TABLA_RESPALDO = Pattern.compile(
             "(?is)^CREATE\\s+TABLE(?:\\s+IF\\s+NOT\\s+EXISTS)?\\s+`[^`]+`\\s*\\(.*\\)\\s+ENGINE\\s*=.*$");
@@ -101,6 +105,11 @@ public class ServicioRespaldoBaseDatos {
         return crearRespaldo(this.directorioRespaldos, "pre_restauracion_seguridad_");
     }
 
+    /** Respaldo obligatorio que precede cambios DDL de una migración. */
+    public Path crearRespaldoPreMigracion() {
+        return crearRespaldo(this.directorioRespaldos, "pre_migracion_restaurante_");
+    }
+
     private Path crearRespaldo(Path destino, String prefijoNombre) {
         if (destino == null) {
             destino = this.directorioRespaldos;
@@ -114,8 +123,9 @@ public class ServicioRespaldoBaseDatos {
         }
 
         String timestamp = LocalDateTime.now().format(FORMATO_ARCHIVO);
-        String nombreArchivo = prefijoNombre + timestamp + ".sql";
-        Path archivoSql = destino.resolve(nombreArchivo);
+        String identificador = timestamp + "_" + UUID.randomUUID();
+        Path temporal = destino.resolve("." + prefijoNombre + identificador + ".tmp");
+        Path archivoSql = destino.resolve(prefijoNombre + identificador + ".sql");
 
         try (Connection con = conexiones.getConnection()) {
             boolean autoCommitPrevio = con.getAutoCommit();
@@ -125,7 +135,10 @@ public class ServicioRespaldoBaseDatos {
                 con.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
                 con.setAutoCommit(false);
 
-                try (BufferedWriter writer = Files.newBufferedWriter(archivoSql, StandardCharsets.UTF_8)) {
+                validarCoberturaRespaldable(con);
+                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+                        Files.newOutputStream(temporal, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE),
+                        StandardCharsets.UTF_8))) {
                     escribirEncabezado(writer, timestamp);
 
                     List<String> tablas = listarTablas(con);
@@ -138,13 +151,18 @@ public class ServicioRespaldoBaseDatos {
                 }
 
                 con.commit();
+                validarArchivoRespaldo(temporal);
+                Files.move(temporal, archivoSql);
+                crearChecksum(archivoSql);
                 LOGGER.info("Respaldo de base de datos generado exitosamente: " + archivoSql.toAbsolutePath());
                 return archivoSql;
 
             } catch (SQLException | IOException ex) {
                 con.rollback();
                 try {
+                    Files.deleteIfExists(temporal);
                     Files.deleteIfExists(archivoSql);
+                    Files.deleteIfExists(checksumPath(archivoSql));
                 } catch (IOException ignored) {
                 }
                 throw new DataAccessException("Falló la creación del respaldo consistente de la base de datos: " + ex.getMessage(), ex);
@@ -159,6 +177,81 @@ public class ServicioRespaldoBaseDatos {
         } catch (SQLException ex) {
             throw new DataAccessException("Error de conexión durante el respaldo: " + ex.getMessage(), ex);
         }
+    }
+
+    private void validarCoberturaRespaldable(Connection con) throws SQLException {
+        DatabaseMetaData meta = con.getMetaData();
+        String catalogo = con.getCatalog();
+        try (ResultSet rs = meta.getTables(catalogo, null, "%", null)) {
+            while (rs.next()) {
+                String tipo = rs.getString("TABLE_TYPE");
+                String nombre = rs.getString("TABLE_NAME");
+                if (tipo != null && !"TABLE".equalsIgnoreCase(tipo) && !"BASE TABLE".equalsIgnoreCase(tipo)) {
+                    throw new SQLException("No se puede garantizar respaldo íntegro: existe un objeto no soportado (" + tipo + "): " + nombre);
+                }
+            }
+        }
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT TABLE_NAME, ENGINE FROM information_schema.tables WHERE table_schema = DATABASE() AND TABLE_TYPE='BASE TABLE'")) {
+            while (rs.next()) {
+                String engine = rs.getString("ENGINE");
+                if (engine == null || !"InnoDB".equalsIgnoreCase(engine)) {
+                    throw new SQLException("No se puede garantizar snapshot consistente: tabla " + rs.getString("TABLE_NAME") + " usa motor " + engine);
+                }
+            }
+        }
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT TRIGGER_NAME FROM information_schema.triggers WHERE trigger_schema = DATABASE() LIMIT 1")) {
+            if (rs.next()) throw new SQLException("No se puede respaldar: hay triggers que el volcado JDBC no incluye.");
+        }
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT ROUTINE_NAME FROM information_schema.routines WHERE routine_schema = DATABASE() LIMIT 1")) {
+            if (rs.next()) throw new SQLException("No se puede respaldar: hay rutinas que el volcado JDBC no incluye.");
+        }
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT EVENT_NAME FROM information_schema.events WHERE event_schema = DATABASE() LIMIT 1")) {
+            if (rs.next()) throw new SQLException("No se puede respaldar: hay eventos que el volcado JDBC no incluye.");
+        }
+    }
+
+    private Path checksumPath(Path archivo) {
+        return archivo.resolveSibling(archivo.getFileName() + ".sha256");
+    }
+
+    private void crearChecksum(Path archivo) throws IOException {
+        try {
+            String checksum = java.util.HexFormat.of().formatHex(calcularSha256(archivo));
+            Files.writeString(checksumPath(archivo), checksum + "  " + archivo.getFileName() + System.lineSeparator(),
+                    StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IOException("SHA-256 no está disponible para verificar el respaldo.", ex);
+        }
+    }
+
+    private void validarChecksumSiExiste(Path archivo) {
+        Path checksum = checksumPath(archivo);
+        if (!Files.exists(checksum)) return;
+        try {
+            String esperado = Files.readString(checksum, StandardCharsets.UTF_8).trim().split("\\s+", 2)[0];
+            String actual = java.util.HexFormat.of().formatHex(calcularSha256(archivo));
+            if (!MessageDigest.isEqual(esperado.getBytes(StandardCharsets.US_ASCII), actual.getBytes(StandardCharsets.US_ASCII))) {
+                throw ErrorAplicacionException.validacion("El checksum SHA-256 del respaldo no coincide.");
+            }
+        } catch (IOException | NoSuchAlgorithmException ex) {
+            throw new DataAccessException("No se pudo verificar el checksum del respaldo.", ex);
+        }
+    }
+
+    private byte[] calcularSha256(Path archivo) throws IOException, NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (var input = Files.newInputStream(archivo)) {
+            byte[] buffer = new byte[64 * 1024];
+            int leidos;
+            while ((leidos = input.read(buffer)) >= 0) {
+                if (leidos > 0) digest.update(buffer, 0, leidos);
+            }
+        }
+        return digest.digest();
     }
 
     /**
@@ -193,6 +286,7 @@ public class ServicioRespaldoBaseDatos {
             throw ErrorAplicacionException.validacion("El archivo de respaldo especificado no existe o es inválido.");
         }
         try {
+            validarChecksumSiExiste(archivoSql);
             if (Files.size(archivoSql) == 0) {
                 throw ErrorAplicacionException.validacion("El archivo de respaldo seleccionado está vacío.");
             }
@@ -260,10 +354,64 @@ public class ServicioRespaldoBaseDatos {
                 || sql.matches("(?is)^SET\\s+SQL_MODE\\s*=\\s*'NO_AUTO_VALUE_ON_ZERO'$")
                 || SQL_DROP_TABLA_RESPALDO.matcher(sql).matches()
                 || SQL_CREATE_TABLA_RESPALDO.matcher(sql).matches()
-                || SQL_INSERT_RESPALDO.matcher(sql).matches();
+                || esInsertRespaldo(sql);
         if (!permitida) {
             throw ErrorAplicacionException.validacion("El respaldo contiene una sentencia SQL fuera del formato permitido y fue rechazado.");
         }
+    }
+
+    private boolean esInsertRespaldo(String sql) {
+        var matcher = SQL_INSERT_RESPALDO_HEAD.matcher(sql);
+        if (!matcher.matches()) return false;
+        String columnas = matcher.group(1);
+        if (columnas != null && !SQL_INSERT_COLUMNS.matcher(columnas).matches()) return false;
+        int cantidadColumnas = columnas == null ? -1 : (int) columnas.chars().filter(c -> c == ',').count() + 1;
+        String valores = matcher.group(2);
+        int cursor = 0;
+        while (cursor < valores.length()) {
+            cursor = saltarEspacios(valores, cursor);
+            if (cursor >= valores.length() || valores.charAt(cursor++) != '(') return false;
+            boolean dentroCadena = false;
+            boolean escapado = false;
+            StringBuilder valor = new StringBuilder();
+            List<String> valoresTupla = new ArrayList<>();
+            boolean cerroTupla = false;
+            for (; cursor < valores.length(); cursor++) {
+                char c = valores.charAt(cursor);
+                if (dentroCadena && escapado) {
+                    valor.append(c);
+                    escapado = false;
+                } else if (dentroCadena && c == '\\') {
+                    valor.append(c);
+                    escapado = true;
+                } else if (c == '\'') {
+                    valor.append(c);
+                    dentroCadena = !dentroCadena;
+                } else if (!dentroCadena && c == ',') {
+                    valoresTupla.add(valor.toString().trim());
+                    valor.setLength(0);
+                } else if (!dentroCadena && c == ')') {
+                    valoresTupla.add(valor.toString().trim());
+                    cursor++;
+                    cerroTupla = true;
+                    break;
+                } else {
+                    valor.append(c);
+                }
+            }
+            if (!cerroTupla || dentroCadena || valoresTupla.isEmpty()
+                    || (cantidadColumnas >= 0 && valoresTupla.size() != cantidadColumnas)
+                    || valoresTupla.stream().anyMatch(v -> !SQL_LITERAL_RESPALDO.matcher(v).matches())) return false;
+            cursor = saltarEspacios(valores, cursor);
+            if (cursor == valores.length()) return true;
+            if (valores.charAt(cursor++) != ',') return false;
+        }
+        return false;
+    }
+
+    private int saltarEspacios(String texto, int indice) {
+        while (indice < texto.length() && Character.isWhitespace(texto.charAt(indice))) indice++;
+        return indice;
     }
 
     private boolean contieneSeparadorFueraDeCadena(String sql) {
@@ -443,9 +591,8 @@ public class ServicioRespaldoBaseDatos {
 
     private List<String> listarTablas(Connection con) throws SQLException {
         List<String> tablas = new ArrayList<>();
-        DatabaseMetaData meta = con.getMetaData();
-        String catalogo = con.getCatalog();
-        try (ResultSet rs = meta.getTables(catalogo, null, "%", new String[]{"TABLE"})) {
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema=DATABASE() AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME")) {
             while (rs.next()) {
                 String nombreTabla = rs.getString("TABLE_NAME");
                 tablas.add(nombreTabla);
@@ -467,7 +614,24 @@ public class ServicioRespaldoBaseDatos {
             }
         }
 
-        // Obtener datos (SELECT *)
+        List<Integer> indicesInsertables = new ArrayList<>();
+        List<String> nombresInsertables = new ArrayList<>();
+        try (ResultSet columnas = con.getMetaData().getColumns(con.getCatalog(), null, tabla, "%")) {
+            while (columnas.next()) {
+                String generado = columnas.getString("IS_GENERATEDCOLUMN");
+                if (!"YES".equalsIgnoreCase(generado)) {
+                    indicesInsertables.add(columnas.getInt("ORDINAL_POSITION"));
+                    nombresInsertables.add(columnas.getString("COLUMN_NAME"));
+                }
+            }
+        }
+        if (nombresInsertables.isEmpty()) {
+            throw new SQLException("La tabla " + tabla + " no tiene columnas respaldables.");
+        }
+        String listaColumnas = nombresInsertables.stream().map(n -> "`" + n.replace("`", "``") + "`")
+                .collect(java.util.stream.Collectors.joining(", "));
+
+        // Los campos generados no se insertan: MySQL los recalcula al restaurar.
         String sqlSelect = "SELECT * FROM `" + tabla + "`";
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(sqlSelect)) {
@@ -478,8 +642,9 @@ public class ServicioRespaldoBaseDatos {
             List<String> filas = new ArrayList<>();
             while (rs.next()) {
                 StringBuilder fila = new StringBuilder("(");
-                for (int i = 1; i <= columnas; i++) {
-                    if (i > 1) fila.append(", ");
+                for (int j = 0; j < indicesInsertables.size(); j++) {
+                    if (j > 0) fila.append(", ");
+                    int i = indicesInsertables.get(j);
                     Object obj = rs.getObject(i);
                     if (obj == null) {
                         fila.append("NULL");
@@ -496,19 +661,19 @@ public class ServicioRespaldoBaseDatos {
                 filas.add(fila.toString());
 
                 if (filas.size() >= 100) {
-                    escribirLoteInsert(writer, tabla, filas);
+                    escribirLoteInsert(writer, tabla, listaColumnas, filas);
                     filas.clear();
                 }
             }
 
             if (!filas.isEmpty()) {
-                escribirLoteInsert(writer, tabla, filas);
+                escribirLoteInsert(writer, tabla, listaColumnas, filas);
             }
         }
     }
 
-    private void escribirLoteInsert(BufferedWriter writer, String tabla, List<String> filas) throws IOException {
-        writer.write("INSERT INTO `" + tabla + "` VALUES\n");
+    private void escribirLoteInsert(BufferedWriter writer, String tabla, String listaColumnas, List<String> filas) throws IOException {
+        writer.write("INSERT INTO `" + tabla + "` (" + listaColumnas + ") VALUES\n");
         for (int i = 0; i < filas.size(); i++) {
             writer.write(filas.get(i));
             if (i < filas.size() - 1) {
@@ -539,6 +704,7 @@ public class ServicioRespaldoBaseDatos {
                             LocalDate fechaArchivo = LocalDate.parse(fechaParte, FORMATO_FECHA_DIA);
                             if (fechaArchivo.isBefore(fechaLimite)) {
                                 Files.deleteIfExists(archivo);
+                                Files.deleteIfExists(checksumPath(archivo));
                                 LOGGER.info("Respaldo antiguo depurado por retención: " + nombre);
                             }
                         } catch (Exception ignored) {

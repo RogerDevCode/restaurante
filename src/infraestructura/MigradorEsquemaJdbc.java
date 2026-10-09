@@ -1,6 +1,8 @@
 package infraestructura;
 
 import Modelo.DataAccessException;
+import Servicio.ServicioRespaldoBaseDatos;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -8,7 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashSet;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,34 +25,177 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final Set<String> BASES_MIGRADAS = ConcurrentHashMap.newKeySet();
+    private static final int VERSION_ESQUEMA = 1;
+    private static final String DEFINICION_MIGRACION = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
+    private static final String CHECKSUM_MIGRACION = calcularChecksum(DEFINICION_MIGRACION);
+    private static final String LOCK_MIGRACION = "restaurante_schema_migration";
+
+    @FunctionalInterface
+    public interface RespaldoPrevio {
+        Path crear(ProveedorConexionJdbc proveedor) throws Exception;
+    }
 
     private MigradorEsquemaJdbc() {
     }
 
     public static synchronized void migrarSiEsNecesario(ProveedorConexionJdbc proveedor) {
+        migrarSiEsNecesario(proveedor, proveedorActual ->
+                new ServicioRespaldoBaseDatos(proveedorActual).crearRespaldoPreMigracion());
+    }
+
+    public static synchronized void migrarSiEsNecesario(ProveedorConexionJdbc proveedor, RespaldoPrevio respaldoPrevio) {
         if (proveedor == null) {
             return;
         }
+        if (respaldoPrevio == null) {
+            throw new IllegalArgumentException("La operación de respaldo previo es obligatoria.");
+        }
 
         try (Connection con = proveedor.getConnection()) {
-            String claveBase = claveBase(con);
-            if (BASES_MIGRADAS.contains(claveBase)) {
-                return;
+            adquirirBloqueo(con);
+            try {
+                validarEsquemaExistente(con);
+                if (!migracionAplicada(con)) {
+                    Path respaldo = respaldoPrevio.crear(proveedor);
+                    if (respaldo == null) {
+                        throw new SQLException("No se confirmó un respaldo previo válido; se cancela la migración.");
+                    }
+                    LOGGER.info("Respaldo previo a migración confirmado: " + respaldo.toAbsolutePath());
+                    registrarMigracionEnCurso(con);
+                    asegurarEsquema(con);
+                    validarPostcondiciones(con);
+                    registrarMigracionAplicada(con);
+                } else {
+                    validarPostcondiciones(con);
+                }
+            } finally {
+                liberarBloqueo(con);
             }
-            asegurarEsquema(con);
-            BASES_MIGRADAS.add(claveBase);
             LOGGER.info("Esquema de base de datos verificado y sincronizado correctamente.");
-        } catch (SQLException ex) {
+        } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "No se pudo verificar o sincronizar el esquema de la BD: " + ex.getMessage(), ex);
             throw new DataAccessException("No se pudo verificar o sincronizar el esquema de la base de datos.", ex);
         }
     }
 
-    private static String claveBase(Connection con) throws SQLException {
-        String url = con.getMetaData().getURL();
+    private static String calcularChecksum(String definicion) {
+        try {
+            return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(definicion.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
+
+    private static void adquirirBloqueo(Connection con) throws SQLException {
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT GET_LOCK('" + LOCK_MIGRACION + "', 30)")) {
+            if (!rs.next() || rs.getInt(1) != 1) {
+                throw new SQLException("No se pudo adquirir el bloqueo exclusivo para migrar la base de datos.");
+            }
+        }
+    }
+
+    private static void liberarBloqueo(Connection con) {
+        try (Statement st = con.createStatement()) {
+            st.executeQuery("SELECT RELEASE_LOCK('" + LOCK_MIGRACION + "')").close();
+        } catch (SQLException ex) {
+            LOGGER.log(Level.WARNING, "No se pudo liberar explícitamente el bloqueo SQL de migración.", ex);
+        }
+    }
+
+    private static boolean tablaExiste(Connection con, String tabla) throws SQLException {
+        try (ResultSet rs = con.getMetaData().getTables(con.getCatalog(), null, tabla, new String[] {"TABLE"})) {
+            if (rs.next()) return true;
+        }
+        try (ResultSet rs = con.getMetaData().getTables(con.getCatalog(), null, "%", new String[] {"TABLE"})) {
+            while (rs.next()) {
+                if (tabla.equalsIgnoreCase(rs.getString("TABLE_NAME"))) return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean migracionAplicada(Connection con) throws SQLException {
+        if (!tablaExiste(con, "schema_migrations")) return false;
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT MAX(version) FROM schema_migrations")) {
+            if (rs.next() && rs.getInt(1) > VERSION_ESQUEMA) {
+                throw new SQLException("La base tiene una versión de esquema más nueva que esta aplicación.");
+            }
+        }
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT checksum, estado FROM schema_migrations WHERE version = " + VERSION_ESQUEMA)) {
+            if (!rs.next()) return false;
+            String checksum = rs.getString("checksum");
+            String estado = rs.getString("estado");
+            if (!CHECKSUM_MIGRACION.equals(checksum)) {
+                throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
+            }
+            return "APLICADA".equalsIgnoreCase(estado);
+        }
+    }
+
+    private static void validarEsquemaExistente(Connection con) throws SQLException {
+        Set<String> tablas = new HashSet<>();
+        try (ResultSet rs = con.getMetaData().getTables(con.getCatalog(), null, "%", new String[] {"TABLE"})) {
+            while (rs.next()) tablas.add(rs.getString("TABLE_NAME").toLowerCase(java.util.Locale.ROOT));
+        }
+        if (tablas.isEmpty()) {
+            throw new SQLException("La base de datos no tiene esquema. La aplicación no inicializa una base vacía; use el instalador de base nueva.");
+        }
+        Set<String> esenciales = Set.of("config", "usuarios", "platos", "salas", "pedidos", "detalle_pedidos");
+        Set<String> faltantes = new HashSet<>(esenciales);
+        faltantes.removeAll(tablas);
+        if (!faltantes.isEmpty()) {
+            throw new SQLException("Esquema existente incompleto o no reconocido; faltan tablas esenciales: " + faltantes + ". No se ejecutará auto-reparación.");
+        }
+    }
+
+    private static void registrarMigracionEnCurso(Connection con) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version INT NOT NULL PRIMARY KEY,
+                    nombre VARCHAR(160) NOT NULL,
+                    checksum VARCHAR(80) NOT NULL,
+                    estado VARCHAR(20) NOT NULL,
+                    paso_actual VARCHAR(80) NOT NULL,
+                    iniciada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    aplicada_en TIMESTAMP NULL DEFAULT NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+                """);
+            st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
+                    + VERSION_ESQUEMA + ",'sincronizacion_esquema_v1','" + CHECKSUM_MIGRACION + "','EN_CURSO','asegurar_esquema') "
+                    + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
+        }
+    }
+
+    private static void registrarMigracionAplicada(Connection con) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("UPDATE schema_migrations SET estado='APLICADA', paso_actual='validada', aplicada_en=CURRENT_TIMESTAMP WHERE version=" + VERSION_ESQUEMA);
+        }
+    }
+
+    private static void validarPostcondiciones(Connection con) throws SQLException {
+        DatabaseMetaData meta = con.getMetaData();
         String catalogo = con.getCatalog();
-        return (url != null ? url : "") + "|" + (catalogo != null ? catalogo : "");
+        for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja")) {
+            if (!tablaExiste(con, tabla)) throw new SQLException("Postcondición no cumplida: falta tabla " + tabla);
+        }
+        for (String[] par : new String[][] {{"pedidos", "total_bs"}, {"pedidos", "metodo_pago"}, {"platos", "activo"}}) {
+            if (!columnaExiste(meta, catalogo, par[0], par[1])) {
+                throw new SQLException("Postcondición no cumplida: falta columna " + par[0] + "." + par[1]);
+            }
+        }
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(DISTINCT clave) FROM configuracion_sistema WHERE clave IN "
+                     + "('tasa_dolar','iva_porcentaje','impresora_tickets','modo_salida_tickets','imprimir_logo_ticket',"
+                     + "'cliente_predeterminado_nombre','cliente_predeterminado_documento','meses_retencion_pedidos')")) {
+            if (!rs.next() || rs.getInt(1) != 8) {
+                throw new SQLException("Postcondición no cumplida: faltan claves iniciales de configuración.");
+            }
+        }
     }
 
     public static void asegurarEsquema(Connection con) throws SQLException {
@@ -83,9 +230,15 @@ public final class MigradorEsquemaJdbc {
         asegurarColumna(con, meta, catalogo, "pedidos", "metodo_pago", "VARCHAR(30) NOT NULL DEFAULT 'EFECTIVO'");
         asegurarColumna(con, meta, catalogo, "pedidos", "efectivo_bs", "DECIMAL(14,2) NULL DEFAULT NULL");
         asegurarColumna(con, meta, catalogo, "pedidos", "efectivo_usd", "DECIMAL(14,2) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "id_sala_pendiente",
+                "INT GENERATED ALWAYS AS (CASE WHEN estado = 'PENDIENTE' THEN id_sala ELSE NULL END) STORED");
+        asegurarColumna(con, meta, catalogo, "pedidos", "num_mesa_pendiente",
+                "INT GENERATED ALWAYS AS (CASE WHEN estado = 'PENDIENTE' THEN num_mesa ELSE NULL END) STORED");
 
         // 3. Columnas en config
         asegurarColumna(con, meta, catalogo, "config", "logo_path", "VARCHAR(255) NULL DEFAULT NULL");
+        asegurarLongitudColumna(con, meta, catalogo, "config", "ruc", 30);
+        asegurarLongitudColumna(con, meta, catalogo, "config", "telefono", 30);
         asegurarColumna(con, meta, catalogo, "config", "tasa_dolar", "DECIMAL(12,4) NOT NULL DEFAULT 36.5000");
         asegurarColumna(con, meta, catalogo, "config", "iva_porcentaje", "DECIMAL(5,2) NOT NULL DEFAULT 16.00");
         asegurarColumna(con, meta, catalogo, "config", "cliente_predeterminado_nombre", "VARCHAR(150) NOT NULL DEFAULT 'Consumidor Final'");
@@ -94,6 +247,7 @@ public final class MigradorEsquemaJdbc {
         asegurarColumna(con, meta, catalogo, "config", "imprimir_logo_ticket", "TINYINT(1) NOT NULL DEFAULT 1");
         asegurarColumna(con, meta, catalogo, "config", "impresora_tickets", "VARCHAR(150) NOT NULL DEFAULT 'DEFAULT'");
         asegurarColumna(con, meta, catalogo, "config", "modo_salida_tickets", "VARCHAR(50) NOT NULL DEFAULT 'TERMICA_DIRECTA'");
+        asegurarLongitudColumna(con, meta, catalogo, "usuarios", "pass", 255);
 
         // 4. Columnas en platos
         asegurarColumna(con, meta, catalogo, "platos", "activo", "TINYINT(1) NOT NULL DEFAULT 1");
@@ -103,6 +257,8 @@ public final class MigradorEsquemaJdbc {
         asegurarIndice(con, meta, catalogo, "pedidos", "idx_pedidos_estado_fecha", "(estado, fecha)");
         asegurarIndice(con, meta, catalogo, "pedidos", "idx_pedidos_cliente_doc", "(cliente_documento)");
         asegurarIndice(con, meta, catalogo, "detalle_pedidos", "idx_detalle_pedidos_nombre", "(nombre)");
+        asegurarIndiceUnico(con, meta, catalogo, "usuarios", "uq_usuarios_correo", "(correo)");
+        asegurarIndiceUnico(con, meta, catalogo, "pedidos", "uq_pedidos_mesa_pendiente", "(id_sala_pendiente, num_mesa_pendiente)");
 
         // 6. Asegurar tabla clave-valor de configuración del sistema
         asegurarTablaConfiguracionSistema(con, meta, catalogo);
@@ -127,6 +283,34 @@ public final class MigradorEsquemaJdbc {
                 }
                 LOGGER.info("Columna sincronizada automáticamente: " + tabla + "." + columna);
             }
+        }
+    }
+
+    private static void asegurarLongitudColumna(Connection con, DatabaseMetaData meta, String catalogo,
+            String tabla, String columna, int longitudMinima) throws SQLException {
+        int longitud = -1;
+        String tipo = null;
+        boolean permiteNulos = true;
+        try (ResultSet rs = meta.getColumns(catalogo, null, tabla, columna)) {
+            if (!rs.next()) throw new SQLException("Falta columna requerida para migrar: " + tabla + "." + columna);
+            longitud = rs.getInt("COLUMN_SIZE");
+            tipo = rs.getString("TYPE_NAME");
+            permiteNulos = rs.getInt("NULLABLE") != DatabaseMetaData.columnNoNulls;
+        }
+        if (tipo == null || !(tipo.toUpperCase(java.util.Locale.ROOT).contains("CHAR"))) {
+            throw new SQLException("Tipo no reconocido para ampliar " + tabla + "." + columna + ": " + tipo);
+        }
+        if (longitud >= longitudMinima && !permiteNulos) return;
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT 1 FROM `" + tabla + "` WHERE `" + columna + "` IS NULL LIMIT 1")) {
+            if (rs.next()) {
+                throw new SQLException("No se puede convertir a NOT NULL: hay valores nulos en " + tabla + "." + columna);
+            }
+        }
+        int longitudFinal = Math.max(longitud, longitudMinima);
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("ALTER TABLE `" + tabla + "` MODIFY COLUMN `" + columna + "` VARCHAR("
+                    + longitudFinal + ") COLLATE utf8_spanish_ci NOT NULL");
         }
     }
 
@@ -173,6 +357,16 @@ public final class MigradorEsquemaJdbc {
         return false;
     }
 
+    private static void asegurarIndiceUnico(Connection con, DatabaseMetaData meta, String catalogo,
+            String tabla, String nombreIndice, String columnas) throws SQLException {
+        if (indiceExiste(meta, catalogo, tabla, nombreIndice)) return;
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("ALTER TABLE " + tabla + " ADD UNIQUE INDEX " + nombreIndice + " " + columnas);
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() != 1061 || !indiceExiste(meta, catalogo, tabla, nombreIndice)) throw ex;
+        }
+    }
+
     private static void asegurarTablaConfiguracionSistema(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
         try (Statement st = con.createStatement()) {
             st.executeUpdate("""
@@ -193,7 +387,8 @@ public final class MigradorEsquemaJdbc {
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(sqlSelect)) {
             if (rs.next()) {
-                String insertSql = "INSERT IGNORE INTO configuracion_sistema (clave, valor) VALUES (?, ?)";
+                String insertSql = "INSERT INTO configuracion_sistema (clave, valor) VALUES (?, ?) "
+                        + "ON DUPLICATE KEY UPDATE valor=IF(valor=?, VALUES(valor), valor)";
                 try (PreparedStatement ps = con.prepareStatement(insertSql)) {
                     insertarClaveDesdeResultSetSiExiste(meta, catalogo, rs, ps, "tasa_dolar", "tasa_dolar", "36.5000");
                     insertarClaveDesdeResultSetSiExiste(meta, catalogo, rs, ps, "iva_porcentaje", "iva_porcentaje", "16.00");
@@ -227,7 +422,9 @@ public final class MigradorEsquemaJdbc {
             ResultSet rs, PreparedStatement ps, String columnaBd, String clave, String porDefecto) throws SQLException {
         String valor = columnaExiste(meta, catalogo, "config", columnaBd) ? rs.getString(columnaBd) : null;
         ps.setString(1, clave);
-        ps.setString(2, valor != null && !valor.isBlank() ? valor : porDefecto);
+        String valorInicial = valor != null && !valor.isBlank() ? valor : porDefecto;
+        ps.setString(2, valorInicial);
+        ps.setString(3, porDefecto);
         ps.executeUpdate();
     }
 

@@ -30,6 +30,11 @@ public class Restaurante {
     public static void main(String[] args) {
         ManejadorErroresSwing.instalar();
         infraestructura.ConfiguracionLogs.configurar();
+        if (args != null && args.length == 1 && "--migrate-db".equalsIgnoreCase(args[0])) {
+            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
+            System.out.println("Migración de base de datos validada correctamente.");
+            return;
+        }
         infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
         Thread.ofVirtual().name("backup-diario-inicio").start(() -> {
             try {

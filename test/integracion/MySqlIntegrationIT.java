@@ -79,12 +79,29 @@ public class MySqlIntegrationIT {
         try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
             assertEquals("restaurante_test", conexion.getCatalog());
             assertTrue(conexion.getMetaData().getDatabaseProductVersion().startsWith("8.4"));
+            String tasaLegacy = valorEscalar(conexion, "SELECT CAST(tasa_dolar AS CHAR) FROM config LIMIT 1");
+            String tasaKv = valorEscalar(conexion, "SELECT valor FROM configuracion_sistema WHERE clave='tasa_dolar'");
+            sentencia.executeUpdate("UPDATE config SET tasa_dolar=41.1234");
+            sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='36.5000' WHERE clave='tasa_dolar'");
+            // Primera migración y respaldo ocurren antes de instalar el trigger de fallo de estas pruebas.
+            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new ProveedorConexionJdbc());
+            assertEquals("El valor personalizado de config prevalece sobre un default KV anterior",
+                    "41.1234", valorEscalar(conexion, "SELECT valor FROM configuracion_sistema WHERE clave='tasa_dolar'"));
+            sentencia.executeUpdate("UPDATE config SET tasa_dolar=" + tasaLegacy);
+            sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='" + tasaKv.replace("'", "''") + "' WHERE clave='tasa_dolar'");
             sentencia.execute("DROP TRIGGER IF EXISTS trg_restaurante_it_error_detalle");
             sentencia.execute("CREATE TRIGGER trg_restaurante_it_error_detalle "
                     + "BEFORE INSERT ON detalle_pedidos FOR EACH ROW "
                     + "BEGIN IF NEW.comentario = '__FALLAR_DETALLE_IT__' THEN "
                     + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Fallo provocado por integración'; "
                     + "END IF; END");
+        }
+    }
+
+    private static String valorEscalar(Connection conexion, String sql) throws SQLException {
+        try (Statement sentencia = conexion.createStatement(); ResultSet resultado = sentencia.executeQuery(sql)) {
+            assertTrue("La consulta centinela debe devolver una fila", resultado.next());
+            return resultado.getString(1);
         }
     }
 

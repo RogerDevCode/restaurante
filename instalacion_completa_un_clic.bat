@@ -14,9 +14,14 @@ net session >nul 2>&1
 if %errorlevel% neq 0 (
     if "%~1" neq "--no-elevate" (
         echo [INFO] Solicitando permisos de Administrador para configuracion completa del sistema...
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "$proc = Start-Process cmd -ArgumentList '/c \"\"%~f0\"\" --elevated' -Verb RunAs -PassThru -ErrorAction SilentlyContinue; if ($proc) { exit 0 } else { exit 1 }"
-        if !errorlevel! equ 0 (
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $proc = Start-Process cmd -ArgumentList '/c \"\"%~f0\"\" --elevated' -Verb RunAs -Wait -PassThru -ErrorAction Stop; exit $proc.ExitCode } catch { exit 1223 }"
+        set "ELEVATION_EXIT=!errorlevel!"
+        if "!ELEVATION_EXIT!"=="0" (
             exit /b 0
+        )
+        if not "!ELEVATION_EXIT!"=="1223" (
+            echo [ERROR] La ejecucion elevada fallo con codigo !ELEVATION_EXIT!.
+            exit /b !ELEVATION_EXIT!
         )
         echo [INFO] Continuando con permisos de usuario actual...
     )
@@ -25,8 +30,11 @@ if %errorlevel% neq 0 (
 :: Ejecutar instalador maestro PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0instalar_acceso_directo.ps1"
 
-if %errorlevel% neq 0 (
+if errorlevel 1 (
+    set "INSTALL_EXIT=%errorlevel%"
     echo.
-    echo [AVISO] El instalador finalizó con observaciones. Presione cualquier tecla para cerrar.
+    echo [ERROR] El instalador fallo y no se completaron las migraciones.
     pause >nul
+    exit /b %INSTALL_EXIT%
 )
+exit /b 0

@@ -242,6 +242,33 @@ BEGIN
         actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
+    -- Reconciliar defaults insertados por versiones anteriores con los valores legacy del dueño.
+    -- Solo se reemplaza una clave KV que conserve el default original; un valor KV personalizado prevalece.
+    INSERT INTO configuracion_sistema (clave, valor, descripcion)
+    SELECT 'tasa_dolar', CAST(tasa_dolar AS CHAR), 'Tasa de cambio USD / Bs' FROM config LIMIT 1
+    ON DUPLICATE KEY UPDATE valor = IF(configuracion_sistema.valor = '36.5000', VALUES(valor), configuracion_sistema.valor);
+    INSERT INTO configuracion_sistema (clave, valor, descripcion)
+    SELECT 'iva_porcentaje', CAST(iva_porcentaje AS CHAR), 'Porcentaje de IVA' FROM config LIMIT 1
+    ON DUPLICATE KEY UPDATE valor = IF(configuracion_sistema.valor = '16.00', VALUES(valor), configuracion_sistema.valor);
+    INSERT INTO configuracion_sistema (clave, valor, descripcion)
+    SELECT 'impresora_tickets', impresora_tickets, 'Impresora predeterminada para tickets' FROM config LIMIT 1
+    ON DUPLICATE KEY UPDATE valor = IF(configuracion_sistema.valor = 'DEFAULT', VALUES(valor), configuracion_sistema.valor);
+    INSERT INTO configuracion_sistema (clave, valor, descripcion)
+    SELECT 'modo_salida_tickets', modo_salida_tickets, 'Modo de salida de tickets' FROM config LIMIT 1
+    ON DUPLICATE KEY UPDATE valor = IF(configuracion_sistema.valor = 'TERMICA_DIRECTA', VALUES(valor), configuracion_sistema.valor);
+    INSERT INTO configuracion_sistema (clave, valor, descripcion)
+    SELECT 'imprimir_logo_ticket', IF(imprimir_logo_ticket = 1, 'true', 'false'), 'Imprimir logo en ticket térmico 80mm' FROM config LIMIT 1
+    ON DUPLICATE KEY UPDATE valor = IF(configuracion_sistema.valor = 'true', VALUES(valor), configuracion_sistema.valor);
+    INSERT INTO configuracion_sistema (clave, valor, descripcion)
+    SELECT 'cliente_predeterminado_nombre', cliente_predeterminado_nombre, 'Nombre de cliente por defecto en facturación' FROM config LIMIT 1
+    ON DUPLICATE KEY UPDATE valor = IF(configuracion_sistema.valor = 'Consumidor Final', VALUES(valor), configuracion_sistema.valor);
+    INSERT INTO configuracion_sistema (clave, valor, descripcion)
+    SELECT 'cliente_predeterminado_documento', cliente_predeterminado_documento, 'Documento de cliente por defecto en facturación' FROM config LIMIT 1
+    ON DUPLICATE KEY UPDATE valor = IF(configuracion_sistema.valor = 'V-00000000', VALUES(valor), configuracion_sistema.valor);
+    INSERT INTO configuracion_sistema (clave, valor, descripcion)
+    SELECT 'meses_retencion_pedidos', CAST(meses_retencion_pedidos AS CHAR), 'Meses de retención de pedidos' FROM config LIMIT 1
+    ON DUPLICATE KEY UPDATE valor = IF(configuracion_sistema.valor = '24', VALUES(valor), configuracion_sistema.valor);
+
     INSERT IGNORE INTO configuracion_sistema (clave, valor, descripcion) VALUES
     ('tasa_dolar', '36.5000', 'Tasa de cambio USD / Bs'),
     ('iva_porcentaje', '16.00', 'Porcentaje de IVA'),

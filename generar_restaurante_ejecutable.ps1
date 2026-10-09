@@ -208,7 +208,10 @@ Write-Host "  -> Copiando dependencias en lib/..." -ForegroundColor Gray
 $libreriasRuntime = @(
     "AbsoluteLayout.jar",
     "itextpdf-5.5.1.jar",
-    "mysql-connector-j-8.0.31.jar"
+    "mysql-connector-j-8.0.31.jar",
+    "pdfbox-2.0.31.jar",
+    "fontbox-2.0.31.jar",
+    "commons-logging-1.2.jar"
 )
 
 foreach ($lib in $libreriasRuntime) {
@@ -229,10 +232,9 @@ foreach ($lib in $libreriasRuntime) {
     }
 }
 
-# 4.3 Copiar scripts de base de datos actualizados
-Write-Host "  -> Copiando esquemas SQL y migraciones..." -ForegroundColor Gray
+# 4.3 Copiar solo el esquema de instalación nueva. Las actualizaciones usan el migrador JDBC versionado.
+Write-Host "  -> Copiando esquema de instalación nueva..." -ForegroundColor Gray
 Copy-Item -LiteralPath (Join-Path $ProjectRoot "BD.sql") -Destination (Join-Path $OutputDir "BD.sql") -Force
-Copy-Item -LiteralPath (Join-Path $ProjectRoot "actualizar_bd.sql") -Destination (Join-Path $OutputDir "actualizar_bd.sql") -Force
 
 # 4.4 Copiar scripts de automatización e instalación
 Write-Host "  -> Copiando scripts de inicio e instaladores..." -ForegroundColor Gray
@@ -247,6 +249,7 @@ $scripts = @(
     "icono_restaurante.png",
     "actualizar_bd.bat",
     "instalar_mysql_y_bd.bat",
+    "instalar_mysql_y_bd.ps1",
     "configurar_mysql.ps1",
     "listar_impresoras.bat"
 )

@@ -210,6 +210,7 @@ public class CierreCajaYPrevisualizacionVistaTest {
 
         SwingUtilities.invokeAndWait(() -> {
             contenedor[0] = new Sistema(usuario, salasCtrl, platosCtrl, pedidosCtrl);
+            contenedor[0].setProveedorMotivoAccion(titulo -> "Motivo test automatizado");
         });
         return contenedor[0];
     }

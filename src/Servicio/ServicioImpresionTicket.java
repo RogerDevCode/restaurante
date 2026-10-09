@@ -143,7 +143,9 @@ public final class ServicioImpresionTicket {
     }
 
     private static volatile Modelo.ModoSalidaTicket modoGlobal = Modelo.ModoSalidaTicket.TERMICA_DIRECTA;
+    private static volatile String impresoraGlobal = "DEFAULT";
     private static final List<java.util.function.Consumer<Modelo.ModoSalidaTicket>> listenersModo = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private static final List<java.util.function.Consumer<String>> listenersImpresora = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     public static Modelo.ModoSalidaTicket getModoGlobal() {
         return modoGlobal;
@@ -172,11 +174,39 @@ public final class ServicioImpresionTicket {
         listenersModo.remove(listener);
     }
 
+    public static String getImpresoraGlobal() {
+        return impresoraGlobal;
+    }
+
+    public static void setImpresoraGlobal(String impresora) {
+        if (impresora == null || impresora.isBlank()) {
+            impresora = "DEFAULT";
+        }
+        impresoraGlobal = impresora.trim();
+        for (java.util.function.Consumer<String> listener : listenersImpresora) {
+            try {
+                listener.accept(impresoraGlobal);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    public static void addImpresoraGlobalListener(java.util.function.Consumer<String> listener) {
+        if (listener != null) {
+            listenersImpresora.add(listener);
+        }
+    }
+
+    public static void removeImpresoraGlobalListener(java.util.function.Consumer<String> listener) {
+        listenersImpresora.remove(listener);
+    }
+
     /**
      * Procesa la salida del archivo PDF generado según el modo global y la impresora configurada.
      */
     public static void procesarSalida(Path archivoPdf) throws IOException {
-        procesarSalida(archivoPdf, modoGlobal, obtenerImpresoraConfigurada());
+        String imp = !"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada();
+        procesarSalida(archivoPdf, modoGlobal, imp);
     }
 
     /**
@@ -190,7 +220,10 @@ public final class ServicioImpresionTicket {
         if (modo == null) {
             modo = modoGlobal;
         }
-        String imp = resolverNombreRealImpresora(impresoraConfigurada != null ? impresoraConfigurada : obtenerImpresoraConfigurada());
+        String impConfig = (impresoraConfigurada != null && !impresoraConfigurada.isBlank())
+                ? impresoraConfigurada
+                : (!"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada());
+        String imp = resolverNombreRealImpresora(impConfig);
 
         switch (modo) {
             case TERMICA_DIRECTA -> {
@@ -278,6 +311,60 @@ public final class ServicioImpresionTicket {
         }
     }
 
+    /**
+     * Localiza el PrintService de Java que coincide con el nombre especificado.
+     */
+    public static PrintService buscarPrintService(String nombreImpresora) {
+        if (nombreImpresora == null || nombreImpresora.isBlank() || "DEFAULT".equalsIgnoreCase(nombreImpresora)) {
+            return PrintServiceLookup.lookupDefaultPrintService();
+        }
+        PrintService[] servicios = PrintServiceLookup.lookupPrintServices(null, null);
+        for (PrintService ps : servicios) {
+            if (ps != null && ps.getName() != null && ps.getName().equalsIgnoreCase(nombreImpresora.trim())) {
+                return ps;
+            }
+        }
+        String busqueda = nombreImpresora.trim().toLowerCase();
+        for (PrintService ps : servicios) {
+            if (ps != null && ps.getName() != null) {
+                String n = ps.getName().toLowerCase();
+                if (n.contains(busqueda) || busqueda.contains(n)) {
+                    return ps;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Intenta imprimir el PDF directamente a la cola de impresión de Windows mediante Apache PDFBox.
+     * Es 100% silencioso y no depende de visores externos ni asociaciones de shell de Windows.
+     */
+    public static boolean imprimirDirectoJavaSpooler(Path archivoPdf, String nombreImpresora) {
+        if (archivoPdf == null || !Files.isRegularFile(archivoPdf)) {
+            return false;
+        }
+        try {
+            PrintService target = buscarPrintService(nombreImpresora);
+            if (target == null) {
+                LOGGER.log(Level.FINE, () -> "No se encontró PrintService para: " + nombreImpresora);
+                return false;
+            }
+            try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.pdmodel.PDDocument.load(archivoPdf.toFile())) {
+                java.awt.print.PrinterJob job = java.awt.print.PrinterJob.getPrinterJob();
+                job.setPrintService(target);
+                job.setJobName("Ticket Restaurante 2026 - " + archivoPdf.getFileName());
+                job.setPageable(new org.apache.pdfbox.printing.PDFPageable(doc));
+                job.print();
+                LOGGER.info(() -> "Ticket enviado exitosamente al spooler vía PDFBox/PrinterJob: " + target.getName());
+                return true;
+            }
+        } catch (Throwable ex) {
+            LOGGER.log(Level.WARNING, "Fallo al imprimir directamente vía PDFBox/PrinterJob: " + ex.getMessage(), ex);
+            return false;
+        }
+    }
+
     /** Envía el archivo PDF a imprimir directamente en Windows 11. */
     public static boolean imprimirEnWindows(Path archivoPdf, String nombreImpresora) {
         if (archivoPdf == null || !Files.isRegularFile(archivoPdf)) {
@@ -288,15 +375,20 @@ public final class ServicioImpresionTicket {
         String rutaAbsoluta = archivoPdf.toAbsolutePath().toString();
 
         if (esWindows) {
-            // 1. Si se especificó una impresora (ej. XP-80T o POS-80)
+            // 1. Método preferido: Impresión nativa directa al Spooler de Windows vía PDFBox (silenciosa y sin ventanas)
+            if (imprimirDirectoJavaSpooler(archivoPdf, nombreImpresora)) {
+                return true;
+            }
+
+            // 2. Si no fue posible vía Java Spooler, intentar comando PowerShell con captura estricta de error
             if (nombreImpresora != null && !nombreImpresora.isBlank() && !"DEFAULT".equalsIgnoreCase(nombreImpresora)) {
                 try {
                     String cmd = String.format(
-                            "Start-Process -FilePath '%s' -Verb PrintTo -ArgumentList '%s' -WindowStyle Hidden",
+                            "$ErrorActionPreference = 'Stop'; try { Start-Process -FilePath '%s' -Verb PrintTo -ArgumentList '%s' -WindowStyle Hidden -Wait; exit 0 } catch { exit 1 }",
                             rutaAbsoluta.replace("'", "''"),
                             nombreImpresora.replace("'", "''"));
                     Process proceso = new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", cmd).start();
-                    boolean finalizo = proceso.waitFor(5, TimeUnit.SECONDS);
+                    boolean finalizo = proceso.waitFor(7, TimeUnit.SECONDS);
                     if (finalizo && proceso.exitValue() == 0) {
                         return true;
                     }
@@ -305,7 +397,7 @@ public final class ServicioImpresionTicket {
                 }
             }
 
-            // 2. Si es DEFAULT o si PrintTo específico falló: intentar Desktop.print nativo
+            // 3. Intentar Desktop.print nativo (solo si la plataforma lo soporta y no lanzó error)
             try {
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.PRINT)) {
                     Desktop.getDesktop().print(archivoPdf.toFile());
@@ -315,13 +407,13 @@ public final class ServicioImpresionTicket {
                 LOGGER.log(Level.FINE, "Desktop.print no disponible o devolvió advertencia: " + ex.getMessage(), ex);
             }
 
-            // 3. Fallback PowerShell: imprimir a la predeterminada de Windows
+            // 4. Fallback PowerShell: imprimir a la predeterminada de Windows con trampa de error
             try {
                 String cmd = String.format(
-                        "Start-Process -FilePath '%s' -Verb Print -WindowStyle Hidden",
+                        "$ErrorActionPreference = 'Stop'; try { Start-Process -FilePath '%s' -Verb Print -WindowStyle Hidden -Wait; exit 0 } catch { exit 1 }",
                         rutaAbsoluta.replace("'", "''"));
                 Process proceso = new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", cmd).start();
-                boolean finalizo = proceso.waitFor(5, TimeUnit.SECONDS);
+                boolean finalizo = proceso.waitFor(7, TimeUnit.SECONDS);
                 if (finalizo && proceso.exitValue() == 0) {
                     return true;
                 }
@@ -390,8 +482,21 @@ public final class ServicioImpresionTicket {
                 doc.close();
             }
 
-            procesarSalida(tempTicket, modo, impresora);
-            return true;
+            if (modo == Modelo.ModoSalidaTicket.TERMICA_DIRECTA) {
+                String impReal = resolverNombreRealImpresora(impresora != null ? impresora : (!"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada()));
+                boolean ok = imprimirEnWindows(tempTicket, impReal);
+                if (!ok) {
+                    abrirVisor(tempTicket);
+                    return false;
+                }
+                return true;
+            } else if (modo == Modelo.ModoSalidaTicket.PDF24_CREATOR) {
+                boolean ok = despacharPdf24(tempTicket);
+                return ok;
+            } else {
+                abrirVisor(tempTicket);
+                return true;
+            }
         } catch (Exception ex) {
             LOGGER.log(Level.WARNING, "Error al generar ticket de prueba: " + ex.getMessage(), ex);
             return false;

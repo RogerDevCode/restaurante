@@ -55,6 +55,27 @@ public class ServicioRespaldoBaseDatosTest {
         assertTrue("Debe reactivar foreign key checks", contenido.contains("SET FOREIGN_KEY_CHECKS = 1;"));
         assertTrue("Debe contener encabezado identificativo oficial", contenido.contains("RESPALDO DE BASE DE DATOS - RESTAURANTE 2026"));
         assertTrue("Debe contener firma mágica de respaldo", contenido.contains(ServicioRespaldoBaseDatos.MAGIC_HEADER));
+        assertTrue("Debe generar checksum para detectar corrupción", Files.exists(archivo.resolveSibling(archivo.getFileName() + ".sha256")));
+        servicio.validarArchivoRespaldo(archivo);
+    }
+
+    @Test
+    public void respaldoPrevioDeMigracionTieneNombreUnicoYNoSeSobrescribe() throws IOException {
+        Path primero = servicio.crearRespaldoPreMigracion();
+        Path segundo = servicio.crearRespaldoPreMigracion();
+
+        assertNotEquals("Cada migración debe conservar su propio respaldo", primero, segundo);
+        assertTrue(Files.exists(primero));
+        assertTrue(Files.exists(segundo));
+        assertTrue(primero.getFileName().toString().startsWith("pre_migracion_restaurante_"));
+    }
+
+    @Test
+    public void checksumDetectaCambiosPosterioresAlRespaldo() throws IOException {
+        Path archivo = servicio.crearRespaldo(tempDir);
+        Files.writeString(archivo, "-- alterado\n", java.nio.file.StandardOpenOption.APPEND);
+
+        assertThrows(ErrorAplicacionException.class, () -> servicio.validarArchivoRespaldo(archivo));
     }
 
     @Test

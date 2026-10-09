@@ -8,8 +8,8 @@
     1. Si se ejecuta desde el código fuente, compila con Ant y genera 'Restaurante_Ejecutable' y su ZIP.
     2. Verifica la presencia de Java 21 LTS (busca en el sistema o instala silenciosamente con winget).
     3. Configura JAVA_HOME y la variable PATH a nivel de usuario y sistema.
-    4. Verifica el servicio MySQL en Windows, lo inicia si está detenido, crea la base de datos 'restaurante',
-       el usuario 'admin' / 'admin' e importa/actualiza el esquema con 'actualizar_bd.sql' y 'BD.sql'.
+    4. Permite elegir base nueva o actualización; BD.sql solo se importa cuando la base no existía,
+       y las actualizaciones usan el migrador JDBC con respaldo previo obligatorio.
     5. Inicializa el archivo '.env' y garantiza las carpetas logs/, facturas/, pdf/.
     6. Crea el Acceso Directo con icono en alta resolución en el Escritorio y en el Menú Inicio.
     7. Inicia el programa de forma transparente sin ventanas negras de consola.
@@ -240,8 +240,13 @@ if (Get-Command mysql.exe -ErrorAction SilentlyContinue) {
 
 # Si no está instalado, intentar instalar mediante winget
 if (-not $mysqlCmd) {
-    Write-Host "  [INFO] MySQL no detectado en el sistema." -ForegroundColor Yellow
-    if (Get-Command winget.exe -ErrorAction SilentlyContinue) {
+    $serviciosExistentes = Get-Service -Name "MySQL*", "MariaDB*" -ErrorAction SilentlyContinue
+    if ($serviciosExistentes) {
+        Write-Host "  [INFO] Se detectó un servicio MySQL/MariaDB. La migración usa JDBC y no requiere mysql.exe." -ForegroundColor Gray
+    } else {
+        Write-Host "  [INFO] MySQL no detectado en el sistema." -ForegroundColor Yellow
+    }
+    if (-not $serviciosExistentes -and (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
         Write-Host "  -> Instalando Oracle MySQL Server mediante winget..." -ForegroundColor Cyan
         try {
             Start-Process -FilePath "winget.exe" -ArgumentList "install --id Oracle.MySQL -e --silent --accept-source-agreements --accept-package-agreements" -NoNewWindow -Wait | Out-Null
@@ -261,71 +266,63 @@ $servicios = Get-Service -Name "MySQL*","MariaDB*" -ErrorAction SilentlyContinue
 foreach ($srv in $servicios) {
     if ($srv.Status -ne "Running") {
         Write-Host "  -> Iniciando servicio de Windows '$($srv.Name)'..." -ForegroundColor Gray
-        Start-Service $srv.Name -ErrorAction SilentlyContinue
+        Start-Service $srv.Name -ErrorAction Stop
         Start-Sleep -Seconds 2
     }
 }
 
-if ($mysqlCmd) {
-    Write-Host "  [OK] Cliente MySQL localizado: $mysqlCmd" -ForegroundColor Green
-    
-    $sqlActualizar = Join-Path $appEjecutableDir "actualizar_bd.sql"
-    if (-not (Test-Path -LiteralPath $sqlActualizar)) {
-        $sqlActualizar = Join-Path $ScriptDir "actualizar_bd.sql"
+# La migración JDBC necesita leer las mismas credenciales que usa la aplicación.
+$envFile = Join-Path $appEjecutableDir ".env"
+$envExample = Join-Path $appEjecutableDir ".env.example"
+if (-not (Test-Path -LiteralPath $envFile)) {
+    if (Test-Path -LiteralPath $envExample) {
+        Copy-Item -LiteralPath $envExample -Destination $envFile
+    } else {
+        throw "Falta .env y no existe .env.example; no se intentará migrar con credenciales supuestas."
     }
-    $sqlBD = Join-Path $appEjecutableDir "BD.sql"
-    if (-not (Test-Path -LiteralPath $sqlBD)) {
-        $sqlBD = Join-Path $ScriptDir "BD.sql"
-    }
+}
 
-    $actualizado = $false
-    # 3.1 Intentar aplicar actualizar_bd.sql directamente con admin/admin
-    if (Test-Path -LiteralPath $sqlActualizar) {
-        $contentAct = Get-Content -Raw -Encoding UTF8 $sqlActualizar
-        $contentAct | & $mysqlCmd -u admin -padmin restaurante 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            $actualizado = $true
-            Write-Host "  [OK] Migraciones de base de datos aplicadas exitosamente con usuario 'admin'." -ForegroundColor Green
-        }
+function Invoke-MigracionJDBC {
+    $jarApp = Join-Path $appEjecutableDir "Restaurante.jar"
+    $libApp = Join-Path $appEjecutableDir "lib"
+    $javaExe = if ($javaExeActual) { $javaExeActual } elseif ($javaHomeDetectado) {
+        Join-Path $javaHomeDetectado "bin\java.exe"
+    } else { (Get-Command java.exe -ErrorAction Stop).Source }
+    if (-not (Test-Path -LiteralPath $jarApp)) {
+        throw "No se encontró Restaurante.jar; no se puede ejecutar la migración segura."
     }
+    $classpathMigracion = "$jarApp;$libApp\*"
+    Push-Location $appEjecutableDir
+    try {
+        Write-Host "  -> Ejecutando migración JDBC con respaldo previo obligatorio..." -ForegroundColor Cyan
+        & $javaExe -cp $classpathMigracion restaurante.Restaurante --migrate-db
+        if ($LASTEXITCODE -ne 0) {
+            throw "La migración falló con código $LASTEXITCODE. No se ejecutó BD.sql; revise el log y el respaldo."
+        }
+    } finally {
+        Pop-Location
+    }
+}
 
-    # 3.2 Si falló, asegurar la base de datos y usuario admin con root
-    if (-not $actualizado) {
-        Write-Host "  -> Inicializando esquema 'restaurante' y usuario 'admin'..." -ForegroundColor Gray
-        $cmdInit = @"
-CREATE DATABASE IF NOT EXISTS restaurante CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS 'admin'@'localhost' IDENTIFIED BY 'admin';
-CREATE USER IF NOT EXISTS 'admin'@'127.0.0.1' IDENTIFIED BY 'admin';
-CREATE USER IF NOT EXISTS 'admin'@'%' IDENTIFIED BY 'admin';
-ALTER USER 'admin'@'localhost' IDENTIFIED BY 'admin';
-ALTER USER 'admin'@'127.0.0.1' IDENTIFIED BY 'admin';
-ALTER USER 'admin'@'%' IDENTIFIED BY 'admin';
-GRANT ALL PRIVILEGES ON restaurante.* TO 'admin'@'localhost';
-GRANT ALL PRIVILEGES ON restaurante.* TO 'admin'@'127.0.0.1';
-GRANT ALL PRIVILEGES ON restaurante.* TO 'admin'@'%';
-FLUSH PRIVILEGES;
-"@
-        & $mysqlCmd -u root -e $cmdInit 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            if (Test-Path -LiteralPath $sqlBD) {
-                Write-Host "  -> Importando esquema base (BD.sql)..." -ForegroundColor Gray
-                $contentBD = Get-Content -Raw -Encoding UTF8 $sqlBD
-                $contentBD | & $mysqlCmd -u admin -padmin restaurante 2>$null
-            }
-            if (Test-Path -LiteralPath $sqlActualizar) {
-                Write-Host "  -> Aplicando actualizaciones pendientes (actualizar_bd.sql)..." -ForegroundColor Gray
-                $contentAct = Get-Content -Raw -Encoding UTF8 $sqlActualizar
-                $contentAct | & $mysqlCmd -u admin -padmin restaurante 2>$null
-            }
-            Write-Host "  [OK] Base de datos y usuario admin configurados y actualizados." -ForegroundColor Green
-        } else {
-            Write-Host "  [INFO] MySQL activo. Si 'root' posee clave personalizada, el sistema ejecutará" -ForegroundColor Yellow
-            Write-Host "         la auto-migración de tablas en el arranque de la aplicación." -ForegroundColor Yellow
-        }
+$modoBd = Read-Host "Base de datos: (N)ueva instalación o (A)ctualizar una instalación existente"
+if ($modoBd.Trim().ToUpperInvariant() -eq "N") {
+    $instaladorNuevo = Join-Path $appEjecutableDir "instalar_mysql_y_bd.bat"
+    if (-not (Test-Path -LiteralPath $instaladorNuevo)) {
+        $instaladorNuevo = Join-Path $ScriptDir "instalar_mysql_y_bd.bat"
     }
+    if (-not (Test-Path -LiteralPath $instaladorNuevo)) {
+        throw "No se encontró instalar_mysql_y_bd.bat para instalar una base nueva."
+    }
+    & $instaladorNuevo
+    if ($LASTEXITCODE -ne 0) {
+        throw "La instalación nueva de la base terminó con código $LASTEXITCODE."
+    }
+    Invoke-MigracionJDBC
+} elseif ($modoBd.Trim().ToUpperInvariant() -eq "A") {
+    Invoke-MigracionJDBC
+    Write-Host "  [OK] Migración versionada aplicada y validada." -ForegroundColor Green
 } else {
-    Write-Host "  [AVISO] No se pudo conectar directamente con 'mysql.exe'." -ForegroundColor Yellow
-    Write-Host "         El sistema ejecutará las migraciones de esquema automáticamente al iniciar." -ForegroundColor Gray
+    throw "Selección inválida. Escriba N para una instalación nueva o A para actualizar."
 }
 
 # -----------------------------------------------------------------------------

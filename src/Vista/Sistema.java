@@ -572,6 +572,11 @@ public final class Sistema extends javax.swing.JFrame {
         cbImpresorasConfig = new javax.swing.JComboBox<>();
         cbImpresorasConfig.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
         cbImpresorasConfig.setBounds(30, 45, 360, 32);
+        cbImpresorasConfig.addActionListener(e -> {
+            if (cbImpresorasConfig.getSelectedItem() != null) {
+                Servicio.ServicioImpresionTicket.setImpresoraGlobal(cbImpresorasConfig.getSelectedItem().toString());
+            }
+        });
         panelImpresionConfig.add(cbImpresorasConfig);
 
         btnRefrescarImpresoras = new javax.swing.JButton("Actualizar");
@@ -2094,7 +2099,9 @@ public final class Sistema extends javax.swing.JFrame {
                 conf.setId(conf.getId() > 0 ? conf.getId() : 1);
             }
             if (cbImpresorasConfig != null && cbImpresorasConfig.getSelectedItem() != null) {
-                conf.setImpresoraTickets(cbImpresorasConfig.getSelectedItem().toString());
+                String impSeleccionada = cbImpresorasConfig.getSelectedItem().toString();
+                conf.setImpresoraTickets(impSeleccionada);
+                Servicio.ServicioImpresionTicket.setImpresoraGlobal(impSeleccionada);
             }
             if (cbModoSalidaConfig != null && cbModoSalidaConfig.getSelectedItem() instanceof Modelo.ModoSalidaTicket m) {
                 conf.setModoSalidaTickets(m);
@@ -2967,6 +2974,9 @@ public final class Sistema extends javax.swing.JFrame {
         }
         if (cbImpresorasConfig != null) {
             refrescarImpresorasEnCombo(conf.getImpresoraTickets());
+        }
+        if (conf.getImpresoraTickets() != null) {
+            Servicio.ServicioImpresionTicket.setImpresoraGlobal(conf.getImpresoraTickets());
         }
         if (conf.getModoSalidaTickets() != null) {
             cambiarModoSalidaGlobal(conf.getModoSalidaTickets());
@@ -4404,7 +4414,20 @@ public final class Sistema extends javax.swing.JFrame {
         dlg.setVisible(true);
     }
 
+    private java.util.function.Function<String, String> proveedorMotivoAccion = null;
+
+    void setProveedorMotivoAccion(java.util.function.Function<String, String> proveedor) {
+        this.proveedorMotivoAccion = proveedor;
+    }
+
     private String solicitarMotivoAccion(String titulo, String mensaje, String valorDefecto) {
+        if (proveedorMotivoAccion != null) {
+            String resp = proveedorMotivoAccion.apply(titulo);
+            return (resp != null && !resp.trim().isEmpty()) ? resp.trim() : valorDefecto;
+        }
+        if (java.awt.GraphicsEnvironment.isHeadless()) {
+            return valorDefecto;
+        }
         Object res = JOptionPane.showInputDialog(this, mensaje, titulo, JOptionPane.QUESTION_MESSAGE, null, null, valorDefecto);
         if (res == null) return null;
         String m = res.toString().trim();

@@ -32,6 +32,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -478,7 +479,30 @@ public class ExhaustivoDashboardUsuarioTest {
                 new Class<?>[] { DatabaseMetaData.class },
                 (proxy, method, args) -> {
                     String name = method.getName();
-                    if ("getColumns".equals(name) || "getIndexInfo".equals(name)) {
+                    if ("getColumns".equals(name)) {
+                        String tabla = (String) args[2];
+                        String columna = (String) args[3];
+                        boolean baseExistente = columna != null && (("config".equalsIgnoreCase(tabla)
+                                && ("ruc".equalsIgnoreCase(columna) || "telefono".equalsIgnoreCase(columna)))
+                                || ("usuarios".equalsIgnoreCase(tabla) && "pass".equalsIgnoreCase(columna)));
+                        AtomicInteger fila = new AtomicInteger();
+                        return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                                ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
+                                (p, m, a) -> {
+                                    if ("next".equals(m.getName())) return baseExistente && fila.getAndIncrement() == 0;
+                                    if ("getInt".equals(m.getName())) {
+                                        if ("COLUMN_SIZE".equals(a[0])) return 30;
+                                        if ("NULLABLE".equals(a[0])) return DatabaseMetaData.columnNoNulls;
+                                    }
+                                    if ("getString".equals(m.getName())) {
+                                        if ("COLUMN_NAME".equals(a[0])) return columna;
+                                        if ("TYPE_NAME".equals(a[0])) return "varchar";
+                                    }
+                                    if ("close".equals(m.getName())) return null;
+                                    return null;
+                                });
+                    }
+                    if ("getIndexInfo".equals(name)) {
                         return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
                                 ResultSet.class.getClassLoader(),
                                 new Class<?>[] { ResultSet.class },
@@ -552,61 +576,62 @@ public class ExhaustivoDashboardUsuarioTest {
     }
 
     @Test
-    public void migradorReintentaLuegoDeFalloYCacheaPorBaseDeDatos() {
-        String sufijo = Long.toUnsignedString(System.nanoTime());
-        AtomicInteger ejecucionesTrasReintento = new AtomicInteger();
-        ProveedorConexionJdbc proveedorFallaUnaVez = proveedorMigracion(
-                "jdbc:mysql://migracion.test/reintento_" + sufijo,
-                "reintento_" + sufijo, new AtomicInteger(), true);
-        org.junit.Assert.assertThrows(DataAccessException.class,
-                () -> MigradorEsquemaJdbc.migrarSiEsNecesario(proveedorFallaUnaVez));
-
-        MigradorEsquemaJdbc.migrarSiEsNecesario(proveedorMigracion(
-                "jdbc:mysql://migracion.test/reintento_" + sufijo,
-                "reintento_" + sufijo, ejecucionesTrasReintento, false));
-        assertTrue("El fallo previo no debe bloquear el reintento", ejecucionesTrasReintento.get() > 0);
-
-        AtomicInteger ejecucionesSegundaBase = new AtomicInteger();
-        MigradorEsquemaJdbc.migrarSiEsNecesario(proveedorMigracion(
-                "jdbc:mysql://migracion.test/segunda_" + sufijo,
-                "segunda_" + sufijo, ejecucionesSegundaBase, false));
-        assertTrue("La segunda base debe ejecutar su propia migración", ejecucionesSegundaBase.get() > 0);
-    }
-
-    private ProveedorConexionJdbc proveedorMigracion(String url, String catalogo,
-            AtomicInteger sentencias, boolean fallarPrimeraSentencia) {
-        AtomicInteger intentos = new AtomicInteger();
+    public void migradorRechazaEsquemaVacioAntesDeBackupODdl() {
+        AtomicInteger ddls = new AtomicInteger();
+        AtomicInteger backups = new AtomicInteger();
         Statement statement = (Statement) java.lang.reflect.Proxy.newProxyInstance(
                 Statement.class.getClassLoader(), new Class<?>[] { Statement.class },
                 (proxy, method, args) -> {
-                    if ("executeUpdate".equals(method.getName())) {
-                        sentencias.incrementAndGet();
-                        if (fallarPrimeraSentencia && intentos.getAndIncrement() == 0) {
-                            throw new SQLException("Fallo DDL inducido", "42000", 1142);
-                        }
-                        return 1;
-                    }
-                    if ("executeQuery".equals(method.getName())) {
-                        return resultadoVacioMigracion();
-                    }
-                    return null;
-                });
-        PreparedStatement preparedStatement = (PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
-                PreparedStatement.class.getClassLoader(), new Class<?>[] { PreparedStatement.class },
-                (proxy, method, args) -> {
-                    if ("executeUpdate".equals(method.getName())) {
-                        sentencias.incrementAndGet();
-                        return 1;
-                    }
-                    if ("executeBatch".equals(method.getName())) return new int[0];
+                    if ("executeQuery".equals(method.getName())) return resultadoLockMigracion();
+                    if ("executeUpdate".equals(method.getName())) { ddls.incrementAndGet(); return 1; }
                     return null;
                 });
         DatabaseMetaData metadata = (DatabaseMetaData) java.lang.reflect.Proxy.newProxyInstance(
                 DatabaseMetaData.class.getClassLoader(), new Class<?>[] { DatabaseMetaData.class },
                 (proxy, method, args) -> {
-                    if ("getURL".equals(method.getName())) return url;
-                    if ("getColumns".equals(method.getName()) || "getIndexInfo".equals(method.getName())) {
-                        return resultadoVacioMigracion();
+                    if ("getTables".equals(method.getName())) return resultadoVacioMigracion();
+                    return null;
+                });
+        Connection connection = (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                Connection.class.getClassLoader(), new Class<?>[] { Connection.class },
+                (proxy, method, args) -> {
+                    if ("getMetaData".equals(method.getName())) return metadata;
+                    if ("getCatalog".equals(method.getName())) return "restaurante";
+                    if ("createStatement".equals(method.getName())) return statement;
+                    return null;
+                });
+        ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc() {
+            @Override public Connection getConnection() { return connection; }
+        };
+
+        org.junit.Assert.assertThrows(DataAccessException.class,
+                () -> MigradorEsquemaJdbc.migrarSiEsNecesario(proveedor, p -> {
+                    backups.incrementAndGet();
+                    return java.nio.file.Path.of("backup-test.sql");
+                }));
+        assertEquals("La BD sin esquema se rechaza antes de intentar respaldarla", 0, backups.get());
+        assertEquals("No debe ejecutarse DDL sobre una BD vacía/no reconocida", 0, ddls.get());
+    }
+
+    @Test
+    public void migradorNoEjecutaDdlCuandoFallaElRespaldoPrevio() {
+        AtomicInteger ddls = new AtomicInteger();
+        AtomicInteger backups = new AtomicInteger();
+        Set<String> tablasExistentes = Set.of("config", "usuarios", "platos", "salas", "pedidos", "detalle_pedidos");
+        Statement statement = (Statement) java.lang.reflect.Proxy.newProxyInstance(
+                Statement.class.getClassLoader(), new Class<?>[] { Statement.class },
+                (proxy, method, args) -> {
+                    if ("executeQuery".equals(method.getName())) return resultadoLockMigracion();
+                    if ("executeUpdate".equals(method.getName())) { ddls.incrementAndGet(); return 1; }
+                    return null;
+                });
+        DatabaseMetaData metadata = (DatabaseMetaData) java.lang.reflect.Proxy.newProxyInstance(
+                DatabaseMetaData.class.getClassLoader(), new Class<?>[] { DatabaseMetaData.class },
+                (proxy, method, args) -> {
+                    if ("getTables".equals(method.getName())) {
+                        String patron = (String) args[2];
+                        return "schema_migrations".equalsIgnoreCase(patron)
+                                ? resultadoVacioMigracion() : resultadoTablasMigracion(tablasExistentes);
                     }
                     return null;
                 });
@@ -614,14 +639,48 @@ public class ExhaustivoDashboardUsuarioTest {
                 Connection.class.getClassLoader(), new Class<?>[] { Connection.class },
                 (proxy, method, args) -> {
                     if ("getMetaData".equals(method.getName())) return metadata;
-                    if ("getCatalog".equals(method.getName())) return catalogo;
+                    if ("getCatalog".equals(method.getName())) return "restaurante";
                     if ("createStatement".equals(method.getName())) return statement;
-                    if ("prepareStatement".equals(method.getName())) return preparedStatement;
                     return null;
                 });
-        return new ProveedorConexionJdbc() {
+        ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc() {
             @Override public Connection getConnection() { return connection; }
         };
+
+        org.junit.Assert.assertThrows(DataAccessException.class,
+                () -> MigradorEsquemaJdbc.migrarSiEsNecesario(proveedor, p -> {
+                    backups.incrementAndGet();
+                    throw new java.io.IOException("disco sin espacio");
+                }));
+        assertEquals("El respaldo debe intentarse antes del DDL", 1, backups.get());
+        assertEquals("Un error de backup no debe dejar cambios DDL", 0, ddls.get());
+    }
+
+    private ResultSet resultadoTablasMigracion(Set<String> tablas) {
+        java.util.Iterator<String> iterator = tablas.iterator();
+        java.util.concurrent.atomic.AtomicReference<String> actual = new java.util.concurrent.atomic.AtomicReference<>();
+        return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
+                (proxy, method, args) -> {
+                    if ("next".equals(method.getName())) {
+                        if (!iterator.hasNext()) return false;
+                        actual.set(iterator.next());
+                        return true;
+                    }
+                    if ("getString".equals(method.getName())) return actual.get();
+                    return null;
+                });
+    }
+
+    private ResultSet resultadoLockMigracion() {
+        AtomicInteger posicion = new AtomicInteger();
+        return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
+                (proxy, method, args) -> {
+                    if ("next".equals(method.getName())) return posicion.getAndIncrement() == 0;
+                    if ("getInt".equals(method.getName())) return 1;
+                    return null;
+                });
     }
 
     private ResultSet resultadoVacioMigracion() {

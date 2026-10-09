@@ -110,6 +110,23 @@ public class ModoSalidaYPdf24ImpresionTest {
         } finally {
             ServicioImpresionTicket.removeModoGlobalListener(listener);
         }
+
+        // Test sincronización de impresora global
+        AtomicReference<String> impEscuchada = new AtomicReference<>();
+        java.util.function.Consumer<String> impListener = impEscuchada::set;
+        ServicioImpresionTicket.addImpresoraGlobalListener(impListener);
+        try {
+            ServicioImpresionTicket.setImpresoraGlobal("POS-80 Test");
+            assertEquals("POS-80 Test", ServicioImpresionTicket.getImpresoraGlobal());
+            assertEquals("POS-80 Test", impEscuchada.get());
+
+            ServicioImpresionTicket.setImpresoraGlobal(null);
+            assertEquals("DEFAULT", ServicioImpresionTicket.getImpresoraGlobal());
+            assertEquals("DEFAULT", impEscuchada.get());
+        } finally {
+            ServicioImpresionTicket.removeImpresoraGlobalListener(impListener);
+            ServicioImpresionTicket.setImpresoraGlobal("DEFAULT");
+        }
     }
 
     @Test
