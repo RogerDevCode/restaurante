@@ -25,13 +25,15 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 3;
+    private static final int VERSION_ESQUEMA = 4;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
     private static final String CHECKSUM_MIGRACION_V2 = calcularChecksum(DEFINICION_MIGRACION_V2);
-    private static final String DEFINICION_MIGRACION = "v3:platos_aplica_iva,salas_tipo";
-    private static final String CHECKSUM_MIGRACION = calcularChecksum(DEFINICION_MIGRACION);
+    private static final String DEFINICION_MIGRACION_V3 = "v3:platos_aplica_iva,salas_tipo";
+    private static final String DEFINICION_MIGRACION_V4 = "v4:categorias,plato_categoria,plato_favorito,platos_nombre_clave,detalle_pedidos_nombre_clave,pedidos_estado_anulado";
+    private static final String CHECKSUM_MIGRACION = calcularChecksum(DEFINICION_MIGRACION_V4);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v4";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     @FunctionalInterface
@@ -170,7 +172,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ",'sincronizacion_esquema_v3','" + CHECKSUM_MIGRACION + "','EN_CURSO','asegurar_esquema') "
+                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION + "','EN_CURSO','asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -184,7 +186,8 @@ public final class MigradorEsquemaJdbc {
     private static void validarPostcondiciones(Connection con) throws SQLException {
         DatabaseMetaData meta = con.getMetaData();
         String catalogo = con.getCatalog();
-        for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja", "mesoneros")) {
+        for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja", "mesoneros",
+                "categorias", "plato_categoria", "plato_favorito")) {
             if (!tablaExiste(con, tabla)) throw new SQLException("Postcondición no cumplida: falta tabla " + tabla);
         }
         for (String[] par : new String[][] {
@@ -193,11 +196,16 @@ public final class MigradorEsquemaJdbc {
                 {"platos", "activo"},
                 {"pedidos", "id_mesonero"},
                 {"platos", "aplica_iva"},
-                {"salas", "tipo"}
+                {"salas", "tipo"},
+                {"platos", "nombre_clave"},
+                {"detalle_pedidos", "nombre_clave"}
         }) {
             if (!columnaExiste(meta, catalogo, par[0], par[1])) {
                 throw new SQLException("Postcondición no cumplida: falta columna " + par[0] + "." + par[1]);
             }
+        }
+        if (!pedidosEstadoAdmiteAnulacion(con)) {
+            throw new SQLException("Postcondición no cumplida: pedidos.estado no admite 'ANULADO'.");
         }
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery("SELECT COUNT(DISTINCT clave) FROM configuracion_sistema WHERE clave IN "
@@ -289,6 +297,28 @@ public final class MigradorEsquemaJdbc {
 
         // 9. Asegurar tabla de mesoneros (CRUD, soft-delete, toggle activo)
         asegurarTablaMesoneros(con, meta, catalogo);
+
+        // 10. Columna normalizada de identidad de plato (clave estable para categorías/favoritos/ranking)
+        asegurarColumna(con, meta, catalogo, "platos", "nombre_clave",
+                "VARCHAR(200) GENERATED ALWAYS AS (LOWER(TRIM(nombre))) STORED");
+        asegurarIndice(con, meta, catalogo, "platos", "idx_platos_nombre_clave", "(nombre_clave)");
+
+        // 11. Misma clave normalizada en el detalle de pedidos para agregar el ranking sin desnormalizar
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "nombre_clave",
+                "VARCHAR(200) GENERATED ALWAYS AS (LOWER(TRIM(nombre))) STORED");
+        asegurarIndice(con, meta, catalogo, "detalle_pedidos", "idx_detalle_pedidos_nombre_clave", "(nombre_clave)");
+
+        // 12. Asegurar tabla de categorías con paleta de colores (semilla: General)
+        asegurarTablaCategorias(con, meta, catalogo);
+
+        // 13. Asegurar tabla de asignación plato -> categoría (identidad por nombre_clave, sin FK a platos)
+        asegurarTablaPlatoCategoria(con, meta, catalogo);
+
+        // 14. Asegurar tabla de platos favoritos (identidad por nombre_clave)
+        asegurarTablaPlatoFavorito(con, meta, catalogo);
+
+        // 15. Ampliar pedidos.estado con 'ANULADO' para que la anulación de pedidos funcione
+        asegurarEstadoPedidosConAnulacion(con);
     }
 
     private static void asegurarColumna(Connection con, DatabaseMetaData meta, String catalogo,
@@ -513,5 +543,68 @@ public final class MigradorEsquemaJdbc {
                 """);
             LOGGER.info("Tabla mesoneros verificada.");
         }
+    }
+
+    private static boolean pedidosEstadoAdmiteAnulacion(Connection con) throws SQLException {
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COLUMN_TYPE FROM information_schema.COLUMNS "
+                     + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pedidos' AND COLUMN_NAME = 'estado'")) {
+            return rs.next() && rs.getString(1).toUpperCase(java.util.Locale.ROOT).contains("ANULADO");
+        }
+    }
+
+    private static void asegurarEstadoPedidosConAnulacion(Connection con) throws SQLException {
+        if (pedidosEstadoAdmiteAnulacion(con)) {
+            return;
+        }
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("ALTER TABLE pedidos MODIFY COLUMN estado "
+                    + "ENUM('PENDIENTE','FINALIZADO','ANULADO') COLLATE utf8_spanish_ci NOT NULL DEFAULT 'PENDIENTE'");
+        }
+        LOGGER.info("pedidos.estado ampliado automáticamente con 'ANULADO'.");
+    }
+
+    private static void asegurarTablaCategorias(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS categorias (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nombre VARCHAR(60) NOT NULL UNIQUE,
+                    color CHAR(7) NOT NULL DEFAULT '#6B7280',
+                    orden INT NOT NULL DEFAULT 0,
+                    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+            st.executeUpdate("INSERT IGNORE INTO categorias (nombre, color, orden) VALUES ('General', '#6B7280', 0)");
+        }
+        LOGGER.info("Tabla categorias verificada.");
+    }
+
+    private static void asegurarTablaPlatoCategoria(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS plato_categoria (
+                    nombre_clave VARCHAR(200) NOT NULL,
+                    id_categoria INT NOT NULL,
+                    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (nombre_clave),
+                    INDEX idx_plato_categoria_categoria (id_categoria)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+        }
+        LOGGER.info("Tabla plato_categoria verificada.");
+    }
+
+    private static void asegurarTablaPlatoFavorito(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS plato_favorito (
+                    nombre_clave VARCHAR(200) NOT NULL,
+                    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (nombre_clave)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+        }
+        LOGGER.info("Tabla plato_favorito verificada.");
     }
 }
