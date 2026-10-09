@@ -6,6 +6,9 @@ import java.util.List;
 public interface PedidosRepositorio {
     int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles);
 
+    /** Actualiza un pedido pendiente sobrescribiendo sus totales y detalles. */
+    boolean actualizarPedidoCompleto(int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos);
+
     /** Devuelve el identificador pendiente de una mesa o cero cuando no tiene pedido abierto. */
     int verificarStado(int mesa, int idSala);
 

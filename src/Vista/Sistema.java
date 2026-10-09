@@ -113,6 +113,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnCierreTotal;
     private javax.swing.JTextField txtCantidadManual;
     private int platoSeleccionadoIdFoco = -1;
+    private int idPedidoEdicion = -1;
     private String ultimoTextoIngresado = "";
     private boolean isUpdatingUI = false;
     private Servicio.CierreCajaServicio cierreCajaServicio;
@@ -876,6 +877,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtSalaFinalizar = new javax.swing.JTextField();
         txtNumMesaFinalizar = new javax.swing.JTextField();
         btnPdfPedido = new javax.swing.JButton();
+        btnModificarPedido = new javax.swing.JButton();
         txtIdHistorialPedido = new javax.swing.JTextField();
         jPanel6 = new javax.swing.JPanel();
         jScrollPane5 = new javax.swing.JScrollPane();
@@ -1697,6 +1699,15 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
         jPanel25.add(btnPdfPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(780, 440, 110, 40));
+        
+        btnModificarPedido.setText("Agregar Productos");
+        btnModificarPedido.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/nuevo.png"))); // Reuse "nuevo.png" if exists or just leave text
+        btnModificarPedido.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnModificarPedidoActionPerformed(evt);
+            }
+        });
+        jPanel25.add(btnModificarPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(580, 440, 180, 40));
         jPanel25.add(txtIdHistorialPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(630, 450, 50, -1));
 
         jTabbedPane1.addTab("Finalizar Pedido", jPanel25);
@@ -2381,6 +2392,74 @@ public final class Sistema extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_btnPdfPedidoActionPerformed
 
+    private void btnModificarPedidoActionPerformed(java.awt.event.ActionEvent evt) {
+        if (ped == null || ped.getId() <= 0) {
+            JOptionPane.showMessageDialog(this, "No hay pedido seleccionado para modificar.");
+            return;
+        }
+        idPedidoEdicion = ped.getId();
+        txtTempIdSala.setText(String.valueOf(ped.getId_sala()));
+        txtTempNumMesa.setText(String.valueOf(ped.getNum_mesa()));
+        
+        jPanel23.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 102, 102)),
+                "MODIFICANDO PEDIDO N° " + ped.getId() + " - " + ped.getSala() + " | MESA " + ped.getNum_mesa(),
+                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
+                javax.swing.border.TitledBorder.DEFAULT_POSITION,
+                new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14),
+                new java.awt.Color(0, 102, 102)));
+                
+        btnGenerarPedido.setText("Actualizar Pedido");
+        jTabbedPane1.setSelectedIndex(3);
+        LimpiarTableMenu();
+        
+        DefaultTableModel tmp = (DefaultTableModel) tableMenu.getModel();
+        boolean tieneColumnaIva = tmp.getColumnCount() >= 7;
+        
+        java.util.List<Modelo.DetallePedido> detalles = pedidosControlador.verPedidoDetalle(ped.getId());
+        
+        for (Modelo.DetallePedido det : detalles) {
+            String nombre = det.getNombre();
+            int idPlato = 0;
+            boolean aplicaIva = true;
+            for (int k = 0; k < tblTemPlatos.getRowCount(); k++) {
+                if (tblTemPlatos.getValueAt(k, 1).toString().equalsIgnoreCase(nombre)) {
+                    idPlato = Integer.parseInt(tblTemPlatos.getValueAt(k, 0).toString());
+                    aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
+                    break;
+                }
+            }
+            Object[] O = new Object[tieneColumnaIva ? 7 : 6];
+            O[0] = idPlato > 0 ? idPlato : ""; 
+            O[1] = nombre;
+            O[2] = det.getCantidad();
+            java.math.BigDecimal precio = det.getPrecioDecimal().setScale(2, java.math.RoundingMode.HALF_UP);
+            String precioStr = String.format(java.util.Locale.US, "%.2f", precio);
+            O[3] = precioStr;
+            java.math.BigDecimal subtotal = precio.multiply(new java.math.BigDecimal(det.getCantidad())).setScale(2, java.math.RoundingMode.HALF_UP);
+            O[4] = String.format(java.util.Locale.US, "%.2f", subtotal);
+            O[5] = det.getComentario();
+            if (tieneColumnaIva) {
+                O[6] = aplicaIva ? "Sí (16%)" : "Exento (0%)";
+            }
+            tmp.addRow(O);
+        }
+        TotalPagar(tableMenu, totalMenu);
+        actualizarEstadoBotonesCarrito();
+        
+        if (ped.getIdMesonero() != null && ped.getIdMesonero() > 0) {
+            for (int i = 0; i < cbMesoneroPedido.getItemCount(); i++) {
+                Object mObj = cbMesoneroPedido.getItemAt(i);
+                if (mObj instanceof Modelo.Mesonero m) {
+                    if (m.getId() == ped.getIdMesonero()) {
+                        cbMesoneroPedido.setSelectedIndex(i);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     private void btnPrevisualizarPedidoActionPerformed(java.awt.event.ActionEvent evt) {
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
 
@@ -2607,23 +2686,32 @@ public final class Sistema extends javax.swing.JFrame {
     private void btnGenerarPedidoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGenerarPedidoActionPerformed
         if (tableMenu.getRowCount() > 0) {
             int confirm = JOptionPane.showConfirmDialog(this,
-                    "¿Está seguro de realizar este pedido?",
-                    "Confirmar Pedido",
+                    idPedidoEdicion > 0 ? "¿Está seguro de actualizar este pedido?" : "¿Está seguro de realizar este pedido?",
+                    idPedidoEdicion > 0 ? "Actualizar Pedido" : "Confirmar Pedido",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.QUESTION_MESSAGE);
             if (confirm != JOptionPane.YES_OPTION) {
                 return;
             }
             try {
-                int idPedido = registrarPedidoCompleto();
+                int idPedido;
+                if (idPedidoEdicion > 0) {
+                    actualizarPedidoEnEdicion();
+                    idPedido = idPedidoEdicion;
+                    JOptionPane.showMessageDialog(this, "PEDIDO N° " + idPedido + " ACTUALIZADO");
+                    idPedidoEdicion = -1;
+                    btnGenerarPedido.setText("Realizar Pedido");
+                } else {
+                    idPedido = registrarPedidoCompleto();
+                    JOptionPane.showMessageDialog(this, "PEDIDO N° " + idPedido + " REGISTRADO");
+                }
                 LimpiarTableMenu();
-                JOptionPane.showMessageDialog(this, "PEDIDO N° " + idPedido + " REGISTRADO");
                 jTabbedPane1.setSelectedIndex(0);
-            } catch (PedidoPendienteExistenteException ex) {
+            } catch (Modelo.PedidoPendienteExistenteException ex) {
                 JOptionPane.showMessageDialog(this,
                         "Otra sesión ya registró un pedido para esta mesa. Vuelve a seleccionar la sala para actualizar su estado.",
                         "Mesa ocupada", JOptionPane.WARNING_MESSAGE);
-            } catch (DataAccessException ex) {
+            } catch (Modelo.DataAccessException ex) {
                 JOptionPane.showMessageDialog(this,
                         ex.getMessage() + " El carrito se conservó; verifica el historial antes de reintentar.",
                         "Error al guardar pedido", JOptionPane.ERROR_MESSAGE);
@@ -3104,6 +3192,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnEliminarSala;
     private javax.swing.JButton btnEliminarTempPlato;
     private javax.swing.JButton btnFinalizar;
+    private javax.swing.JButton btnModificarPedido;
     private javax.swing.JButton btnGenerarPedido;
     private javax.swing.JButton btnGuardarPlato;
     private javax.swing.JButton btnIniciar;
@@ -3269,6 +3358,8 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void LimpiarTableMenu() {
+        idPedidoEdicion = -1;
+        if (btnGenerarPedido != null) btnGenerarPedido.setText("Realizar Pedido");
         tmp = (DefaultTableModel) tableMenu.getModel();
         tmp.setRowCount(0);
         item = 0;
@@ -6111,6 +6202,70 @@ public final class Sistema extends javax.swing.JFrame {
             detalles.add(detalle);
         }
         return pedidosControlador.registrarPedidoCompleto(pedido, detalles);
+    }
+
+    private void actualizarPedidoEnEdicion() {
+        int id_sala = Integer.parseInt(txtTempIdSala.getText());
+        int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
+        BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
+        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
+
+        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
+        BigDecimal exento = BigDecimal.ZERO.setScale(2);
+        for (int i = 0; i < tableMenu.getRowCount(); i++) {
+            BigDecimal subtotal = importeMonetario(tableMenu.getValueAt(i, 4));
+            boolean itemAplicaIva = true;
+            if (tableMenu.getColumnCount() > 6 && tableMenu.getValueAt(i, 6) != null) {
+                String valIva = tableMenu.getValueAt(i, 6).toString().toLowerCase(java.util.Locale.ROOT);
+                if (valIva.contains("exento") || valIva.contains("no") || valIva.equals("false") || valIva.equals("0")) {
+                    itemAplicaIva = false;
+                }
+            } else {
+                Object idObj = tableMenu.getValueAt(i, 0);
+                if (idObj != null) {
+                    try {
+                        int idPlato = Integer.parseInt(idObj.toString());
+                        itemAplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (itemAplicaIva) {
+                baseImponible = baseImponible.add(subtotal);
+            } else {
+                exento = exento.add(subtotal);
+            }
+        }
+
+        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(baseImponible, exento, ivaPorcentaje, tasa);
+
+        Pedidos pedido = new Pedidos();
+        pedido.setId_sala(id_sala);
+        pedido.setNum_mesa(num_mesa);
+        pedido.setSubtotal(fiscal.subtotalUsd());
+        pedido.setIvaPorcentaje(fiscal.ivaPorcentaje());
+        pedido.setIvaMonto(fiscal.ivaUsd());
+        pedido.setTotalDecimal(fiscal.totalUsd());
+        pedido.setTasaCambio(fiscal.tasaCambio());
+        pedido.setSubtotalBs(fiscal.subtotalBs());
+        pedido.setIvaBs(fiscal.ivaBs());
+        pedido.setTotalBs(fiscal.totalBs());
+        pedido.setUsuario(LabelVendedor.getText());
+        if (cbMesoneroPedido != null && cbMesoneroPedido.getSelectedItem() instanceof Mesonero m) {
+            pedido.setIdMesonero(m.getId());
+            pedido.setMesoneroNombre(m.getNombreCompleto());
+        }
+
+        List<DetallePedido> detalles = new ArrayList<>();
+        for (int i = 0; i < tableMenu.getRowCount(); i++) {
+            DetallePedido detalle = new DetallePedido();
+            detalle.setNombre(tableMenu.getValueAt(i, 1).toString());
+            detalle.setCantidad(Integer.parseInt(tableMenu.getValueAt(i, 2).toString()));
+            detalle.setPrecioDecimal(importeMonetario(tableMenu.getValueAt(i, 3)));
+            Object comentario = tableMenu.getValueAt(i, 5);
+            detalle.setComentario(comentario == null ? "" : comentario.toString());
+            detalles.add(detalle);
+        }
+        pedidosControlador.actualizarPedidoCompleto(idPedidoEdicion, pedido, detalles);
     }
 
     private String fechaActual() {

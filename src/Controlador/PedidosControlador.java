@@ -46,6 +46,11 @@ public final class PedidosControlador {
         return servicio.registrarPedidoCompleto(pedido, detalles);
     }
 
+    public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedido, List<DetallePedido> detalles) {
+        exigirPermiso(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
+        return servicio.actualizarPedidoCompleto(idPedido, pedido, detalles);
+    }
+
     public boolean generarPdfPedido(int idPedido) {
         exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         return servicioPdf.generar(idPedido);

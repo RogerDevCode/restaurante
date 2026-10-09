@@ -24,6 +24,11 @@ public final class PedidoServicio {
         return repositorio.registrarPedidoCompleto(pedido, detalles);
     }
 
+    public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedido, List<DetallePedido> detalles) {
+        validar(pedido, detalles);
+        return repositorio.actualizarPedidoCompleto(idPedido, pedido, detalles);
+    }
+
     private void validar(Pedidos pedido, List<DetallePedido> detalles) {
         if (pedido == null) {
             throw ErrorAplicacionException.validacion("El pedido es obligatorio.");

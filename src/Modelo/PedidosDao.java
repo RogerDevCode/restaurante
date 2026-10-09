@@ -154,6 +154,120 @@ public class PedidosDao implements PedidosRepositorio {
         }
     }
 
+    @Override
+    public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos) {
+        validarPedidoPersistible(pedidoModificado, detallesNuevos);
+        
+        String sqlUpdatePedido = """
+            UPDATE pedidos SET subtotal = ?, iva_porcentaje = ?, iva_monto = ?, total = ?, 
+            tasa_cambio = ?, subtotal_bs = ?, iva_bs = ?, total_bs = ?, id_mesonero = ?, mesonero_nombre = ?
+            WHERE id = ? AND estado = 'PENDIENTE'
+            """;
+        String sqlDeleteDetalles = "DELETE FROM detalle_pedidos WHERE id_pedido = ?";
+        String sqlInsertDetalle = "INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conexion = conexiones.getConnection()) {
+            conexion.setAutoCommit(false);
+            try (PreparedStatement updatePed = conexion.prepareStatement(sqlUpdatePedido);
+                 PreparedStatement delDetalles = conexion.prepareStatement(sqlDeleteDetalles);
+                 PreparedStatement insDetalle = conexion.prepareStatement(sqlInsertDetalle)) {
+                
+                updatePed.setBigDecimal(1, pedidoModificado.getSubtotal());
+                updatePed.setBigDecimal(2, pedidoModificado.getIvaPorcentaje());
+                updatePed.setBigDecimal(3, pedidoModificado.getIvaMonto());
+                updatePed.setBigDecimal(4, pedidoModificado.getTotalDecimal());
+                updatePed.setBigDecimal(5, pedidoModificado.getTasaCambio());
+                updatePed.setBigDecimal(6, pedidoModificado.getSubtotalBs());
+                updatePed.setBigDecimal(7, pedidoModificado.getIvaBs());
+                updatePed.setBigDecimal(8, pedidoModificado.getTotalBs());
+                if (pedidoModificado.getIdMesonero() != null && pedidoModificado.getIdMesonero() > 0) {
+                    updatePed.setInt(9, pedidoModificado.getIdMesonero());
+                    updatePed.setString(10, pedidoModificado.getMesoneroNombre());
+                } else {
+                    updatePed.setNull(9, java.sql.Types.INTEGER);
+                    updatePed.setNull(10, java.sql.Types.VARCHAR);
+                }
+                updatePed.setInt(11, idPedido);
+                
+                int filasAfectadas = updatePed.executeUpdate();
+                if (filasAfectadas == 0) {
+                    throw new SQLException("El pedido ya no existe o no está PENDIENTE.");
+                }
+                
+                delDetalles.setInt(1, idPedido);
+                delDetalles.executeUpdate();
+                
+                for (DetallePedido det : detallesNuevos) {
+                    insDetalle.setString(1, det.getNombre());
+                    insDetalle.setBigDecimal(2, det.getPrecioDecimal());
+                    insDetalle.setInt(3, det.getCantidad());
+                    insDetalle.setString(4, det.getComentario() == null ? "" : det.getComentario());
+                    insDetalle.setInt(5, idPedido);
+                    insDetalle.addBatch();
+                }
+                insDetalle.executeBatch();
+                conexion.commit();
+                return true;
+            } catch (SQLException error) {
+                conexion.rollback();
+                if (error.getErrorCode() == 1054) {
+                    return actualizarPedidoCompletoLegacy(conexion, idPedido, pedidoModificado, detallesNuevos);
+                }
+                throw error;
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo actualizar el pedido completo.", ex);
+        }
+    }
+
+    private boolean actualizarPedidoCompletoLegacy(Connection conexion, int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos) throws SQLException {
+        String sqlUpdatePedido = """
+            UPDATE pedidos SET subtotal = ?, iva_porcentaje = ?, iva_monto = ?, total = ?, 
+            tasa_cambio = ?, subtotal_bs = ?, iva_bs = ?, total_bs = ?
+            WHERE id = ? AND estado = 'PENDIENTE'
+            """;
+        String sqlDeleteDetalles = "DELETE FROM detalle_pedidos WHERE id_pedido = ?";
+        String sqlInsertDetalle = "INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido) VALUES (?, ?, ?, ?, ?)";
+        
+        try (PreparedStatement updatePed = conexion.prepareStatement(sqlUpdatePedido);
+             PreparedStatement delDetalles = conexion.prepareStatement(sqlDeleteDetalles);
+             PreparedStatement insDetalle = conexion.prepareStatement(sqlInsertDetalle)) {
+             
+             updatePed.setBigDecimal(1, pedidoModificado.getSubtotal());
+             updatePed.setBigDecimal(2, pedidoModificado.getIvaPorcentaje());
+             updatePed.setBigDecimal(3, pedidoModificado.getIvaMonto());
+             updatePed.setBigDecimal(4, pedidoModificado.getTotalDecimal());
+             updatePed.setBigDecimal(5, pedidoModificado.getTasaCambio());
+             updatePed.setBigDecimal(6, pedidoModificado.getSubtotalBs());
+             updatePed.setBigDecimal(7, pedidoModificado.getIvaBs());
+             updatePed.setBigDecimal(8, pedidoModificado.getTotalBs());
+             updatePed.setInt(9, idPedido);
+             
+             int filasAfectadas = updatePed.executeUpdate();
+             if (filasAfectadas == 0) {
+                 throw new SQLException("El pedido ya no existe o no está PENDIENTE.");
+             }
+             
+             delDetalles.setInt(1, idPedido);
+             delDetalles.executeUpdate();
+             
+             for (DetallePedido det : detallesNuevos) {
+                 insDetalle.setString(1, det.getNombre());
+                 insDetalle.setBigDecimal(2, det.getPrecioDecimal());
+                 insDetalle.setInt(3, det.getCantidad());
+                 insDetalle.setString(4, det.getComentario() == null ? "" : det.getComentario());
+                 insDetalle.setInt(5, idPedido);
+                 insDetalle.addBatch();
+             }
+             insDetalle.executeBatch();
+             conexion.commit();
+             return true;
+        } catch (SQLException error) {
+            conexion.rollback();
+            throw error;
+        }
+    }
+
     private int registrarPedidoCompletoLegacy(Connection conexion, Pedidos pedido, List<DetallePedido> detalles) throws SQLException {
         String sqlPedido = """
             INSERT INTO pedidos (id_sala, num_mesa, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs)
