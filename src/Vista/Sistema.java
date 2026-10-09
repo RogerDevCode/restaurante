@@ -113,6 +113,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnCierreTotal;
     private javax.swing.JTextField txtCantidadManual;
     private int platoSeleccionadoIdFoco = -1;
+    private String ultimoTextoIngresado = "";
     private boolean isUpdatingUI = false;
     private Servicio.CierreCajaServicio cierreCajaServicio;
     private javax.swing.JLabel lblTituloSalaMesas;
@@ -1280,7 +1281,7 @@ public final class Sistema extends javax.swing.JFrame {
         tblTemPlatos.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                if (evt.getClickCount() >= 1) {
+                if (javax.swing.SwingUtilities.isLeftMouseButton(evt) && evt.getClickCount() >= 1) {
                     // Click en tblTemPlatos: Si el plato ya está en el carrito, sumarle 1 y seleccionarlo
                     int row = tblTemPlatos.rowAtPoint(evt.getPoint());
                     if (row >= 0) {
@@ -1456,10 +1457,21 @@ public final class Sistema extends javax.swing.JFrame {
                 } else {
                     platoSeleccionadoIdFoco = -1;
                 }
+                ultimoTextoIngresado = txtCantidadManual.getText();
             }
             @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
-                aplicarCantidadManual(txtCantidadManual.getText(), platoSeleccionadoIdFoco);
+                aplicarCantidadManual(ultimoTextoIngresado, platoSeleccionadoIdFoco);
+            }
+        });
+        txtCantidadManual.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { updateText(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { updateText(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { updateText(); }
+            private void updateText() {
+                if (txtCantidadManual.hasFocus() && !isUpdatingUI) {
+                    ultimoTextoIngresado = txtCantidadManual.getText();
+                }
             }
         });
         txtCantidadManual.addKeyListener(new java.awt.event.KeyAdapter() {
