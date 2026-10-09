@@ -105,6 +105,9 @@ public final class PlatosServicio {
     }
 
     private Platos normalizar(Platos plato) {
-        return new Platos(plato.getId(), plato.getNombre().trim(), plato.getPrecioDecimal(), plato.getFecha());
+        Platos normalizado = new Platos(
+                plato.getId(), plato.getNombre().trim(), plato.getPrecioDecimal(), plato.getFecha());
+        normalizado.setAplicaIva(plato.isAplicaIva());
+        return normalizado;
     }
 }

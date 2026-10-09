@@ -34,7 +34,7 @@ public class FinalizarPedidoSwingWorkerTest {
     @Test
     public void finalizaYGeneraPdfFueraDelEdtConCallbackEnEdt() throws Exception {
         AtomicBoolean operacionesEnEdt = new AtomicBoolean(true);
-        AtomicReference<Boolean> finalizado = new AtomicReference<>();
+        AtomicReference<FinalizarPedidoSwingWorker.ResultadoFinalizacion> finalizado = new AtomicReference<>();
         CountDownLatch completado = new CountDownLatch(1);
         PedidosRepositorioFalso repositorio = new PedidosRepositorioFalso() {
             @Override public boolean actualizarEstado(int id) {
@@ -54,14 +54,14 @@ public class FinalizarPedidoSwingWorkerTest {
 
         assertTrue(completado.await(5, TimeUnit.SECONDS));
         assertFalse(operacionesEnEdt.get());
-        assertTrue(finalizado.get());
+        assertTrue(finalizado.get().finalizado());
     }
 
     @Test
     public void pedidoSinCambiosNoGeneraPdf() throws Exception {
         AtomicBoolean pdfGenerado = new AtomicBoolean();
         AtomicBoolean pdfConsultado = new AtomicBoolean();
-        AtomicReference<Boolean> finalizado = new AtomicReference<>();
+        AtomicReference<FinalizarPedidoSwingWorker.ResultadoFinalizacion> finalizado = new AtomicReference<>();
         CountDownLatch completado = new CountDownLatch(1);
         PedidosControlador controlador = controlador(new PedidosRepositorioFalso() {
             @Override public boolean actualizarEstado(int id) { return false; }
@@ -73,7 +73,7 @@ public class FinalizarPedidoSwingWorkerTest {
         }, (error, confirmado) -> { throw new AssertionError(error); }).execute());
 
         assertTrue(completado.await(5, TimeUnit.SECONDS));
-        assertFalse(finalizado.get());
+        assertFalse(finalizado.get().finalizado());
         assertFalse(pdfGenerado.get());
         assertFalse(pdfConsultado.get());
     }

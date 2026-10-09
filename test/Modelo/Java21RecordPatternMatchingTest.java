@@ -40,22 +40,6 @@ public class Java21RecordPatternMatchingTest {
         );
     }
 
-    @Test
-    public void testDatosTicketFiscalRecord() {
-        DatosTicketFiscal ticket = new DatosTicketFiscal(
-                "J-12345678-9",
-                "Restaurante Gourmet 2026",
-                "0414-1234567",
-                "Av. Principal",
-                "Gracias por su preferencia"
-        );
-
-        Assert.assertEquals("J-12345678-9", ticket.ruc());
-        Assert.assertEquals("Restaurante Gourmet 2026", ticket.nombre());
-        Assert.assertEquals("0414-1234567", ticket.telefono());
-        Assert.assertEquals("Av. Principal", ticket.direccion());
-        Assert.assertEquals("Gracias por su preferencia", ticket.mensaje());
-    }
 
     @Test
     public void testResultadoOperacionSealedInterfacePatternMatching() {

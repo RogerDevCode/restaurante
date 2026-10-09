@@ -23,11 +23,19 @@ import Modelo.Salas;
 import Modelo.Usuario;
 import Modelo.Mesonero;
 import Modelo.MesoneroDao;
+import Modelo.PaletaCategorias;
 import Servicio.AutenticacionServicio;
 import Servicio.PoliticaAcceso;
 import Servicio.ServicioMesoneroNombre;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.math.BigDecimal;
@@ -37,12 +45,24 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 
@@ -148,17 +168,39 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JTextField txtMesoneroFinalizar;
     private final Map<Integer, Boolean> platoAplicaIvaMap = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<Integer, String> salaTipoMap = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<Integer, Platos> platosPorId = new java.util.concurrent.ConcurrentHashMap<>();
     private boolean salaActualEsBarra = false;
     private javax.swing.JCheckBox chkAplicaIvaPlato;
     private javax.swing.JComboBox<String> cbTipoSala;
 
+    private Controlador.CategoriaControlador categoriaControlador;
+    private Controlador.FavoritoControlador favoritoControlador;
+    private javax.swing.JPanel panelCategorias;
+    private javax.swing.JList<Modelo.Categoria> listaCategorias;
+    private javax.swing.DefaultListModel<Modelo.Categoria> modeloListaCategorias;
+    private javax.swing.JTextField txtNombreCategoria;
+    private javax.swing.JComboBox<String> cbColorCategoria;
+    private javax.swing.JButton btnGuardarCategoria;
+    private javax.swing.JButton btnEditarCategoria;
+    private javax.swing.JButton btnEliminarCategoria;
+    private javax.swing.JComboBox<Platos> cbPlatoAsignacion;
+    private javax.swing.JComboBox<Modelo.Categoria> cbCategoriaPlato;
+    private javax.swing.JCheckBox chkFavoritoPlato;
+    private javax.swing.JButton btnAsignarCategoria;
+
     public Sistema(Usuario priv, SalasControlador salasControlador, PlatosControlador platosControlador,
             PedidosControlador pedidosControlador) {
-        this(priv, salasControlador, platosControlador, pedidosControlador, new LoginDao());
+        this(priv, salasControlador, platosControlador, pedidosControlador, null, null, new LoginDao());
     }
 
     public Sistema(Usuario priv, SalasControlador salasControlador, PlatosControlador platosControlador,
             PedidosControlador pedidosControlador, LoginDao loginDao) {
+        this(priv, salasControlador, platosControlador, pedidosControlador, null, null, loginDao);
+    }
+
+    public Sistema(Usuario priv, SalasControlador salasControlador, PlatosControlador platosControlador,
+            PedidosControlador pedidosControlador, Controlador.CategoriaControlador categoriaControlador,
+            Controlador.FavoritoControlador favoritoControlador, LoginDao loginDao) {
         if (salasControlador == null || platosControlador == null || pedidosControlador == null) {
             throw ErrorAplicacionException.validacion("Los controladores de salas, platos y pedidos son obligatorios.");
         }
@@ -171,6 +213,8 @@ public final class Sistema extends javax.swing.JFrame {
         this.usuarioActual = priv;
         initComponents();
         politicaAcceso = new PoliticaAcceso(priv);
+        this.categoriaControlador = categoriaControlador;
+        this.favoritoControlador = favoritoControlador;
         this.cierreCajaServicio = (pedidosControlador != null && pedidosControlador.getCierreServicio() != null)
                 ? pedidosControlador.getCierreServicio()
                 : new Servicio.CierreCajaServicio(
@@ -424,6 +468,10 @@ public final class Sistema extends javax.swing.JFrame {
                 if (motivo == null) return;
                 String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
                 boolean impreso = pedidosControlador.reimprimirPdfPedido(id, motivo, usr);
+                if (!impreso) {
+                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
+                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
+                }
                 if (!impreso) {
                     JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
                             "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
@@ -724,6 +772,23 @@ public final class Sistema extends javax.swing.JFrame {
         panelSalas();
         ListarConfig();
         actualizarEstadoTasaUI();
+        configurarTabCategorias();
+    }
+
+    private Controlador.CategoriaControlador categoriaControlador() {
+        if (categoriaControlador == null) {
+            categoriaControlador = new Controlador.CategoriaControlador(
+                    new Servicio.CategoriaServicio(new Modelo.CategoriaDao(), politicaAcceso));
+        }
+        return categoriaControlador;
+    }
+
+    private Controlador.FavoritoControlador favoritoControlador() {
+        if (favoritoControlador == null) {
+            favoritoControlador = new Controlador.FavoritoControlador(
+                    new Servicio.FavoritoServicio(new Modelo.FavoritoDao(), politicaAcceso));
+        }
+        return favoritoControlador;
     }
 
     private boolean autorizar(PoliticaAcceso.Accion accion) {
@@ -780,6 +845,7 @@ public final class Sistema extends javax.swing.JFrame {
         jScrollPane10 = new javax.swing.JScrollPane();
         tblTemPlatos = new javax.swing.JTable();
         btnAddPlato = new javax.swing.JButton();
+        btnLimpiarBuscar = new javax.swing.JButton();
         jScrollPane11 = new javax.swing.JScrollPane();
         tableMenu = new javax.swing.JTable();
         jLabel6 = new javax.swing.JLabel();
@@ -1221,6 +1287,15 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
 
+        btnLimpiarBuscar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        btnLimpiarBuscar.setText("x");
+        btnLimpiarBuscar.setToolTipText("Limpiar filtro de búsqueda");
+        btnLimpiarBuscar.setFocusable(false);
+        btnLimpiarBuscar.addActionListener(e -> {
+            txtBuscarPlato.setText("");
+            ListarPlatos(tblTemPlatos, "");
+        });
+
         javax.swing.GroupLayout jPanel24Layout = new javax.swing.GroupLayout(jPanel24);
         jPanel24.setLayout(jPanel24Layout);
         jPanel24Layout.setHorizontalGroup(
@@ -1231,7 +1306,9 @@ public final class Sistema extends javax.swing.JFrame {
                     .addComponent(jScrollPane10, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
                     .addGroup(jPanel24Layout.createSequentialGroup()
                         .addComponent(txtBuscarPlato, javax.swing.GroupLayout.PREFERRED_SIZE, 349, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 36, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnLimpiarBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 2, Short.MAX_VALUE)
                         .addComponent(btnAddPlato)))
                 .addContainerGap())
         );
@@ -1241,6 +1318,7 @@ public final class Sistema extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(jPanel24Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(txtBuscarPlato, javax.swing.GroupLayout.DEFAULT_SIZE, 32, Short.MAX_VALUE)
+                    .addComponent(btnLimpiarBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnAddPlato, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
                 .addGap(18, 18, 18)
                 .addComponent(jScrollPane10, javax.swing.GroupLayout.DEFAULT_SIZE, 450, Short.MAX_VALUE)
@@ -2194,6 +2272,10 @@ public final class Sistema extends javax.swing.JFrame {
                     JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
                             "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
                 }
+                if (!impreso) {
+                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
+                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
+                }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                         "Error", JOptionPane.ERROR_MESSAGE);
@@ -2376,7 +2458,7 @@ public final class Sistema extends javax.swing.JFrame {
     }//GEN-LAST:event_labelLogoMouseClicked
 
     private void txtBuscarPlatoKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtBuscarPlatoKeyReleased
-        ListarPlatos(tblTemPlatos);
+        ListarPlatos(tblTemPlatos, txtBuscarPlato.getText());
     }//GEN-LAST:event_txtBuscarPlatoKeyReleased
 
     private void btnAddPlatoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAddPlatoActionPerformed
@@ -2757,7 +2839,7 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void btnPlatosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnPlatosActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) return;
-        ListarPlatos(TablePlatos);
+        ListarPlatos(TablePlatos, "");
         jTabbedPane1.setSelectedIndex(8);
     }//GEN-LAST:event_btnPlatosActionPerformed
 
@@ -2776,7 +2858,7 @@ public final class Sistema extends javax.swing.JFrame {
             pla.setAplicaIva(chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected());
             if (platosControlador.registrar(pla)) {
                 JOptionPane.showMessageDialog(null, "Plato Registrado");
-                ListarPlatos(TablePlatos);
+                ListarPlatos(TablePlatos, "");
                 LimpiarPlatos();
             } else {
                 JOptionPane.showMessageDialog(this, "No se registró el plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
@@ -2801,7 +2883,7 @@ public final class Sistema extends javax.swing.JFrame {
                     pla.setAplicaIva(chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected());
                     if (platosControlador.modificar(pla)) {
                         JOptionPane.showMessageDialog(null, "Plato Modificado");
-                        ListarPlatos(TablePlatos);
+                        ListarPlatos(TablePlatos, "");
                         LimpiarPlatos();
                     } else {
                         JOptionPane.showMessageDialog(this, "No se aplicaron cambios al plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
@@ -2828,7 +2910,7 @@ public final class Sistema extends javax.swing.JFrame {
                     if (platosControlador.desactivar(id)) {
                         JOptionPane.showMessageDialog(this, "Plato desactivado con éxito.", "Platos", JOptionPane.INFORMATION_MESSAGE);
                         LimpiarPlatos();
-                        ListarPlatos(TablePlatos);
+                        ListarPlatos(TablePlatos, "");
                     } else {
                         JOptionPane.showMessageDialog(this, "No se desactivó el plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
                     }
@@ -2879,6 +2961,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnActualizarConfig;
     private javax.swing.JButton btnActualizarSala;
     private javax.swing.JButton btnAddPlato;
+    private javax.swing.JButton btnLimpiarBuscar;
     private javax.swing.JButton btnConfig;
     private javax.swing.JButton btnEditarPlato;
     private javax.swing.JButton btnEliminarPlato;
@@ -3669,6 +3752,10 @@ public final class Sistema extends javax.swing.JFrame {
                     JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
                             "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
                 }
+                if (!impreso) {
+                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
+                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
+                }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                     "Error", JOptionPane.ERROR_MESSAGE);
@@ -4338,7 +4425,7 @@ public final class Sistema extends javax.swing.JFrame {
                                 "Éxito", JOptionPane.INFORMATION_MESSAGE);
                         dialogo.dispose();
                         LimpiarPlatos();
-                        ListarPlatos(TablePlatos);
+                        ListarPlatos(TablePlatos, "");
                     } else {
                         JOptionPane.showMessageDialog(dialogo, "No se pudo reactivar el plato.",
                                 "Error", JOptionPane.ERROR_MESSAGE);
@@ -4833,7 +4920,7 @@ public final class Sistema extends javax.swing.JFrame {
                             "Restauración Exitosa", JOptionPane.INFORMATION_MESSAGE);
                     ListarConfig();
                     ListarPedidos();
-                    ListarPlatos(TablePlatos);
+                    ListarPlatos(TablePlatos, "");
                     panelSalas();
                     actualizarEstadoTasaUI();
                 } catch (Exception ex) {
@@ -4981,7 +5068,6 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void colorHeader(JTable tabla) {
-        tabla.setModel(modelo);
         JTableHeader header = tabla.getTableHeader();
         header.setOpaque(false);
         header.setBackground(new Color(0, 110, 255));
@@ -5288,7 +5374,7 @@ public final class Sistema extends javax.swing.JFrame {
                     LimpiarTableMenu();
                     txtComentario.setText("");
                     txtBuscarPlato.setText("");
-                    ListarPlatos(tblTemPlatos);
+                    ListarPlatos(tblTemPlatos, txtBuscarPlato.getText());
                     txtTempIdSala.setText("" + id_sala);
                     txtTempNumMesa.setText("" + num_mesa);
                     cargarComboMesoneros();
@@ -5322,10 +5408,9 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     // platos
-    private void ListarPlatos(JTable tabla) {
+    private void ListarPlatos(JTable tabla, String filtro) {
         boolean menuPedido = tabla == tblTemPlatos;
         long version = menuPedido ? ++versionMenuPlatos : ++versionCatalogoPlatos;
-        String filtro = txtBuscarPlato.getText();
         String fecha = fechaActual();
         new ListaPlatosSwingWorker(platosControlador, filtro, fecha,
                 platos -> {
@@ -5349,6 +5434,7 @@ public final class Sistema extends javax.swing.JFrame {
         for (int i = 0; i < Listar.size(); i++) {
             Platos p = Listar.get(i);
             platoAplicaIvaMap.put(p.getId(), p.isAplicaIva());
+            platosPorId.put(p.getId(), p);
             ob[0] = p.getId();
             ob[1] = p.getNombre();
             BigDecimal precioUsd = p.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
@@ -5363,7 +5449,15 @@ public final class Sistema extends javax.swing.JFrame {
             }
             modelo.addRow(ob);
         }
+        installarRenderersPlatos(tabla);
         colorHeader(tabla);
+    }
+
+    private void installarRenderersPlatos(JTable tabla) {
+        RendererPlato renderer = new RendererPlato(tabla == tblTemPlatos, platosPorId);
+        for (int i = 0; i < tabla.getColumnCount(); i++) {
+            tabla.getColumnModel().getColumn(i).setCellRenderer(renderer);
+        }
     }
 
     private void mostrarErrorCargaPlatos(Throwable error) {
@@ -5371,6 +5465,451 @@ public final class Sistema extends javax.swing.JFrame {
                 ? error.getMessage()
                 : "No se pudieron cargar los platos. El detalle quedó registrado.";
         JOptionPane.showMessageDialog(this, mensaje, "Error al cargar platos", JOptionPane.ERROR_MESSAGE);
+    }
+
+    // categorias
+    private void configurarTabCategorias() {
+        panelCategorias = new JPanel(new BorderLayout(12, 12));
+        panelCategorias.setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
+
+        modeloListaCategorias = new DefaultListModel<>();
+        listaCategorias = new JList<>(modeloListaCategorias);
+        listaCategorias.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listaCategorias.setCellRenderer(new RendererCategoria());
+        listaCategorias.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                cargarCategoriaSeleccionadaEnFormulario();
+            }
+        });
+        JScrollPane scrollCategorias = new JScrollPane(listaCategorias);
+        scrollCategorias.setPreferredSize(new Dimension(300, 320));
+
+        txtNombreCategoria = new JTextField(16);
+        cbColorCategoria = new JComboBox<>();
+        cbColorCategoria.setRenderer(new RendererColor());
+
+        btnGuardarCategoria = new JButton("Agregar");
+        btnEditarCategoria = new JButton("Guardar cambios");
+        btnEliminarCategoria = new JButton("Eliminar");
+        btnGuardarCategoria.addActionListener(e -> registrarCategoria());
+        btnEditarCategoria.addActionListener(e -> modificarCategoria());
+        btnEliminarCategoria.addActionListener(e -> eliminarCategoria());
+
+        boolean puedeGestionar = politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        btnGuardarCategoria.setEnabled(puedeGestionar);
+        btnEditarCategoria.setEnabled(puedeGestionar);
+        btnEliminarCategoria.setEnabled(puedeGestionar);
+        txtNombreCategoria.setEnabled(puedeGestionar);
+        cbColorCategoria.setEnabled(puedeGestionar);
+
+        JPanel panelCrud = new JPanel(new GridBagLayout());
+        panelCrud.setBorder(BorderFactory.createTitledBorder("Categorías del menú"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(4, 4, 4, 4);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.BOTH; gbc.weightx = 1; gbc.weighty = 1;
+        panelCrud.add(scrollCategorias, gbc);
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.gridwidth = 1; gbc.weighty = 0;
+        gbc.gridy = 1; panelCrud.add(new JLabel("Nombre:"), gbc);
+        gbc.gridx = 1; panelCrud.add(txtNombreCategoria, gbc);
+        gbc.gridx = 0; gbc.gridy = 2; panelCrud.add(new JLabel("Color:"), gbc);
+        gbc.gridx = 1; panelCrud.add(cbColorCategoria, gbc);
+        JPanel accionesCrud = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        accionesCrud.add(btnGuardarCategoria);
+        accionesCrud.add(btnEditarCategoria);
+        accionesCrud.add(btnEliminarCategoria);
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        panelCrud.add(accionesCrud, gbc);
+
+        cbPlatoAsignacion = new JComboBox<>();
+        cbPlatoAsignacion.setRenderer(new RendererPlatoCombo());
+        cbCategoriaPlato = new JComboBox<>();
+        cbCategoriaPlato.setRenderer(new RendererCategoria());
+        chkFavoritoPlato = new JCheckBox("Marcar como favorito (siempre visible arriba en el pedido)");
+        btnAsignarCategoria = new JButton("Aplicar al plato");
+        btnAsignarCategoria.setEnabled(puedeGestionar);
+        cbPlatoAsignacion.setEnabled(puedeGestionar);
+        cbCategoriaPlato.setEnabled(puedeGestionar);
+        chkFavoritoPlato.setEnabled(puedeGestionar);
+        cbPlatoAsignacion.addActionListener(e -> sincronizarFavoritoDelPlato());
+        btnAsignarCategoria.addActionListener(e -> aplicarCategoriaYFavorito());
+
+        JPanel panelAsignacion = new JPanel(new GridBagLayout());
+        panelAsignacion.setBorder(BorderFactory.createTitledBorder("Plato: categoría y favorito"));
+        GridBagConstraints gbcA = new GridBagConstraints();
+        gbcA.insets = new Insets(6, 4, 6, 4);
+        gbcA.anchor = GridBagConstraints.WEST;
+        gbcA.fill = GridBagConstraints.HORIZONTAL;
+        gbcA.weightx = 1;
+        gbcA.gridx = 0; gbcA.gridy = 0; gbcA.gridwidth = 2;
+        panelAsignacion.add(new JLabel("Plato del menú de hoy:"), gbcA);
+        gbcA.gridy = 1; panelAsignacion.add(cbPlatoAsignacion, gbcA);
+        gbcA.gridy = 2; panelAsignacion.add(new JLabel("Categoría:"), gbcA);
+        gbcA.gridy = 3; panelAsignacion.add(cbCategoriaPlato, gbcA);
+        gbcA.gridy = 4; panelAsignacion.add(chkFavoritoPlato, gbcA);
+        gbcA.gridy = 5; gbcA.fill = GridBagConstraints.NONE;
+        panelAsignacion.add(btnAsignarCategoria, gbcA);
+
+        panelCategorias.add(panelCrud, BorderLayout.WEST);
+        panelCategorias.add(panelAsignacion, BorderLayout.CENTER);
+        jTabbedPane1.addTab("Categorías", panelCategorias);
+        jTabbedPane1.addChangeListener(e -> {
+            if (jTabbedPane1.getSelectedComponent() == panelCategorias) {
+                cargarCategorias();
+                cargarPlatosAsignacion();
+            }
+        });
+    }
+
+    private void cargarCategorias() {
+        try {
+            List<Modelo.Categoria> categorias = categoriaControlador().listar();
+            Modelo.Categoria seleccionada = listaCategorias.getSelectedValue();
+            modeloListaCategorias.clear();
+            for (Modelo.Categoria c : categorias) {
+                modeloListaCategorias.addElement(c);
+            }
+            poblarComboCategorias(categorias);
+            if (seleccionada != null) {
+                for (Modelo.Categoria c : categorias) {
+                    if (c.getId() == seleccionada.getId()) {
+                        listaCategorias.setSelectedValue(c, true);
+                        break;
+                    }
+                }
+            }
+            refrescarColoresDisponibles();
+        } catch (Exception ex) {
+            mostrarErrorCategorias(ex);
+        }
+    }
+
+    private void poblarComboCategorias(List<Modelo.Categoria> categorias) {
+        Modelo.Categoria actual = (Modelo.Categoria) cbCategoriaPlato.getSelectedItem();
+        cbCategoriaPlato.removeAllItems();
+        Modelo.Categoria sinCategoria = new Modelo.Categoria(0, "(Sin categoría)", PaletaCategorias.COLOR_CATEGORIA_GENERAL, 0);
+        cbCategoriaPlato.addItem(sinCategoria);
+        for (Modelo.Categoria c : categorias) {
+            cbCategoriaPlato.addItem(c);
+        }
+        if (actual != null) {
+            for (int i = 0; i < cbCategoriaPlato.getItemCount(); i++) {
+                if (cbCategoriaPlato.getItemAt(i).getId() == actual.getId()) {
+                    cbCategoriaPlato.setSelectedIndex(i);
+                    return;
+                }
+            }
+        }
+    }
+
+    private void refrescarColoresDisponibles() {
+        Modelo.Categoria seleccionada = listaCategorias.getSelectedValue();
+        java.util.Set<String> usados = new java.util.HashSet<>();
+        for (int i = 0; i < modeloListaCategorias.size(); i++) {
+            Modelo.Categoria c = modeloListaCategorias.getElementAt(i);
+            if (c.getColor() != null) {
+                usados.add(c.getColor().toUpperCase(java.util.Locale.ROOT));
+            }
+        }
+        String colorActual = seleccionada != null ? seleccionada.getColor() : null;
+        String elegido = (String) cbColorCategoria.getSelectedItem();
+        cbColorCategoria.removeAllItems();
+        for (String hex : PaletaCategorias.coloresDisponibles(usados)) {
+            cbColorCategoria.addItem(hex);
+        }
+        if (colorActual != null && !contieneColor(colorActual)) {
+            cbColorCategoria.addItem(colorActual);
+        }
+        if (elegido != null && contieneColor(elegido)) {
+            cbColorCategoria.setSelectedItem(elegido);
+        } else if (colorActual != null && contieneColor(colorActual)) {
+            cbColorCategoria.setSelectedItem(colorActual);
+        }
+    }
+
+    private boolean contieneColor(String hex) {
+        for (int i = 0; i < cbColorCategoria.getItemCount(); i++) {
+            if (hex != null && hex.equalsIgnoreCase(cbColorCategoria.getItemAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void cargarCategoriaSeleccionadaEnFormulario() {
+        Modelo.Categoria c = listaCategorias.getSelectedValue();
+        if (c == null) {
+            return;
+        }
+        txtNombreCategoria.setText(c.getNombre());
+        refrescarColoresDisponibles();
+        if (c.getColor() != null) {
+            cbColorCategoria.setSelectedItem(c.getColor());
+        }
+    }
+
+    private void registrarCategoria() {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) {
+            return;
+        }
+        try {
+            Modelo.Categoria c = new Modelo.Categoria();
+            c.setNombre(txtNombreCategoria.getText());
+            c.setColor((String) cbColorCategoria.getSelectedItem());
+            categoriaControlador().registrar(c);
+            limpiarFormularioCategoria();
+            cargarCategorias();
+        } catch (Exception ex) {
+            mostrarErrorCategorias(ex);
+        }
+    }
+
+    private void modificarCategoria() {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) {
+            return;
+        }
+        Modelo.Categoria seleccionada = listaCategorias.getSelectedValue();
+        if (seleccionada == null) {
+            JOptionPane.showMessageDialog(this, "Selecciona una categoría para modificar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            Modelo.Categoria c = new Modelo.Categoria(seleccionada.getId(), txtNombreCategoria.getText(),
+                    (String) cbColorCategoria.getSelectedItem(), seleccionada.getOrden());
+            categoriaControlador().modificar(c);
+            cargarCategorias();
+        } catch (Exception ex) {
+            mostrarErrorCategorias(ex);
+        }
+    }
+
+    private void eliminarCategoria() {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) {
+            return;
+        }
+        Modelo.Categoria seleccionada = listaCategorias.getSelectedValue();
+        if (seleccionada == null) {
+            JOptionPane.showMessageDialog(this, "Selecciona una categoría para eliminar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "¿Eliminar la categoría \"" + seleccionada.getNombre() + "\"?",
+                "Confirmar eliminación", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            categoriaControlador().eliminar(seleccionada.getId());
+            limpiarFormularioCategoria();
+            cargarCategorias();
+        } catch (Exception ex) {
+            mostrarErrorCategorias(ex);
+        }
+    }
+
+    private void limpiarFormularioCategoria() {
+        txtNombreCategoria.setText("");
+        listaCategorias.clearSelection();
+        refrescarColoresDisponibles();
+    }
+
+    private void cargarPlatosAsignacion() {
+        new ListaPlatosSwingWorker(platosControlador, "", fechaActual(),
+                this::poblarComboPlatos, this::mostrarErrorCargaPlatos).execute();
+    }
+
+    private void poblarComboPlatos(List<Platos> platos) {
+        Platos actual = (Platos) cbPlatoAsignacion.getSelectedItem();
+        cbPlatoAsignacion.removeAllItems();
+        for (Platos p : platos) {
+            platosPorId.put(p.getId(), p);
+            cbPlatoAsignacion.addItem(p);
+        }
+        if (actual != null) {
+            for (int i = 0; i < cbPlatoAsignacion.getItemCount(); i++) {
+                if (cbPlatoAsignacion.getItemAt(i).getId() == actual.getId()) {
+                    cbPlatoAsignacion.setSelectedIndex(i);
+                    return;
+                }
+            }
+        }
+        sincronizarFavoritoDelPlato();
+    }
+
+    private void sincronizarFavoritoDelPlato() {
+        Platos p = (Platos) cbPlatoAsignacion.getSelectedItem();
+        if (p == null) {
+            chkFavoritoPlato.setSelected(false);
+            return;
+        }
+        chkFavoritoPlato.setSelected(p.isFavorito());
+        for (int i = 0; i < cbCategoriaPlato.getItemCount(); i++) {
+            if (cbCategoriaPlato.getItemAt(i).getId() == p.getIdCategoria()) {
+                cbCategoriaPlato.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+
+    private void aplicarCategoriaYFavorito() {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) {
+            return;
+        }
+        Platos p = (Platos) cbPlatoAsignacion.getSelectedItem();
+        Modelo.Categoria c = (Modelo.Categoria) cbCategoriaPlato.getSelectedItem();
+        if (p == null || c == null) {
+            JOptionPane.showMessageDialog(this, "Selecciona un plato y una categoría.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            categoriaControlador().asignarPlato(p.getNombre(), c.getId());
+            favoritoControlador().marcar(p.getNombre(), chkFavoritoPlato.isSelected());
+            cargarPlatosAsignacion();
+            ListarPlatos(tblTemPlatos, txtBuscarPlato.getText());
+        } catch (Exception ex) {
+            mostrarErrorCategorias(ex);
+        }
+    }
+
+    private void mostrarErrorCategorias(Throwable error) {
+        String mensaje = error instanceof ErrorAplicacionException
+                ? error.getMessage()
+                : "No se pudieron actualizar las categorías. El detalle quedó registrado.";
+        JOptionPane.showMessageDialog(this, mensaje, "Categorías", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private final class RendererCategoria extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof Modelo.Categoria c) {
+                setText(c.getNombre() + (c.getId() == 0 ? "" : "  " + (c.getColor() != null ? c.getColor() : "")));
+                setIcon(new IconoColor(c.getColor()));
+            }
+            return this;
+        }
+    }
+
+    private final class RendererColor extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof String hex) {
+                setText(hex);
+                setIcon(new IconoColor(hex));
+            }
+            return this;
+        }
+    }
+
+    private final class RendererPlatoCombo extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof Platos p) {
+                String categoria = p.getCategoriaNombre() != null ? " · " + p.getCategoriaNombre() : "";
+                setText((p.isFavorito() ? "★ " : "") + p.getNombre() + categoria);
+            }
+            return this;
+        }
+    }
+
+    private static final class IconoColor implements Icon {
+        private final Color color;
+
+        private IconoColor(String hex) {
+            Color c;
+            try {
+                c = hex != null ? Color.decode(hex) : Color.GRAY;
+            } catch (NumberFormatException e) {
+                c = Color.GRAY;
+            }
+            this.color = c;
+        }
+
+        @Override
+        public void paintIcon(Component c, java.awt.Graphics g, int x, int y) {
+            g.setColor(color);
+            g.fillRect(x, y + 3, 12, 12);
+            g.setColor(Color.DARK_GRAY);
+            g.drawRect(x, y + 3, 12, 12);
+        }
+
+        @Override
+        public int getIconWidth() {
+            return 18;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 18;
+        }
+    }
+
+    private final class RendererPlato implements javax.swing.table.TableCellRenderer {
+        private final boolean menuPedido;
+        private final Map<Integer, Platos> porId;
+        private final javax.swing.JLabel etiqueta;
+
+        private RendererPlato(boolean menuPedido, Map<Integer, Platos> porId) {
+            this.menuPedido = menuPedido;
+            this.porId = porId;
+            this.etiqueta = new JLabel();
+            this.etiqueta.setOpaque(true);
+            this.etiqueta.setHorizontalAlignment(SwingConstants.LEFT);
+            etiqueta.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
+                boolean enfocado, int fila, int columna) {
+            etiqueta.setFont(tabla.getFont());
+            etiqueta.setText(valor == null ? "" : valor.toString());
+            etiqueta.setToolTipText(null);
+            Object idObj = tabla.getModel().getValueAt(fila, 0);
+            Platos p = null;
+            if (idObj != null) {
+                try {
+                    p = porId.get(Integer.parseInt(idObj.toString()));
+                } catch (NumberFormatException ignored) {}
+            }
+            if (seleccionado) {
+                etiqueta.setBackground(tabla.getSelectionBackground());
+                etiqueta.setForeground(tabla.getSelectionForeground());
+            } else {
+                Color fondo = null;
+                if (menuPedido && p != null && p.getCategoriaColor() != null) {
+                    try {
+                        fondo = Color.decode(p.getCategoriaColor());
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (fondo != null) {
+                    etiqueta.setBackground(fondo);
+                    etiqueta.setForeground(colorContraste(fondo));
+                } else {
+                    etiqueta.setBackground(tabla.getBackground());
+                    etiqueta.setForeground(tabla.getForeground());
+                }
+            }
+            if (menuPedido && columna == 1 && p != null && p.isFavorito()) {
+                etiqueta.setText("★ " + etiqueta.getText());
+                etiqueta.setToolTipText("Favorito: siempre visible entre los primeros platos.");
+            }
+            if (p != null && p.getCategoriaNombre() != null) {
+                etiqueta.setToolTipText("Categoría: " + p.getCategoriaNombre());
+            }
+            return etiqueta;
+        }
+    }
+
+    private Color colorContraste(Color fondo) {
+        double luminancia = (0.299 * fondo.getRed() + 0.587 * fondo.getGreen() + 0.114 * fondo.getBlue()) / 255.0;
+        return luminancia > 0.5 ? Color.BLACK : Color.WHITE;
     }
 
     //registrar pedido

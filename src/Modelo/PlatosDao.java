@@ -74,14 +74,50 @@ public class PlatosDao implements PlatosRepositorio {
         boolean filtrarNombre = valor != null && !valor.trim().isEmpty();
         String sql = filtrarNombre
             ? """
-              SELECT id, nombre, precio, fecha, aplica_iva
-              FROM platos
-              WHERE fecha = ? AND nombre LIKE ? AND activo = 1
+              SELECT p.id, p.nombre, p.precio, p.fecha, p.aplica_iva,
+                     pc.id_categoria, c.nombre AS categoria_nombre, c.color AS categoria_color,
+                     CASE WHEN pf.nombre_clave IS NULL THEN 0 ELSE 1 END AS favorito,
+                     r.total AS rango_total
+              FROM platos p
+              LEFT JOIN plato_categoria pc ON pc.nombre_clave = p.nombre_clave
+              LEFT JOIN categorias c ON c.id = pc.id_categoria
+              LEFT JOIN plato_favorito pf ON pf.nombre_clave = p.nombre_clave
+              LEFT JOIN (
+                  SELECT d.nombre_clave, SUM(d.cantidad) AS total
+                  FROM detalle_pedidos d
+                  JOIN pedidos o ON d.id_pedido = o.id
+                  WHERE o.estado = 'FINALIZADO'
+                    AND o.fecha >= CURDATE() - INTERVAL 7 DAY
+                    AND o.fecha < CURDATE()
+                  GROUP BY d.nombre_clave
+                  ORDER BY total DESC
+                  LIMIT 10
+              ) r ON r.nombre_clave = p.nombre_clave
+              WHERE p.fecha = ? AND p.activo = 1 AND p.nombre LIKE ?
+              ORDER BY favorito DESC, (r.total IS NULL) ASC, r.total DESC, p.nombre ASC
               """
             : """
-              SELECT id, nombre, precio, fecha, aplica_iva
-              FROM platos
-              WHERE fecha = ? AND activo = 1
+              SELECT p.id, p.nombre, p.precio, p.fecha, p.aplica_iva,
+                     pc.id_categoria, c.nombre AS categoria_nombre, c.color AS categoria_color,
+                     CASE WHEN pf.nombre_clave IS NULL THEN 0 ELSE 1 END AS favorito,
+                     r.total AS rango_total
+              FROM platos p
+              LEFT JOIN plato_categoria pc ON pc.nombre_clave = p.nombre_clave
+              LEFT JOIN categorias c ON c.id = pc.id_categoria
+              LEFT JOIN plato_favorito pf ON pf.nombre_clave = p.nombre_clave
+              LEFT JOIN (
+                  SELECT d.nombre_clave, SUM(d.cantidad) AS total
+                  FROM detalle_pedidos d
+                  JOIN pedidos o ON d.id_pedido = o.id
+                  WHERE o.estado = 'FINALIZADO'
+                    AND o.fecha >= CURDATE() - INTERVAL 7 DAY
+                    AND o.fecha < CURDATE()
+                  GROUP BY d.nombre_clave
+                  ORDER BY total DESC
+                  LIMIT 10
+              ) r ON r.nombre_clave = p.nombre_clave
+              WHERE p.fecha = ? AND p.activo = 1
+              ORDER BY favorito DESC, (r.total IS NULL) ASC, r.total DESC, p.nombre ASC
               """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
@@ -91,22 +127,34 @@ public class PlatosDao implements PlatosRepositorio {
             }
             try (ResultSet resultados = sentencia.executeQuery()) {
                 while (resultados.next()) {
-                    Platos plato = new Platos();
-                    plato.setId(resultados.getInt("id"));
-                    plato.setNombre(resultados.getString("nombre"));
-                    plato.setPrecioDecimal(resultados.getBigDecimal("precio"));
-                    plato.setAplicaIva(resultados.getInt("aplica_iva") != 0);
-                    platos.add(plato);
+                    platos.add(mapearPlatoConEnriquecimiento(resultados));
                 }
             }
         } catch (SQLException ex) {
-            if (ex.getErrorCode() == 1054) {
-                // Columnas nuevas no existen en BD legada — usar query sin filtro
+            if (ex.getErrorCode() == 1054 || ex.getErrorCode() == 1146) {
+                // Esquema previo a la v4 — consulta sin categorías ni ranking
                 return listarPorFechaLegacy(valor, fecha);
             }
             throw new DataAccessException("No se pudieron listar los platos.", ex);
         }
         return platos;
+    }
+
+    private Platos mapearPlatoConEnriquecimiento(ResultSet resultados) throws SQLException {
+        Platos plato = new Platos();
+        plato.setId(resultados.getInt("id"));
+        plato.setNombre(resultados.getString("nombre"));
+        plato.setPrecioDecimal(resultados.getBigDecimal("precio"));
+        plato.setAplicaIva(resultados.getInt("aplica_iva") != 0);
+        int idCategoria = resultados.getInt("id_categoria");
+        if (!resultados.wasNull()) {
+            plato.setIdCategoria(idCategoria);
+        }
+        plato.setCategoriaNombre(resultados.getString("categoria_nombre"));
+        plato.setCategoriaColor(resultados.getString("categoria_color"));
+        plato.setFavorito(resultados.getInt("favorito") != 0);
+        plato.setRankingTotal(resultados.getBigDecimal("rango_total"));
+        return plato;
     }
 
     private List<Platos> listarPorFechaLegacy(String valor, String fecha) {

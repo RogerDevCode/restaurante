@@ -67,7 +67,10 @@ public class Restaurante {
             return new Sistema(usuario,
                     new SalasControlador(new SalasServicio(new SalasDao(), politica)),
                     new PlatosControlador(new PlatosServicio(new PlatosDao(), politica)),
-                    pedidosControlador);
+                    pedidosControlador,
+                    new Controlador.CategoriaControlador(new Servicio.CategoriaServicio(new Modelo.CategoriaDao(), politica)),
+                    new Controlador.FavoritoControlador(new Servicio.FavoritoServicio(new Modelo.FavoritoDao(), politica)),
+                    empresaDao);
         };
         SwingUtilities.invokeLater(() -> {
             FrmLogin iniciar = new FrmLogin(controlador, crearSistema);

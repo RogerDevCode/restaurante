@@ -135,9 +135,9 @@ public class ModoSalidaYPdf24ImpresionTest {
         assertEquals("DEFAULT", ServicioImpresionTicket.resolverNombreRealImpresora("   "));
         assertEquals("DEFAULT", ServicioImpresionTicket.resolverNombreRealImpresora("DEFAULT"));
 
-        // Impresora ficticia devuelve el mismo nombre configurado limpio
+        // Impresora ficticia devuelve null porque no está físicamente instalada
         String res = ServicioImpresionTicket.resolverNombreRealImpresora("ImpresoraFicticia123");
-        assertEquals("ImpresoraFicticia123", res);
+        assertNull(res);
     }
 
     @Test

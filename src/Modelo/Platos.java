@@ -12,6 +12,11 @@ public class Platos {
     private boolean activo = true;
     private LocalDateTime desactivadoEn;
     private boolean aplicaIva = true;
+    private int idCategoria;
+    private String categoriaNombre;
+    private String categoriaColor;
+    private boolean favorito;
+    private BigDecimal rankingTotal;
 
     public Platos() {
     }
@@ -85,5 +90,46 @@ public class Platos {
 
     public void setAplicaIva(boolean aplicaIva) {
         this.aplicaIva = aplicaIva;
+    }
+
+    public int getIdCategoria() {
+        return idCategoria;
+    }
+
+    public void setIdCategoria(int idCategoria) {
+        this.idCategoria = idCategoria;
+    }
+
+    public String getCategoriaNombre() {
+        return categoriaNombre;
+    }
+
+    public void setCategoriaNombre(String categoriaNombre) {
+        this.categoriaNombre = categoriaNombre;
+    }
+
+    public String getCategoriaColor() {
+        return categoriaColor;
+    }
+
+    public void setCategoriaColor(String categoriaColor) {
+        this.categoriaColor = categoriaColor;
+    }
+
+    public boolean isFavorito() {
+        return favorito;
+    }
+
+    public void setFavorito(boolean favorito) {
+        this.favorito = favorito;
+    }
+
+    /** Total de unidades pedidas en los últimos 7 días o null si no está en el top 10. */
+    public BigDecimal getRankingTotal() {
+        return rankingTotal;
+    }
+
+    public void setRankingTotal(BigDecimal rankingTotal) {
+        this.rankingTotal = rankingTotal;
     }
 }
