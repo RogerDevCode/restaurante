@@ -3623,6 +3623,49 @@ public final class Sistema extends javax.swing.JFrame {
         // Force white background and better borders on all TextFields inside this frame
         aplicarEstiloInputs(this.getContentPane());
 
+        // --- Botones de "Volver" Contextuales para UX de Navegación ---
+        int idxTab3 = jTabbedPane1.indexOfComponent(jPanel23);
+        if (idxTab3 != -1) {
+            javax.swing.JPanel pnlWrap3 = new javax.swing.JPanel(new java.awt.BorderLayout());
+            javax.swing.JPanel pnlTop3 = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+            pnlTop3.setBackground(new java.awt.Color(255, 255, 255));
+            javax.swing.JButton btnVolver3 = new javax.swing.JButton("⬅ Volver a Mesas");
+            btnVolver3.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
+            btnVolver3.setBackground(new java.awt.Color(230, 230, 230));
+            btnVolver3.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            btnVolver3.addActionListener(e -> {
+                if (idSalaActualMesas > 0 && cantMesasActual > 0) {
+                    panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
+                    jTabbedPane1.setSelectedIndex(2);
+                } else {
+                    jTabbedPane1.setSelectedIndex(1);
+                }
+            });
+            pnlTop3.add(btnVolver3);
+            pnlWrap3.add(pnlTop3, java.awt.BorderLayout.NORTH);
+            pnlWrap3.add(jPanel23, java.awt.BorderLayout.CENTER);
+            jTabbedPane1.setComponentAt(idxTab3, pnlWrap3);
+        }
+
+        int idxTab4 = jTabbedPane1.indexOfComponent(jPanel25);
+        if (idxTab4 != -1) {
+            javax.swing.JPanel pnlWrap4 = new javax.swing.JPanel(new java.awt.BorderLayout());
+            javax.swing.JPanel pnlTop4 = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+            pnlTop4.setBackground(new java.awt.Color(255, 255, 255));
+            javax.swing.JButton btnVolver4 = new javax.swing.JButton("⬅ Volver al Pedido");
+            btnVolver4.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
+            btnVolver4.setBackground(new java.awt.Color(230, 230, 230));
+            btnVolver4.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            btnVolver4.addActionListener(e -> {
+                jTabbedPane1.setSelectedIndex(3);
+            });
+            pnlTop4.add(btnVolver4);
+            pnlWrap4.add(pnlTop4, java.awt.BorderLayout.NORTH);
+            pnlWrap4.add(jPanel25, java.awt.BorderLayout.CENTER);
+            jTabbedPane1.setComponentAt(idxTab4, pnlWrap4);
+        }
+        // -----------------------------------------------------------------
+
         // Highlighting
         java.awt.event.FocusAdapter highlighter = new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
