@@ -210,4 +210,57 @@ public class PedidosDaoTest {
         public void close() {
         }
     }
+
+
+    @Test
+    public void testActualizarPedidoCompleto_SimulacionUsuario() {
+        PedidosDao dao = new PedidosDao();
+        // 1. Crear un pedido inicial
+        Pedidos pInicial = new Pedidos();
+        pInicial.setId_sala(1);
+        pInicial.setNum_mesa(99);
+        pInicial.setTotalDecimal(new BigDecimal("10.00"));
+        pInicial.setUsuario("TestUser");
+        DetallePedido d1 = new DetallePedido(0, "Pollo", new BigDecimal("10.00"), 1, "", 0);
+        int idPedido = dao.registrarPedidoCompleto(pInicial, Arrays.asList(d1));
+        
+        // 2. Simulamos que el usuario "Agrega Productos" al mismo pedido (mesa 99)
+        Pedidos pModificado = new Pedidos();
+        pModificado.setId_sala(1);
+        pModificado.setNum_mesa(99);
+        pModificado.setTotalDecimal(new BigDecimal("25.00"));
+        pModificado.setUsuario("TestUser");
+        pModificado.setSubtotal(new BigDecimal("25.00"));
+        pModificado.setIvaPorcentaje(new BigDecimal("0.00"));
+        pModificado.setIvaMonto(new BigDecimal("0.00"));
+        pModificado.setTasaCambio(new BigDecimal("1.00"));
+        pModificado.setSubtotalBs(new BigDecimal("25.00"));
+        pModificado.setIvaBs(new BigDecimal("0.00"));
+        pModificado.setTotalBs(new BigDecimal("25.00"));
+        
+        // El usuario agregó otra ración de Pollo y un Refresco
+        DetallePedido d1_mod = new DetallePedido(0, "Pollo", new BigDecimal("10.00"), 2, "", 0);
+        DetallePedido d2_nuevo = new DetallePedido(0, "Refresco", new BigDecimal("5.00"), 1, "", 0);
+        
+        boolean resultado = dao.actualizarPedidoCompleto(idPedido, pModificado, Arrays.asList(d1_mod, d2_nuevo));
+        assertTrue("Debe actualizar el pedido exitosamente", resultado);
+        
+        // Verificamos
+        List<DetallePedido> detallesGuardados = dao.verPedidoDetalle(idPedido);
+        assertEquals("Debe tener 2 detalles agrupados", 2, detallesGuardados.size());
+        
+        boolean tienePolloX2 = detallesGuardados.stream().anyMatch(d -> d.getNombre().equals("Pollo") && d.getCantidad() == 2);
+        boolean tieneRefresco = detallesGuardados.stream().anyMatch(d -> d.getNombre().equals("Refresco") && d.getCantidad() == 1);
+        
+        assertTrue(tienePolloX2);
+        assertTrue(tieneRefresco);
+        
+        // Cleanup
+        try (Connection conn = new infraestructura.ProveedorConexionJdbc().getConnection();
+             PreparedStatement st = conn.prepareStatement("DELETE FROM pedidos WHERE id = ?")) {
+            st.setInt(1, idPedido);
+            st.executeUpdate();
+        } catch(SQLException ex) {}
+    }
+
 }

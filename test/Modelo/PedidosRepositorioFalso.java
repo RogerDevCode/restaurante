@@ -4,6 +4,7 @@ import java.util.List;
 
 /** Adaptador de prueba: cada operación no configurada falla explícitamente. */
 public class PedidosRepositorioFalso implements PedidosRepositorio {
+    public boolean actualizarPedidoCompleto(int id, Pedidos p, java.util.List<DetallePedido> d) { return true; }
     @Override
     public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) {
         throw new AssertionError("La prueba debe configurar registrarPedidoCompleto.");

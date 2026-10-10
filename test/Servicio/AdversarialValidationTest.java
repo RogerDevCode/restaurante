@@ -154,6 +154,7 @@ public class AdversarialValidationTest {
     }
 
     static class DummyPedidosRepositorio implements PedidosRepositorio {
+    public boolean actualizarPedidoCompleto(int id, Pedidos p, java.util.List<DetallePedido> d) { return true; }
         @Override public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) { return 1; }
         @Override public Pedidos verPedido(int idPedido) { return null; }
         @Override public List<DetallePedido> verPedidoDetalle(int idPedido) { return null; }

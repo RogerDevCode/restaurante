@@ -223,6 +223,7 @@ public class CombinatoriaReglasNegocioTest {
     }
 
     private static class RepositorioPedidosMemoria implements PedidosRepositorio {
+    public boolean actualizarPedidoCompleto(int id, Pedidos p, java.util.List<DetallePedido> d) { return true; }
         private int contador = 1;
         @Override public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) { return contador++; }
         @Override public Pedidos verPedido(int idPedido) { return null; }

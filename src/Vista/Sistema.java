@@ -112,7 +112,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnCierreParcial;
     private javax.swing.JButton btnCierreTotal;
     private javax.swing.JTextField txtCantidadManual;
-    private int platoSeleccionadoIdFoco = -1;
+    private int platoSeleccionadoFilaFoco = -1;
     private int idPedidoEdicion = -1;
     private String ultimoTextoIngresado = "";
     private boolean isUpdatingUI = false;
@@ -1459,15 +1459,15 @@ public final class Sistema extends javax.swing.JFrame {
             public void focusGained(java.awt.event.FocusEvent evt) {
                 javax.swing.SwingUtilities.invokeLater(() -> txtCantidadManual.selectAll());
                 if (tableMenu.getSelectedRow() >= 0) {
-                    platoSeleccionadoIdFoco = Integer.parseInt(tableMenu.getValueAt(tableMenu.getSelectedRow(), 0).toString());
+                    platoSeleccionadoFilaFoco = tableMenu.getSelectedRow();
                 } else {
-                    platoSeleccionadoIdFoco = -1;
+                    platoSeleccionadoFilaFoco = -1;
                 }
                 ultimoTextoIngresado = txtCantidadManual.getText();
             }
             @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
-                aplicarCantidadManual(ultimoTextoIngresado, platoSeleccionadoIdFoco);
+                aplicarCantidadManual(ultimoTextoIngresado, platoSeleccionadoFilaFoco);
             }
         });
         txtCantidadManual.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
@@ -1485,8 +1485,8 @@ public final class Sistema extends javax.swing.JFrame {
             public void keyPressed(java.awt.event.KeyEvent evt) {
                 if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
                     if (tableMenu.getSelectedRow() >= 0) {
-                        int currentId = Integer.parseInt(tableMenu.getValueAt(tableMenu.getSelectedRow(), 0).toString());
-                        aplicarCantidadManual(txtCantidadManual.getText(), currentId);
+                        int currentRow = tableMenu.getSelectedRow();
+                        aplicarCantidadManual(txtCantidadManual.getText(), currentRow);
                     }
                 }
             }
@@ -1511,8 +1511,8 @@ public final class Sistema extends javax.swing.JFrame {
             int qty = i;
             btnNum.addActionListener(e -> {
                 if (tableMenu.getSelectedRow() >= 0) {
-                    int currentId = Integer.parseInt(tableMenu.getValueAt(tableMenu.getSelectedRow(), 0).toString());
-                    aplicarCantidadManual(String.valueOf(qty), currentId);
+                    int currentRow = tableMenu.getSelectedRow();
+                    aplicarCantidadManual(String.valueOf(qty), currentRow);
                 }
             });
             pnlGrilla.add(btnNum);
@@ -2748,33 +2748,45 @@ public final class Sistema extends javax.swing.JFrame {
         actualizarEstadoBotonesCarrito();
     }//GEN-LAST:event_btnEliminarTempPlatoActionPerformed
 
-    private void aplicarCantidadManual(String qtyText, int platoId) {
-        if (platoId == -1) return;
+    private void aplicarCantidadManual(String qtyText, int fila) {
+        if (fila == -1) return;
         try {
             int nuevaCant = Integer.parseInt(qtyText.trim());
             if (nuevaCant <= 0) nuevaCant = 1; // Minimum 1
-            setCantidadPlatoSeleccionadoById(platoId, nuevaCant);
+            setCantidadPlatoPorFila(fila, nuevaCant);
         } catch (NumberFormatException e) {
             // Revert to old value
             actualizarEstadoBotonesCarrito();
         }
     }
 
+    private void setCantidadPlatoPorFila(int fila, int nuevaCant) {
+        javax.swing.table.DefaultTableModel tmp = (javax.swing.table.DefaultTableModel) tableMenu.getModel();
+        if (fila >= 0 && fila < tmp.getRowCount()) {
+            java.math.BigDecimal precio = importeMonetario(tmp.getValueAt(fila, 3));
+            tmp.setValueAt(nuevaCant, fila, 2);
+            tmp.setValueAt(String.format(java.util.Locale.US, "%.2f", precio.multiply(new java.math.BigDecimal(nuevaCant))), fila, 4);
+            TotalPagar(tableMenu, totalMenu);
+            tableMenu.setRowSelectionInterval(fila, fila);
+            if (tableMenu.getSelectedRow() == fila) {
+                isUpdatingUI = true;
+                if(txtCantidadManual != null) txtCantidadManual.setText(String.valueOf(nuevaCant));
+                isUpdatingUI = false;
+            }
+        }
+    }
+
     private void setCantidadPlatoSeleccionadoById(int platoId, int nuevaCant) {
         javax.swing.table.DefaultTableModel tmp = (javax.swing.table.DefaultTableModel) tableMenu.getModel();
         for (int i = 0; i < tmp.getRowCount(); i++) {
-            if (Integer.parseInt(tmp.getValueAt(i, 0).toString()) == platoId) {
-                java.math.BigDecimal precio = importeMonetario(tmp.getValueAt(i, 3));
-                tmp.setValueAt(nuevaCant, i, 2);
-                tmp.setValueAt(String.format(java.util.Locale.US, "%.2f", precio.multiply(new java.math.BigDecimal(nuevaCant))), i, 4);
-                TotalPagar(tableMenu, totalMenu);
-                tableMenu.setRowSelectionInterval(i, i); // Ensure selection is collapsed
-                if (tableMenu.getSelectedRow() == i) {
-                    isUpdatingUI = true;
-                    if(txtCantidadManual != null) txtCantidadManual.setText(String.valueOf(nuevaCant));
-                    isUpdatingUI = false;
-                }
-                break;
+            Object idObj = tmp.getValueAt(i, 0);
+            if (idObj != null && !idObj.toString().isEmpty()) {
+                try {
+                    if (Integer.parseInt(idObj.toString()) == platoId) {
+                        setCantidadPlatoPorFila(i, nuevaCant);
+                        break;
+                    }
+                } catch (NumberFormatException ignored) {}
             }
         }
     }

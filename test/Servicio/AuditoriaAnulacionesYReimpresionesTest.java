@@ -157,6 +157,7 @@ public class AuditoriaAnulacionesYReimpresionesTest {
 
     // Repositorio y DAO en memoria para pruebas aisladas
     private static class RepositorioPedidosEnMemoria implements PedidosRepositorio {
+    public boolean actualizarPedidoCompleto(int id, Pedidos p, java.util.List<DetallePedido> d) { return true; }
         private final List<Integer> pedidosAnulados = new ArrayList<>();
         private final AuditoriaDaoEnMemoria auditoriaDao;
 
