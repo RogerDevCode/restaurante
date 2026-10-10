@@ -218,6 +218,15 @@ public final class Sistema extends javax.swing.JFrame {
         }
         this.usuarioActual = priv;
         initComponents();
+        
+        // Intercept close operation to validate open tables
+        this.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+        this.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                confirmarCierreSistema();
+            }
+        });
         aplicarMejorasDeUX();
         tableMenu.setRowHeight(25);
         tblTemPlatos.setRowHeight(30);
@@ -3551,6 +3560,44 @@ public final class Sistema extends javax.swing.JFrame {
             }
         }
         return lista;
+    }
+
+    private void confirmarCierreSistema() {
+        boolean hayMesasAbiertas = false;
+        try {
+            java.util.Map<Integer, Integer> ocupadas = pedidosControlador.contarMesasOcupadasPorSala();
+            for (Integer cant : ocupadas.values()) {
+                if (cant != null && cant > 0) {
+                    hayMesasAbiertas = true;
+                    break;
+                }
+            }
+        } catch (Exception ex) {
+            // Ignorar para no bloquear el cierre si falla DB
+        }
+
+        String titulo = "Confirmar Cierre";
+        String mensaje = "¿Está seguro de que desea salir del sistema de administración?";
+        
+        if (hayMesasAbiertas) {
+            titulo = "¡ADVERTENCIA: Mesas abiertas!";
+            mensaje = "Hay mesas o puestos que todavía tienen pedidos sin finalizar ni cobrar.\n\n"
+                    + "Cerrar el programa ahora no perderá los pedidos, pero asegúrese de\n"
+                    + "que no hay clientes esperando la cuenta o platos en preparación.\n\n"
+                    + "¿Aún así desea salir del sistema?";
+        }
+
+        int opcion = javax.swing.JOptionPane.showConfirmDialog(
+                this,
+                mensaje,
+                titulo,
+                javax.swing.JOptionPane.YES_NO_OPTION,
+                hayMesasAbiertas ? javax.swing.JOptionPane.WARNING_MESSAGE : javax.swing.JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (opcion == javax.swing.JOptionPane.YES_OPTION) {
+            System.exit(0);
+        }
     }
 
     private void aplicarMejorasDeUX() {
