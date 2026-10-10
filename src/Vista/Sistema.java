@@ -218,6 +218,7 @@ public final class Sistema extends javax.swing.JFrame {
         }
         this.usuarioActual = priv;
         initComponents();
+        aplicarMejorasDeUX();
         tableMenu.setRowHeight(25);
         tblTemPlatos.setRowHeight(30);
         tblTemPlatos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -2426,6 +2427,7 @@ public final class Sistema extends javax.swing.JFrame {
                 
         btnGenerarPedido.setText("Actualizar Pedido");
         jTabbedPane1.setSelectedIndex(3);
+                    txtBuscarPlato.requestFocusInWindow();
         LimpiarTableMenu();
         
         DefaultTableModel tmp = (DefaultTableModel) tableMenu.getModel();
@@ -2651,6 +2653,15 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void txtBuscarPlatoKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtBuscarPlatoKeyReleased
         ListarPlatos(tblTemPlatos, txtBuscarPlato.getText());
+        if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+            if (tblTemPlatos.getRowCount() > 0) {
+                tblTemPlatos.setRowSelectionInterval(0, 0);
+                btnAddPlato.doClick();
+                // Animación visual rápida de feedback (Verde) en la tabla
+                tblTemPlatos.setSelectionBackground(new java.awt.Color(144, 238, 144));
+                new javax.swing.Timer(300, e -> tblTemPlatos.setSelectionBackground(javax.swing.UIManager.getColor("Table.selectionBackground"))).start();
+            }
+        }
     }//GEN-LAST:event_txtBuscarPlatoKeyReleased
 
     private void btnAddPlatoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAddPlatoActionPerformed
@@ -3008,6 +3019,25 @@ public final class Sistema extends javax.swing.JFrame {
                 efectivoPagoUsd = desglose[1];
             }
 
+
+
+            if (metodoPagoSel.contains("EFECTIVO") && !"MIXTO".equalsIgnoreCase(metodoPagoSel)) {
+                try {
+                    double totalFactura = 0;
+                    String simbolo = "$";
+                    if (ped != null) {
+                        if ("EFECTIVO_BS".equals(metodoPagoSel) && ped.getTotalBs() != null) {
+                            totalFactura = ped.getTotalBs().doubleValue();
+                            simbolo = "Bs.";
+                        } else if (ped.getTotalDecimal() != null) {
+                            totalFactura = ped.getTotalDecimal().doubleValue();
+                        }
+                    }
+                    if (totalFactura > 0) {
+                        calcularVueltoUx(metodoPagoSel, totalFactura, simbolo);
+                    }
+                } catch(Exception ignored) {}
+            }
             int idPedido = Integer.parseInt(txtIdPedido.getText());
             long version = versionPedidoPantalla;
             btnFinalizar.setEnabled(false);
@@ -3058,6 +3088,77 @@ public final class Sistema extends javax.swing.JFrame {
             }).execute();
         }
     }//GEN-LAST:event_btnFinalizarActionPerformed
+
+    
+    
+    
+    private void calcularVueltoUx(String metodo, double totalFactura, String simbolo) {
+        if (!metodo.contains("EFECTIVO") || totalFactura <= 0) return;
+        
+        javax.swing.JPanel pnl = new javax.swing.JPanel(new java.awt.BorderLayout(8, 8));
+        javax.swing.JLabel lblInfo = new javax.swing.JLabel("Total a pagar: " + simbolo + " " + String.format(java.util.Locale.US, "%.2f", totalFactura));
+        lblInfo.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 16));
+        pnl.add(lblInfo, java.awt.BorderLayout.NORTH);
+        
+        javax.swing.JTextField txtRecibido = new javax.swing.JTextField(10);
+        txtRecibido.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 18));
+        javax.swing.JLabel lblVuelto = new javax.swing.JLabel("Vuelto: " + simbolo + " 0.00");
+        lblVuelto.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 18));
+        lblVuelto.setForeground(java.awt.Color.BLUE);
+        
+        javax.swing.JPanel pnlCentro = new javax.swing.JPanel(new java.awt.GridLayout(2, 2, 4, 4));
+        pnlCentro.add(new javax.swing.JLabel("Monto Entregado:"));
+        pnlCentro.add(txtRecibido);
+        pnlCentro.add(new javax.swing.JLabel(""));
+        pnlCentro.add(lblVuelto);
+        pnl.add(pnlCentro, java.awt.BorderLayout.CENTER);
+        
+        javax.swing.JPanel pnlBotones = new javax.swing.JPanel(new java.awt.FlowLayout());
+        double[] billetes = {10, 20, 50, 100};
+        for (double b : billetes) {
+            if (b >= totalFactura || b == 100) {
+                javax.swing.JButton btnB = new javax.swing.JButton(simbolo + " " + (int)b);
+                btnB.addActionListener(e -> {
+                    txtRecibido.setText(String.valueOf(b));
+                    double vuelto = b - totalFactura;
+                    lblVuelto.setText("Vuelto: " + simbolo + " " + String.format(java.util.Locale.US, "%.2f", vuelto));
+                });
+                pnlBotones.add(btnB);
+            }
+        }
+        javax.swing.JButton btnExacto = new javax.swing.JButton("Exacto");
+        btnExacto.addActionListener(e -> {
+            txtRecibido.setText(String.format(java.util.Locale.US, "%.2f", totalFactura));
+            lblVuelto.setText("Vuelto: " + simbolo + " 0.00");
+        });
+        pnlBotones.add(btnExacto);
+        pnl.add(pnlBotones, java.awt.BorderLayout.SOUTH);
+        
+        txtRecibido.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                try {
+                    double rec = Double.parseDouble(txtRecibido.getText().replace(",", "."));
+                    double vuelto = rec - totalFactura;
+                    lblVuelto.setText("Vuelto: " + simbolo + " " + String.format(java.util.Locale.US, "%.2f", vuelto));
+                } catch(Exception ignored){}
+            }
+        });
+        
+        // Auto-select text on focus
+        txtRecibido.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                txtRecibido.setBackground(new java.awt.Color(230, 245, 255));
+                txtRecibido.selectAll();
+            }
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                txtRecibido.setBackground(java.awt.Color.WHITE);
+            }
+        });
+        
+        // Poner foco después de renderizar
+        javax.swing.SwingUtilities.invokeLater(txtRecibido::requestFocusInWindow);
+        JOptionPane.showMessageDialog(this, pnl, "Calculadora Rápida de Vuelto", JOptionPane.PLAIN_MESSAGE);
+    }
 
     private java.math.BigDecimal[] solicitarEfectivoPagoMixto() {
         javax.swing.JTextField txtBs = new javax.swing.JTextField("0.00", 12);
@@ -3391,6 +3492,66 @@ public final class Sistema extends javax.swing.JFrame {
             label.setToolTipText("Consumo en mesa: $ " + totalUsdStr
                     + " (IVA y total en Bs. se calculan al facturar)");
         }
+    }
+
+    
+    private void aplicarMejorasDeUX() {
+        // Highlighting
+        java.awt.event.FocusAdapter highlighter = new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                if (evt.getComponent() instanceof javax.swing.JTextField) {
+                    javax.swing.JTextField f = (javax.swing.JTextField) evt.getComponent();
+                    f.setBackground(new java.awt.Color(230, 245, 255));
+                    f.selectAll();
+                }
+            }
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                if (evt.getComponent() instanceof javax.swing.JTextField) {
+                    evt.getComponent().setBackground(java.awt.Color.WHITE);
+                }
+            }
+        };
+        txtBuscarPlato.addFocusListener(highlighter);
+        txtCantidadManual.addFocusListener(highlighter);
+        
+        // Global Shortcuts via KeyboardFocusManager
+        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
+            if (e.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F1) {
+                    mostrarPanelAyuda();
+                    return true;
+                } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F2) {
+                    jTabbedPane1.setSelectedIndex(3);
+                    txtBuscarPlato.requestFocusInWindow(); // Ir a Tab Pedidos
+                    txtBuscarPlato.requestFocus();
+                    return true;
+                } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F5) {
+                    if (jTabbedPane1.getSelectedIndex() == 3) {
+                        btnGenerarPedido.doClick(); // Click en Actualizar/Generar
+                        return true;
+                    }
+                } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
+                    if (jTabbedPane1.getSelectedIndex() == 3) {
+                        // Opcional: Limpiar mesa o cancelar
+                        LimpiarTableMenu();
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
+    }
+
+    private void mostrarPanelAyuda() {
+        String ayuda = "<html><h3>Atajos de Teclado (Mejoras UX)</h3>"
+            + "<ul>"
+            + "<li><b>[F1]</b>: Mostrar este panel de ayuda.</li>"
+            + "<li><b>[F2]</b>: Ir directo al buscador de platos de la mesa actual.</li>"
+            + "<li><b>[F5]</b>: Finalizar o Actualizar Pedido (cuando estás en el carrito).</li>"
+            + "<li><b>[ESC]</b>: Limpiar el carrito de la mesa actual.</li>"
+            + "<li><b>[Enter] en Buscador</b>: Agrega automáticamente el primer plato de la lista.</li>"
+            + "</ul><p>¡Usar estos atajos en horas pico agilizará tus pedidos significativamente!</p></html>";
+        JOptionPane.showMessageDialog(this, ayuda, "Ayuda de Atajos", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void LimpiarTableMenu() {
@@ -5649,6 +5810,7 @@ public final class Sistema extends javax.swing.JFrame {
                             new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14),
                             new java.awt.Color(0, 102, 102)));
                     jTabbedPane1.setSelectedIndex(3);
+                    txtBuscarPlato.requestFocusInWindow();
                 }
             });
         }
