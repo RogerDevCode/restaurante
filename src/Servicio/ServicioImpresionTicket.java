@@ -235,14 +235,16 @@ public final class ServicioImpresionTicket {
                     return true;
                 } else {
                     LOGGER.warning(() -> "No se pudo imprimir directamente a " + imp + ". Abriendo visor como alternativa.");
-                    return abrirVisor(archivoPdf);
+                    abrirVisor(archivoPdf);
+                    return false;
                 }
             }
             case PDF24_CREATOR -> {
                 boolean exito = despacharPdf24(archivoPdf);
                 if (!exito) {
                     LOGGER.warning("No se pudo despachar a PDF24 Creator. Abriendo visor estándar como alternativa.");
-                    return abrirVisor(archivoPdf);
+                    abrirVisor(archivoPdf);
+                    return false;
                 }
                 return true;
             }
@@ -528,15 +530,15 @@ public final class ServicioImpresionTicket {
                 String impReal = resolverNombreRealImpresora(impresora != null ? impresora : (!"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada()));
                 boolean ok = imprimirEnWindows(tempTicket, impReal);
                 if (!ok) {
-                    return abrirVisor(tempTicket);
+                    abrirVisor(tempTicket);
+                    return false;
                 }
                 return true;
             } else if (modo == Modelo.ModoSalidaTicket.PDF24_CREATOR) {
                 boolean ok = despacharPdf24(tempTicket);
                 return ok;
             } else {
-                abrirVisor(tempTicket);
-                return true;
+                return abrirVisor(tempTicket);
             }
         } catch (Exception ex) {
             LOGGER.log(Level.WARNING, "Error al generar ticket de prueba: " + ex.getMessage(), ex);
