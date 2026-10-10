@@ -3531,7 +3531,32 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     
+    private void aplicarEstiloInputs(java.awt.Container contenedor) {
+        for (java.awt.Component c : contenedor.getComponents()) {
+            if (c instanceof javax.swing.JTextField) {
+                c.setBackground(java.awt.Color.WHITE);
+                ((javax.swing.JTextField) c).setOpaque(true);
+            } else if (c instanceof java.awt.Container) {
+                aplicarEstiloInputs((java.awt.Container) c);
+            }
+        }
+    }
+
+    private java.util.List<java.awt.Component> todosLosComponentes(java.awt.Container contenedor) {
+        java.util.List<java.awt.Component> lista = new java.util.ArrayList<>();
+        for (java.awt.Component c : contenedor.getComponents()) {
+            lista.add(c);
+            if (c instanceof java.awt.Container) {
+                lista.addAll(todosLosComponentes((java.awt.Container) c));
+            }
+        }
+        return lista;
+    }
+
     private void aplicarMejorasDeUX() {
+        // Force white background and better borders on all TextFields inside this frame
+        aplicarEstiloInputs(this.getContentPane());
+
         // Highlighting
         java.awt.event.FocusAdapter highlighter = new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
@@ -3549,6 +3574,13 @@ public final class Sistema extends javax.swing.JFrame {
         };
         txtBuscarPlato.addFocusListener(highlighter);
         txtCantidadManual.addFocusListener(highlighter);
+        
+        // Loop recursively through all components
+        for (java.awt.Component c : todosLosComponentes(this)) {
+            if (c instanceof javax.swing.JTextField) {
+                c.addFocusListener(highlighter);
+            }
+        }
         
         // Global Shortcuts via KeyboardFocusManager
         java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {

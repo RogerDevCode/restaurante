@@ -30,6 +30,25 @@ public class Restaurante {
     public static void main(String[] args) {
         try {
             javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+            
+            // UX/UI Customizations for Dialogs and Inputs
+            java.awt.Color colorFondoDialogo = new java.awt.Color(242, 242, 242);
+            java.awt.Color colorBorde = new java.awt.Color(0, 102, 102);
+            
+            javax.swing.UIManager.put("OptionPane.background", colorFondoDialogo);
+            javax.swing.UIManager.put("Panel.background", colorFondoDialogo);
+            javax.swing.UIManager.put("OptionPane.border", javax.swing.BorderFactory.createLineBorder(colorBorde, 3));
+            
+            // Fix input fields contrast
+            javax.swing.UIManager.put("TextField.background", java.awt.Color.WHITE);
+            javax.swing.UIManager.put("TextField.border", javax.swing.BorderFactory.createCompoundBorder(
+                    javax.swing.BorderFactory.createLineBorder(new java.awt.Color(153, 153, 153), 1),
+                    javax.swing.BorderFactory.createEmptyBorder(4, 6, 4, 6)));
+            
+            javax.swing.UIManager.put("PasswordField.background", java.awt.Color.WHITE);
+            javax.swing.UIManager.put("PasswordField.border", javax.swing.BorderFactory.createCompoundBorder(
+                    javax.swing.BorderFactory.createLineBorder(new java.awt.Color(153, 153, 153), 1),
+                    javax.swing.BorderFactory.createEmptyBorder(4, 6, 4, 6)));
         } catch (Exception ex) {
             java.util.logging.Logger.getLogger(Restaurante.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
