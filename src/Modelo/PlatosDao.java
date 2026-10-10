@@ -94,7 +94,7 @@ public class PlatosDao implements PlatosRepositorio {
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
               WHERE p.fecha = ? AND p.activo = 1 AND p.nombre LIKE ?
-              ORDER BY favorito DESC, (r.total IS NULL) ASC, r.total DESC, p.nombre ASC
+              ORDER BY c.nombre IS NULL ASC, c.nombre ASC, favorito DESC, (r.total IS NULL) ASC, r.total DESC, p.nombre ASC
               """
             : """
               SELECT p.id, p.nombre, p.precio, p.fecha, p.aplica_iva,
@@ -117,7 +117,7 @@ public class PlatosDao implements PlatosRepositorio {
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
               WHERE p.fecha = ? AND p.activo = 1
-              ORDER BY favorito DESC, (r.total IS NULL) ASC, r.total DESC, p.nombre ASC
+              ORDER BY c.nombre IS NULL ASC, c.nombre ASC, favorito DESC, (r.total IS NULL) ASC, r.total DESC, p.nombre ASC
               """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
@@ -165,11 +165,13 @@ public class PlatosDao implements PlatosRepositorio {
               SELECT id, nombre, precio, fecha
               FROM platos
               WHERE fecha = ? AND nombre LIKE ?
+              ORDER BY nombre ASC
               """
             : """
               SELECT id, nombre, precio, fecha
               FROM platos
               WHERE fecha = ?
+              ORDER BY nombre ASC
               """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
