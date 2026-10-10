@@ -28,6 +28,11 @@ import javax.swing.SwingUtilities;
 public class Restaurante {
 
     public static void main(String[] args) {
+        try {
+            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(Restaurante.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
         ManejadorErroresSwing.instalar();
         infraestructura.ConfiguracionLogs.configurar();
         if (args != null && args.length == 1 && "--migrate-db".equalsIgnoreCase(args[0])) {

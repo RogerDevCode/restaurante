@@ -217,6 +217,9 @@ public final class Sistema extends javax.swing.JFrame {
         }
         this.usuarioActual = priv;
         initComponents();
+        tableMenu.setRowHeight(25);
+        tblTemPlatos.setRowHeight(30);
+        tblTemPlatos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         politicaAcceso = new PoliticaAcceso(priv);
         this.categoriaControlador = categoriaControlador;
         this.favoritoControlador = favoritoControlador;
@@ -1454,6 +1457,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtCantidadManual.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override
             public void focusGained(java.awt.event.FocusEvent evt) {
+                javax.swing.SwingUtilities.invokeLater(() -> txtCantidadManual.selectAll());
                 if (tableMenu.getSelectedRow() >= 0) {
                     platoSeleccionadoIdFoco = Integer.parseInt(tableMenu.getValueAt(tableMenu.getSelectedRow(), 0).toString());
                 } else {
