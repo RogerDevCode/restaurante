@@ -794,20 +794,22 @@ public final class Sistema extends javax.swing.JFrame {
         configurarTabCategorias();
 
         jTabbedPane1.addChangeListener(e -> {
-            java.awt.Component sel = jTabbedPane1.getSelectedComponent();
-            if (sel == jPanel22) {
+            int idx = jTabbedPane1.getSelectedIndex();
+            if (idx == -1) return;
+            String title = jTabbedPane1.getTitleAt(idx);
+            if ("Mesas".equals(title)) {
                 if (idSalaActualMesas > 0 && cantMesasActual > 0) {
                     panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
                 }
-            } else if (sel == jPanel9) {
+            } else if ("Panel".equals(title)) {
                 panelSalas();
-            } else if (panelDashboard != null && sel == panelDashboard
-                    && politicaAcceso.esAdministrador()) {
+            } else if ("Dashboard".equals(title) && politicaAcceso.esAdministrador()) {
                 cargarDashboardYClientes();
-            } else if (sel == jPanel12) {
+            } else if ("Usuarios".equals(title)) {
                 ListarUsuarios();
             }
         });
+        aplicarEncabezados();
     }
 
     private Controlador.CategoriaControlador categoriaControlador() {
@@ -1067,7 +1069,8 @@ public final class Sistema extends javax.swing.JFrame {
         btnCategorias.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) return;
-                jTabbedPane1.setSelectedComponent(panelCategorias);
+                int idx = jTabbedPane1.indexOfTab("Categorías");
+                if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
             }
         });
 
@@ -3648,10 +3651,7 @@ public final class Sistema extends javax.swing.JFrame {
         }
     }
 
-    private void aplicarMejorasDeUX() {
-        // Force white background and better borders on all TextFields inside this frame
-        aplicarEstiloInputs(this.getContentPane());
-
+    private void aplicarEncabezados() {
         // --- UX de Encabezados con Color Coding y Botones Contextuales ---
         envolverConEncabezado(jPanel4, "GESTIÓN DE SALAS", new java.awt.Color(41, 128, 185), null); // Azul
         envolverConEncabezado(jPanel22, "SELECCIÓN DE MESAS", new java.awt.Color(41, 128, 185), null); // Azul
@@ -3660,14 +3660,19 @@ public final class Sistema extends javax.swing.JFrame {
         envolverConEncabezado(jPanel23, "TOMA DE PEDIDO", new java.awt.Color(230, 126, 34), () -> {
             if (idSalaActualMesas > 0 && cantMesasActual > 0) {
                 panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
-                jTabbedPane1.setSelectedIndex(2);
+                int idx = jTabbedPane1.indexOfTab("Mesas");
+                if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
             } else {
-                jTabbedPane1.setSelectedIndex(1);
+                int idx = jTabbedPane1.indexOfTab("Salas");
+                if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
             }
         });
         
         // Verde para cobro
-        envolverConEncabezado(jPanel25, "CAJA Y FACTURACIÓN", new java.awt.Color(39, 174, 96), () -> jTabbedPane1.setSelectedIndex(3));
+        envolverConEncabezado(jPanel25, "CAJA Y FACTURACIÓN", new java.awt.Color(39, 174, 96), () -> {
+            int idx = jTabbedPane1.indexOfTab("Platos");
+            if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
+        });
         envolverConEncabezado(jPanel6, "HISTORIAL Y CIERRES", new java.awt.Color(39, 174, 96), null);
         
         // Morado oscuro para Admin
@@ -3678,6 +3683,11 @@ public final class Sistema extends javax.swing.JFrame {
         if(panelCategorias != null) envolverConEncabezado(panelCategorias, "GESTIÓN DE CATEGORÍAS", adminColor, null);
         if(panelDashboard != null) envolverConEncabezado(panelDashboard, "DASHBOARD", adminColor, null);
         // -----------------------------------------------------------------
+    }
+
+    private void aplicarMejorasDeUX() {
+        // Force white background and better borders on all TextFields inside this frame
+        aplicarEstiloInputs(this.getContentPane());
 
         // Highlighting
         java.awt.event.FocusAdapter highlighter = new java.awt.event.FocusAdapter() {
@@ -4151,7 +4161,8 @@ public final class Sistema extends javax.swing.JFrame {
         java.net.URL urlDash = getClass().getResource("/Img/pedidos.png");
         if (urlDash != null) btnDashboard.setIcon(new javax.swing.ImageIcon(urlDash));
         btnDashboard.addActionListener(e -> {
-            jTabbedPane1.setSelectedComponent(panelDashboard);
+            int idx = jTabbedPane1.indexOfTab("Dashboard");
+            if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
             cargarDashboardYClientes();
         });
         getContentPane().add(btnDashboard, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 625, 200, 45));
@@ -6202,7 +6213,9 @@ public final class Sistema extends javax.swing.JFrame {
         panelCategorias.add(panelAsignacion, BorderLayout.CENTER);
         jTabbedPane1.addTab("Categorías", panelCategorias);
         jTabbedPane1.addChangeListener(e -> {
-            if (jTabbedPane1.getSelectedComponent() == panelCategorias) {
+            int idx = jTabbedPane1.getSelectedIndex();
+            if (idx == -1) return;
+            if ("Categorías".equals(jTabbedPane1.getTitleAt(idx))) {
                 cargarCategorias();
                 cargarPlatosAsignacion();
             }
