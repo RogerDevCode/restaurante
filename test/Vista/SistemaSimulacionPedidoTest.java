@@ -117,10 +117,14 @@ public class SistemaSimulacionPedidoTest {
     public void testFlujoMixtoFacturaConExento() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             try {
-                // Initialize Table
-                java.lang.reflect.Method iniMesa = Sistema.class.getDeclaredMethod("iniciarMesa", int.class, int.class);
-                iniMesa.setAccessible(true);
-                iniMesa.invoke(sistema, 1, 1);
+                // Setup Sala and Mesa directly instead of non-existent iniciarMesa
+                java.lang.reflect.Field txtSala = Sistema.class.getDeclaredField("txtTempIdSala");
+                txtSala.setAccessible(true);
+                ((javax.swing.JTextField) txtSala.get(sistema)).setText("1");
+
+                java.lang.reflect.Field txtMesa = Sistema.class.getDeclaredField("txtTempNumMesa");
+                txtMesa.setAccessible(true);
+                ((javax.swing.JTextField) txtMesa.get(sistema)).setText("1");
 
                 // Find elements
                 java.lang.reflect.Field tblPlatosField = Sistema.class.getDeclaredField("tblTemPlatos");

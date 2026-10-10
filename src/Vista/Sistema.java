@@ -839,6 +839,7 @@ public final class Sistema extends javax.swing.JFrame {
         LabelVendedor = new javax.swing.JLabel();
         tipo = new javax.swing.JLabel();
         btnUsuarios = new javax.swing.JButton();
+        btnCategorias = new javax.swing.JButton();
         btnPlatos = new javax.swing.JButton();
         jLabel38 = new javax.swing.JLabel();
         jTabbedPane1 = new javax.swing.JTabbedPane();
@@ -1046,6 +1047,20 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
 
+        btnCategorias.setBackground(new java.awt.Color(0, 0, 0));
+        btnCategorias.setForeground(new java.awt.Color(255, 255, 255));
+        // Reuse platos icon or config icon
+        btnCategorias.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/platos.png"))); 
+        btnCategorias.setText("Categorías");
+        btnCategorias.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        btnCategorias.setFocusable(false);
+        btnCategorias.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) return;
+                jTabbedPane1.setSelectedComponent(panelCategorias);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -1060,6 +1075,7 @@ public final class Sistema extends javax.swing.JFrame {
                 .addComponent(tipo)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
             .addComponent(btnPlatos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(btnCategorias, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addComponent(labelLogo, javax.swing.GroupLayout.PREFERRED_SIZE, 199, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(0, 0, Short.MAX_VALUE))
@@ -1072,17 +1088,19 @@ public final class Sistema extends javax.swing.JFrame {
                 .addComponent(tipo)
                 .addGap(18, 18, 18)
                 .addComponent(LabelVendedor)
-                .addGap(28, 28, 28)
+                .addGap(18, 18, 18)
                 .addComponent(btnPlatos, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(37, 37, 37)
+                .addGap(18, 18, 18)
+                .addComponent(btnCategorias, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
                 .addComponent(btnSala, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(37, 37, 37)
+                .addGap(18, 18, 18)
                 .addComponent(btnVentas, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(39, 39, 39)
+                .addGap(18, 18, 18)
                 .addComponent(btnConfig, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(38, 38, 38)
+                .addGap(18, 18, 18)
                 .addComponent(btnUsuarios, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(89, Short.MAX_VALUE))
+                .addContainerGap(50, Short.MAX_VALUE))
         );
 
         getContentPane().add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 200, 720));
@@ -3353,6 +3371,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnNuevoPlato;
     private javax.swing.JButton btnNuevoSala;
     private javax.swing.JButton btnPdfPedido;
+    private javax.swing.JButton btnCategorias;
     private javax.swing.JButton btnPlatos;
     private javax.swing.JButton btnRegistrarSala;
     private javax.swing.JButton btnSala;
