@@ -849,6 +849,7 @@ public final class Sistema extends javax.swing.JFrame {
         tipo = new javax.swing.JLabel();
         btnUsuarios = new javax.swing.JButton();
         btnCategorias = new javax.swing.JButton();
+        btnInicio = new javax.swing.JButton();
         btnPlatos = new javax.swing.JButton();
         jLabel38 = new javax.swing.JLabel();
         jTabbedPane1 = new javax.swing.JTabbedPane();
@@ -1070,6 +1071,20 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
 
+        btnInicio.setBackground(new java.awt.Color(0, 0, 0));
+        btnInicio.setForeground(new java.awt.Color(255, 255, 255));
+        btnInicio.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/salas.png"))); 
+        btnInicio.setText("Inicio");
+        btnInicio.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnInicio.setFocusable(false);
+        btnInicio.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                LimpiarTableMenu();
+                jTabbedPane1.setSelectedIndex(0);
+                panelSalas();
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -1083,6 +1098,7 @@ public final class Sistema extends javax.swing.JFrame {
                 .addGap(74, 74, 74)
                 .addComponent(tipo)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addComponent(btnInicio, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnPlatos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnCategorias, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(jPanel1Layout.createSequentialGroup()
@@ -1097,6 +1113,8 @@ public final class Sistema extends javax.swing.JFrame {
                 .addComponent(tipo)
                 .addGap(18, 18, 18)
                 .addComponent(LabelVendedor)
+                .addGap(18, 18, 18)
+                .addComponent(btnInicio, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
                 .addComponent(btnPlatos, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
@@ -3381,6 +3399,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnNuevoSala;
     private javax.swing.JButton btnPdfPedido;
     private javax.swing.JButton btnCategorias;
+    private javax.swing.JButton btnInicio;
     private javax.swing.JButton btnPlatos;
     private javax.swing.JButton btnRegistrarSala;
     private javax.swing.JButton btnSala;
