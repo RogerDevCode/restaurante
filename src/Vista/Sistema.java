@@ -783,6 +783,22 @@ public final class Sistema extends javax.swing.JFrame {
         ListarConfig();
         actualizarEstadoTasaUI();
         configurarTabCategorias();
+
+        jTabbedPane1.addChangeListener(e -> {
+            java.awt.Component sel = jTabbedPane1.getSelectedComponent();
+            if (sel == jPanel22) {
+                if (idSalaActualMesas > 0 && cantMesasActual > 0) {
+                    panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
+                }
+            } else if (sel == jPanel9) {
+                panelSalas();
+            } else if (panelDashboard != null && sel == panelDashboard
+                    && politicaAcceso.esAdministrador()) {
+                cargarDashboardYClientes();
+            } else if (sel == jPanel12) {
+                ListarUsuarios();
+            }
+        });
     }
 
     private Controlador.CategoriaControlador categoriaControlador() {
@@ -2639,6 +2655,7 @@ public final class Sistema extends javax.swing.JFrame {
             lg.setRol(rol);
             if (lgDao.Registrar(lg)) {
                 JOptionPane.showMessageDialog(this, "Usuario registrado.");
+                ListarUsuarios();
             } else {
                 JOptionPane.showMessageDialog(this, "No se registró el usuario.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
             }
