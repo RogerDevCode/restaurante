@@ -3558,7 +3558,36 @@ public final class Sistema extends javax.swing.JFrame {
         }
     }
 
-    
+    private void envolverConEncabezado(java.awt.Component target, String titulo, java.awt.Color bg, Runnable accionVolver) {
+        int idx = jTabbedPane1.indexOfComponent(target);
+        if (idx == -1) return;
+        
+        javax.swing.JPanel wrap = new javax.swing.JPanel(new java.awt.BorderLayout());
+        javax.swing.JPanel header = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 15, 10));
+        header.setBackground(bg);
+        
+        if (accionVolver != null) {
+            javax.swing.JButton btnVolver = new javax.swing.JButton("⬅ Volver");
+            btnVolver.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
+            btnVolver.setForeground(new java.awt.Color(50, 50, 50));
+            btnVolver.setBackground(new java.awt.Color(255, 255, 255));
+            btnVolver.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            btnVolver.setFocusable(false);
+            btnVolver.addActionListener(e -> accionVolver.run());
+            header.add(btnVolver);
+        }
+        
+        javax.swing.JLabel lblTitulo = new javax.swing.JLabel(titulo);
+        lblTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 18));
+        lblTitulo.setForeground(new java.awt.Color(255, 255, 255));
+        header.add(lblTitulo);
+        
+        wrap.add(header, java.awt.BorderLayout.NORTH);
+        wrap.add(target, java.awt.BorderLayout.CENTER);
+        
+        jTabbedPane1.setComponentAt(idx, wrap);
+    }
+
     private void aplicarEstiloInputs(java.awt.Container contenedor) {
         for (java.awt.Component c : contenedor.getComponents()) {
             if (c instanceof javax.swing.JTextField) {
@@ -3623,47 +3652,31 @@ public final class Sistema extends javax.swing.JFrame {
         // Force white background and better borders on all TextFields inside this frame
         aplicarEstiloInputs(this.getContentPane());
 
-        // --- Botones de "Volver" Contextuales para UX de Navegación ---
-        int idxTab3 = jTabbedPane1.indexOfComponent(jPanel23);
-        if (idxTab3 != -1) {
-            javax.swing.JPanel pnlWrap3 = new javax.swing.JPanel(new java.awt.BorderLayout());
-            javax.swing.JPanel pnlTop3 = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
-            pnlTop3.setBackground(new java.awt.Color(255, 255, 255));
-            javax.swing.JButton btnVolver3 = new javax.swing.JButton("⬅ Volver a Mesas");
-            btnVolver3.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
-            btnVolver3.setBackground(new java.awt.Color(230, 230, 230));
-            btnVolver3.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-            btnVolver3.addActionListener(e -> {
-                if (idSalaActualMesas > 0 && cantMesasActual > 0) {
-                    panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
-                    jTabbedPane1.setSelectedIndex(2);
-                } else {
-                    jTabbedPane1.setSelectedIndex(1);
-                }
-            });
-            pnlTop3.add(btnVolver3);
-            pnlWrap3.add(pnlTop3, java.awt.BorderLayout.NORTH);
-            pnlWrap3.add(jPanel23, java.awt.BorderLayout.CENTER);
-            jTabbedPane1.setComponentAt(idxTab3, pnlWrap3);
-        }
-
-        int idxTab4 = jTabbedPane1.indexOfComponent(jPanel25);
-        if (idxTab4 != -1) {
-            javax.swing.JPanel pnlWrap4 = new javax.swing.JPanel(new java.awt.BorderLayout());
-            javax.swing.JPanel pnlTop4 = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
-            pnlTop4.setBackground(new java.awt.Color(255, 255, 255));
-            javax.swing.JButton btnVolver4 = new javax.swing.JButton("⬅ Volver al Pedido");
-            btnVolver4.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
-            btnVolver4.setBackground(new java.awt.Color(230, 230, 230));
-            btnVolver4.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-            btnVolver4.addActionListener(e -> {
-                jTabbedPane1.setSelectedIndex(3);
-            });
-            pnlTop4.add(btnVolver4);
-            pnlWrap4.add(pnlTop4, java.awt.BorderLayout.NORTH);
-            pnlWrap4.add(jPanel25, java.awt.BorderLayout.CENTER);
-            jTabbedPane1.setComponentAt(idxTab4, pnlWrap4);
-        }
+        // --- UX de Encabezados con Color Coding y Botones Contextuales ---
+        envolverConEncabezado(jPanel4, "GESTIÓN DE SALAS", new java.awt.Color(41, 128, 185), null); // Azul
+        envolverConEncabezado(jPanel22, "SELECCIÓN DE MESAS", new java.awt.Color(41, 128, 185), null); // Azul
+        
+        // Naranja para pedido
+        envolverConEncabezado(jPanel23, "TOMA DE PEDIDO", new java.awt.Color(230, 126, 34), () -> {
+            if (idSalaActualMesas > 0 && cantMesasActual > 0) {
+                panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
+                jTabbedPane1.setSelectedIndex(2);
+            } else {
+                jTabbedPane1.setSelectedIndex(1);
+            }
+        });
+        
+        // Verde para cobro
+        envolverConEncabezado(jPanel25, "CAJA Y FACTURACIÓN", new java.awt.Color(39, 174, 96), () -> jTabbedPane1.setSelectedIndex(3));
+        envolverConEncabezado(jPanel6, "HISTORIAL Y CIERRES", new java.awt.Color(39, 174, 96), null);
+        
+        // Morado oscuro para Admin
+        java.awt.Color adminColor = new java.awt.Color(142, 68, 173);
+        envolverConEncabezado(jPanel7, "CONFIGURACIÓN", adminColor, null);
+        envolverConEncabezado(jPanel12, "USUARIOS", adminColor, null);
+        envolverConEncabezado(jPanel2, "GESTIÓN DE PLATOS", adminColor, null);
+        if(panelCategorias != null) envolverConEncabezado(panelCategorias, "GESTIÓN DE CATEGORÍAS", adminColor, null);
+        if(panelDashboard != null) envolverConEncabezado(panelDashboard, "DASHBOARD", adminColor, null);
         // -----------------------------------------------------------------
 
         // Highlighting
