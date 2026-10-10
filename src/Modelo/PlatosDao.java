@@ -94,7 +94,7 @@ public class PlatosDao implements PlatosRepositorio {
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
               WHERE p.fecha = ? AND p.activo = 1 AND p.nombre LIKE ?
-              ORDER BY c.nombre IS NULL ASC, c.nombre ASC, favorito DESC, (r.total IS NULL) ASC, r.total DESC, p.nombre ASC
+              ORDER BY c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
               """
             : """
               SELECT p.id, p.nombre, p.precio, p.fecha, p.aplica_iva,
@@ -117,7 +117,7 @@ public class PlatosDao implements PlatosRepositorio {
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
               WHERE p.fecha = ? AND p.activo = 1
-              ORDER BY c.nombre IS NULL ASC, c.nombre ASC, favorito DESC, (r.total IS NULL) ASC, r.total DESC, p.nombre ASC
+              ORDER BY c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
               """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {

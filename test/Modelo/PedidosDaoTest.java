@@ -216,18 +216,19 @@ public class PedidosDaoTest {
     public void testActualizarPedidoCompleto_SimulacionUsuario() {
         PedidosDao dao = new PedidosDao();
         // 1. Crear un pedido inicial
+        int randomMesa = (int) (Math.random() * 1000) + 100;
         Pedidos pInicial = new Pedidos();
         pInicial.setId_sala(1);
-        pInicial.setNum_mesa(99);
+        pInicial.setNum_mesa(randomMesa);
         pInicial.setTotalDecimal(new BigDecimal("10.00"));
         pInicial.setUsuario("TestUser");
         DetallePedido d1 = new DetallePedido(0, "Pollo", new BigDecimal("10.00"), 1, "", 0);
         int idPedido = dao.registrarPedidoCompleto(pInicial, Arrays.asList(d1));
         
-        // 2. Simulamos que el usuario "Agrega Productos" al mismo pedido (mesa 99)
+        // 2. Simulamos que el usuario "Agrega Productos" al mismo pedido
         Pedidos pModificado = new Pedidos();
         pModificado.setId_sala(1);
-        pModificado.setNum_mesa(99);
+        pModificado.setNum_mesa(randomMesa);
         pModificado.setTotalDecimal(new BigDecimal("25.00"));
         pModificado.setUsuario("TestUser");
         pModificado.setSubtotal(new BigDecimal("25.00"));

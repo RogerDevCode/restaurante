@@ -1,0 +1,41 @@
+--- src/Vista/Sistema.java
++++ src/Vista/Sistema.java
+@@ -5744,9 +5744,22 @@
+         JScrollPane scrollCategorias = new JScrollPane(listaCategorias);
+         scrollCategorias.setPreferredSize(new Dimension(300, 320));
+ 
++        JButton btnSubirCategoria = new JButton("↑ Subir");
++        JButton btnBajarCategoria = new JButton("↓ Bajar");
++        btnSubirCategoria.addActionListener(e -> subirCategoriaSeleccionada());
++        btnBajarCategoria.addActionListener(e -> bajarCategoriaSeleccionada());
++        
++        JPanel panelListaConBotones = new JPanel(new BorderLayout(4, 0));
++        panelListaConBotones.add(scrollCategorias, BorderLayout.CENTER);
++        JPanel panelBotonesMover = new JPanel(new GridLayout(2, 1, 0, 4));
++        panelBotonesMover.add(btnSubirCategoria);
++        panelBotonesMover.add(btnBajarCategoria);
++        JPanel wrapperBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
++        wrapperBotones.add(panelBotonesMover);
++        panelListaConBotones.add(wrapperBotones, BorderLayout.EAST);
++
+         txtNombreCategoria = new JTextField(16);
+         cbColorCategoria = new JComboBox<>();
+         cbColorCategoria.setRenderer(new RendererColor());
+ 
+         btnGuardarCategoria = new JButton("Agregar");
+@@ -5762,6 +5775,8 @@
+         btnEliminarCategoria.setEnabled(puedeGestionar);
+         txtNombreCategoria.setEnabled(puedeGestionar);
+         cbColorCategoria.setEnabled(puedeGestionar);
++        btnSubirCategoria.setEnabled(puedeGestionar);
++        btnBajarCategoria.setEnabled(puedeGestionar);
+ 
+         JPanel panelCrud = new JPanel(new GridBagLayout());
+         panelCrud.setBorder(BorderFactory.createTitledBorder("Categorías del menú"));
+@@ -5771,7 +5786,7 @@
+         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+         gbc.fill = GridBagConstraints.BOTH; gbc.weightx = 1; gbc.weighty = 1;
+-        panelCrud.add(scrollCategorias, gbc);
++        panelCrud.add(panelListaConBotones, gbc);
+         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.gridwidth = 1; gbc.weighty = 0;
+         gbc.gridy = 1; panelCrud.add(new JLabel("Nombre:"), gbc);

@@ -141,7 +141,7 @@ public class SistemaCantidadesTest {
                 // They are inside the pnlBotonesCantidad hierarchy, let's just trigger applying manually
                 java.lang.reflect.Method aplicarMethod = Sistema.class.getDeclaredMethod("aplicarCantidadManual", String.class, int.class);
                 aplicarMethod.setAccessible(true);
-                aplicarMethod.invoke(sistema, "8", 1);
+                aplicarMethod.invoke(sistema, "8", 0);
                 
                 assertEquals("8", tableMenu.getValueAt(0, 2).toString());
                 assertEquals("8", txtCantidad.getText());

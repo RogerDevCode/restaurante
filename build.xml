@@ -97,6 +97,10 @@
         <fail unless="integration.compose.down.ok"
               message="No se pudo limpiar el proyecto/volumen Compose de integración."/>
     </target>
+
+    <target name="-pre-compile-test">
+        <delete dir="${build.test.classes.dir}" quiet="true"/>
+    </target>
     <!--
 
     There exist several targets which are by default empty and which can be 

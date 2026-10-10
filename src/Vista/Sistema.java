@@ -4,6 +4,7 @@
  * and open the template in the editor.
  */
 package Vista;
+import java.awt.GridLayout;
 
 import Controlador.PedidosControlador;
 import Controlador.PlatosControlador;
@@ -1291,14 +1292,24 @@ public final class Sistema extends javax.swing.JFrame {
                     int row = tblTemPlatos.rowAtPoint(evt.getPoint());
                     if (row >= 0) {
                         int id = Integer.parseInt(tblTemPlatos.getValueAt(row, 0).toString());
+                        String nombreNuevo = tblTemPlatos.getValueAt(row, 1).toString();
                         // Revisar si ya está en el tableMenu
                         DefaultTableModel tmp = (DefaultTableModel) tableMenu.getModel();
                         boolean found = false;
                         for (int i = 0; i < tmp.getRowCount(); i++) {
-                            if (Integer.parseInt(tmp.getValueAt(i, 0).toString()) == id) {
+                            String idFila = tmp.getValueAt(i, 0).toString();
+                            String nombreFila = tmp.getValueAt(i, 1).toString();
+                            boolean coincide = false;
+                            if (!idFila.isBlank() && idFila.matches("\\d+")) {
+                                coincide = Integer.parseInt(idFila) == id;
+                            }
+                            if (!coincide && nombreFila.equalsIgnoreCase(nombreNuevo)) {
+                                coincide = true;
+                            }
+                            if (coincide) {
                                 found = true;
                                 int cantActual = Integer.parseInt(tmp.getValueAt(i, 2).toString());
-                                setCantidadPlatoSeleccionadoById(id, cantActual + 1);
+                                setCantidadPlatoPorFila(i, cantActual + 1);
                                 tableMenu.setRowSelectionInterval(i, i);
                                 break;
                             }
@@ -2651,9 +2662,18 @@ public final class Sistema extends javax.swing.JFrame {
             item = item + 1;
             tmp = (DefaultTableModel) tableMenu.getModel();
             for (int i = 0; i < tableMenu.getRowCount(); i++) {
-                if (tableMenu.getValueAt(i, 0).equals(id)) {
+                String idFila = tableMenu.getValueAt(i, 0).toString();
+                String nombreFila = tableMenu.getValueAt(i, 1).toString();
+                boolean coincide = false;
+                if (!idFila.isBlank() && idFila.matches("\\d+")) {
+                    coincide = Integer.parseInt(idFila) == id;
+                }
+                if (!coincide && nombreFila.equalsIgnoreCase(descripcion)) {
+                    coincide = true;
+                }
+                if (coincide) {
                     int cantActual = Integer.parseInt(tableMenu.getValueAt(i, 2).toString());
-                    setCantidadPlatoSeleccionadoById(id, cantActual + 1);
+                    setCantidadPlatoPorFila(i, cantActual + 1);
                     return;
                 }
             }
@@ -5727,6 +5747,24 @@ public final class Sistema extends javax.swing.JFrame {
         JScrollPane scrollCategorias = new JScrollPane(listaCategorias);
         scrollCategorias.setPreferredSize(new Dimension(300, 320));
 
+        JButton btnSubirCategoria = new JButton("↑ Subir");
+        JButton btnBajarCategoria = new JButton("↓ Bajar");
+        btnSubirCategoria.setToolTipText("Mueve la categoría seleccionada hacia arriba en el orden visual.");
+        btnBajarCategoria.setToolTipText("Mueve la categoría seleccionada hacia abajo en el orden visual.");
+        btnSubirCategoria.addActionListener(e -> intercambiarCategorias(-1));
+        btnBajarCategoria.addActionListener(e -> intercambiarCategorias(1));
+
+        JPanel panelListaConBotones = new JPanel(new BorderLayout(4, 0));
+        panelListaConBotones.add(scrollCategorias, BorderLayout.CENTER);
+        
+        JPanel panelBotonesMover = new JPanel(new GridLayout(2, 1, 0, 4));
+        panelBotonesMover.add(btnSubirCategoria);
+        panelBotonesMover.add(btnBajarCategoria);
+        
+        JPanel wrapperBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        wrapperBotones.add(panelBotonesMover);
+        panelListaConBotones.add(wrapperBotones, BorderLayout.EAST);
+
         txtNombreCategoria = new JTextField(16);
         cbColorCategoria = new JComboBox<>();
         cbColorCategoria.setRenderer(new RendererColor());
@@ -5744,6 +5782,8 @@ public final class Sistema extends javax.swing.JFrame {
         btnEliminarCategoria.setEnabled(puedeGestionar);
         txtNombreCategoria.setEnabled(puedeGestionar);
         cbColorCategoria.setEnabled(puedeGestionar);
+        btnSubirCategoria.setEnabled(puedeGestionar);
+        btnBajarCategoria.setEnabled(puedeGestionar);
 
         JPanel panelCrud = new JPanel(new GridBagLayout());
         panelCrud.setBorder(BorderFactory.createTitledBorder("Categorías del menú"));
@@ -5753,7 +5793,7 @@ public final class Sistema extends javax.swing.JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.BOTH; gbc.weightx = 1; gbc.weighty = 1;
-        panelCrud.add(scrollCategorias, gbc);
+        panelCrud.add(panelListaConBotones, gbc);
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.gridwidth = 1; gbc.weighty = 0;
         gbc.gridy = 1; panelCrud.add(new JLabel("Nombre:"), gbc);
         gbc.gridx = 1; panelCrud.add(txtNombreCategoria, gbc);
@@ -5923,6 +5963,40 @@ public final class Sistema extends javax.swing.JFrame {
                     (String) cbColorCategoria.getSelectedItem(), seleccionada.getOrden());
             categoriaControlador().modificar(c);
             cargarCategorias();
+        } catch (Exception ex) {
+            mostrarErrorCategorias(ex);
+        }
+    }
+    private void intercambiarCategorias(int direccion) {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) return;
+        
+        int idx = listaCategorias.getSelectedIndex();
+        if (idx == -1) return;
+        
+        int nuevoIdx = idx + direccion;
+        if (nuevoIdx < 0 || nuevoIdx >= modeloListaCategorias.getSize()) return;
+
+        try {
+            // Normalizamos todo a la secuencia visual
+            for (int i = 0; i < modeloListaCategorias.getSize(); i++) {
+                Modelo.Categoria c = modeloListaCategorias.getElementAt(i);
+                c.setOrden(i);
+            }
+            
+            Modelo.Categoria catActual = modeloListaCategorias.getElementAt(idx);
+            Modelo.Categoria catDestino = modeloListaCategorias.getElementAt(nuevoIdx);
+            
+            int tempOrden = catActual.getOrden();
+            catActual.setOrden(catDestino.getOrden());
+            catDestino.setOrden(tempOrden);
+            
+            for (int i = 0; i < modeloListaCategorias.getSize(); i++) {
+                categoriaControlador().modificar(modeloListaCategorias.getElementAt(i));
+            }
+            
+            cargarCategorias();
+            ListarPlatos(tblTemPlatos, txtBuscarPlato.getText());
+            cargarPlatosAsignacion();
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }
