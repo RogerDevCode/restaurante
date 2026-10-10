@@ -5773,7 +5773,18 @@ public final class Sistema extends javax.swing.JFrame {
         List<JButton> botonesMesa = new ArrayList<>();
         for (int i = 1; i <= cant; i++) {
             int num_mesa = i;
-            JButton boton = new JButton();
+            JButton boton = new JButton() {
+                @Override
+                protected void paintComponent(java.awt.Graphics g) {
+                    java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+                    g2.setColor(getBackground());
+                    g2.fillRect(0, 0, getWidth(), getHeight());
+                    super.paintComponent(g2);
+                    g2.dispose();
+                }
+            };
+            boton.setContentAreaFilled(false);
+            boton.setOpaque(true);
             boton.setIcon(new ImageIcon(getClass().getResource("/Img/mesa.png")));
             boton.setHorizontalTextPosition(JButton.CENTER);
             boton.setVerticalTextPosition(JButton.BOTTOM);
