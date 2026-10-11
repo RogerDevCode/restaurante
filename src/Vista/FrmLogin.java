@@ -12,6 +12,7 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.GridLayout;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Component;
@@ -38,6 +39,7 @@ public class FrmLogin extends javax.swing.JFrame {
     private static final Color FONDO = new Color(250, 248, 243);
     private static final Color TEXTO = new Color(37, 46, 43);
     private static final Color SECUNDARIO = new Color(112, 120, 115);
+    private static final Color ROJO_SALIR = new Color(197, 107, 98);
     private Usuario usuarioAutenticado;
     private final LoginControlador controlador;
     private final Function<Usuario, Sistema> crearSistema;
@@ -199,20 +201,32 @@ public class FrmLogin extends javax.swing.JFrame {
         btnIniciar.setForeground(Color.WHITE);
         btnIniciar.setBackground(VERDE_BOTON);
         btnIniciar.setFocusPainted(false);
-        btnIniciar.setBorder(BorderFactory.createEmptyBorder(12, 18, 12, 18));
+        btnIniciar.setBorder(BorderFactory.createEmptyBorder(0, 18, 0, 18));
         btnIniciar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnIniciar.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnIniciar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
-        btnIniciar.setPreferredSize(new Dimension(390, 48));
+        btnIniciar.setMinimumSize(new Dimension(180, 46));
+        btnIniciar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        btnIniciar.setPreferredSize(new Dimension(189, 46));
 
         jButton1.setText("Salir");
-        jButton1.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        jButton1.setForeground(SECUNDARIO);
-        jButton1.setBackground(FONDO);
+        jButton1.setFont(new Font("SansSerif", Font.BOLD, 14));
+        jButton1.setForeground(Color.WHITE);
+        jButton1.setBackground(ROJO_SALIR);
         jButton1.setFocusPainted(false);
-        jButton1.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
+        jButton1.setContentAreaFilled(true);
+        jButton1.setOpaque(true);
+        jButton1.setBorder(BorderFactory.createEmptyBorder(0, 18, 0, 18));
         jButton1.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        jButton1.setAlignmentX(Component.LEFT_ALIGNMENT);
+        jButton1.setMinimumSize(new Dimension(180, 46));
+        jButton1.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        jButton1.setPreferredSize(new Dimension(189, 46));
+
+        JPanel filaBotones = new JPanel(new GridLayout(1, 2, 12, 0));
+        filaBotones.setOpaque(false);
+        filaBotones.setAlignmentX(Component.LEFT_ALIGNMENT);
+        filaBotones.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        filaBotones.setPreferredSize(new Dimension(390, 46));
+        filaBotones.add(btnIniciar);
+        filaBotones.add(jButton1);
 
         barra.setForeground(VERDE_BOTON);
         barra.setBackground(new Color(231, 233, 227));
@@ -231,12 +245,10 @@ public class FrmLogin extends javax.swing.JFrame {
         formulario.add(jLabel4);
         formulario.add(Box.createVerticalStrut(9));
         formulario.add(txtPass);
-        formulario.add(Box.createVerticalStrut(28));
-        formulario.add(btnIniciar);
-        formulario.add(Box.createVerticalStrut(15));
+        formulario.add(Box.createVerticalStrut(30));
+        formulario.add(filaBotones);
+        formulario.add(Box.createVerticalStrut(14));
         formulario.add(barra);
-        formulario.add(Box.createVerticalStrut(8));
-        formulario.add(jButton1);
 
         JPanel centrado = new JPanel(new java.awt.GridBagLayout());
         centrado.setOpaque(false);

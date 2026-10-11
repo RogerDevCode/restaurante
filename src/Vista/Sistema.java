@@ -69,6 +69,13 @@ import javax.swing.table.JTableHeader;
 
 public final class Sistema extends javax.swing.JFrame {
 
+    private static final java.awt.Color COLOR_PELIGRO = new java.awt.Color(197, 107, 98);
+    private static final int ANCHO_BOTON_ESTANDAR = 100;
+    private static final int ALTO_BOTON_ESTANDAR = 34;
+    /** Barra lateral izquierda original 200 px reducida un 25 %. */
+    private static final int ANCHO_BARRA_LATERAL = 150;
+    private static final int ALTO_CABECERA = 90;
+
     Salas sl = new Salas();
     Config conf = new Config();
     Eventos event = new Eventos();
@@ -346,7 +353,11 @@ public final class Sistema extends javax.swing.JFrame {
 
         btnAnularPedido = new javax.swing.JButton("Anular Pedido");
         btnAnularPedido.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        btnAnularPedido.setForeground(new java.awt.Color(180, 40, 40));
+        btnAnularPedido.setForeground(java.awt.Color.WHITE);
+        btnAnularPedido.setBackground(COLOR_PELIGRO);
+        btnAnularPedido.setContentAreaFilled(true);
+        btnAnularPedido.setOpaque(true);
+        btnAnularPedido.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 12, 6, 12));
         btnAnularPedido.setToolTipText("Anular el pedido seleccionado justificando el motivo en auditoría");
         btnAnularPedido.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnAnularPedido.setEnabled(false);
@@ -765,7 +776,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         btnPurgarHistorial = new javax.swing.JButton("Purgar Historial");
         btnPurgarHistorial.setFont(new java.awt.Font("Times New Roman", java.awt.Font.BOLD, 13));
-        btnPurgarHistorial.setBackground(new java.awt.Color(200, 35, 51));
+        btnPurgarHistorial.setBackground(COLOR_PELIGRO);
         btnPurgarHistorial.setForeground(java.awt.Color.WHITE);
         btnPurgarHistorial.setToolTipText("Elimina pedidos finalizados anteriores al período de retención");
         btnPurgarHistorial.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -796,20 +807,144 @@ public final class Sistema extends javax.swing.JFrame {
         jTabbedPane1.addChangeListener(e -> {
             int idx = jTabbedPane1.getSelectedIndex();
             if (idx == -1) return;
-            String title = jTabbedPane1.getTitleAt(idx);
-            if ("Mesas".equals(title)) {
-                if (idSalaActualMesas > 0 && cantMesasActual > 0) {
-                    panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
-                }
-            } else if ("Panel".equals(title)) {
-                panelSalas();
-            } else if ("Dashboard".equals(title) && politicaAcceso.esAdministrador()) {
-                cargarDashboardYClientes();
-            } else if ("Usuarios".equals(title)) {
-                ListarUsuarios();
+            refrescarVistaVisible(jTabbedPane1.getTitleAt(idx));
+        });
+        configurarObservadoresVistas();
+        aplicarMedidaEstandarBotones(getContentPane(), new java.util.HashSet<>());
+        aplicarEncabezados();
+        configurarVentanaResponsiva();
+        configurarTodasLasTablas(getContentPane());
+        centrarTextoBarraLateral();
+    }
+
+    /** Carga un icono de la barra lateral y lo escala a un tamano uniforme de 32x32. */
+    private static javax.swing.ImageIcon iconoBarra(String recurso) {
+        try {
+            java.net.URL url = Sistema.class.getResource(recurso);
+            if (url == null) {
+                return null;
+            }
+            java.awt.Image img = new javax.swing.ImageIcon(url).getImage();
+            return new javax.swing.ImageIcon(img.getScaledInstance(32, 32, java.awt.Image.SCALE_SMOOTH));
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    /**
+     * Abre la aplicacion maximizada y hace que la barra lateral y el area de
+     * pestañas se redimensionen con la ventana para aprovechar todo el espacio.
+     */
+    private void configurarVentanaResponsiva() {
+        setResizable(true);
+        java.awt.Container cp = getContentPane();
+        cp.setLayout(null);
+        cp.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                reacomodarComponentes();
             }
         });
-        aplicarEncabezados();
+        setExtendedState(getExtendedState() | javax.swing.JFrame.MAXIMIZED_BOTH);
+        javax.swing.SwingUtilities.invokeLater(this::reacomodarComponentes);
+    }
+
+    /** Reubica los paneles principales (barra lateral, banner, pestañas) al tamano actual. */
+    private void reacomodarComponentes() {
+        java.awt.Container cp = getContentPane();
+        int ancho = cp.getWidth();
+        int alto = cp.getHeight();
+        if (ancho <= 0 || alto <= 0) {
+            return;
+        }
+        int anchoBarra = ANCHO_BARRA_LATERAL;
+        if (jPanel1 != null) {
+            jPanel1.setBounds(0, 0, anchoBarra, alto);
+        }
+        if (btnDashboard != null) {
+            btnDashboard.setBounds(0, Math.max(0, alto - 50), anchoBarra, 45);
+        }
+        if (lblBannerTasa != null) {
+            lblBannerTasa.setBounds(anchoBarra + 5, 12, 305, 65);
+        }
+        if (jLabel38 != null) {
+            int xTitulo = Math.max(anchoBarra + 340, ancho - 545);
+            jLabel38.setBounds(xTitulo, 0, 540, ALTO_CABECERA);
+        }
+        if (jTabbedPane1 != null) {
+            int yTabs = ALTO_CABECERA + 5;
+            jTabbedPane1.setBounds(anchoBarra, yTabs,
+                    Math.max(200, ancho - anchoBarra), Math.max(150, alto - yTabs));
+        }
+    }
+
+    /** Refresca desde la BD la vista que acaba de hacerse visible (pestaña activa). */
+    private void refrescarVistaVisible(String title) {
+        if (title == null) return;
+        switch (title) {
+            case "Mesas" -> refrescarPanelMesasActual();
+            case "Panel" -> panelSalas();
+            case "Salas" -> ListarSalas();
+            case "Platos" -> ListarPlatos(TablePlatos, "");
+            case "Datos de la Empresa" -> ListarConfig();
+            case "Usuarios" -> ListarUsuarios();
+            case "Dashboard" -> { if (politicaAcceso.esAdministrador()) cargarDashboardYClientes(); }
+            default -> { }
+        }
+    }
+
+    /** Patrón Observer: registra qué vistas se refrescan cuando cambian los datos. */
+    private void configurarObservadoresVistas() {
+        RefrescoVistas.limpiar();
+        RefrescoVistas.suscribir(RefrescoVistas.PLATOS, this::refrescarMenuPlatos);
+        RefrescoVistas.suscribir(RefrescoVistas.CATEGORIAS, this::cargarCategorias);
+        RefrescoVistas.suscribir(RefrescoVistas.CATEGORIAS, this::refrescarMenuPlatos);
+        RefrescoVistas.suscribir(RefrescoVistas.SALAS, this::panelSalas);
+        RefrescoVistas.suscribir(RefrescoVistas.MESAS, this::refrescarPanelMesasActual);
+        RefrescoVistas.suscribir(RefrescoVistas.PEDIDOS, this::refrescarPanelMesasActual);
+        RefrescoVistas.suscribir(RefrescoVistas.PEDIDOS, this::ListarPedidos);
+        RefrescoVistas.suscribir(RefrescoVistas.HISTORIAL, this::ListarPedidos);
+        RefrescoVistas.suscribir(RefrescoVistas.USUARIOS, this::ListarUsuarios);
+        RefrescoVistas.suscribir(RefrescoVistas.CONFIG, this::ListarConfig);
+        RefrescoVistas.suscribir(RefrescoVistas.DASHBOARD, () -> { if (politicaAcceso.esAdministrador()) cargarDashboardYClientes(); });
+    }
+
+    /** Vuelve a leer el menú/selector de platos (pestaña de toma de pedido). */
+    private void refrescarMenuPlatos() {
+        if (tblTemPlatos != null) {
+            ListarPlatos(tblTemPlatos, txtBuscarPlato != null ? txtBuscarPlato.getText() : "");
+        }
+    }
+
+    /** Reconstruye la cuadrícula de mesas de la sala actualmente abierta, si la hay. */
+    private void refrescarPanelMesasActual() {
+        if (idSalaActualMesas > 0 && cantMesasActual > 0 && nombreSalaActualMesas != null) {
+            panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
+        }
+    }
+
+    /**
+     * Aplica una medida estándar (ancho/alto) a los botones con texto, según la
+     * recomendación de ergonomía para interfaces de escritorio. Se omiten los botones
+     * de glifos o con icono (numpad, navegación lateral, +/- cantidades, etc.).
+     */
+    private void aplicarMedidaEstandarBotones(java.awt.Container contenedor, java.util.Set<java.awt.Component> excluidos) {
+        if (contenedor == null) return;
+        for (java.awt.Component c : contenedor.getComponents()) {
+            if (c instanceof javax.swing.JButton boton && !excluidos.contains(c)) {
+                String texto = boton.getText();
+                boolean esGlifo = texto == null || texto.trim().length() <= 2;
+                boolean tieneIcono = boton.getIcon() != null;
+                if (!esGlifo && !tieneIcono) {
+                    int ancho = Math.max(boton.getPreferredSize().width, ANCHO_BOTON_ESTANDAR);
+                    boton.setMinimumSize(new java.awt.Dimension(ANCHO_BOTON_ESTANDAR, ALTO_BOTON_ESTANDAR));
+                    boton.setPreferredSize(new java.awt.Dimension(ancho, ALTO_BOTON_ESTANDAR));
+                }
+            }
+            if (c instanceof java.awt.Container sub) {
+                aplicarMedidaEstandarBotones(sub, excluidos);
+            }
+        }
     }
 
     private Controlador.CategoriaControlador categoriaControlador() {
@@ -996,7 +1131,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         btnSala.setBackground(new java.awt.Color(0, 0, 0));
         btnSala.setForeground(new java.awt.Color(255, 255, 255));
-        btnSala.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/sala.png"))); // NOI18N
+        btnSala.setIcon(iconoBarra("/Img/sala.png"));
         btnSala.setText("Salas");
         btnSala.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnSala.setFocusable(false);
@@ -1008,7 +1143,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         btnVentas.setBackground(new java.awt.Color(0, 0, 0));
         btnVentas.setForeground(new java.awt.Color(255, 255, 255));
-        btnVentas.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/pedidos.png"))); // NOI18N
+        btnVentas.setIcon(iconoBarra("/Img/pedidos.png"));
         btnVentas.setText("Pedidos");
         btnVentas.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnVentas.setFocusable(false);
@@ -1020,7 +1155,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         btnConfig.setBackground(new java.awt.Color(0, 0, 0));
         btnConfig.setForeground(new java.awt.Color(255, 255, 255));
-        btnConfig.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/config.png"))); // NOI18N
+        btnConfig.setIcon(iconoBarra("/Img/config.png"));
         btnConfig.setText("Config");
         btnConfig.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnConfig.setFocusable(false);
@@ -1037,7 +1172,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         btnUsuarios.setBackground(new java.awt.Color(0, 0, 0));
         btnUsuarios.setForeground(new java.awt.Color(255, 255, 255));
-        btnUsuarios.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/usuarios.png"))); // NOI18N
+        btnUsuarios.setIcon(iconoBarra("/Img/usuarios.png"));
         btnUsuarios.setText("Usuarios");
         btnUsuarios.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnUsuarios.setFocusable(false);
@@ -1049,7 +1184,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         btnPlatos.setBackground(new java.awt.Color(0, 0, 0));
         btnPlatos.setForeground(new java.awt.Color(255, 255, 255));
-        btnPlatos.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/platos.png"))); // NOI18N
+        btnPlatos.setIcon(iconoBarra("/Img/platos.png"));
         btnPlatos.setText("Platos");
         btnPlatos.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnPlatos.setFocusable(false);
@@ -1062,7 +1197,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnCategorias.setBackground(new java.awt.Color(0, 0, 0));
         btnCategorias.setForeground(new java.awt.Color(255, 255, 255));
         // Reuse platos icon or config icon
-        btnCategorias.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/platos.png"))); 
+        btnCategorias.setIcon(iconoBarra("/Img/platos.png"));
         btnCategorias.setText("Categorías");
         btnCategorias.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnCategorias.setFocusable(false);
@@ -1076,8 +1211,9 @@ public final class Sistema extends javax.swing.JFrame {
 
         btnInicio.setBackground(new java.awt.Color(0, 0, 0));
         btnInicio.setForeground(new java.awt.Color(255, 255, 255));
-        btnInicio.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/salas.png"))); 
+        btnInicio.setIcon(iconoBarra("/Img/mesa.png"));
         btnInicio.setText("Inicio");
+        btnInicio.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         btnInicio.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnInicio.setFocusable(false);
         btnInicio.addActionListener(new java.awt.event.ActionListener() {
@@ -1096,7 +1232,7 @@ public final class Sistema extends javax.swing.JFrame {
             .addComponent(btnVentas, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnConfig, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(LabelVendedor, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addComponent(btnUsuarios, javax.swing.GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
+            .addComponent(btnUsuarios, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGap(74, 74, 74)
                 .addComponent(tipo)
@@ -1105,7 +1241,7 @@ public final class Sistema extends javax.swing.JFrame {
             .addComponent(btnPlatos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnCategorias, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addComponent(labelLogo, javax.swing.GroupLayout.PREFERRED_SIZE, 199, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(labelLogo, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(0, 0, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -1133,7 +1269,7 @@ public final class Sistema extends javax.swing.JFrame {
                 .addContainerGap(50, Short.MAX_VALUE))
         );
 
-        getContentPane().add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 200, 720));
+        getContentPane().add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 150, 720));
 
         jLabel38.setFont(new java.awt.Font("Zilla Slab", 3, 48)); // NOI18N
         jLabel38.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/titulo.png"))); // NOI18N
@@ -2313,7 +2449,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         jTabbedPane1.addTab("Platos", jPanel2);
 
-        getContentPane().add(jTabbedPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(200, 95, 1080, 620));
+        getContentPane().add(jTabbedPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(150, 95, 1080, 620));
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -2426,6 +2562,7 @@ public final class Sistema extends javax.swing.JFrame {
                     actualizarNombreRestaurante(conf.getNombre());
                     actualizarLogoEIcono(conf.getLogoPath());
                     actualizarEstadoTasaUI();
+                    RefrescoVistas.notificar(RefrescoVistas.CONFIG);
                     JOptionPane.showMessageDialog(this, "Datos de la empresa modificados.");
                 } else {
                     JOptionPane.showMessageDialog(this, "No se aplicaron cambios a la configuración.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
@@ -2477,6 +2614,7 @@ public final class Sistema extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(this, "No hay pedido seleccionado para modificar.");
             return;
         }
+        LimpiarTableMenu();
         idPedidoEdicion = ped.getId();
         txtTempIdSala.setText(String.valueOf(ped.getId_sala()));
         txtTempNumMesa.setText(String.valueOf(ped.getNum_mesa()));
@@ -2492,7 +2630,6 @@ public final class Sistema extends javax.swing.JFrame {
         btnGenerarPedido.setText("Actualizar Pedido");
         jTabbedPane1.setSelectedIndex(3);
                     txtBuscarPlato.requestFocusInWindow();
-        LimpiarTableMenu();
         
         DefaultTableModel tmp = (DefaultTableModel) tableMenu.getModel();
         boolean tieneColumnaIva = tmp.getColumnCount() >= 7;
@@ -2616,6 +2753,7 @@ public final class Sistema extends javax.swing.JFrame {
                     JOptionPane.showMessageDialog(this, "Sala registrada.");
                     LimpiarSala();
                     ListarSalas();
+                    RefrescoVistas.notificar(RefrescoVistas.SALAS);
                 } else {
                     JOptionPane.showMessageDialog(this, "No se registró la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
                 }
@@ -2645,6 +2783,7 @@ public final class Sistema extends javax.swing.JFrame {
                         JOptionPane.showMessageDialog(this, "Sala modificada.");
                         LimpiarSala();
                         ListarSalas();
+                        RefrescoVistas.notificar(RefrescoVistas.SALAS);
                     } else {
                         JOptionPane.showMessageDialog(this, "No se aplicaron cambios a la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
                     }
@@ -2674,6 +2813,7 @@ public final class Sistema extends javax.swing.JFrame {
                 if (salasControlador.eliminar(id)) {
                     LimpiarSala();
                     ListarSalas();
+                    RefrescoVistas.notificar(RefrescoVistas.SALAS);
                 } else {
                     JOptionPane.showMessageDialog(this, "No se eliminó la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
                 }
@@ -2704,6 +2844,7 @@ public final class Sistema extends javax.swing.JFrame {
             if (lgDao.Registrar(lg)) {
                 JOptionPane.showMessageDialog(this, "Usuario registrado.");
                 ListarUsuarios();
+                RefrescoVistas.notificar(RefrescoVistas.USUARIOS);
             } else {
                 JOptionPane.showMessageDialog(this, "No se registró el usuario.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
             }
@@ -2711,8 +2852,10 @@ public final class Sistema extends javax.swing.JFrame {
     }//GEN-LAST:event_btnIniciarActionPerformed
 
     private void labelLogoMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_labelLogoMouseClicked
-        LimpiarTableMenu();
-        jTabbedPane1.setSelectedIndex(0);
+                LimpiarTableMenu();
+                jTabbedPane1.setSelectedIndex(0);
+                RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
         panelSalas();
     }//GEN-LAST:event_labelLogoMouseClicked
 
@@ -3119,6 +3262,9 @@ public final class Sistema extends javax.swing.JFrame {
                         if (btnPrevisualizarPedido != null) btnPrevisualizarPedido.setEnabled(true);
                     }
                     ListarPedidos();
+                    RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                    RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
+                    RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
                     if (impresoDirecto) {
                         JOptionPane.showMessageDialog(this, "Pedido finalizado y PDF generado a nombre de " + clienteNombre + ".",
                                 "Pedido finalizado", JOptionPane.INFORMATION_MESSAGE);
@@ -3132,7 +3278,12 @@ public final class Sistema extends javax.swing.JFrame {
                             "Sin cambios", JOptionPane.WARNING_MESSAGE);
                 }
             }, (error, finalizacionConfirmada) -> {
-                if (finalizacionConfirmada) ListarPedidos();
+                if (finalizacionConfirmada) {
+                    ListarPedidos();
+                    RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                    RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
+                    RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
+                }
                 boolean mismoPedido = version == versionPedidoPantalla
                         && String.valueOf(idPedido).equals(txtIdPedido.getText());
                 if (finalizacionConfirmada) {
@@ -3286,6 +3437,7 @@ public final class Sistema extends javax.swing.JFrame {
                 JOptionPane.showMessageDialog(null, "Plato Registrado");
                 ListarPlatos(TablePlatos, "");
                 LimpiarPlatos();
+                RefrescoVistas.notificar(RefrescoVistas.PLATOS);
             } else {
                 JOptionPane.showMessageDialog(this, "No se registró el plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
             }
@@ -3311,6 +3463,7 @@ public final class Sistema extends javax.swing.JFrame {
                         JOptionPane.showMessageDialog(null, "Plato Modificado");
                         ListarPlatos(TablePlatos, "");
                         LimpiarPlatos();
+                        RefrescoVistas.notificar(RefrescoVistas.PLATOS);
                     } else {
                         JOptionPane.showMessageDialog(this, "No se aplicaron cambios al plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
                     }
@@ -3337,6 +3490,7 @@ public final class Sistema extends javax.swing.JFrame {
                         JOptionPane.showMessageDialog(this, "Plato desactivado con éxito.", "Platos", JOptionPane.INFORMATION_MESSAGE);
                         LimpiarPlatos();
                         ListarPlatos(TablePlatos, "");
+                        RefrescoVistas.notificar(RefrescoVistas.PLATOS);
                     } else {
                         JOptionPane.showMessageDialog(this, "No se desactivó el plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
                     }
@@ -3586,10 +3740,56 @@ public final class Sistema extends javax.swing.JFrame {
         header.add(lblTitulo);
         
         wrap.add(header, java.awt.BorderLayout.NORTH);
-        wrap.add(target, java.awt.BorderLayout.CENTER);
-        
         jTabbedPane1.setComponentAt(idx, wrap);
+
+        javax.swing.JPanel contenido = new PanelScrollable(new java.awt.BorderLayout());
+        contenido.add(target, java.awt.BorderLayout.CENTER);
+        javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(contenido,
+                javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scroll.setBorder(null);
+        scroll.getHorizontalScrollBar().setUnitIncrement(16);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        wrap.add(scroll, java.awt.BorderLayout.CENTER);
+        target.setVisible(true);
     }
+
+    /**
+     * Panel que delega su tamano preferido en su contenido y que se estira para
+     * llenar el viewport del JScrollPane cuando este es mas grande, mostrando
+     * barras de desplazamiento (horizontal y vertical) cuando es mas pequeno.
+     */
+    private static final class PanelScrollable extends javax.swing.JPanel implements javax.swing.Scrollable {
+        PanelScrollable(java.awt.LayoutManager layout) {
+            super(layout);
+        }
+
+        @Override
+        public java.awt.Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+            return orientation == javax.swing.SwingConstants.VERTICAL ? visibleRect.height : visibleRect.width;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return getParent() != null && getParent().getWidth() >= getPreferredSize().width;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return getParent() != null && getParent().getHeight() >= getPreferredSize().height;
+        }
+    }
+        
 
     private void aplicarEstiloInputs(java.awt.Container contenedor) {
         for (java.awt.Component c : contenedor.getComponents()) {
@@ -3652,12 +3852,12 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void aplicarEncabezados() {
-        // --- UX de Encabezados con Color Coding y Botones Contextuales ---
-        envolverConEncabezado(jPanel4, "GESTIÓN DE SALAS", new java.awt.Color(41, 128, 185), null); // Azul
-        envolverConEncabezado(jPanel22, "SELECCIÓN DE MESAS", new java.awt.Color(41, 128, 185), null); // Azul
-        
-        // Naranja para pedido
-        envolverConEncabezado(jPanel23, "TOMA DE PEDIDO", new java.awt.Color(230, 126, 34), () -> {
+        // --- UX de Encabezados con Color Coding (un color distinto por pantalla) ---
+        envolverConEncabezado(jPanel9, "INICIO - SELECCIÓN DE SALA", new java.awt.Color(41, 128, 185), null);   // Azul
+        envolverConEncabezado(jPanel4, "GESTIÓN DE SALAS", new java.awt.Color(22, 160, 133), null);             // Turquesa
+        envolverConEncabezado(jPanel22, "SELECCIÓN DE MESAS", new java.awt.Color(44, 62, 80), null);            // Azul pizarra
+
+        envolverConEncabezado(jPanel23, "TOMA DE PEDIDO", new java.awt.Color(230, 126, 34), () -> {             // Naranja
             if (idSalaActualMesas > 0 && cantMesasActual > 0) {
                 panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
                 int idx = jTabbedPane1.indexOfTab("Mesas");
@@ -3667,21 +3867,18 @@ public final class Sistema extends javax.swing.JFrame {
                 if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
             }
         });
-        
-        // Verde para cobro
-        envolverConEncabezado(jPanel25, "CAJA Y FACTURACIÓN", new java.awt.Color(39, 174, 96), () -> {
+
+        envolverConEncabezado(jPanel25, "CAJA Y FACTURACIÓN", new java.awt.Color(39, 174, 96), () -> {          // Verde
             int idx = jTabbedPane1.indexOfTab("Platos");
             if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
         });
-        envolverConEncabezado(jPanel6, "HISTORIAL Y CIERRES", new java.awt.Color(39, 174, 96), null);
-        
-        // Morado oscuro para Admin
-        java.awt.Color adminColor = new java.awt.Color(142, 68, 173);
-        envolverConEncabezado(jPanel7, "CONFIGURACIÓN", adminColor, null);
-        envolverConEncabezado(jPanel12, "USUARIOS", adminColor, null);
-        envolverConEncabezado(jPanel2, "GESTIÓN DE PLATOS", adminColor, null);
-        if(panelCategorias != null) envolverConEncabezado(panelCategorias, "GESTIÓN DE CATEGORÍAS", adminColor, null);
-        if(panelDashboard != null) envolverConEncabezado(panelDashboard, "DASHBOARD", adminColor, null);
+        envolverConEncabezado(jPanel6, "HISTORIAL Y CIERRES", new java.awt.Color(211, 84, 0), null);           // Naranja quemado
+
+        envolverConEncabezado(jPanel7, "CONFIGURACIÓN", new java.awt.Color(142, 68, 173), null);               // Morado
+        envolverConEncabezado(jPanel12, "USUARIOS", new java.awt.Color(192, 57, 43), null);                    // Rojo
+        envolverConEncabezado(jPanel2, "GESTIÓN DE PLATOS", new java.awt.Color(191, 128, 0), null);             // Ámbar oscuro
+        if(panelCategorias != null) envolverConEncabezado(panelCategorias, "GESTIÓN DE CATEGORÍAS", new java.awt.Color(103, 58, 183), null); // Índigo
+        if(panelDashboard != null) envolverConEncabezado(panelDashboard, "DASHBOARD", new java.awt.Color(69, 90, 100), null);               // Gris azulado
         // -----------------------------------------------------------------
     }
 
@@ -4010,6 +4207,7 @@ public final class Sistema extends javax.swing.JFrame {
         });
         tableTopPlatos.setRowHeight(22);
         pnlTopPlatos.add(new javax.swing.JScrollPane(tableTopPlatos), java.awt.BorderLayout.CENTER);
+        configurarTablaIndividual(tableTopPlatos);
         tabLeftDashboard.addTab("Top Platos", pnlTopPlatos);
 
         javax.swing.JPanel pnlMesonerosDashboard = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
@@ -4030,6 +4228,7 @@ public final class Sistema extends javax.swing.JFrame {
         });
         tableMesonerosDashboard.setRowHeight(22);
         pnlMesonerosDashboard.add(new javax.swing.JScrollPane(tableMesonerosDashboard), java.awt.BorderLayout.CENTER);
+        configurarTablaIndividual(tableMesonerosDashboard);
         tabLeftDashboard.addTab("Mesoneros", pnlMesonerosDashboard);
 
         splitPrincipal.setDividerLocation(360);
@@ -4087,6 +4286,7 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
         pnlClientes.add(new javax.swing.JScrollPane(tableClientes), java.awt.BorderLayout.CENTER);
+        configurarTablaIndividual(tableClientes);
 
         // Subpanel Facturas del Cliente (Sur)
         javax.swing.JPanel pnlFacturas = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
@@ -4139,6 +4339,7 @@ public final class Sistema extends javax.swing.JFrame {
         });
         tableFacturasCliente.setRowHeight(22);
         pnlFacturas.add(new javax.swing.JScrollPane(tableFacturasCliente), java.awt.BorderLayout.CENTER);
+        configurarTablaIndividual(tableFacturasCliente);
 
         javax.swing.JSplitPane splitDerecha = new javax.swing.JSplitPane(javax.swing.JSplitPane.VERTICAL_SPLIT, pnlClientes, pnlFacturas);
         splitDerecha.setDividerLocation(180);
@@ -4165,7 +4366,7 @@ public final class Sistema extends javax.swing.JFrame {
             if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
             cargarDashboardYClientes();
         });
-        getContentPane().add(btnDashboard, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 625, 200, 45));
+        getContentPane().add(btnDashboard, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 625, 150, 45));
         getContentPane().setComponentZOrder(btnDashboard, 0);
     }
 
@@ -4377,11 +4578,7 @@ public final class Sistema extends javax.swing.JFrame {
                     JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
                             "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
                 }
-                if (!impreso) {
-                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
-                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
-                }
-        } catch (Exception ex) {
+            } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -4974,6 +5171,8 @@ public final class Sistema extends javax.swing.JFrame {
                     if (jTabbedPane1.getSelectedIndex() == 5) {
                         ListarPedidos();
                     }
+                    RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
+                    RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(Sistema.this,
                             "No se pudo completar la purga: " + mensajeError(ex),
@@ -5051,6 +5250,7 @@ public final class Sistema extends javax.swing.JFrame {
                         dialogo.dispose();
                         LimpiarPlatos();
                         ListarPlatos(TablePlatos, "");
+                        RefrescoVistas.notificar(RefrescoVistas.PLATOS);
                     } else {
                         JOptionPane.showMessageDialog(dialogo, "No se pudo reactivar el plato.",
                                 "Error", JOptionPane.ERROR_MESSAGE);
@@ -5073,6 +5273,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         dialogo.add(lblTitulo, java.awt.BorderLayout.NORTH);
         dialogo.add(new javax.swing.JScrollPane(tablaInactivos), java.awt.BorderLayout.CENTER);
+        configurarTablaIndividual(tablaInactivos);
         dialogo.add(panelBotones, java.awt.BorderLayout.SOUTH);
 
         dialogo.setVisible(true);
@@ -5251,7 +5452,11 @@ public final class Sistema extends javax.swing.JFrame {
 
         javax.swing.JButton btnEliminar = new javax.swing.JButton("Eliminar");
         btnEliminar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
-        btnEliminar.setForeground(new java.awt.Color(180, 0, 0));
+        btnEliminar.setForeground(java.awt.Color.WHITE);
+        btnEliminar.setBackground(COLOR_PELIGRO);
+        btnEliminar.setContentAreaFilled(true);
+        btnEliminar.setOpaque(true);
+        btnEliminar.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 12, 6, 12));
         btnEliminar.setToolTipText("Eliminar lógicamente (soft-delete)");
         btnEliminar.setBounds(339, 90, 95, 28);
         btnEliminar.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -5282,6 +5487,7 @@ public final class Sistema extends javax.swing.JFrame {
         javax.swing.JScrollPane scrollTabla = new javax.swing.JScrollPane(tableMesonerosConfig);
         scrollTabla.setBounds(15, 130, 545, 310);
         panel.add(scrollTabla);
+        configurarTablaIndividual(tableMesonerosConfig);
 
         listarMesonerosConfig();
         return panel;
@@ -5361,6 +5567,8 @@ public final class Sistema extends javax.swing.JFrame {
             limpiarFormularioMesonero();
             listarMesonerosConfig();
             cargarComboMesoneros();
+            RefrescoVistas.notificar(RefrescoVistas.CONFIG);
+            RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error al registrar mesonero: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -5392,6 +5600,8 @@ public final class Sistema extends javax.swing.JFrame {
                 limpiarFormularioMesonero();
                 listarMesonerosConfig();
                 cargarComboMesoneros();
+                RefrescoVistas.notificar(RefrescoVistas.CONFIG);
+                RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
             } else {
                 JOptionPane.showMessageDialog(this, "No se pudo actualizar el mesonero.", "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -5419,6 +5629,8 @@ public final class Sistema extends javax.swing.JFrame {
                 chkMesoneroActivo.setSelected(nuevo);
                 listarMesonerosConfig();
                 cargarComboMesoneros();
+                RefrescoVistas.notificar(RefrescoVistas.CONFIG);
+                RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
             }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error al alternar estado: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -5446,6 +5658,8 @@ public final class Sistema extends javax.swing.JFrame {
                     limpiarFormularioMesonero();
                     listarMesonerosConfig();
                     cargarComboMesoneros();
+                    RefrescoVistas.notificar(RefrescoVistas.CONFIG);
+                    RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
                 }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error al eliminar mesonero: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -5548,6 +5762,10 @@ public final class Sistema extends javax.swing.JFrame {
                     ListarPlatos(TablePlatos, "");
                     panelSalas();
                     actualizarEstadoTasaUI();
+                    ListarUsuarios();
+                    cargarCategorias();
+                    RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
+                    RefrescoVistas.notificar(RefrescoVistas.PLATOS);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(Sistema.this,
                             "No se pudo completar la restauración: " + mensajeError(ex),
@@ -5584,6 +5802,8 @@ public final class Sistema extends javax.swing.JFrame {
             if (exito) {
                 JOptionPane.showMessageDialog(this, "El pedido #" + id + " ha sido anulado con éxito.", "Pedido Anulado", JOptionPane.INFORMATION_MESSAGE);
                 ListarPedidos();
+                RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
+                RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
             } else {
                 JOptionPane.showMessageDialog(this, "No se pudo anular el pedido #" + id + ".", "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -5622,6 +5842,7 @@ public final class Sistema extends javax.swing.JFrame {
         tablaAud.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
         tablaAud.setRowHeight(22);
         dlg.add(new javax.swing.JScrollPane(tablaAud));
+        configurarTablaIndividual(tablaAud);
         dlg.setVisible(true);
     }
 
@@ -5697,6 +5918,64 @@ public final class Sistema extends javax.swing.JFrame {
         header.setOpaque(false);
         header.setBackground(new Color(0, 110, 255));
         header.setForeground(Color.white);
+    }
+
+    /**
+     * Hace que todas las columnas de la tabla sean redimensionables por el usuario
+     * y garantiza que su JScrollPane muestre barras horizontal y vertical cuando
+     * el contenido no quepa (AUTO_RESIZE_OFF habilita el scroll horizontal).
+     */
+    public static void configurarTablaIndividual(javax.swing.JTable tabla) {
+        if (tabla == null) {
+            return;
+        }
+        tabla.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
+        javax.swing.table.TableColumnModel columnas = tabla.getColumnModel();
+        for (int i = 0; i < columnas.getColumnCount(); i++) {
+            columnas.getColumn(i).setResizable(true);
+        }
+        java.awt.Container padre = tabla.getParent();
+        while (padre != null && !(padre instanceof javax.swing.JScrollPane)) {
+            padre = padre.getParent();
+        }
+        if (padre instanceof javax.swing.JScrollPane scroll) {
+            scroll.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+            scroll.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        }
+    }
+
+    /** Recorre el arbol de componentes y aplica {@link #configurarTablaIndividual} a cada JTable. */
+    private void configurarTodasLasTablas(java.awt.Container raiz) {
+        if (raiz == null) {
+            return;
+        }
+        for (java.awt.Component c : raiz.getComponents()) {
+            if (c instanceof javax.swing.JTable tabla) {
+                configurarTablaIndividual(tabla);
+            }
+            if (c instanceof java.awt.Container contenedor) {
+                configurarTodasLasTablas(contenedor);
+            }
+        }
+    }
+
+    /** Centra horizontalmente el texto de todos los botones de la barra lateral izquierda. */
+    private void centrarTextoBarraLateral() {
+        centrarBotonesDe(jPanel1);
+    }
+
+    private static void centrarBotonesDe(java.awt.Container contenedor) {
+        if (contenedor == null) {
+            return;
+        }
+        for (java.awt.Component c : contenedor.getComponents()) {
+            if (c instanceof javax.swing.AbstractButton boton) {
+                boton.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+            }
+            if (c instanceof java.awt.Container hijo) {
+                centrarBotonesDe(hijo);
+            }
+        }
     }
 
     private void LimpiarSala() {
@@ -6320,6 +6599,7 @@ public final class Sistema extends javax.swing.JFrame {
             categoriaControlador().registrar(c);
             limpiarFormularioCategoria();
             cargarCategorias();
+            RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }
@@ -6339,6 +6619,7 @@ public final class Sistema extends javax.swing.JFrame {
                     (String) cbColorCategoria.getSelectedItem(), seleccionada.getOrden());
             categoriaControlador().modificar(c);
             cargarCategorias();
+            RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }
@@ -6397,6 +6678,7 @@ public final class Sistema extends javax.swing.JFrame {
             categoriaControlador().eliminar(seleccionada.getId());
             limpiarFormularioCategoria();
             cargarCategorias();
+            RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }
@@ -6461,6 +6743,7 @@ public final class Sistema extends javax.swing.JFrame {
             favoritoControlador().marcar(p.getNombre(), chkFavoritoPlato.isSelected());
             cargarPlatosAsignacion();
             ListarPlatos(tblTemPlatos, txtBuscarPlato.getText());
+            RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }

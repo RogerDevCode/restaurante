@@ -27,7 +27,21 @@ import javax.swing.SwingUtilities;
 
 public class Restaurante {
 
+    private static java.net.ServerSocket socketInstanciaUnica;
+    private static boolean verificarInstanciaUnica() {
+        try {
+            socketInstanciaUnica = new java.net.ServerSocket(49200);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public static void main(String[] args) {
+        if (!verificarInstanciaUnica()) {
+            javax.swing.JOptionPane.showMessageDialog(null, "El sistema ya se encuentra en ejecución.\nPor favor revisa la barra de tareas o las aplicaciones abiertas.", "Instancia en Ejecución", javax.swing.JOptionPane.WARNING_MESSAGE);
+            System.exit(0);
+        }
         try {
             javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
             
