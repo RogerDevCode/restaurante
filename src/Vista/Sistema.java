@@ -233,7 +233,16 @@ public final class Sistema extends javax.swing.JFrame {
     private PanelAtencionMesasSplit panelSplitScreen;
 
     // Conmutador de modos de atención
+    private static final String[] NOMBRES_MODOS_ATENCION = new String[]{
+        "Opción B (Mapa + Pestañas)",
+        "Opción A (Selector Cabecera)",
+        "Opción C (Pantalla Dividida)",
+        "Clásico (Menú Salas)"
+    };
     private javax.swing.JComboBox<String> cbModoAtencion;
+    private javax.swing.JComboBox<String> cbModoAtencionGlobal;
+    private javax.swing.JPanel panelConmutadorModoGlobal;
+    private boolean cambiandoModoProgramaticamente = false;
     private javax.swing.JButton btnAtencionDirecta;
     private String modoAtencionActual = "OPCION_B";
 
@@ -1618,8 +1627,11 @@ public final class Sistema extends javax.swing.JFrame {
         if (lblBannerTasa != null) {
             lblBannerTasa.setBounds(anchoBarra + 5, 12, 305, 65);
         }
+        if (panelConmutadorModoGlobal != null) {
+            panelConmutadorModoGlobal.setBounds(anchoBarra + 315, 12, 275, 65);
+        }
         if (jLabel38 != null) {
-            int xTitulo = Math.max(anchoBarra + 340, ancho - 545);
+            int xTitulo = Math.max(anchoBarra + 595, ancho - 545);
             jLabel38.setBounds(xTitulo, 0, 540, ALTO_CABECERA);
         }
         if (jTabbedPane1 != null) {
@@ -1633,14 +1645,21 @@ public final class Sistema extends javax.swing.JFrame {
     private void refrescarVistaVisible(String title) {
         if (title == null) return;
         switch (title) {
-            case "Mesas" -> refrescarPanelMesasActual();
-            case "Panel" -> panelSalas();
+            case "Mesas" -> {
+                refrescarPanelMesasActual();
+                sincronizarCombosModo("OPCION_B");
+            }
+            case "Panel" -> {
+                panelSalas();
+                sincronizarCombosModo("CLASICO");
+            }
             case "Salas" -> ListarSalas();
             case "Platos" -> ListarPlatos(TablePlatos, "");
             case "Datos de la Empresa" -> ListarConfig();
             case "Usuarios" -> ListarUsuarios();
             case "Dashboard" -> { if (politicaAcceso.esAdministrador()) cargarDashboardYClientes(); }
             case "Atención Directa (Split)" -> {
+                sincronizarCombosModo("OPCION_C");
                 if (panelSplitScreen != null && !salasCache.isEmpty()) {
                     panelSplitScreen.actualizarSalas(salasCache, salaIdAPrefijo);
                 }
@@ -7557,24 +7576,100 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void initConmutadorModosAtencion() {
-        cbModoAtencion = new javax.swing.JComboBox<>(new String[]{
-            "Opción B (Mapa + Pestañas)",
-            "Opción A (Selector Cabecera)",
-            "Opción C (Pantalla Dividida)",
-            "Clásico (Menú Salas)"
-        });
-        cbModoAtencion.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        cbModoAtencion = new javax.swing.JComboBox<>(NOMBRES_MODOS_ATENCION);
+        cbModoAtencion.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        cbModoAtencion.setBackground(java.awt.Color.WHITE);
+        cbModoAtencion.setFocusable(false);
         cbModoAtencion.setToolTipText("Selecciona el modo de atención directa para mesas");
         cbModoAtencion.setSelectedIndex(0);
+
+        cbModoAtencionGlobal = new javax.swing.JComboBox<>(NOMBRES_MODOS_ATENCION);
+        cbModoAtencionGlobal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        cbModoAtencionGlobal.setBackground(java.awt.Color.WHITE);
+        cbModoAtencionGlobal.setFocusable(false);
+        cbModoAtencionGlobal.setToolTipText("Modo de atención activo para mesas");
+        cbModoAtencionGlobal.setSelectedIndex(0);
+
         cbModoAtencion.addActionListener(e -> {
-            int sel = cbModoAtencion.getSelectedIndex();
-            switch (sel) {
+            if (cambiandoModoProgramaticamente) return;
+            cambiarModoAtencion(cbModoAtencion.getSelectedIndex());
+        });
+
+        cbModoAtencionGlobal.addActionListener(e -> {
+            if (cambiandoModoProgramaticamente) return;
+            cambiarModoAtencion(cbModoAtencionGlobal.getSelectedIndex());
+        });
+
+        panelConmutadorModoGlobal = new javax.swing.JPanel(new java.awt.BorderLayout(4, 2));
+        panelConmutadorModoGlobal.setOpaque(true);
+        panelConmutadorModoGlobal.setBackground(new java.awt.Color(245, 247, 250));
+        panelConmutadorModoGlobal.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 205, 215), 1),
+                javax.swing.BorderFactory.createEmptyBorder(6, 10, 6, 10)
+        ));
+        javax.swing.JLabel lblTituloModoG = new javax.swing.JLabel("Modo de Atención:");
+        lblTituloModoG.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        lblTituloModoG.setForeground(new java.awt.Color(0, 102, 102));
+        panelConmutadorModoGlobal.add(lblTituloModoG, java.awt.BorderLayout.NORTH);
+        panelConmutadorModoGlobal.add(cbModoAtencionGlobal, java.awt.BorderLayout.CENTER);
+        getContentPane().add(panelConmutadorModoGlobal, new org.netbeans.lib.awtextra.AbsoluteConstraints(520, 15, 275, 65));
+    }
+
+    private void cambiarModoAtencion(int nuevoIndice) {
+        if (cambiandoModoProgramaticamente) return;
+        cambiandoModoProgramaticamente = true;
+        try {
+            switch (nuevoIndice) {
                 case 0 -> modoAtencionActual = "OPCION_B";
                 case 1 -> modoAtencionActual = "OPCION_A";
                 case 2 -> modoAtencionActual = "OPCION_C";
                 case 3 -> modoAtencionActual = "CLASICO";
+                default -> modoAtencionActual = "OPCION_B";
             }
-        });
+            if (cbModoAtencion != null && cbModoAtencion.getSelectedIndex() != nuevoIndice) {
+                cbModoAtencion.setSelectedIndex(nuevoIndice);
+            }
+            if (cbModoAtencionGlobal != null && cbModoAtencionGlobal.getSelectedIndex() != nuevoIndice) {
+                cbModoAtencionGlobal.setSelectedIndex(nuevoIndice);
+            }
+        } finally {
+            cambiandoModoProgramaticamente = false;
+        }
+        abrirAtencionDirectaSegunModo();
+    }
+
+    private void sincronizarCombosModo(String modo) {
+        if (cambiandoModoProgramaticamente) return;
+        cambiandoModoProgramaticamente = true;
+        try {
+            modoAtencionActual = modo;
+            int idx = switch (modo) {
+                case "OPCION_B" -> 0;
+                case "OPCION_A" -> 1;
+                case "OPCION_C" -> 2;
+                case "CLASICO" -> 3;
+                default -> 0;
+            };
+            if (cbModoAtencion != null && cbModoAtencion.getSelectedIndex() != idx) {
+                cbModoAtencion.setSelectedIndex(idx);
+            }
+            if (cbModoAtencionGlobal != null && cbModoAtencionGlobal.getSelectedIndex() != idx) {
+                cbModoAtencionGlobal.setSelectedIndex(idx);
+            }
+        } finally {
+            cambiandoModoProgramaticamente = false;
+        }
+    }
+
+    private void asegurarSalasCargadas() {
+        if (salasCache == null || salasCache.isEmpty()) {
+            try {
+                List<Salas> cargadas = salasControlador.listar();
+                if (cargadas != null && !cargadas.isEmpty()) {
+                    mostrarSalasEnPanel(cargadas);
+                }
+            } catch (Exception ignored) {}
+        }
     }
 
     private void abrirAtencionDirectaSegunModo() {
@@ -7588,6 +7683,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void abrirModoB() {
+        asegurarSalasCargadas();
         if (idSalaActualMesas <= 0 && !salasCache.isEmpty()) {
             Salas primera = salasCache.get(0);
             panelMesas(primera.getId(), primera.getNombre(), primera.getMesas());
@@ -7600,17 +7696,26 @@ public final class Sistema extends javax.swing.JFrame {
         if (idx != -1) {
             jTabbedPane1.setSelectedIndex(idx);
         }
+        mostrarAvisoEnBanda("Modo B activo: Mapa con pestañas de sala");
     }
 
     private void abrirModoA() {
-        jTabbedPane1.setSelectedIndex(3);
+        asegurarSalasCargadas();
+        int idx = jTabbedPane1.indexOfTab("Platos");
+        if (idx != -1) {
+            jTabbedPane1.setSelectedIndex(idx);
+        } else {
+            jTabbedPane1.setSelectedIndex(3);
+        }
         if (txtCodigoMesaDirecto != null) {
             txtCodigoMesaDirecto.requestFocusInWindow();
             txtCodigoMesaDirecto.selectAll();
         }
+        mostrarAvisoEnBanda("Modo A activo: Digita código de mesa (ej: P1, T2) o usa el selector");
     }
 
     private void abrirModoC() {
+        asegurarSalasCargadas();
         int idx = jTabbedPane1.indexOfTab("Atención Directa (Split)");
         if (idx != -1) {
             jTabbedPane1.setSelectedIndex(idx);
@@ -7618,6 +7723,7 @@ public final class Sistema extends javax.swing.JFrame {
                 panelSplitScreen.actualizarSalas(salasCache, salaIdAPrefijo);
             }
         }
+        mostrarAvisoEnBanda("Modo C activo: Pantalla dividida (Split-Screen)");
     }
 
     private void abrirModoClasico() {
@@ -7626,6 +7732,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (idx != -1) {
             jTabbedPane1.setSelectedIndex(idx);
         }
+        mostrarAvisoEnBanda("Modo Clásico activo: Selecciona una sala");
     }
 
     private void actualizarCabeceraMesaDirecta(int idSala, String nombreSala, int numMesa, String codigoMesa) {

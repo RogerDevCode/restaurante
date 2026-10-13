@@ -288,20 +288,27 @@ public final class AtencionDirectaE2EVirtual {
         // ----------------------------------------------------
         // TEST 3: Opción C - Split-Screen / Pantalla Dividida
         // ----------------------------------------------------
-        System.out.println("\n--- Verificando Opción C (Split-Screen) ---");
+        System.out.println("\n--- Verificando Opción C (Split-Screen) mediante cambio directo de combobox ---");
         edt(() -> {
-            cbModo.setSelectedIndex(2); // Opción C
-            btnAtencionDirecta.doClick();
+            cbModo.setSelectedIndex(2); // Al cambiar el combobox a Opción C, debe activar Split-Screen directamente
             return null;
         });
         Thread.sleep(800);
 
         int tabSplitIdx = tabs.indexOfTab("Atención Directa (Split)");
         check(tabSplitIdx != -1, "Pestaña de Atención Directa (Split) existe");
-        check(tabs.getSelectedIndex() == tabSplitIdx, "Conmutador a Opción C activó la pestaña Split-Screen");
+        check(tabs.getSelectedIndex() == tabSplitIdx, "Cambiar combobox a Opción C activó inmediatamente la pestaña Split-Screen");
 
         PanelAtencionMesasSplit splitPanel = (PanelAtencionMesasSplit) campo(sistema, "panelSplitScreen");
         check(splitPanel != null, "Instancia de PanelAtencionMesasSplit accesible");
+
+        // Cambiar combobox de vuelta a Opción B
+        edt(() -> {
+            cbModo.setSelectedIndex(0); // Regresar a Opción B directamente
+            return null;
+        });
+        Thread.sleep(800);
+        check(tabs.getSelectedIndex() == tabMesasIdx, "Cambiar combobox a Opción B regresó inmediatamente a la vista 'Mesas'");
 
         // ----------------------------------------------------
         // TEST 4: Flujo Clásico 100% compatible
