@@ -27,6 +27,9 @@ import Modelo.MesoneroDao;
 import Modelo.PaletaCategorias;
 import Servicio.AutenticacionServicio;
 import Servicio.PoliticaAcceso;
+import Servicio.ServicioMesa;
+import Servicio.ServicioMesa.MesaIdentificada;
+import Servicio.ServicioMesa.MesaVisual;
 import Servicio.ServicioMesoneroNombre;
 import java.awt.Color;
 import java.awt.Component;
@@ -212,6 +215,27 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JComboBox<Modelo.Categoria> cbCategoriaPlato;
     private javax.swing.JCheckBox chkFavoritoPlato;
     private javax.swing.JButton btnAsignarCategoria;
+
+    // --- Modalidad de Atención Directa de Mesas y Prefijos ---
+    private List<Salas> salasCache = new ArrayList<>();
+    private final Map<Integer, String> salaIdAPrefijo = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Integer> prefijoASalaId = new java.util.concurrent.ConcurrentHashMap<>();
+
+    // Opción B: Barra de pestañas horizontales de sala en panel de mesas
+    private javax.swing.JPanel panelTabsSalasDirecto;
+
+    // Opción A: Cabecera interactiva y selector rápido de mesa en toma de pedidos
+    private javax.swing.JPanel panelCabeceraMesaDirecta;
+    private javax.swing.JButton btnSelectorMesaCabecera;
+    private javax.swing.JTextField txtCodigoMesaDirecto;
+
+    // Opción C: Panel Split-Screen
+    private PanelAtencionMesasSplit panelSplitScreen;
+
+    // Conmutador de modos de atención
+    private javax.swing.JComboBox<String> cbModoAtencion;
+    private javax.swing.JButton btnAtencionDirecta;
+    private String modoAtencionActual = "OPCION_B";
 
     public Sistema(Usuario priv, SalasControlador salasControlador, PlatosControlador platosControlador,
             PedidosControlador pedidosControlador) {
@@ -793,7 +817,10 @@ public final class Sistema extends javax.swing.JFrame {
         btnPurgarHistorial.addActionListener(e -> purgarHistorialPedidos());
         jPanel8.add(btnPurgarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(215, 422, 195, 45));
 
+        initConmutadorModosAtencion();
         initPanelMesasMejorado();
+        initCabeceraMesaDirecta();
+        initPanelAtencionSplit();
         initDashboardYClientes();
         initIvaPlatosYBarraSalas();
 
@@ -1219,7 +1246,7 @@ public final class Sistema extends javax.swing.JFrame {
      * Reemplaza avisos de exito e informacion para no interrumpir al operador;
      * se restaura el titulo original a los pocos segundos. Solo llamar desde el EDT.
      */
-    private void mostrarAvisoEnBanda(String mensaje) {
+    void mostrarAvisoEnBanda(String mensaje) {
         if (mensaje == null || mensaje.isBlank()) {
             return;
         }
@@ -1613,6 +1640,11 @@ public final class Sistema extends javax.swing.JFrame {
             case "Datos de la Empresa" -> ListarConfig();
             case "Usuarios" -> ListarUsuarios();
             case "Dashboard" -> { if (politicaAcceso.esAdministrador()) cargarDashboardYClientes(); }
+            case "Atención Directa (Split)" -> {
+                if (panelSplitScreen != null && !salasCache.isEmpty()) {
+                    panelSplitScreen.actualizarSalas(salasCache, salaIdAPrefijo);
+                }
+            }
             default -> { }
         }
     }
@@ -1644,7 +1676,11 @@ public final class Sistema extends javax.swing.JFrame {
     private void refrescarPanelMesasActual() {
         if (idSalaActualMesas > 0 && cantMesasActual > 0 && nombreSalaActualMesas != null) {
             panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
+        } else if (!salasCache.isEmpty()) {
+            Salas s = salasCache.get(0);
+            panelMesas(s.getId(), s.getNombre(), s.getMesas(), s.esBarra());
         }
+        refrescarBarraSalasMesas();
     }
 
     /**
@@ -1712,6 +1748,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnCategorias = new javax.swing.JButton();
         btnInicio = new javax.swing.JButton();
         btnPedidoRapido = new javax.swing.JButton();
+        btnAtencionDirecta = new javax.swing.JButton();
         btnPlatos = new javax.swing.JButton();
         jLabel38 = new javax.swing.JLabel();
         jTabbedPane1 = new javax.swing.JTabbedPane();
@@ -1960,6 +1997,16 @@ public final class Sistema extends javax.swing.JFrame {
         btnPedidoRapido.setToolTipText("Registrar un pedido para llevar sin asignarlo a una mesa");
         btnPedidoRapido.addActionListener(e -> abrirPedidoRapido());
 
+        btnAtencionDirecta.setBackground(java.awt.Color.BLACK);
+        btnAtencionDirecta.setForeground(java.awt.Color.WHITE);
+        btnAtencionDirecta.setIcon(iconoBarra("/Img/mesa.png"));
+        btnAtencionDirecta.setText("Atención directa");
+        btnAtencionDirecta.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        btnAtencionDirecta.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnAtencionDirecta.setFocusable(false);
+        btnAtencionDirecta.setToolTipText("Acceso rápido a atención de mesas");
+        btnAtencionDirecta.addActionListener(e -> abrirAtencionDirectaSegunModo());
+
         btnDashboard = new javax.swing.JButton("Dashboard");
         btnDashboard.setBackground(new java.awt.Color(0, 0, 0));
         btnDashboard.setForeground(new java.awt.Color(255, 255, 255));
@@ -1989,6 +2036,7 @@ public final class Sistema extends javax.swing.JFrame {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
             .addComponent(btnInicio, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnPedidoRapido, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(btnAtencionDirecta, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnPlatos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnCategorias, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnDashboard, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -2008,11 +2056,13 @@ public final class Sistema extends javax.swing.JFrame {
                 .addComponent(btnInicio, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(6, 6, 6)
                 .addComponent(btnPedidoRapido, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(12, 12, 12)
+                .addGap(6, 6, 6)
+                .addComponent(btnAtencionDirecta, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(6, 6, 6)
                 .addComponent(btnPlatos, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(12, 12, 12)
+                .addGap(6, 6, 6)
                 .addComponent(btnCategorias, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(12, 12, 12)
+                .addGap(6, 6, 6)
                 .addComponent(btnSala, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(12, 12, 12)
                 .addComponent(btnVentas, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -3793,7 +3843,14 @@ public final class Sistema extends javax.swing.JFrame {
                     mostrarAvisoEnBanda("Pedido rápido enviado a cocina");
                 } else {
                     modoPedidoRapido = false;
-                    jTabbedPane1.setSelectedIndex(0);
+                    if (idSalaActualMesas > 0 && cantMesasActual > 0) {
+                        panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
+                        int idxMesas = jTabbedPane1.indexOfTab("Mesas");
+                        if (idxMesas != -1) jTabbedPane1.setSelectedIndex(idxMesas);
+                        else jTabbedPane1.setSelectedIndex(0);
+                    } else {
+                        jTabbedPane1.setSelectedIndex(0);
+                    }
                     mostrarAvisoEnBanda(numMesa.isEmpty()
                             ? (eraEdicion ? "Pedido actualizado" : "Pedido enviado a cocina")
                             : (eraEdicion ? "Pedido actualizado — Mesa " + numMesa : "Pedido enviado a cocina — Mesa " + numMesa));
@@ -4153,6 +4210,14 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void volverAInicioSeleccionSala() {
         LimpiarTableMenu();
+        if (idSalaActualMesas > 0 && cantMesasActual > 0) {
+            panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
+            int idxMesas = jTabbedPane1.indexOfTab("Mesas");
+            if (idxMesas != -1) {
+                jTabbedPane1.setSelectedIndex(idxMesas);
+                return;
+            }
+        }
         jTabbedPane1.setSelectedIndex(0);
         panelSalas();
     }
@@ -4491,6 +4556,10 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void envolverConEncabezado(java.awt.Component target, String titulo, java.awt.Color bg, Runnable accionVolver) {
+        envolverConEncabezado(target, titulo, bg, accionVolver, null);
+    }
+
+    private void envolverConEncabezado(java.awt.Component target, String titulo, java.awt.Color bg, Runnable accionVolver, javax.swing.JComponent extra) {
         int idx = jTabbedPane1.indexOfComponent(target);
         if (idx == -1) return;
         
@@ -4514,6 +4583,10 @@ public final class Sistema extends javax.swing.JFrame {
         lblTitulo.setForeground(COLOR_CABECERA);
         lblTitulo.setName("uxTituloEncabezado");
         header.add(lblTitulo);
+
+        if (extra != null) {
+            header.add(extra);
+        }
         
         wrap.add(header, java.awt.BorderLayout.NORTH);
         jTabbedPane1.setComponentAt(idx, wrap);
@@ -4694,7 +4767,7 @@ public final class Sistema extends javax.swing.JFrame {
                 int idx = jTabbedPane1.indexOfTab("Salas");
                 if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
             }
-        });
+        }, panelCabeceraMesaDirecta);
 
         envolverConEncabezado(jPanel25, "CAJA Y FACTURACIÓN", new java.awt.Color(254, 249, 231), () -> {          // Amarillo manteca: dinero
             int idx = jTabbedPane1.indexOfTab("Platos");
@@ -4707,6 +4780,7 @@ public final class Sistema extends javax.swing.JFrame {
         envolverConEncabezado(jPanel2, "GESTIÓN DE PLATOS", new java.awt.Color(250, 215, 160), null);             // Terracota: comida
         if(panelCategorias != null) envolverConEncabezado(panelCategorias, "GESTIÓN DE CATEGORÍAS", new java.awt.Color(169, 223, 191), null); // Salvia: clasificar
         if(panelDashboard != null) envolverConEncabezado(panelDashboard, "DASHBOARD", new java.awt.Color(212, 230, 241), null);               // Acero: metricas
+        if(panelSplitScreen != null) envolverConEncabezado(panelSplitScreen, "ATENCIÓN DIRECTA (SPLIT)", new java.awt.Color(209, 242, 235), null);
         // -----------------------------------------------------------------
     }
 
@@ -6996,6 +7070,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtTempNumMesa.setText("0");
         txtComentario.setText("");
         txtBuscarPlato.setText("");
+        actualizarCabeceraMesaDirecta(0, "Pedido Rápido", 0, "RÁPIDO");
         jPanel23.setBorder(javax.swing.BorderFactory.createTitledBorder(
                 javax.swing.BorderFactory.createLineBorder(COLOR_CABECERA, 1),
                 "PEDIDO RÁPIDO | PARA LLEVAR",
@@ -7011,6 +7086,16 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void mostrarSalasEnPanel(List<Salas> Listar) {
+        this.salasCache = new ArrayList<>(Listar);
+        this.salaIdAPrefijo.clear();
+        this.salaIdAPrefijo.putAll(ServicioMesa.generarPrefijosSalas(Listar));
+        this.prefijoASalaId.clear();
+        this.prefijoASalaId.putAll(ServicioMesa.invertirPrefijos(this.salaIdAPrefijo));
+        refrescarBarraSalasMesas();
+        if (panelSplitScreen != null) {
+            panelSplitScreen.actualizarSalas(Listar, this.salaIdAPrefijo);
+        }
+
         PanelSalas.removeAll();
         Map<Integer, Integer> ocupadasPorSala = Collections.emptyMap();
         try {
@@ -7149,7 +7234,21 @@ public final class Sistema extends javax.swing.JFrame {
         jPanel22.setLayout(new java.awt.BorderLayout(8, 8));
         jPanel22.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 12, 10, 12));
 
-        // Header Panel (Norte)
+        // Contenedor Norte: Pestañas de Sala arriba + Header de control abajo
+        javax.swing.JPanel panelNorteContenedor = new javax.swing.JPanel(new java.awt.BorderLayout(0, 6));
+        panelNorteContenedor.setOpaque(false);
+
+        // Barra superior de pestañas de sala (Opción B: 1 solo clic para cambiar de sala)
+        panelTabsSalasDirecto = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 2));
+        panelTabsSalasDirecto.setOpaque(false);
+        javax.swing.JScrollPane scrollTabsSalas = new javax.swing.JScrollPane(panelTabsSalasDirecto,
+                javax.swing.JScrollPane.VERTICAL_SCROLLBAR_NEVER, javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollTabsSalas.setBorder(null);
+        scrollTabsSalas.setOpaque(false);
+        scrollTabsSalas.getViewport().setOpaque(false);
+        panelNorteContenedor.add(scrollTabsSalas, java.awt.BorderLayout.NORTH);
+
+        // Header Panel (Norte - Línea 2)
         javax.swing.JPanel panelHeader = new javax.swing.JPanel(new java.awt.BorderLayout(10, 0));
         panelHeader.setOpaque(false);
 
@@ -7158,7 +7257,7 @@ public final class Sistema extends javax.swing.JFrame {
         lblTituloSalaMesas.setForeground(new java.awt.Color(0, 102, 102));
         panelHeader.add(lblTituloSalaMesas, java.awt.BorderLayout.WEST);
 
-        javax.swing.JPanel panelAcciones = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 12, 0));
+        javax.swing.JPanel panelAcciones = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
         panelAcciones.setOpaque(false);
 
         lblUltimaCargaMesas = new javax.swing.JLabel("Última actualización: --:--:--");
@@ -7181,9 +7280,22 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
         panelAcciones.add(btnActualizarMesas);
-        panelHeader.add(panelAcciones, java.awt.BorderLayout.EAST);
 
-        jPanel22.add(panelHeader, java.awt.BorderLayout.NORTH);
+        if (cbModoAtencion != null) {
+            javax.swing.JPanel pnlModo = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+            pnlModo.setOpaque(false);
+            javax.swing.JLabel lblModo = new javax.swing.JLabel("Modo:");
+            lblModo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+            lblModo.setForeground(COLOR_CABECERA);
+            pnlModo.add(lblModo);
+            pnlModo.add(cbModoAtencion);
+            panelAcciones.add(pnlModo);
+        }
+
+        panelHeader.add(panelAcciones, java.awt.BorderLayout.EAST);
+        panelNorteContenedor.add(panelHeader, java.awt.BorderLayout.SOUTH);
+
+        jPanel22.add(panelNorteContenedor, java.awt.BorderLayout.NORTH);
 
         // Centro (Scroll de mesas)
         jPanel22.add(jScrollPane9, java.awt.BorderLayout.CENTER);
@@ -7282,9 +7394,12 @@ public final class Sistema extends javax.swing.JFrame {
         Map<Integer, String> mesonerosMesas = datos != null ? datos.getMesonerosMesas() : Collections.emptyMap();
         Map<String, String> nombresVisuales = ServicioMesoneroNombre.resolverNombresVisualesDesdeStrings(mesonerosMesas.values());
 
+        String prefijoSala = salaIdAPrefijo.getOrDefault(id_sala, ServicioMesa.sugerirPrefijoBase(nombreSala, esBarra));
+
         List<JButton> botonesMesa = new ArrayList<>();
         for (int i = 1; i <= cant; i++) {
             int num_mesa = i;
+            String codigoMesa = ServicioMesa.formatearCodigo(prefijoSala, num_mesa);
             JButton boton = new JButton() {
                 @Override
                 protected void paintComponent(java.awt.Graphics g) {
@@ -7306,20 +7421,20 @@ public final class Sistema extends javax.swing.JFrame {
                     ? nombresVisuales.getOrDefault(nombreMesonero.trim(), ServicioMesoneroNombre.extraerPrimerNombre(nombreMesonero))
                     : null;
 
-            String prefijo = esBarra ? "PUESTO N°: " : "MESA N°: ";
+            String prefijoTexto = esBarra ? "PUESTO " : "MESA ";
             if (verificar > 0) {
                 boton.setBackground(new Color(192, 57, 43));
                 if (visual != null && !visual.isBlank()) {
-                    boton.setText("<html><center>" + prefijo + i + "<br><font color='#FFFF99' size='2'><b>" + visual + "</b></font></center></html>");
-                    boton.setToolTipText((esBarra ? "Puesto Ocupado" : "Ocupada") + " - Atendida por: " + nombreMesonero);
+                    boton.setText("<html><center><font size='+1'><b>" + codigoMesa + "</b></font><br><span style='font-size:10px;'>" + prefijoTexto + i + "</span><br><font color='#FFFF99' size='2'><b>" + visual + "</b></font></center></html>");
+                    boton.setToolTipText((esBarra ? "Puesto Ocupado (" : "Mesa Ocupada (") + codigoMesa + ") - Atendida por: " + nombreMesonero);
                 } else {
-                    boton.setText(prefijo + i);
-                    boton.setToolTipText((esBarra ? "Puesto Ocupado" : "Ocupada") + " (Sin mesonero asignado)");
+                    boton.setText("<html><center><font size='+1'><b>" + codigoMesa + "</b></font><br><span style='font-size:10px;'>" + prefijoTexto + i + "</span></center></html>");
+                    boton.setToolTipText((esBarra ? "Puesto Ocupado (" : "Mesa Ocupada (") + codigoMesa + ") (Sin mesonero asignado)");
                 }
             } else {
                 boton.setBackground(new Color(0, 102, 102));
-                boton.setText(prefijo + i);
-                boton.setToolTipText((esBarra ? "Puesto " : "Mesa ") + i + " Disponible");
+                boton.setText("<html><center><font size='+1'><b>" + codigoMesa + "</b></font><br><span style='font-size:10px;'>" + prefijoTexto + i + "</span><br><span style='color:#A2D9CE;font-size:10px;'>Disponible</span></center></html>");
+                boton.setToolTipText((esBarra ? "Puesto " : "Mesa ") + i + " (" + codigoMesa + ") Disponible");
             }
             boton.setForeground(Color.WHITE);
             boton.setFocusable(false);
@@ -7342,9 +7457,10 @@ public final class Sistema extends javax.swing.JFrame {
                     txtTempIdSala.setText("" + id_sala);
                     txtTempNumMesa.setText("" + num_mesa);
                     cargarComboMesoneros();
+                    actualizarCabeceraMesaDirecta(id_sala, nombreSala, num_mesa, codigoMesa);
                     jPanel23.setBorder(javax.swing.BorderFactory.createTitledBorder(
                             javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 102, 102)),
-                            "PEDIDO - " + (nombreSala != null ? nombreSala : ("SALA " + id_sala)) + " | " + (esBarra ? "PUESTO " : "MESA ") + num_mesa,
+                            "PEDIDO - " + (nombreSala != null ? nombreSala : ("SALA " + id_sala)) + " | " + codigoMesa + " (" + (esBarra ? "PUESTO " : "MESA ") + num_mesa + ")",
                             javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                             javax.swing.border.TitledBorder.DEFAULT_POSITION,
                             new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14),
@@ -7360,6 +7476,7 @@ public final class Sistema extends javax.swing.JFrame {
         }
         PanelMesas.revalidate();
         PanelMesas.repaint();
+        refrescarBarraSalasMesas();
     }
 
     private void mostrarErrorConsultaMesas(Throwable error) {
@@ -7370,6 +7487,296 @@ public final class Sistema extends javax.swing.JFrame {
                 ? error.getMessage()
                 : "No se pudo consultar el estado de las mesas. El detalle quedó registrado.";
         JOptionPane.showMessageDialog(this, mensaje, "Error al cargar mesas", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void refrescarBarraSalasMesas() {
+        if (panelTabsSalasDirecto == null) return;
+        panelTabsSalasDirecto.removeAll();
+        if (salasCache != null && !salasCache.isEmpty()) {
+            for (Salas sala : salasCache) {
+                if (sala == null) continue;
+                String prefijo = salaIdAPrefijo.getOrDefault(sala.getId(),
+                        ServicioMesa.sugerirPrefijoBase(sala.getNombre(), sala.esBarra()));
+                boolean esSeleccionada = (sala.getId() == idSalaActualMesas);
+                JButton btn = new JButton(sala.getNombre() + " (" + prefijo + ")");
+                btn.setFont(new java.awt.Font("Segoe UI", esSeleccionada ? java.awt.Font.BOLD : java.awt.Font.PLAIN, 12));
+                btn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+                btn.setFocusable(false);
+                if (esSeleccionada) {
+                    btn.setBackground(new java.awt.Color(0, 102, 102));
+                    btn.setForeground(java.awt.Color.WHITE);
+                } else {
+                    btn.setBackground(new java.awt.Color(235, 240, 245));
+                    btn.setForeground(new java.awt.Color(40, 40, 40));
+                }
+                btn.addActionListener(e -> {
+                    panelMesas(sala.getId(), sala.getNombre(), sala.getMesas());
+                });
+                panelTabsSalasDirecto.add(btn);
+            }
+        }
+        panelTabsSalasDirecto.revalidate();
+        panelTabsSalasDirecto.repaint();
+    }
+
+    private void initCabeceraMesaDirecta() {
+        panelCabeceraMesaDirecta = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 2));
+        panelCabeceraMesaDirecta.setOpaque(false);
+
+        btnSelectorMesaCabecera = new javax.swing.JButton("📍 Mesa: -- ▾");
+        btnSelectorMesaCabecera.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        btnSelectorMesaCabecera.setForeground(new java.awt.Color(0, 102, 102));
+        btnSelectorMesaCabecera.setBackground(new java.awt.Color(255, 255, 255));
+        btnSelectorMesaCabecera.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnSelectorMesaCabecera.setFocusable(false);
+        btnSelectorMesaCabecera.setToolTipText("Clic para elegir o cambiar de mesa rápidamente");
+        btnSelectorMesaCabecera.addActionListener(e -> mostrarMenuSeleccionMesaDirecta(btnSelectorMesaCabecera));
+
+        javax.swing.JLabel lblIr = new javax.swing.JLabel("Mesa rápida:");
+        lblIr.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        lblIr.setForeground(new java.awt.Color(80, 80, 80));
+
+        txtCodigoMesaDirecto = new javax.swing.JTextField(4);
+        txtCodigoMesaDirecto.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        txtCodigoMesaDirecto.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtCodigoMesaDirecto.setToolTipText("Escribe el código (ej: P1, T2) y pulsa Enter");
+        txtCodigoMesaDirecto.addActionListener(e -> procesarDigitacionMesaDirecta(txtCodigoMesaDirecto.getText()));
+
+        panelCabeceraMesaDirecta.add(lblIr);
+        panelCabeceraMesaDirecta.add(txtCodigoMesaDirecto);
+        panelCabeceraMesaDirecta.add(btnSelectorMesaCabecera);
+    }
+
+    private void initPanelAtencionSplit() {
+        panelSplitScreen = new PanelAtencionMesasSplit(this, salasControlador, platosControlador, pedidosControlador, politicaAcceso);
+        envolverConEncabezado(panelSplitScreen, "ATENCIÓN DIRECTA (SPLIT-SCREEN)", new java.awt.Color(230, 245, 245), () -> {
+            int idx = jTabbedPane1.indexOfTab("Salas");
+            if (idx != -1) jTabbedPane1.setSelectedIndex(idx);
+        });
+        jTabbedPane1.addTab("Atención Directa (Split)", panelSplitScreen);
+    }
+
+    private void initConmutadorModosAtencion() {
+        cbModoAtencion = new javax.swing.JComboBox<>(new String[]{
+            "Opción B (Mapa + Pestañas)",
+            "Opción A (Selector Cabecera)",
+            "Opción C (Pantalla Dividida)",
+            "Clásico (Menú Salas)"
+        });
+        cbModoAtencion.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        cbModoAtencion.setToolTipText("Selecciona el modo de atención directa para mesas");
+        cbModoAtencion.setSelectedIndex(0);
+        cbModoAtencion.addActionListener(e -> {
+            int sel = cbModoAtencion.getSelectedIndex();
+            switch (sel) {
+                case 0 -> modoAtencionActual = "OPCION_B";
+                case 1 -> modoAtencionActual = "OPCION_A";
+                case 2 -> modoAtencionActual = "OPCION_C";
+                case 3 -> modoAtencionActual = "CLASICO";
+            }
+        });
+    }
+
+    private void abrirAtencionDirectaSegunModo() {
+        switch (modoAtencionActual) {
+            case "OPCION_A" -> abrirModoA();
+            case "OPCION_C" -> abrirModoC();
+            case "CLASICO" -> abrirModoClasico();
+            case "OPCION_B" -> abrirModoB();
+            default -> abrirModoB();
+        }
+    }
+
+    private void abrirModoB() {
+        if (idSalaActualMesas <= 0 && !salasCache.isEmpty()) {
+            Salas primera = salasCache.get(0);
+            panelMesas(primera.getId(), primera.getNombre(), primera.getMesas());
+        } else if (idSalaActualMesas > 0) {
+            refrescarPanelMesasActual();
+        } else {
+            panelSalas();
+        }
+        int idx = jTabbedPane1.indexOfTab("Mesas");
+        if (idx != -1) {
+            jTabbedPane1.setSelectedIndex(idx);
+        }
+    }
+
+    private void abrirModoA() {
+        jTabbedPane1.setSelectedIndex(3);
+        if (txtCodigoMesaDirecto != null) {
+            txtCodigoMesaDirecto.requestFocusInWindow();
+            txtCodigoMesaDirecto.selectAll();
+        }
+    }
+
+    private void abrirModoC() {
+        int idx = jTabbedPane1.indexOfTab("Atención Directa (Split)");
+        if (idx != -1) {
+            jTabbedPane1.setSelectedIndex(idx);
+            if (panelSplitScreen != null && !salasCache.isEmpty()) {
+                panelSplitScreen.actualizarSalas(salasCache, salaIdAPrefijo);
+            }
+        }
+    }
+
+    private void abrirModoClasico() {
+        panelSalas();
+        int idx = jTabbedPane1.indexOfTab("Panel");
+        if (idx != -1) {
+            jTabbedPane1.setSelectedIndex(idx);
+        }
+    }
+
+    private void actualizarCabeceraMesaDirecta(int idSala, String nombreSala, int numMesa, String codigoMesa) {
+        if (btnSelectorMesaCabecera == null) return;
+        if (codigoMesa == null || codigoMesa.isBlank() || codigoMesa.equals("--")) {
+            if (idSala > 0 && numMesa > 0) {
+                String pref = salaIdAPrefijo.getOrDefault(idSala, ServicioMesa.sugerirPrefijoBase(nombreSala, false));
+                codigoMesa = ServicioMesa.formatearCodigo(pref, numMesa);
+            } else if ("RÁPIDO".equalsIgnoreCase(codigoMesa)) {
+                codigoMesa = "RÁPIDO";
+            } else {
+                codigoMesa = "--";
+            }
+        }
+        btnSelectorMesaCabecera.setText("📍 Mesa: " + codigoMesa + " ▾");
+        if (txtCodigoMesaDirecto != null) {
+            txtCodigoMesaDirecto.setText(codigoMesa.equals("--") ? "" : codigoMesa);
+        }
+    }
+
+    private void procesarDigitacionMesaDirecta(String texto) {
+        if (texto == null || texto.trim().isEmpty()) {
+            return;
+        }
+        if (prefijoASalaId.isEmpty() && !salasCache.isEmpty()) {
+            salaIdAPrefijo.clear();
+            salaIdAPrefijo.putAll(ServicioMesa.generarPrefijosSalas(salasCache));
+            prefijoASalaId.clear();
+            prefijoASalaId.putAll(ServicioMesa.invertirPrefijos(salaIdAPrefijo));
+        }
+        java.util.Optional<ServicioMesa.MesaIdentificada> opt = ServicioMesa.parsearCodigoMesa(texto, prefijoASalaId);
+        if (opt.isEmpty()) {
+            mostrarAvisoEnBanda("Código de mesa no encontrado o formato incorrecto (ej: P1, T2): " + texto);
+            return;
+        }
+        ServicioMesa.MesaIdentificada mesa = opt.get();
+        Salas salaEncontrada = salasCache.stream()
+                .filter(s -> s.getId() == mesa.idSala())
+                .findFirst().orElse(null);
+        if (salaEncontrada == null) {
+            mostrarAvisoEnBanda("Sala con ID " + mesa.idSala() + " no encontrada.");
+            return;
+        }
+        if (mesa.numMesa() > salaEncontrada.getMesas()) {
+            mostrarAvisoEnBanda("La sala " + salaEncontrada.getNombre() + " solo tiene " + salaEncontrada.getMesas() + " mesas.");
+            return;
+        }
+        int idPedido = pedidosControlador.buscarPedidoPendiente(mesa.numMesa(), mesa.idSala());
+        asignarMesaDirecta(mesa.idSala(), salaEncontrada.getNombre(), mesa.numMesa(), mesa.codigoFormateado(), idPedido);
+    }
+
+    private void asignarMesaDirecta(int idSala, String nombreSala, int numMesa, String codigoMesa, int idPedidoExistente) {
+        idSalaActualMesas = idSala;
+        nombreSalaActualMesas = nombreSala;
+        if (idPedidoExistente > 0) {
+            if (!politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+                JOptionPane.showMessageDialog(this,
+                        "Este espacio tiene un pedido pendiente (#" + idPedidoExistente + ").",
+                        "Pedido pendiente", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            cargarPedidoEnPantalla(idPedidoExistente, true);
+            actualizarCabeceraMesaDirecta(idSala, nombreSala, numMesa, codigoMesa);
+        } else {
+            LimpiarTableMenu();
+            txtComentario.setText("");
+            txtBuscarPlato.setText("");
+            ListarPlatos(tblTemPlatos, "");
+            txtTempIdSala.setText(String.valueOf(idSala));
+            txtTempNumMesa.setText(String.valueOf(numMesa));
+            cargarComboMesoneros();
+            actualizarCabeceraMesaDirecta(idSala, nombreSala, numMesa, codigoMesa);
+            jPanel23.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                    javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 102, 102)),
+                    "PEDIDO - " + (nombreSala != null ? nombreSala : ("SALA " + idSala)) + " | " + codigoMesa + " (MESA " + numMesa + ")",
+                    javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
+                    javax.swing.border.TitledBorder.DEFAULT_POSITION,
+                    new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14),
+                    new java.awt.Color(0, 102, 102)));
+            jTabbedPane1.setSelectedIndex(3);
+            txtBuscarPlato.requestFocusInWindow();
+            mostrarAvisoEnBanda("Mesa " + codigoMesa + " seleccionada");
+        }
+    }
+
+    private void mostrarMenuSeleccionMesaDirecta(java.awt.Component invoker) {
+        if (salasCache == null || salasCache.isEmpty()) {
+            mostrarAvisoEnBanda("Cargando salas...");
+            panelSalas();
+            return;
+        }
+        javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
+        javax.swing.JLabel lblTitulo = new javax.swing.JLabel("  Seleccione Mesa Rápida:");
+        lblTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        lblTitulo.setForeground(new java.awt.Color(0, 102, 102));
+        popup.add(lblTitulo);
+        popup.addSeparator();
+
+        for (Salas sala : salasCache) {
+            if (sala == null) continue;
+            String prefijo = salaIdAPrefijo.getOrDefault(sala.getId(),
+                    ServicioMesa.sugerirPrefijoBase(sala.getNombre(), sala.esBarra()));
+            javax.swing.JMenu menuSala = new javax.swing.JMenu(sala.getNombre() + " (" + prefijo + ")");
+            menuSala.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+
+            int totalMesas = sala.getMesas();
+            for (int m = 1; m <= totalMesas; m++) {
+                final int numMesa = m;
+                String cod = ServicioMesa.formatearCodigo(prefijo, numMesa);
+                int verif = pedidosControlador.buscarPedidoPendiente(numMesa, sala.getId());
+                boolean ocupada = (verif > 0);
+                String estadoStr = ocupada ? " [Ocupada #" + verif + "]" : " [Libre]";
+                javax.swing.JMenuItem item = new javax.swing.JMenuItem(cod + (sala.esBarra() ? " (Puesto " : " (Mesa ") + numMesa + ")" + estadoStr);
+                item.setFont(new java.awt.Font("Segoe UI", ocupada ? java.awt.Font.BOLD : java.awt.Font.PLAIN, 11));
+                if (ocupada) {
+                    item.setForeground(new java.awt.Color(180, 40, 40));
+                } else {
+                    item.setForeground(new java.awt.Color(0, 120, 80));
+                }
+                item.addActionListener(e -> asignarMesaDirecta(sala.getId(), sala.getNombre(), numMesa, cod, verif));
+                menuSala.add(item);
+            }
+            popup.add(menuSala);
+        }
+        popup.show(invoker, 0, invoker.getHeight());
+    }
+
+    public BigDecimal getTasaActual() {
+        if (conf != null && conf.getTasaDolar() != null && conf.getTasaDolar().compareTo(BigDecimal.ZERO) > 0) {
+            return conf.getTasaDolar();
+        }
+        if (txtTasaConfig != null && !txtTasaConfig.getText().trim().isEmpty()) {
+            try {
+                return new BigDecimal(txtTasaConfig.getText().trim());
+            } catch (Exception ignored) {}
+        }
+        return new BigDecimal("36.5000");
+    }
+
+    public String getNombreUsuarioActual() {
+        if (LabelVendedor != null && !LabelVendedor.getText().isBlank()) {
+            return LabelVendedor.getText().trim();
+        }
+        if (usuarioActual != null && usuarioActual.getNombre() != null && !usuarioActual.getNombre().isBlank()) {
+            return usuarioActual.getNombre().trim();
+        }
+        return "Sistema";
+    }
+
+    public void cargarPedidoEnPantallaDesdeSplit(int idPedido) {
+        cargarPedidoEnPantalla(idPedido, true);
     }
 
     // platos
