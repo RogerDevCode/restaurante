@@ -299,11 +299,15 @@ public final class GeneradorPdfPedido {
         Paragraph info = new Paragraph();
         info.setFont(fontNormal);
         info.add(new Phrase("N° Pedido: " + pedido.getId() + "   Fecha: " + texto(pedido.getFecha()) + "\n", fontNegrita));
-        info.add("Sala: " + texto(pedido.getSala()) + "   N° Mesa: " + pedido.getNum_mesa() + "\n");
+        if (pedido.esPedidoRapido()) {
+            info.add("Modalidad: Pedido rápido para llevar\n");
+        } else {
+            info.add("Sala: " + texto(pedido.getSala()) + "   N° Mesa: " + pedido.getNum_mesa() + "\n");
+        }
         info.add("Atendido: " + texto(pedido.getUsuario()) + "\n");
         info.add("Cliente: " + texto(pedido.getClienteNombre()) + "\n");
         info.add("Cédula/RIF: " + texto(pedido.getClienteDocumento()) + "\n");
-        info.add("Método de Pago: " + texto(pedido.getMetodoPago()) + "\n");
+        info.add("Método de Pago: " + textoFormaPago(pedido) + "\n");
         documento.add(info);
 
         Paragraph sep2 = new Paragraph("----------------------------------------------------------------", fontSep);
@@ -313,7 +317,7 @@ public final class GeneradorPdfPedido {
 
     private void agregarDetallesTicket80mm(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles)
             throws DocumentException {
-        BigDecimal tasa = obtenerTasa(pedido, configuracion);
+        BigDecimal tasa = obtenerTasa(pedido);
         Font negrita = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, BaseColor.BLACK);
         Font cuerpo = new Font(Font.FontFamily.HELVETICA, 7.0f, Font.NORMAL, BaseColor.BLACK);
 
@@ -367,7 +371,7 @@ public final class GeneradorPdfPedido {
 
     private void agregarCierreTicket80mm(Document documento, Pedidos pedido, Config configuracion)
             throws DocumentException {
-        BigDecimal tasa = obtenerTasa(pedido, configuracion);
+        BigDecimal tasa = obtenerTasa(pedido);
         BigDecimal totalUsd = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP) : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
 
@@ -416,7 +420,7 @@ public final class GeneradorPdfPedido {
         resumen.setAlignment(Element.ALIGN_RIGHT);
         documento.add(resumen);
 
-        Paragraph firma = new Paragraph("Forma de Pago: " + texto(pedido.getMetodoPago()) + "\n\n------------------------------------\nFirma\n",
+        Paragraph firma = new Paragraph("Forma de Pago: " + textoFormaPago(pedido) + "\n\n------------------------------------\nFirma\n",
                 new Font(Font.FontFamily.HELVETICA, 7.5f, Font.NORMAL, BaseColor.BLACK));
         firma.setAlignment(Element.ALIGN_CENTER);
         documento.add(firma);
@@ -448,11 +452,12 @@ public final class GeneradorPdfPedido {
         Paragraph informacion = new Paragraph("Atendido: " + texto(pedido.getUsuario())
                 + "\nN° Pedido: " + pedido.getId()
                 + "\nFecha: " + texto(pedido.getFecha())
-                + "\nSala: " + texto(pedido.getSala())
-                + "\nN° Mesa: " + pedido.getNum_mesa()
+                + (pedido.esPedidoRapido()
+                        ? "\nModalidad: Pedido rápido para llevar"
+                        : "\nSala: " + texto(pedido.getSala()) + "\nN° Mesa: " + pedido.getNum_mesa())
                 + "\nCliente: " + texto(pedido.getClienteNombre())
                 + "\nCédula/RIF: " + texto(pedido.getClienteDocumento())
-                + "\nMétodo de Pago: " + texto(pedido.getMetodoPago()));
+                + "\nMétodo de Pago: " + textoFormaPago(pedido));
         encabezado.addCell(informacion);
         documento.add(encabezado);
         documento.add(Chunk.NEWLINE);
@@ -466,7 +471,7 @@ public final class GeneradorPdfPedido {
     }
 
     private void agregarDetalles(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles) throws DocumentException {
-        BigDecimal tasa = obtenerTasa(pedido, configuracion);
+        BigDecimal tasa = obtenerTasa(pedido);
         Font negrita = new Font(Font.FontFamily.TIMES_ROMAN, 11, Font.BOLD, BaseColor.BLUE);
         PdfPTable tabla = new PdfPTable(4);
         tabla.setWidthPercentage(100);
@@ -499,7 +504,7 @@ public final class GeneradorPdfPedido {
     }
 
     private void agregarCierre(Document documento, Pedidos pedido, Config configuracion) throws DocumentException {
-        BigDecimal tasa = obtenerTasa(pedido, configuracion);
+        BigDecimal tasa = obtenerTasa(pedido);
         BigDecimal totalUsd = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP) : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
 
@@ -544,7 +549,7 @@ public final class GeneradorPdfPedido {
         documento.add(Chunk.NEWLINE);
         documento.add(resumen);
 
-        Paragraph firma = new Paragraph("Forma de Pago: " + texto(pedido.getMetodoPago()) + "\n\n------------------------------------\nFirma\n");
+        Paragraph firma = new Paragraph("Forma de Pago: " + textoFormaPago(pedido) + "\n\n------------------------------------\nFirma\n");
         firma.setAlignment(Element.ALIGN_CENTER);
         documento.add(Chunk.NEWLINE);
         documento.add(firma);
@@ -555,14 +560,27 @@ public final class GeneradorPdfPedido {
         documento.add(agradecimiento);
     }
 
-    private BigDecimal obtenerTasa(Pedidos pedido, Config configuracion) {
+    private BigDecimal obtenerTasa(Pedidos pedido) {
         if (pedido.getTasaCambio() != null && pedido.getTasaCambio().compareTo(BigDecimal.ZERO) > 0) {
             return pedido.getTasaCambio();
         }
-        if (configuracion.getTasaDolar() != null && configuracion.getTasaDolar().compareTo(BigDecimal.ZERO) > 0) {
-            return configuracion.getTasaDolar();
+        throw ErrorAplicacionException.validacion(
+                "No se puede generar la factura: el pedido no tiene una tasa de cambio válida guardada en la BD.");
+    }
+
+    private String textoFormaPago(Pedidos pedido) {
+        if (pedido.getPagos() == null || pedido.getPagos().isEmpty()) return texto(pedido.getMetodoPago());
+        java.util.List<String> lineas = new java.util.ArrayList<>();
+        for (Modelo.PagoPedido pago : pedido.getPagos()) {
+            String metodo = switch (pago.metodo()) {
+                case "EFECTIVO_BS" -> "Efectivo Bs.";
+                case "EFECTIVO_USD" -> "Efectivo USD";
+                case "PAGO_MOVIL" -> "Pago móvil";
+                default -> pago.metodo();
+            };
+            lineas.add(metodo + " " + String.format(java.util.Locale.US, "%.2f", pago.monto()) + " " + pago.moneda());
         }
-        return new BigDecimal("36.5000");
+        return lineas.size() == 1 ? lineas.getFirst() : "MIXTO: " + String.join(" + ", lineas);
     }
 
     private String texto(String valor) {

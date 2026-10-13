@@ -93,7 +93,7 @@ public class PanelMesasLeyendaYTimestampTest {
                             assertEquals(new Color(0, 102, 102), lbl.getBackground());
                         } else if ("Ocupada".equalsIgnoreCase(txt)) {
                             encontroOcupada = true;
-                            assertEquals(new Color(255, 51, 51), lbl.getBackground());
+                            assertEquals(new Color(192, 57, 43), lbl.getBackground());
                         }
                     }
                 }

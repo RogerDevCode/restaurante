@@ -69,7 +69,14 @@ import javax.swing.table.JTableHeader;
 
 public final class Sistema extends javax.swing.JFrame {
 
-    private static final java.awt.Color COLOR_PELIGRO = new java.awt.Color(197, 107, 98);
+    /** Rojo de peligro con contraste suficiente para texto blanco, incluso en hover. */
+    private static final java.awt.Color COLOR_PELIGRO = new java.awt.Color(168, 70, 60);
+    /** Pizarra: cabeceras y navegacion lateral (unifica la paleta). */
+    private static final java.awt.Color COLOR_CABECERA = new java.awt.Color(44, 62, 80);
+    /** Tiffany para el fondo de todos los campos de entrada. */
+    private static final java.awt.Color COLOR_TIFFANY = new java.awt.Color(129, 216, 208);
+    /** Texto oscuro para garantizar contraste sobre el fondo tiffany. */
+    private static final java.awt.Color COLOR_TEXTO_INPUT = new java.awt.Color(51, 51, 51);
     private static final int ANCHO_BOTON_ESTANDAR = 100;
     private static final int ALTO_BOTON_ESTANDAR = 34;
     /** Barra lateral izquierda original 200 px reducida un 25 %. */
@@ -99,6 +106,9 @@ public final class Sistema extends javax.swing.JFrame {
     private long versionPanelMesas;
     private long versionPedidoPantalla;
     private long versionDashboard;
+    private long versionCargaUsuarios;
+    private long versionCargaConfig;
+    private long versionCargaCategorias;
     private long versionBusquedaClientes;
     private long versionFacturasCliente;
     BigDecimal Totalpagar = BigDecimal.ZERO.setScale(2);
@@ -153,6 +163,8 @@ public final class Sistema extends javax.swing.JFrame {
     private final Modelo.ClienteDao clienteDao = new Modelo.ClienteDao();
     private javax.swing.JPanel panelDashboard;
     private javax.swing.JButton btnDashboard;
+    private javax.swing.JButton btnPedidoRapido;
+    private boolean modoPedidoRapido;
     private javax.swing.JTextField txtBuscarCliente;
     private javax.swing.JTable tableClientes;
     private javax.swing.JTable tableFacturasCliente;
@@ -224,6 +236,8 @@ public final class Sistema extends javax.swing.JFrame {
             this.lgDao = loginDao;
         }
         this.usuarioActual = priv;
+        unificarFuentesBase();
+        unificarFondosBase();
         initComponents();
         
         // Intercept close operation to validate open tables
@@ -384,7 +398,7 @@ public final class Sistema extends javax.swing.JFrame {
                 cambiarModoSalidaGlobal(m);
             }
         });
-        jPanel6.add(cbModoSalidaHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(535, 10, 175, 32));
+        jPanel6.add(cbModoSalidaHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(535, 10, 205, 32));
 
         btnCierreParcial = new javax.swing.JButton("Cierre Parcial (X)");
         btnCierreParcial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
@@ -395,7 +409,7 @@ public final class Sistema extends javax.swing.JFrame {
             btnCierreParcial.setIcon(new javax.swing.ImageIcon(urlPrintHist));
         }
         btnCierreParcial.addActionListener(e -> solicitarCierreCaja(Modelo.CierreCaja.TipoCierre.PARCIAL));
-        jPanel6.add(btnCierreParcial, new org.netbeans.lib.awtextra.AbsoluteConstraints(720, 10, 165, 32));
+        jPanel6.add(btnCierreParcial, new org.netbeans.lib.awtextra.AbsoluteConstraints(750, 10, 175, 32));
 
         btnCierreTotal = new javax.swing.JButton("Cierre Total (Z)");
         btnCierreTotal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
@@ -405,7 +419,7 @@ public final class Sistema extends javax.swing.JFrame {
             btnCierreTotal.setIcon(new javax.swing.ImageIcon(urlPrintHist));
         }
         btnCierreTotal.addActionListener(e -> solicitarCierreCaja(Modelo.CierreCaja.TipoCierre.TOTAL));
-        jPanel6.add(btnCierreTotal, new org.netbeans.lib.awtextra.AbsoluteConstraints(895, 10, 165, 32));
+        jPanel6.add(btnCierreTotal, new org.netbeans.lib.awtextra.AbsoluteConstraints(933, 10, 165, 32));
 
         javax.swing.JLabel lblBuscarHistorial = new javax.swing.JLabel("Buscar:");
         lblBuscarHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
@@ -418,60 +432,60 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
         jPanel6.add(lblBuscarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 48, 48, 30));
-        jPanel6.add(txtBuscarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(90, 48, 150, 30));
+        jPanel6.add(txtBuscarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(90, 48, 120, 30));
 
         btnFiltroHoy = new javax.swing.JButton("Hoy");
         btnFiltroHoy.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         btnFiltroHoy.setToolTipText("Mostrar sólo pedidos realizados hoy");
         btnFiltroHoy.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnFiltroHoy.addActionListener(e -> filtrarHistorialHoy());
-        jPanel6.add(btnFiltroHoy, new org.netbeans.lib.awtextra.AbsoluteConstraints(245, 48, 55, 30));
+        jPanel6.add(btnFiltroHoy, new org.netbeans.lib.awtextra.AbsoluteConstraints(215, 48, 65, 30));
 
         btnFiltroPendientes = new javax.swing.JButton("Pendientes");
         btnFiltroPendientes.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         btnFiltroPendientes.setToolTipText("Mostrar sólo pedidos en estado PENDIENTE");
         btnFiltroPendientes.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnFiltroPendientes.addActionListener(e -> filtrarHistorialPendientes());
-        jPanel6.add(btnFiltroPendientes, new org.netbeans.lib.awtextra.AbsoluteConstraints(305, 48, 85, 30));
+        jPanel6.add(btnFiltroPendientes, new org.netbeans.lib.awtextra.AbsoluteConstraints(288, 48, 105, 30));
 
         btnFiltroFinalizados = new javax.swing.JButton("Finalizados");
         btnFiltroFinalizados.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         btnFiltroFinalizados.setToolTipText("Mostrar sólo pedidos en estado FINALIZADO");
         btnFiltroFinalizados.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnFiltroFinalizados.addActionListener(e -> filtrarHistorialFinalizados());
-        jPanel6.add(btnFiltroFinalizados, new org.netbeans.lib.awtextra.AbsoluteConstraints(395, 48, 85, 30));
+        jPanel6.add(btnFiltroFinalizados, new org.netbeans.lib.awtextra.AbsoluteConstraints(401, 48, 105, 30));
 
         javax.swing.JLabel lblDesde = new javax.swing.JLabel("Desde:");
         lblDesde.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        jPanel6.add(lblDesde, new org.netbeans.lib.awtextra.AbsoluteConstraints(485, 48, 40, 30));
+        jPanel6.add(lblDesde, new org.netbeans.lib.awtextra.AbsoluteConstraints(514, 48, 40, 30));
 
         txtFiltroFechaDesde = new javax.swing.JTextField();
         txtFiltroFechaDesde.setToolTipText("Fecha inicial (AAAA-MM-DD)");
         txtFiltroFechaDesde.addActionListener(e -> { filtroSoloHoyActivo = false; aplicarFiltroHistorial(); });
-        jPanel6.add(txtFiltroFechaDesde, new org.netbeans.lib.awtextra.AbsoluteConstraints(528, 48, 75, 30));
+        jPanel6.add(txtFiltroFechaDesde, new org.netbeans.lib.awtextra.AbsoluteConstraints(557, 48, 75, 30));
 
         javax.swing.JLabel lblHasta = new javax.swing.JLabel("Hasta:");
         lblHasta.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        jPanel6.add(lblHasta, new org.netbeans.lib.awtextra.AbsoluteConstraints(608, 48, 38, 30));
+        jPanel6.add(lblHasta, new org.netbeans.lib.awtextra.AbsoluteConstraints(640, 48, 38, 30));
 
         txtFiltroFechaHasta = new javax.swing.JTextField();
         txtFiltroFechaHasta.setToolTipText("Fecha final (AAAA-MM-DD)");
         txtFiltroFechaHasta.addActionListener(e -> { filtroSoloHoyActivo = false; aplicarFiltroHistorial(); });
-        jPanel6.add(txtFiltroFechaHasta, new org.netbeans.lib.awtextra.AbsoluteConstraints(648, 48, 75, 30));
+        jPanel6.add(txtFiltroFechaHasta, new org.netbeans.lib.awtextra.AbsoluteConstraints(680, 48, 75, 30));
 
         btnFiltroRangoFecha = new javax.swing.JButton("Rango");
         btnFiltroRangoFecha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         btnFiltroRangoFecha.setToolTipText("Aplicar filtro de rango de fechas");
         btnFiltroRangoFecha.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnFiltroRangoFecha.addActionListener(e -> { filtroSoloHoyActivo = false; aplicarFiltroHistorial(); });
-        jPanel6.add(btnFiltroRangoFecha, new org.netbeans.lib.awtextra.AbsoluteConstraints(728, 48, 60, 30));
+        jPanel6.add(btnFiltroRangoFecha, new org.netbeans.lib.awtextra.AbsoluteConstraints(763, 48, 72, 30));
 
         btnLimpiarFiltrosHistorial = new javax.swing.JButton("Limpiar");
         btnLimpiarFiltrosHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         btnLimpiarFiltrosHistorial.setToolTipText("Limpiar todos los filtros y restaurar historial completo");
         btnLimpiarFiltrosHistorial.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnLimpiarFiltrosHistorial.addActionListener(e -> limpiarFiltrosHistorial());
-        jPanel6.add(btnLimpiarFiltrosHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(793, 48, 65, 30));
+        jPanel6.add(btnLimpiarFiltrosHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(843, 48, 78, 30));
 
         btnPdfPedido.setToolTipText("Ver / Reimprimir factura del pedido seleccionado");
 
@@ -487,8 +501,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnReimprimirHistorial.addActionListener(e -> {
             if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
             if (txtIdHistorialPedido.getText().isBlank()) {
-                JOptionPane.showMessageDialog(this, "Seleccione un pedido finalizado de la tabla para reimprimir su factura.",
-                        "Pedido requerido", JOptionPane.WARNING_MESSAGE);
+                mostrarAvisoEnBanda("Seleccione un pedido finalizado de la tabla para reimprimir");
                 return;
             }
             try {
@@ -499,19 +512,14 @@ public final class Sistema extends javax.swing.JFrame {
                 String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
                 boolean impreso = pedidosControlador.reimprimirPdfPedido(id, motivo, usr);
                 if (!impreso) {
-                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
-                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
-                }
-                if (!impreso) {
-                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
-                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
+                    mostrarAvisoEnBanda("PDF generado (impresión degradada a visor PDF)");
                 }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                         "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
-        jPanel6.add(btnReimprimirHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(863, 48, 95, 30));
+        jPanel6.add(btnReimprimirHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(929, 48, 120, 30));
 
         btnPrevisualizarHistorial = new javax.swing.JButton("Previsualizar");
         btnPrevisualizarHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
@@ -525,8 +533,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnPrevisualizarHistorial.addActionListener(e -> {
             if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
             if (txtIdHistorialPedido.getText().isBlank()) {
-                JOptionPane.showMessageDialog(this, "Seleccione un pedido de la tabla para previsualizar su factura.",
-                        "Pedido requerido", JOptionPane.WARNING_MESSAGE);
+                mostrarAvisoEnBanda("Seleccione un pedido de la tabla para previsualizar");
                 return;
             }
             try {
@@ -537,7 +544,7 @@ public final class Sistema extends javax.swing.JFrame {
                         "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
-        jPanel6.add(btnPrevisualizarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(963, 48, 100, 30));
+        jPanel6.add(btnPrevisualizarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(1057, 48, 130, 30));
 
         btnPrevisualizarPedido = new javax.swing.JButton("Previsualizar");
         btnPrevisualizarPedido.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
@@ -548,11 +555,11 @@ public final class Sistema extends javax.swing.JFrame {
             btnPrevisualizarPedido.setIcon(new javax.swing.ImageIcon(urlLupa));
         }
         btnPrevisualizarPedido.addActionListener(this::btnPrevisualizarPedidoActionPerformed);
-        jPanel25.add(btnPrevisualizarPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(640, 440, 130, 40));
+        jPanel25.add(btnPrevisualizarPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(821, 440, 145, 40));
 
         javax.swing.JLabel lblDestinoFinalizar = new javax.swing.JLabel("Salida:");
         lblDestinoFinalizar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
-        jPanel25.add(lblDestinoFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(440, 420, 60, 20));
+        jPanel25.add(lblDestinoFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(420, 420, 60, 20));
 
         cbModoSalidaFinalizar = new javax.swing.JComboBox<>(Modelo.ModoSalidaTicket.values());
         cbModoSalidaFinalizar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
@@ -562,7 +569,7 @@ public final class Sistema extends javax.swing.JFrame {
                 cambiarModoSalidaGlobal(m);
             }
         });
-        jPanel25.add(cbModoSalidaFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(440, 442, 185, 36));
+        jPanel25.add(cbModoSalidaFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(420, 442, 205, 36));
 
         TablePedidos.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -653,7 +660,7 @@ public final class Sistema extends javax.swing.JFrame {
         panelLogoConfig.add(btnCambiarLogo, new org.netbeans.lib.awtextra.AbsoluteConstraints(70, 310, 210, 40));
 
         btnRestablecerLogo = new javax.swing.JButton("Restablecer Predeterminado");
-        btnRestablecerLogo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        btnRestablecerLogo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnRestablecerLogo.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnRestablecerLogo.addActionListener(e -> {
             txtRutaLogo.setText("");
@@ -683,7 +690,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnRefrescarImpresoras.addActionListener(e -> {
             String sel = (cbImpresorasConfig.getSelectedItem() != null) ? cbImpresorasConfig.getSelectedItem().toString() : "DEFAULT";
             refrescarImpresorasEnCombo(sel);
-            JOptionPane.showMessageDialog(this, "Lista de impresoras del sistema actualizada (" + (cbImpresorasConfig.getItemCount() - 1) + " impresoras detectadas).", "Impresoras", JOptionPane.INFORMATION_MESSAGE);
+            mostrarAvisoEnBanda("Impresoras actualizadas (" + (cbImpresorasConfig.getItemCount() - 1) + " detectadas)");
         });
         panelImpresionConfig.add(btnRefrescarImpresoras);
 
@@ -740,11 +747,11 @@ public final class Sistema extends javax.swing.JFrame {
         lblFechaTasaConfig = new javax.swing.JLabel("");
         lblFechaTasaConfig.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 10));
         lblFechaTasaConfig.setForeground(new java.awt.Color(90, 90, 90));
-        jPanel8.add(lblFechaTasaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 285, 175, 15));
+        jPanel8.add(lblFechaTasaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 285, 215, 15));
 
         // Campos para configuración de Cliente Predeterminado en jPanel8
         javax.swing.JLabel lblCliDef = new javax.swing.JLabel("Cliente Predeterminado");
-        lblCliDef.setFont(new java.awt.Font("Times New Roman", java.awt.Font.BOLD, 13));
+        lblCliDef.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         jPanel8.add(lblCliDef, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 295, 200, 20));
 
         txtClienteDefaultNombre = new javax.swing.JTextField();
@@ -752,30 +759,30 @@ public final class Sistema extends javax.swing.JFrame {
         jPanel8.add(txtClienteDefaultNombre, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 318, 220, 30));
 
         javax.swing.JLabel lblDocDef = new javax.swing.JLabel("Cédula / RIF Predeterminado");
-        lblDocDef.setFont(new java.awt.Font("Times New Roman", java.awt.Font.BOLD, 13));
-        jPanel8.add(lblDocDef, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 355, 200, 20));
+        lblDocDef.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        jPanel8.add(lblDocDef, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 362, 200, 20));
 
         txtClienteDefaultDoc = new javax.swing.JTextField();
         txtClienteDefaultDoc.setBackground(new java.awt.Color(255, 255, 255));
-        jPanel8.add(txtClienteDefaultDoc, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 375, 147, 28));
+        jPanel8.add(txtClienteDefaultDoc, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 382, 147, 28));
 
         // Retención de historial y purga en jPanel8
         lblRetencionConfig = new javax.swing.JLabel("Retención Historial (meses):");
-        lblRetencionConfig.setFont(new java.awt.Font("Times New Roman", java.awt.Font.BOLD, 13));
-        jPanel8.add(lblRetencionConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 355, 220, 20));
+        lblRetencionConfig.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        jPanel8.add(lblRetencionConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(215, 362, 195, 20));
 
         spMesesRetencion = new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(24, 1, 120, 1));
         spMesesRetencion.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
         spMesesRetencion.setToolTipText("Cantidad de meses que se conservan los pedidos finalizados antes de purgar");
         spMesesRetencion.setEnabled(politicaAcceso.esAdministrador());
-        jPanel8.add(spMesesRetencion, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 375, 120, 28));
+        jPanel8.add(spMesesRetencion, new org.netbeans.lib.awtextra.AbsoluteConstraints(215, 382, 120, 28));
 
         jPanel8.remove(btnActualizarConfig);
         btnActualizarConfig.setBounds(15, 415, 185, 45);
-        jPanel8.add(btnActualizarConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(15, 415, 185, 45));
+        jPanel8.add(btnActualizarConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(15, 422, 185, 45));
 
         btnPurgarHistorial = new javax.swing.JButton("Purgar Historial");
-        btnPurgarHistorial.setFont(new java.awt.Font("Times New Roman", java.awt.Font.BOLD, 13));
+        btnPurgarHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnPurgarHistorial.setBackground(COLOR_PELIGRO);
         btnPurgarHistorial.setForeground(java.awt.Color.WHITE);
         btnPurgarHistorial.setToolTipText("Elimina pedidos finalizados anteriores al período de retención");
@@ -784,7 +791,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnPurgarHistorial.setVisible(esAdminRetencion);
         btnPurgarHistorial.setEnabled(esAdminRetencion);
         btnPurgarHistorial.addActionListener(e -> purgarHistorialPedidos());
-        jPanel8.add(btnPurgarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(215, 415, 195, 45));
+        jPanel8.add(btnPurgarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(215, 422, 195, 45));
 
         initPanelMesasMejorado();
         initDashboardYClientes();
@@ -800,6 +807,7 @@ public final class Sistema extends javax.swing.JFrame {
         }
 
         panelSalas();
+        observarEdicionConfig();
         ListarConfig();
         actualizarEstadoTasaUI();
         configurarTabCategorias();
@@ -814,7 +822,726 @@ public final class Sistema extends javax.swing.JFrame {
         aplicarEncabezados();
         configurarVentanaResponsiva();
         configurarTodasLasTablas(getContentPane());
+        configurarTablaSalasProporcional();
+        configurarTablaUsuariosIgualitaria();
+        configurarTablaHistorialProporcional();
+        configurarTablaFinalizarProporcional();
+        configurarColumnasProporcionales(tableMenu,
+                new int[]{40, 120, 50, 90, 100, 100, 60},
+                new int[]{40, 220, 50, 90, 100, 160, 60},
+                new int[]{40, -1, 50, 90, 100, -1, 60});
+        configurarColumnasProporcionales(tblTemPlatos,
+                new int[]{40, 150, 80},
+                new int[]{40, 200, 90},
+                new int[]{40, -1, 90});
+        configurarColumnasProporcionales(TablePlatos,
+                new int[]{60, 150, 90, 70},
+                new int[]{70, 220, 100, 80},
+                new int[]{80, -1, 110, 90});
+        configurarColumnasProporcionales(tableMesonerosConfig,
+                new int[]{60, 150, 100, 100, 90},
+                new int[]{70, 200, 110, 110, 100},
+                new int[]{80, -1, 120, 120, 110});
+        configurarColumnasProporcionales(tableTopPlatos,
+                new int[]{120, 60, 90},
+                new int[]{160, 70, 110},
+                new int[]{-1, 70, 110});
+        configurarColumnasProporcionales(tableMesonerosDashboard,
+                new int[]{100, 70, 80, 80},
+                new int[]{140, 80, 100, 100},
+                new int[]{-1, 80, 100, 100});
+        configurarColumnasProporcionales(tableClientes,
+                new int[]{100, 140, 100, 70, 90, 90},
+                new int[]{110, 180, 110, 80, 100, 100},
+                new int[]{120, -1, 120, 80, 110, 110});
+        configurarColumnasProporcionales(tableFacturasCliente,
+                new int[]{70, 100, 100, 60, 90, 90, 100, 90},
+                new int[]{80, 110, 120, 70, 100, 100, 130, 100},
+                new int[]{80, 110, 120, 70, 100, 100, -1, 100});
+        registrarPersistenciaAnchos();
+        // tableMesonerosConfig y tablas del dashboard se configuran en sus constructores
+        // (se crean despues de aplicarMejorasDeUX).
+        configurarScrollHistorialResponsivo();
+        crearCamposFacturacionRapida();
+        configurarScrollFinalizarResponsivo();
+        aplicarFondoTiffanyInputs(getContentPane());
         centrarTextoBarraLateral();
+        estilizarBarraLateral();
+        solidificarBotones(getContentPane());
+    }
+
+    /** Fuente base Segoe UI para los componentes que no traen fuente explicita (tablas, campos, combos). */
+    private static void unificarFuentesBase() {
+        javax.swing.plaf.FontUIResource base = new javax.swing.plaf.FontUIResource("Segoe UI", java.awt.Font.PLAIN, 12);
+        javax.swing.plaf.FontUIResource baseNegrita = new javax.swing.plaf.FontUIResource("Segoe UI", java.awt.Font.BOLD, 12);
+        String[] claves = {"Button.font", "Label.font", "Table.font", "TableHeader.font", "TextField.font",
+                "PasswordField.font", "TextArea.font", "TextPane.font", "EditorPane.font",
+                "ComboBox.font", "List.font", "Spinner.font", "CheckBox.font", "TabbedPane.font"};
+        for (String clave : claves) {
+            javax.swing.UIManager.put(clave, base);
+        }
+        javax.swing.UIManager.put("Button.font", baseNegrita);
+        javax.swing.UIManager.put("TableHeader.font", baseNegrita);
+    }
+
+    /** Tabla de salas proporcional: ID, Mesas y Tipo fijas, la columna Nombre absorbe el 100 % del ancho libre. */
+    private void configurarTablaSalasProporcional() {
+        if (tableSala == null || tableSala.getColumnModel().getColumnCount() < 3) {
+            return;
+        }
+        tableSala.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+        tableSala.getColumnModel().getColumn(0).setMinWidth(90);
+        tableSala.getColumnModel().getColumn(0).setMaxWidth(90);
+        tableSala.getColumnModel().getColumn(1).setMinWidth(150);
+        tableSala.getColumnModel().getColumn(1).setPreferredWidth(200);
+        tableSala.getColumnModel().getColumn(2).setMinWidth(110);
+        tableSala.getColumnModel().getColumn(2).setMaxWidth(110);
+        if (tableSala.getColumnModel().getColumnCount() > 3) {
+            tableSala.getColumnModel().getColumn(3).setMinWidth(110);
+            tableSala.getColumnModel().getColumn(3).setMaxWidth(110);
+        }
+    }
+
+    /** Fondo tiffany por defecto para los componentes de entrada creados despues (incluye dialogos). */
+    private static void unificarFondosBase() {
+        String[] claves = {"TextField.background", "PasswordField.background", "FormattedTextField.background",
+                "TextArea.background", "TextPane.background", "EditorPane.background",
+                "ComboBox.background", "Spinner.background", "List.background"};
+        for (String clave : claves) {
+            javax.swing.UIManager.put(clave, COLOR_TIFFANY);
+        }
+        String[] clavesTexto = {"TextField.foreground", "PasswordField.foreground", "FormattedTextField.foreground",
+                "TextArea.foreground", "TextPane.foreground", "EditorPane.foreground",
+                "ComboBox.foreground", "Spinner.foreground", "List.foreground"};
+        for (String clave : clavesTexto) {
+            javax.swing.UIManager.put(clave, COLOR_TEXTO_INPUT);
+        }
+    }
+
+    /** Pinta de tiffany los campos de entrada y unifica su texto en un tono oscuro legible. */
+    public static void aplicarFondoTiffanyInputs(java.awt.Container contenedor) {
+        if (contenedor == null) {
+            return;
+        }
+        for (java.awt.Component c : contenedor.getComponents()) {
+            if (c instanceof javax.swing.JTextField campo) {
+                campo.setBackground(COLOR_TIFFANY);
+                normalizarTextoInput(campo);
+            } else if (c instanceof javax.swing.JTextArea area) {
+                area.setBackground(COLOR_TIFFANY);
+                normalizarTextoInput(area);
+            } else if (c instanceof javax.swing.JEditorPane panelTexto) {
+                panelTexto.setBackground(COLOR_TIFFANY);
+                normalizarTextoInput(panelTexto);
+            } else if (c instanceof javax.swing.JComboBox<?> combo) {
+                combo.setBackground(COLOR_TIFFANY);
+                normalizarTextoInput(combo);
+                java.awt.Component editor = combo.getEditor() != null ? combo.getEditor().getEditorComponent() : null;
+                if (editor instanceof javax.swing.JComponent jc) {
+                    jc.setBackground(COLOR_TIFFANY);
+                    normalizarTextoInput(jc);
+                }
+            } else if (c instanceof javax.swing.JSpinner spinner) {
+                if (spinner.getEditor() instanceof javax.swing.JSpinner.DefaultEditor ed) {
+                    ed.getTextField().setBackground(COLOR_TIFFANY);
+                    normalizarTextoInput(ed.getTextField());
+                }
+            }
+            if (c instanceof java.awt.Container hijo) {
+                aplicarFondoTiffanyInputs(hijo);
+            }
+        }
+    }
+
+    private static void normalizarTextoInput(javax.swing.JComponent comp) {
+        comp.setForeground(COLOR_TEXTO_INPUT);
+    }
+
+    /** Tabla de usuarios: las 4 columnas con el mismo ancho, repartiendose el 100 % disponible. */
+    private void configurarTablaUsuariosIgualitaria() {
+        if (TableUsuarios == null || TableUsuarios.getColumnModel().getColumnCount() == 0) {
+            return;
+        }
+        TableUsuarios.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+        for (int i = 0; i < TableUsuarios.getColumnModel().getColumnCount(); i++) {
+            // Orden: maximo primero (setPreferredWidth recorta contra el maximo vigente).
+            TableUsuarios.getColumnModel().getColumn(i).setMaxWidth(Integer.MAX_VALUE);
+            TableUsuarios.getColumnModel().getColumn(i).setMinWidth(70);
+            TableUsuarios.getColumnModel().getColumn(i).setPreferredWidth(150);
+        }
+    }
+
+    /** Tabla de historial: columnas proporcionales que absorben el 100 % del ancho libre. */
+    private void configurarTablaHistorialProporcional() {
+        if (TablePedidos == null || TablePedidos.getColumnModel().getColumnCount() < 7) {
+            return;
+        }
+        TablePedidos.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+        int[] minimos = {70, 110, 120, 80, 130, 100, 100};
+        int[] preferidos = {70, 140, 160, 80, 150, 100, 120};
+        for (int i = 0; i < 7; i++) {
+            TablePedidos.getColumnModel().getColumn(i).setMinWidth(minimos[i]);
+            TablePedidos.getColumnModel().getColumn(i).setPreferredWidth(preferidos[i]);
+            TablePedidos.getColumnModel().getColumn(i).setMaxWidth(Integer.MAX_VALUE);
+        }
+        TablePedidos.getColumnModel().getColumn(0).setMaxWidth(70);
+        TablePedidos.getColumnModel().getColumn(3).setMaxWidth(80);
+        TablePedidos.getColumnModel().getColumn(5).setMaxWidth(100);
+    }
+
+    /** El scroll del historial llena el panel con margenes fijos (proporcional al tamano de ventana). */
+    private void configurarScrollHistorialResponsivo() {
+        if (jPanel6 == null || jScrollPane5 == null) {
+            return;
+        }
+        jPanel6.setLayout(null);
+        jPanel6.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                ajustarScrollHistorial();
+            }
+        });
+        ajustarScrollHistorial();
+    }
+
+    private void ajustarScrollHistorial() {
+        int w = jPanel6.getWidth();
+        int h = jPanel6.getHeight();
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        jScrollPane5.setBounds(40, 90, Math.max(300, w - 80), Math.max(200, h - 120));
+        jScrollPane5.validate();
+        jPanel6.setPreferredSize(new java.awt.Dimension(w, h));
+        jPanel6.revalidate();
+    }
+
+    /** Tabla de caja/facturacion: columnas fijas + Plato y Comentario absorbiendo el 100 % libre. */
+    private void configurarTablaFinalizarProporcional() {
+        if (tableFinalizar == null || tableFinalizar.getColumnModel().getColumnCount() < 6) {
+            return;
+        }
+        tableFinalizar.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+        // Orden maximo-primero: setPreferredWidth recorta contra el maximo vigente.
+        int[] maximos = {40, Integer.MAX_VALUE, 50, 90, 100, Integer.MAX_VALUE};
+        int[] minimos = {40, 150, 50, 90, 100, 120};
+        int[] preferidos = {40, 220, 50, 90, 100, 160};
+        for (int i = 0; i < 6; i++) {
+            tableFinalizar.getColumnModel().getColumn(i).setMaxWidth(maximos[i]);
+            tableFinalizar.getColumnModel().getColumn(i).setMinWidth(minimos[i]);
+            tableFinalizar.getColumnModel().getColumn(i).setPreferredWidth(preferidos[i]);
+        }
+    }
+
+    /** El scroll de caja llena el ancho del panel con margenes fijos (alto intacto: debajo hay mas seccion). */
+    private void configurarScrollFinalizarResponsivo() {
+        if (jPanel25 == null || jScrollPane13 == null) {
+            return;
+        }
+        jPanel25.setLayout(null);
+        jPanel25.setPreferredSize(new java.awt.Dimension(1194, 620));
+        jPanel25.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                ajustarScrollFinalizar();
+            }
+        });
+        jTabbedPane1.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                ajustarScrollFinalizar();
+            }
+        });
+        ajustarScrollFinalizar();
+    }
+
+    private void ajustarScrollFinalizar() {
+        int anchoPestana = jTabbedPane1.getWidth();
+        int altoPestana = jTabbedPane1.getHeight();
+        int w = anchoPestana > 0 ? Math.max(980, anchoPestana - 34) : jPanel25.getWidth();
+        int h = altoPestana > 0 ? Math.max(480, altoPestana - 40) : jPanel25.getHeight();
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        java.awt.Dimension preferido = jPanel25.getPreferredSize();
+        if (preferido.width != w || preferido.height != h) {
+            jPanel25.setPreferredSize(new java.awt.Dimension(w, h));
+            jPanel25.revalidate();
+        }
+
+        // 1. Tabla de platos del pedido: altura proporcional para dejar espacio a la captura y cobro.
+        int hScroll = Math.max(140, Math.min(220, h - 330));
+        jScrollPane13.setBounds(30, 10, Math.max(300, w - 60), hScroll);
+
+        // 2. Fila 1 de información básica debajo de la tabla de platos
+        int yInfo = 10 + hScroll + 12;
+        jLabel7.setBounds(30, yInfo, 95, 26);
+        txtFechaHora.setBounds(130, yInfo, 170, 26);
+        if (lblMesoneroFin != null) lblMesoneroFin.setBounds(320, yInfo, 75, 26);
+        if (txtMesoneroFinalizar != null) txtMesoneroFinalizar.setBounds(400, yInfo, 170, 26);
+
+        int xTotal = Math.max(590, w - 340);
+        jLabel17.setBounds(xTotal, yInfo - 6, 330, 20);
+        totalFinalizar.setBounds(xTotal, yInfo + 14, 330, 28);
+
+        // 3. Fila 2 de información: Sala, Cliente, Doc
+        jLabel8.setBounds(30, yInfo + 32, 95, 26);
+        txtSalaFinalizar.setBounds(130, yInfo + 32, 170, 26);
+        if (lblClienteFac != null) lblClienteFac.setBounds(320, yInfo + 32, 75, 26);
+        if (txtClienteNombreFac != null) txtClienteNombreFac.setBounds(400, yInfo + 32, 170, 26);
+        if (lblDocFac != null) lblDocFac.setBounds(585, yInfo + 32, 40, 26);
+        if (txtClienteDocFac != null) txtClienteDocFac.setBounds(630, yInfo + 32, 120, 26);
+
+        // 4. Fila 3: Mesa
+        jLabel9.setBounds(30, yInfo + 64, 95, 26);
+        txtNumMesaFinalizar.setBounds(130, yInfo + 64, 170, 26);
+
+        // 5. Sección de Pagos inline
+        int yPagos = yInfo + 96;
+        if (lblPagoFac != null) lblPagoFac.setBounds(30, yPagos, 75, 20);
+
+        int wPagos = Math.max(350, Math.min(620, w - 240));
+        if (scrollPagosFac != null) scrollPagosFac.setBounds(110, yPagos, wPagos, 72);
+
+        int xBtnPago = 110 + wPagos + 10;
+        if (btnAgregarPagoFac != null) btnAgregarPagoFac.setBounds(xBtnPago, yPagos, 95, 32);
+        if (btnQuitarPagoFac != null) btnQuitarPagoFac.setBounds(xBtnPago, yPagos + 38, 95, 32);
+
+        int yResumen = yPagos + 76;
+        if (lblResumenPagosFac != null) lblResumenPagosFac.setBounds(110, yResumen, Math.max(300, w - 130), 18);
+        if (lblAlertaPagosFac != null) lblAlertaPagosFac.setBounds(110, yResumen + 18, Math.max(300, w - 130), 18);
+
+        // 6. Fila inferior de botones de acción
+        int yBotones = Math.max(yResumen + 40, Math.min(h - 45, yPagos + 115));
+        btnModificarPedido.setBounds(30, yBotones, 180, 36);
+        btnPdfPedido.setBounds(Math.max(220, w - 240), yBotones, 110, 36);
+        btnFinalizar.setBounds(Math.max(340, w - 120), yBotones, 110, 36);
+
+        jScrollPane13.validate();
+    }
+
+    /**
+     * Columnas proporcionales genericas: la tabla llena el 100 % del viewport.
+     * maximo -1 = sin tope. Orden maximo-primero (setPreferredWidth recorta contra el maximo vigente).
+     */
+    private static void configurarColumnasProporcionales(javax.swing.JTable tabla, int[] minimos, int[] preferidos, int[] maximos) {
+        if (tabla == null || tabla.getColumnModel() == null) {
+            return;
+        }
+        int n = Math.min(tabla.getColumnModel().getColumnCount(),
+                Math.min(minimos.length, Math.min(preferidos.length, maximos.length)));
+        if (n == 0) {
+            return;
+        }
+        tabla.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+        for (int i = 0; i < n; i++) {
+            tabla.getColumnModel().getColumn(i).setMaxWidth(maximos[i] < 0 ? Integer.MAX_VALUE : maximos[i]);
+            tabla.getColumnModel().getColumn(i).setMinWidth(minimos[i]);
+            tabla.getColumnModel().getColumn(i).setPreferredWidth(preferidos[i]);
+        }
+    }
+
+    /** Persiste los anchos de las 12 tablas por usuario (claves semanticas estables). */
+    private void registrarPersistenciaAnchos() {
+        int uid = (usuarioActual != null) ? usuarioActual.getId() : 0;
+        if (uid <= 0) {
+            return;
+        }
+        final Modelo.PreferenciasTablaDao dao;
+        try {
+            dao = new Modelo.PreferenciasTablaDao();
+        } catch (RuntimeException ex) {
+            return;
+        }
+        registrarAnchos(dao, uid, tableSala, "salas_crud");
+        registrarAnchos(dao, uid, tblTemPlatos, "toma_menu");
+        registrarAnchos(dao, uid, tableMenu, "toma_carrito");
+        registrarAnchos(dao, uid, tableFinalizar, "caja");
+        registrarAnchos(dao, uid, TablePedidos, "historial");
+        registrarAnchos(dao, uid, TableUsuarios, "usuarios");
+        registrarAnchos(dao, uid, TablePlatos, "platos_crud");
+        registrarAnchos(dao, uid, tableMesonerosConfig, "mesoneros_config");
+        registrarAnchos(dao, uid, tableTopPlatos, "dash_top");
+        registrarAnchos(dao, uid, tableMesonerosDashboard, "dash_mesoneros");
+        registrarAnchos(dao, uid, tableClientes, "dash_clientes");
+        registrarAnchos(dao, uid, tableFacturasCliente, "dash_facturas");
+    }
+
+    private static void registrarAnchos(Modelo.PreferenciasTablaDao dao, int uid,
+            javax.swing.JTable tabla, String clave) {
+        if (tabla == null) {
+            return;
+        }
+        try {
+            new GestorAnchosTabla(tabla, clave, uid, dao);
+        } catch (RuntimeException ex) {
+            java.util.logging.Logger.getLogger(Sistema.class.getName())
+                    .log(java.util.logging.Level.FINE, "Sin persistencia para " + clave + ": " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Si el operador edita mientras una carga esta en vuelo, esa carga queda obsoleta:
+     * al completarse se descarta para no pisar lo tecleado. Se instala una sola vez.
+     */
+    private void observarEdicionConfig() {
+        javax.swing.event.DocumentListener invalidador = new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { versionCargaConfig++; }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { versionCargaConfig++; }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { versionCargaConfig++; }
+        };
+        for (javax.swing.JTextField campo : new javax.swing.JTextField[]{txtRucConfig, txtNombreConfig,
+                txtTelefonoConfig, txtDireccionConfig, txtMensaje, txtTasaConfig, txtIvaConfig,
+                txtRutaLogo, txtClienteDefaultNombre, txtClienteDefaultDoc}) {
+            if (campo != null) {
+                campo.getDocument().addDocumentListener(invalidador);
+            }
+        }
+        if (spMesesRetencion != null) {
+            spMesesRetencion.addChangeListener(e -> versionCargaConfig++);
+        }
+        if (chkImprimirLogoTicket != null) {
+            chkImprimirLogoTicket.addActionListener(e -> versionCargaConfig++);
+        }
+        if (cbImpresorasConfig != null) {
+            cbImpresorasConfig.addActionListener(e -> versionCargaConfig++);
+        }
+        if (cbModoSalidaConfig != null) {
+            cbModoSalidaConfig.addActionListener(e -> versionCargaConfig++);
+        }
+    }
+
+    private javax.swing.Timer temporizadorAviso;
+    private javax.swing.JLabel encabezadoAvisoActual;
+
+    /**
+     * Mensaje no bloqueante en la banda (cabecera) de la pestana visible.
+     * Reemplaza avisos de exito e informacion para no interrumpir al operador;
+     * se restaura el titulo original a los pocos segundos. Solo llamar desde el EDT.
+     */
+    private void mostrarAvisoEnBanda(String mensaje) {
+        if (mensaje == null || mensaje.isBlank()) {
+            return;
+        }
+        if (getRootPane() != null) {
+            String origWinTitle = (String) getRootPane().getClientProperty("ux.winTituloOriginal");
+            if (origWinTitle == null) {
+                origWinTitle = getTitle();
+                if (origWinTitle != null) {
+                    getRootPane().putClientProperty("ux.winTituloOriginal", origWinTitle);
+                }
+            }
+            if (origWinTitle != null) {
+                setTitle("✓ " + mensaje + " — " + origWinTitle);
+            }
+        }
+        if (jTabbedPane1 != null) {
+            java.awt.Component vista = jTabbedPane1.getSelectedComponent();
+            javax.swing.JLabel tituloAnterior = encabezadoAvisoActual;
+            if (tituloAnterior != null && (vista == null || !javax.swing.SwingUtilities.isDescendingFrom(tituloAnterior, vista))) {
+                restaurarEncabezadoAviso();
+            }
+            if (vista instanceof java.awt.Container contenedor) {
+                javax.swing.JLabel titulo = buscarTituloEncabezado(contenedor);
+                if (titulo != null) {
+                    if (titulo.getClientProperty("ux.tituloOriginal") == null) {
+                        titulo.putClientProperty("ux.tituloOriginal", titulo.getText());
+                    }
+                    titulo.setText("✓ " + mensaje);
+                    encabezadoAvisoActual = titulo;
+                }
+            }
+        }
+        if (temporizadorAviso != null && temporizadorAviso.isRunning()) {
+            temporizadorAviso.stop();
+        }
+        temporizadorAviso = new javax.swing.Timer(4000, e -> {
+            if (getRootPane() != null) {
+                Object origWin = getRootPane().getClientProperty("ux.winTituloOriginal");
+                if (origWin != null) {
+                    setTitle(origWin.toString());
+                    getRootPane().putClientProperty("ux.winTituloOriginal", null);
+                }
+            }
+            restaurarEncabezadoAviso();
+        });
+        temporizadorAviso.setRepeats(false);
+        temporizadorAviso.start();
+    }
+
+    private void restaurarEncabezadoAviso() {
+        javax.swing.JLabel titulo = encabezadoAvisoActual;
+        encabezadoAvisoActual = null;
+        if (titulo == null) return;
+        Object original = titulo.getClientProperty("ux.tituloOriginal");
+        if (original != null) {
+            titulo.setText(original.toString());
+            titulo.putClientProperty("ux.tituloOriginal", null);
+        }
+    }
+
+    /** Muestra una alerta roja junto al campo sin interrumpir el trabajo con un diálogo. */
+    private void mostrarAlertaCampo(javax.swing.JComponent campo, String mensaje) {
+        if (campo == null || mensaje == null || mensaje.isBlank()) return;
+        Object popupAnterior = campo.getClientProperty("ux.alertaPopup");
+        if (popupAnterior instanceof javax.swing.Popup popup) popup.hide();
+        if (campo.getClientProperty("ux.alertaBordeOriginal") == null) {
+            campo.putClientProperty("ux.alertaBordeOriginal", campo.getBorder());
+            campo.putClientProperty("ux.alertaTooltipOriginal", campo.getToolTipText());
+        }
+        campo.setBorder(javax.swing.BorderFactory.createLineBorder(COLOR_PELIGRO, 2));
+        campo.setToolTipText(mensaje);
+
+        javax.swing.JLabel aviso = new javax.swing.JLabel("⚠ " + mensaje);
+        aviso.setOpaque(true);
+        aviso.setForeground(new java.awt.Color(120, 35, 30));
+        aviso.setBackground(new java.awt.Color(255, 238, 235));
+        aviso.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createLineBorder(COLOR_PELIGRO),
+                javax.swing.BorderFactory.createEmptyBorder(4, 7, 4, 7)));
+        aviso.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        aviso.setSize(aviso.getPreferredSize());
+        if (campo.isShowing()) {
+            java.awt.Point punto = campo.getLocationOnScreen();
+            java.awt.Dimension pantalla = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+            int x = punto.x + campo.getWidth() + 6;
+            if (x + aviso.getWidth() > pantalla.width) x = Math.max(0, punto.x - aviso.getWidth() - 6);
+            int y = Math.min(Math.max(0, punto.y), pantalla.height - aviso.getHeight());
+            javax.swing.Popup popup = javax.swing.PopupFactory.getSharedInstance().getPopup(campo, aviso, x, y);
+            popup.show();
+            campo.putClientProperty("ux.alertaPopup", popup);
+        }
+        if (!Boolean.TRUE.equals(campo.getClientProperty("ux.alertaObservada"))) {
+            campo.putClientProperty("ux.alertaObservada", Boolean.TRUE);
+            Runnable limpiar = () -> limpiarAlertaCampo(campo);
+            if (campo instanceof javax.swing.text.JTextComponent texto) {
+                texto.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                    @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { limpiar.run(); }
+                    @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { limpiar.run(); }
+                    @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { limpiar.run(); }
+                });
+            } else if (campo instanceof javax.swing.JSpinner spinner) {
+                spinner.addChangeListener(e -> limpiar.run());
+            } else {
+                campo.addFocusListener(new java.awt.event.FocusAdapter() {
+                    @Override public void focusGained(java.awt.event.FocusEvent e) { limpiar.run(); }
+                });
+            }
+        }
+        campo.requestFocusInWindow();
+    }
+
+    private void limpiarAlertaCampo(javax.swing.JComponent campo) {
+        Object popupAnterior = campo.getClientProperty("ux.alertaPopup");
+        if (popupAnterior instanceof javax.swing.Popup popup) popup.hide();
+        campo.putClientProperty("ux.alertaPopup", null);
+        Object borde = campo.getClientProperty("ux.alertaBordeOriginal");
+        if (borde instanceof javax.swing.border.Border bordeOriginal) campo.setBorder(bordeOriginal);
+        campo.putClientProperty("ux.alertaBordeOriginal", null);
+        Object tooltip = campo.getClientProperty("ux.alertaTooltipOriginal");
+        campo.setToolTipText(tooltip instanceof String texto ? texto : null);
+        campo.putClientProperty("ux.alertaTooltipOriginal", null);
+    }
+
+    private static javax.swing.JLabel buscarTituloEncabezado(java.awt.Container contenedor) {
+        for (java.awt.Component c : contenedor.getComponents()) {
+            if (c instanceof javax.swing.JLabel lbl && "uxTituloEncabezado".equals(lbl.getName())) {
+                return lbl;
+            }
+            if (c instanceof java.awt.Container hijo) {
+                javax.swing.JLabel hallado = buscarTituloEncabezado(hijo);
+                if (hallado != null) {
+                    return hallado;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Captura de cliente y desglose multimoneda integrado en la misma factura. */
+    private void crearCamposFacturacionRapida() {
+        jPanel25.setLayout(null);
+        lblClienteFac = new javax.swing.JLabel("Cliente:");
+        lblClienteFac.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        jPanel25.add(lblClienteFac);
+
+        txtClienteNombreFac = new javax.swing.JTextField();
+        txtClienteNombreFac.setToolTipText("Nombre del cliente (vacio = consumidor predeterminado)");
+        jPanel25.add(txtClienteNombreFac);
+
+        lblDocFac = new javax.swing.JLabel("Doc:");
+        lblDocFac.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        jPanel25.add(lblDocFac);
+
+        txtClienteDocFac = new javax.swing.JTextField();
+        txtClienteDocFac.setToolTipText("Cedula / RIF (vacio = documento predeterminado)");
+        jPanel25.add(txtClienteDocFac);
+
+        lblPagoFac = new javax.swing.JLabel("Pagos:");
+        lblPagoFac.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        jPanel25.add(lblPagoFac);
+
+        modeloPagosFac = new javax.swing.table.DefaultTableModel(
+                new Object[][]{{"EFECTIVO_BS", "VES", ""}},
+                new String[]{"Medio", "Moneda", "Monto"}) {
+            @Override public boolean isCellEditable(int row, int column) { return true; }
+            @Override public Class<?> getColumnClass(int column) { return String.class; }
+            @Override public void setValueAt(Object value, int row, int column) {
+                super.setValueAt(value, row, column);
+                if (column == 0) {
+                    String metodo = String.valueOf(value);
+                    if ("EFECTIVO_BS".equals(metodo)) super.setValueAt("VES", row, 1);
+                    if ("EFECTIVO_USD".equals(metodo)) super.setValueAt("USD", row, 1);
+                }
+            }
+        };
+        tablaPagosFac = new javax.swing.JTable(modeloPagosFac);
+        tablaPagosFac.setRowHeight(23);
+        tablaPagosFac.setFillsViewportHeight(true);
+        tablaPagosFac.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tablaPagosFac.getColumnModel().getColumn(0).setPreferredWidth(180);
+        tablaPagosFac.getColumnModel().getColumn(1).setPreferredWidth(70);
+        tablaPagosFac.getColumnModel().getColumn(2).setPreferredWidth(120);
+        tablaPagosFac.getColumnModel().getColumn(0).setCellEditor(new javax.swing.DefaultCellEditor(
+                new javax.swing.JComboBox<>(new String[]{"EFECTIVO_BS", "EFECTIVO_USD", "TRANSFERENCIA", "TARJETA", "PAGO_MOVIL"})));
+        tablaPagosFac.getColumnModel().getColumn(1).setCellEditor(new javax.swing.DefaultCellEditor(
+                new javax.swing.JComboBox<>(new String[]{"VES", "USD"})));
+        tablaPagosFac.getColumnModel().getColumn(2).setCellEditor(new javax.swing.DefaultCellEditor(new javax.swing.JTextField()));
+        scrollPagosFac = new javax.swing.JScrollPane(tablaPagosFac);
+        jPanel25.add(scrollPagosFac);
+
+        btnAgregarPagoFac = new javax.swing.JButton("+ Medio");
+        btnAgregarPagoFac.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnAgregarPagoFac.setToolTipText("Agregar otra forma o moneda de pago");
+        btnAgregarPagoFac.addActionListener(e -> {
+            modeloPagosFac.addRow(new Object[]{"TRANSFERENCIA", "VES", ""});
+            int fila = modeloPagosFac.getRowCount() - 1;
+            tablaPagosFac.changeSelection(fila, 2, false, false);
+            tablaPagosFac.editCellAt(fila, 2);
+            tablaPagosFac.requestFocusInWindow();
+        });
+        jPanel25.add(btnAgregarPagoFac);
+
+        btnQuitarPagoFac = new javax.swing.JButton("− Medio");
+        btnQuitarPagoFac.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnQuitarPagoFac.setToolTipText("Quitar la forma de pago seleccionada");
+        btnQuitarPagoFac.addActionListener(e -> {
+            int fila = tablaPagosFac.getSelectedRow();
+            if (fila >= 0 && modeloPagosFac.getRowCount() > 1) modeloPagosFac.removeRow(fila);
+            actualizarResumenPagosFac();
+        });
+        jPanel25.add(btnQuitarPagoFac);
+
+        lblResumenPagosFac = new javax.swing.JLabel("Tasa del pedido: — | Pagado: Bs. 0.00 | Saldo: —");
+        lblResumenPagosFac.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        jPanel25.add(lblResumenPagosFac);
+
+        lblAlertaPagosFac = new javax.swing.JLabel(" ");
+        lblAlertaPagosFac.setForeground(COLOR_PELIGRO);
+        lblAlertaPagosFac.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        jPanel25.add(lblAlertaPagosFac);
+
+        modeloPagosFac.addTableModelListener(e -> actualizarResumenPagosFac());
+        ajustarScrollFinalizar();
+    }
+
+    /** Unifica la barra lateral: botones pizarra con texto blanco y fuente Segoe UI. */
+    public static void botonSolido(javax.swing.AbstractButton boton, java.awt.Color fondo, java.awt.Color texto) {
+        // Los LaF (Windows ignora setBackground y pinta el tema del SO; GTK respeta
+        // a medias) no garantizan el fondo: este delegado SIEMPRE pinta el color dado.
+        // El LaF solo se usa una vez al arranque, asi que no hay updateUI que lo revierta.
+        // Orden: setUI primero porque BasicButtonUI.installDefaults resetea opaque.
+        boton.setUI(new BotonSolidoUI());
+        boton.setBackground(fondo);
+        boton.setForeground(texto);
+        boton.setOpaque(true);
+        boton.setContentAreaFilled(false);
+        boton.setBorderPainted(true);
+        java.awt.Font fuente = boton.getFont();
+        if (fuente != null && !fuente.isBold()) {
+            boton.setFont(fuente.deriveFont(java.awt.Font.BOLD));
+        }
+    }
+
+    /** UI que rellena el fondo del boton (con estados hover/pressed) en cualquier LaF. */
+    private static final class BotonSolidoUI extends javax.swing.plaf.basic.BasicButtonUI {
+        @Override
+        public void paint(java.awt.Graphics g, javax.swing.JComponent c) {
+            javax.swing.AbstractButton b = (javax.swing.AbstractButton) c;
+            java.awt.Color base = b.getBackground() != null
+                    ? b.getBackground() : new java.awt.Color(44, 62, 80);
+            javax.swing.ButtonModel m = b.getModel();
+            if (m.isPressed() && m.isArmed()) {
+                base = base.darker();
+            } else if (m.isRollover()) {
+                java.awt.Color hover = base.brighter();
+                if (contraste(hover, b.getForeground()) < 4.5) {
+                    hover = base.darker();
+                }
+                base = hover;
+            }
+            g.setColor(base);
+            g.fillRect(0, 0, c.getWidth(), c.getHeight());
+            super.paint(g, c);
+        }
+    }
+
+    /** Aplica botonSolido a todo boton con fondo personalizado (el nativo ignora el color en Windows). */
+    private static void solidificarBotones(java.awt.Container contenedor) {
+        if (contenedor == null) {
+            return;
+        }
+        javax.swing.JButton defecto = new javax.swing.JButton();
+        java.awt.Color fondoDefecto = defecto.getBackground();
+        for (java.awt.Component c : contenedor.getComponents()) {
+            if (c instanceof javax.swing.JButton boton) {
+                java.awt.Font fuente = boton.getFont();
+                if (fuente != null && !fuente.isBold()) {
+                    boton.setFont(fuente.deriveFont(java.awt.Font.BOLD));
+                }
+                if (!(boton.getUI() instanceof BotonSolidoUI)) {
+                    java.awt.Color fondo = boton.getBackground();
+                    if (fondo != null && !fondo.equals(fondoDefecto)) {
+                        botonSolido(boton, fondo, boton.getForeground() != null
+                                ? boton.getForeground() : new java.awt.Color(255, 255, 255));
+                    }
+                }
+            }
+            if (c instanceof java.awt.Container hijo) {
+                solidificarBotones(hijo);
+            }
+        }
+    }
+
+    private static double contraste(java.awt.Color fondo, java.awt.Color texto) {
+        double lFondo = luminancia(fondo);
+        double lTexto = luminancia(texto);
+        return (Math.max(lFondo, lTexto) + 0.05) / (Math.min(lFondo, lTexto) + 0.05);
+    }
+
+    private static double luminancia(java.awt.Color color) {
+        double r = canalLineal(color.getRed());
+        double g = canalLineal(color.getGreen());
+        double b = canalLineal(color.getBlue());
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    private static double canalLineal(int canal) {
+        double valor = canal / 255.0;
+        return valor <= 0.04045 ? valor / 12.92 : Math.pow((valor + 0.055) / 1.055, 2.4);
+    }
+
+    private void estilizarBarraLateral() {
+        if (jPanel1 == null) {
+            return;
+        }
+        java.awt.Font fuenteBarra = new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12);
+        for (java.awt.Component c : jPanel1.getComponents()) {
+            if (c instanceof javax.swing.AbstractButton boton) {
+                botonSolido(boton, COLOR_CABECERA, new java.awt.Color(255, 255, 255));
+                boton.setFont(fuenteBarra);
+            }
+        }
     }
 
     /** Carga un icono de la barra lateral y lo escala a un tamano uniforme de 32x32. */
@@ -860,9 +1587,6 @@ public final class Sistema extends javax.swing.JFrame {
         int anchoBarra = ANCHO_BARRA_LATERAL;
         if (jPanel1 != null) {
             jPanel1.setBounds(0, 0, anchoBarra, alto);
-        }
-        if (btnDashboard != null) {
-            btnDashboard.setBounds(0, Math.max(0, alto - 50), anchoBarra, 45);
         }
         if (lblBannerTasa != null) {
             lblBannerTasa.setBounds(anchoBarra + 5, 12, 305, 65);
@@ -987,6 +1711,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnUsuarios = new javax.swing.JButton();
         btnCategorias = new javax.swing.JButton();
         btnInicio = new javax.swing.JButton();
+        btnPedidoRapido = new javax.swing.JButton();
         btnPlatos = new javax.swing.JButton();
         jLabel38 = new javax.swing.JLabel();
         jTabbedPane1 = new javax.swing.JTabbedPane();
@@ -1219,9 +1944,34 @@ public final class Sistema extends javax.swing.JFrame {
         btnInicio.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 LimpiarTableMenu();
+                modoPedidoRapido = false;
                 jTabbedPane1.setSelectedIndex(0);
                 panelSalas();
             }
+        });
+
+        btnPedidoRapido.setBackground(java.awt.Color.BLACK);
+        btnPedidoRapido.setForeground(java.awt.Color.WHITE);
+        btnPedidoRapido.setIcon(iconoBarra("/Img/pedidos.png"));
+        btnPedidoRapido.setText("Pedido rápido");
+        btnPedidoRapido.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        btnPedidoRapido.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnPedidoRapido.setFocusable(false);
+        btnPedidoRapido.setToolTipText("Registrar un pedido para llevar sin asignarlo a una mesa");
+        btnPedidoRapido.addActionListener(e -> abrirPedidoRapido());
+
+        btnDashboard = new javax.swing.JButton("Dashboard");
+        btnDashboard.setBackground(new java.awt.Color(0, 0, 0));
+        btnDashboard.setForeground(new java.awt.Color(255, 255, 255));
+        btnDashboard.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        btnDashboard.setIcon(iconoBarra("/Img/pedidos.png"));
+        btnDashboard.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        btnDashboard.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnDashboard.setFocusable(false);
+        btnDashboard.addActionListener(e -> {
+            int idx = jTabbedPane1.indexOfTab("Dashboard");
+            if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
+            cargarDashboardYClientes();
         });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
@@ -1238,8 +1988,10 @@ public final class Sistema extends javax.swing.JFrame {
                 .addComponent(tipo)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
             .addComponent(btnInicio, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(btnPedidoRapido, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnPlatos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnCategorias, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(btnDashboard, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addComponent(labelLogo, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(0, 0, Short.MAX_VALUE))
@@ -1248,25 +2000,29 @@ public final class Sistema extends javax.swing.JFrame {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addComponent(labelLogo, javax.swing.GroupLayout.PREFERRED_SIZE, 175, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addGap(12, 12, 12)
                 .addComponent(tipo)
-                .addGap(18, 18, 18)
+                .addGap(12, 12, 12)
                 .addComponent(LabelVendedor)
-                .addGap(18, 18, 18)
+                .addGap(12, 12, 12)
                 .addComponent(btnInicio, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addGap(6, 6, 6)
+                .addComponent(btnPedidoRapido, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(12, 12, 12)
                 .addComponent(btnPlatos, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addGap(12, 12, 12)
                 .addComponent(btnCategorias, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addGap(12, 12, 12)
                 .addComponent(btnSala, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addGap(12, 12, 12)
                 .addComponent(btnVentas, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addGap(12, 12, 12)
                 .addComponent(btnConfig, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addGap(12, 12, 12)
                 .addComponent(btnUsuarios, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(50, Short.MAX_VALUE))
+                .addGap(12, 12, 12)
+                .addComponent(btnDashboard, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         getContentPane().add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 150, 720));
@@ -1280,9 +2036,17 @@ public final class Sistema extends javax.swing.JFrame {
 
         jTabbedPane1.setBackground(new java.awt.Color(255, 255, 255));
 
-        PanelSalas.setBackground(new java.awt.Color(255, 255, 255));
-        PanelSalas.setLayout(new java.awt.GridLayout(0, 5));
+        PanelSalas.setBackground(new java.awt.Color(245, 247, 250));
+        PanelSalas.setLayout(new java.awt.GridLayout(0, 5, 12, 12));
+        PanelSalas.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
         jScrollPane8.setViewportView(PanelSalas);
+        // Rejilla proporcional: recalcula columnas al cambiar el ancho (ver ajustarColumnasSalas).
+        jScrollPane8.getViewport().addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                ajustarColumnasSalas();
+            }
+        });
 
         javax.swing.GroupLayout jPanel9Layout = new javax.swing.GroupLayout(jPanel9);
         jPanel9.setLayout(jPanel9Layout);
@@ -1290,19 +2054,22 @@ public final class Sistema extends javax.swing.JFrame {
             jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel9Layout.createSequentialGroup()
                 .addGap(30, 30, 30)
-                .addComponent(jScrollPane8, javax.swing.GroupLayout.PREFERRED_SIZE, 1030, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addComponent(jScrollPane8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGap(30, 30, 30))
         );
         jPanel9Layout.setVerticalGroup(
             jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel9Layout.createSequentialGroup()
                 .addGap(30, 30, 30)
-                .addComponent(jScrollPane8, javax.swing.GroupLayout.PREFERRED_SIZE, 540, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addComponent(jScrollPane8, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE)
+                .addGap(30, 30, 30))
         );
 
         jTabbedPane1.addTab("Panel", jPanel9);
 
         jPanel4.setBackground(new java.awt.Color(255, 255, 255));
-        jPanel4.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
+        jPanel4.setLayout(new java.awt.BorderLayout(15, 0));
+        jPanel4.setBorder(javax.swing.BorderFactory.createEmptyBorder(25, 30, 25, 30));
 
         tableSala.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -1329,16 +2096,17 @@ public final class Sistema extends javax.swing.JFrame {
             tableSala.getColumnModel().getColumn(2).setMaxWidth(150);
         }
 
-        jPanel4.add(jScrollPane3, new org.netbeans.lib.awtextra.AbsoluteConstraints(510, 80, 490, 470));
+        jPanel4.add(jScrollPane3, java.awt.BorderLayout.CENTER);
 
-        jPanel10.setBackground(new java.awt.Color(204, 204, 204));
+        jPanel10.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel10.setBorder(javax.swing.BorderFactory.createLineBorder(COLOR_CABECERA, 1));
         jPanel10.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jLabel18.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel18.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel18.setText("Nombre:");
         jPanel10.add(jLabel18, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 80, -1, -1));
 
-        txtNombreSala.setBackground(new java.awt.Color(204, 204, 204));
+        txtNombreSala.setBackground(new java.awt.Color(255, 255, 255));
         txtNombreSala.setBorder(null);
         jPanel10.add(txtNombreSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 70, 190, 30));
 
@@ -1348,7 +2116,7 @@ public final class Sistema extends javax.swing.JFrame {
                 btnRegistrarSalaActionPerformed(evt);
             }
         });
-        jPanel10.add(btnRegistrarSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 230, 100, 40));
+        jPanel10.add(btnRegistrarSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 230, 129, 40));
 
         btnActualizarSala.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/Actualizar (2).png"))); // NOI18N
         btnActualizarSala.addActionListener(new java.awt.event.ActionListener() {
@@ -1356,7 +2124,7 @@ public final class Sistema extends javax.swing.JFrame {
                 btnActualizarSalaActionPerformed(evt);
             }
         });
-        jPanel10.add(btnActualizarSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 230, 100, 40));
+        jPanel10.add(btnActualizarSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(161, 230, 129, 40));
 
         btnNuevoSala.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/nuevo.png"))); // NOI18N
         btnNuevoSala.addActionListener(new java.awt.event.ActionListener() {
@@ -1364,7 +2132,7 @@ public final class Sistema extends javax.swing.JFrame {
                 btnNuevoSalaActionPerformed(evt);
             }
         });
-        jPanel10.add(btnNuevoSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 300, 100, 40));
+        jPanel10.add(btnNuevoSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(161, 300, 129, 40));
 
         btnEliminarSala.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/eliminar.png"))); // NOI18N
         btnEliminarSala.addActionListener(new java.awt.event.ActionListener() {
@@ -1372,10 +2140,10 @@ public final class Sistema extends javax.swing.JFrame {
                 btnEliminarSalaActionPerformed(evt);
             }
         });
-        jPanel10.add(btnEliminarSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 300, 100, 40));
+        jPanel10.add(btnEliminarSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 300, 129, 40));
         jPanel10.add(txtIdSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 50, 24, -1));
 
-        jPanel35.setBackground(new java.awt.Color(0, 0, 0));
+        jPanel35.setBackground(COLOR_CABECERA);
 
         javax.swing.GroupLayout jPanel35Layout = new javax.swing.GroupLayout(jPanel35);
         jPanel35.setLayout(jPanel35Layout);
@@ -1390,18 +2158,18 @@ public final class Sistema extends javax.swing.JFrame {
 
         jPanel10.add(jPanel35, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 100, 190, 2));
 
-        jPanel38.setBackground(new java.awt.Color(0, 0, 0));
+        jPanel38.setBackground(COLOR_CABECERA);
         jPanel38.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jLabel33.setFont(new java.awt.Font("Times New Roman", 1, 18)); // NOI18N
+        jLabel33.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel33.setForeground(new java.awt.Color(255, 255, 255));
         jLabel33.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel33.setText("Nuevo Sala");
+        jLabel33.setText("Nueva Sala");
         jPanel38.add(jLabel33, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 310, 30));
 
         jPanel10.add(jPanel38, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 310, 35));
 
-        jPanel36.setBackground(new java.awt.Color(0, 0, 0));
+        jPanel36.setBackground(COLOR_CABECERA);
 
         javax.swing.GroupLayout jPanel36Layout = new javax.swing.GroupLayout(jPanel36);
         jPanel36.setLayout(jPanel36Layout);
@@ -1416,15 +2184,15 @@ public final class Sistema extends javax.swing.JFrame {
 
         jPanel10.add(jPanel36, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 170, 190, 2));
 
-        txtMesas.setBackground(new java.awt.Color(204, 204, 204));
+        txtMesas.setBackground(new java.awt.Color(255, 255, 255));
         txtMesas.setBorder(null);
         jPanel10.add(txtMesas, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 140, 190, 30));
 
-        jLabel19.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel19.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel19.setText("Mesas:");
         jPanel10.add(jLabel19, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 150, -1, -1));
 
-        jPanel4.add(jPanel10, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 140, 310, 370));
+        jPanel4.add(jPanel10, java.awt.BorderLayout.WEST);
 
         jTabbedPane1.addTab("Salas", jPanel4);
 
@@ -1512,6 +2280,10 @@ public final class Sistema extends javax.swing.JFrame {
                                 int cantActual = Integer.parseInt(tmp.getValueAt(i, 2).toString());
                                 setCantidadPlatoPorFila(i, cantActual + 1);
                                 tableMenu.setRowSelectionInterval(i, i);
+                                if (txtCantidadManual != null) {
+                                    txtCantidadManual.requestFocusInWindow();
+                                    txtCantidadManual.selectAll();
+                                }
                                 break;
                             }
                         }
@@ -1556,9 +2328,9 @@ public final class Sistema extends javax.swing.JFrame {
                 .addGroup(jPanel24Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jScrollPane10, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
                     .addGroup(jPanel24Layout.createSequentialGroup()
-                        .addComponent(txtBuscarPlato, javax.swing.GroupLayout.PREFERRED_SIZE, 349, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtBuscarPlato, javax.swing.GroupLayout.PREFERRED_SIZE, 230, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(btnLimpiarBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(btnLimpiarBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 42, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 2, Short.MAX_VALUE)
                         .addComponent(btnAddPlato)))
                 .addContainerGap())
@@ -1572,7 +2344,7 @@ public final class Sistema extends javax.swing.JFrame {
                     .addComponent(btnLimpiarBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnAddPlato, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
                 .addGap(18, 18, 18)
-                .addComponent(jScrollPane10, javax.swing.GroupLayout.DEFAULT_SIZE, 450, Short.MAX_VALUE)
+                .addComponent(jScrollPane10, javax.swing.GroupLayout.DEFAULT_SIZE, 330, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -1833,16 +2605,17 @@ public final class Sistema extends javax.swing.JFrame {
                 btnFinalizarActionPerformed(evt);
             }
         });
-        jPanel25.add(btnFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(920, 440, 110, 40));
+        jPanel25.add(btnFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(1090, 480, 100, 40));
 
-        totalFinalizar.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
+        totalFinalizar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 16)); // NOI18N
         totalFinalizar.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        totalFinalizar.setText("00.00");
+        totalFinalizar.setText("USD $ 0.00  |  Bs. 0.00");
         jPanel25.add(totalFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(910, 390, 120, -1));
 
-        jLabel17.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
+        jLabel17.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 15)); // NOI18N
         jLabel17.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/money.png"))); // NOI18N
-        jLabel17.setText("Total a Pagar");
+        jLabel17.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        jLabel17.setText("Total a pagar (IVA incluido)");
         jPanel25.add(jLabel17, new org.netbeans.lib.awtextra.AbsoluteConstraints(900, 340, -1, -1));
 
         tableFinalizar.setModel(new javax.swing.table.DefaultTableModel(
@@ -1878,15 +2651,15 @@ public final class Sistema extends javax.swing.JFrame {
         jPanel25.add(jScrollPane13, new org.netbeans.lib.awtextra.AbsoluteConstraints(39, 13, 1030, 316));
         jPanel25.add(txtIdPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(620, 380, 50, -1));
 
-        jLabel7.setFont(new java.awt.Font("Times New Roman", 1, 18)); // NOI18N
+        jLabel7.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel7.setText("Fecha y Hora:");
         jPanel25.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 350, -1, -1));
 
-        jLabel8.setFont(new java.awt.Font("Times New Roman", 1, 18)); // NOI18N
+        jLabel8.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel8.setText("Sala:");
         jPanel25.add(jLabel8, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 400, -1, -1));
 
-        jLabel9.setFont(new java.awt.Font("Times New Roman", 1, 18)); // NOI18N
+        jLabel9.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel9.setText("N° Mesa:");
         jPanel25.add(jLabel9, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 450, -1, -1));
 
@@ -1899,8 +2672,8 @@ public final class Sistema extends javax.swing.JFrame {
         txtNumMesaFinalizar.setEditable(false);
         jPanel25.add(txtNumMesaFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(180, 450, 240, 30));
 
-        javax.swing.JLabel lblMesoneroFin = new javax.swing.JLabel("Mesonero:");
-        lblMesoneroFin.setFont(new java.awt.Font("Times New Roman", 1, 18));
+        lblMesoneroFin = new javax.swing.JLabel("Mesonero:");
+        lblMesoneroFin.setFont(new java.awt.Font("Segoe UI", 1, 14));
         jPanel25.add(lblMesoneroFin, new org.netbeans.lib.awtextra.AbsoluteConstraints(440, 350, -1, -1));
 
         txtMesoneroFinalizar = new javax.swing.JTextField();
@@ -1914,7 +2687,7 @@ public final class Sistema extends javax.swing.JFrame {
                 btnPdfPedidoActionPerformed(evt);
             }
         });
-        jPanel25.add(btnPdfPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(780, 440, 110, 40));
+        jPanel25.add(btnPdfPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(974, 480, 110, 40));
         
         btnModificarPedido.setText("Agregar Productos");
         btnModificarPedido.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/nuevo.png"))); // Reuse "nuevo.png" if exists or just leave text
@@ -1923,7 +2696,7 @@ public final class Sistema extends javax.swing.JFrame {
                 btnModificarPedidoActionPerformed(evt);
             }
         });
-        jPanel25.add(btnModificarPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(580, 440, 180, 40));
+        jPanel25.add(btnModificarPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(633, 480, 180, 40));
         jPanel25.add(txtIdHistorialPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(630, 450, 50, -1));
 
         jTabbedPane1.addTab("Finalizar Pedido", jPanel25);
@@ -1968,7 +2741,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         jPanel6.add(jScrollPane5, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 90, 1020, 480));
 
-        jLabel16.setFont(new java.awt.Font("Times New Roman", 1, 18)); // NOI18N
+        jLabel16.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel16.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel16.setText("Historial Pedidos");
         jPanel6.add(jLabel16, new org.netbeans.lib.awtextra.AbsoluteConstraints(470, 50, 280, -1));
@@ -1978,7 +2751,7 @@ public final class Sistema extends javax.swing.JFrame {
         jPanel7.setBackground(new java.awt.Color(255, 255, 255));
         jPanel7.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jLabel32.setFont(new java.awt.Font("Times New Roman", 1, 18)); // NOI18N
+        jLabel32.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel32.setText("DATOS DE LA EMPRESA");
         jPanel7.add(jLabel32, new org.netbeans.lib.awtextra.AbsoluteConstraints(290, 40, -1, -1));
 
@@ -1992,11 +2765,11 @@ public final class Sistema extends javax.swing.JFrame {
         });
         jPanel8.add(txtIdConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(350, 410, 24, -1));
 
-        jLabel30.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel30.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel30.setText("Dirección");
         jPanel8.add(jLabel30, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 160, -1, -1));
 
-        jLabel29.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel29.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel29.setText("Teléfono");
         jPanel8.add(jLabel29, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 160, -1, -1));
 
@@ -2008,7 +2781,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtDireccionConfig.setBorder(null);
         jPanel8.add(txtDireccionConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 190, 147, 30));
 
-        jLabelTasaConfig.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabelTasaConfig.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabelTasaConfig.setText("Tasa de Cambio (Bs. / $)");
         jPanel8.add(jLabelTasaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 230, -1, -1));
 
@@ -2016,7 +2789,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtTasaConfig.setBorder(null);
         jPanel8.add(txtTasaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 255, 147, 30));
 
-        jLabel31.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel31.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel31.setText("Mensaje");
         jPanel8.add(jLabel31, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 230, -1, -1));
 
@@ -2024,16 +2797,16 @@ public final class Sistema extends javax.swing.JFrame {
         txtMensaje.setBorder(null);
         jPanel8.add(txtMensaje, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 255, 220, 30));
 
-        jLabelIvaConfig.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabelIvaConfig.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabelIvaConfig.setText("IVA (%)");
-        jPanel8.add(jLabelIvaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 295, -1, -1));
+        jPanel8.add(jLabelIvaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 302, -1, -1));
 
         txtIvaConfig.setBackground(new java.awt.Color(204, 204, 204));
         txtIvaConfig.setBorder(null);
-        jPanel8.add(txtIvaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 318, 147, 30));
+        jPanel8.add(txtIvaConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 325, 147, 30));
 
         btnActualizarConfig.setBackground(new java.awt.Color(255, 255, 255));
-        btnActualizarConfig.setFont(new java.awt.Font("Times New Roman", 1, 13)); // NOI18N
+        btnActualizarConfig.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         btnActualizarConfig.setText("Modificar");
         btnActualizarConfig.setBorder(null);
         btnActualizarConfig.setFocusable(false);
@@ -2046,7 +2819,7 @@ public final class Sistema extends javax.swing.JFrame {
         });
         jPanel8.add(btnActualizarConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(90, 405, 220, 50));
 
-        jLabel27.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel27.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel27.setText("Ruc");
         jPanel8.add(jLabel27, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 30, -1, -1));
 
@@ -2054,7 +2827,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtRucConfig.setBorder(null);
         jPanel8.add(txtRucConfig, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 60, 147, 30));
 
-        jLabel28.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel28.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel28.setText("Nombre");
         jPanel8.add(jLabel28, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 30, -1, -1));
 
@@ -2105,7 +2878,7 @@ public final class Sistema extends javax.swing.JFrame {
             .addGap(0, 0, Short.MAX_VALUE)
         );
 
-        jPanel8.add(jPanel43, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 350, 400, 2));
+        jPanel8.add(jPanel43, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 357, 400, 2));
 
         jPanel44.setBackground(new java.awt.Color(0, 0, 0));
 
@@ -2158,7 +2931,8 @@ public final class Sistema extends javax.swing.JFrame {
 
         jTabbedPane1.addTab("Datos de la Empresa", jPanel7);
 
-        jPanel12.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
+        jPanel12.setLayout(new java.awt.BorderLayout(15, 0));
+        jPanel12.setBorder(javax.swing.BorderFactory.createEmptyBorder(25, 30, 25, 30));
 
         TableUsuarios.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -2179,16 +2953,16 @@ public final class Sistema extends javax.swing.JFrame {
             TableUsuarios.getColumnModel().getColumn(3).setMaxWidth(200);
         }
 
-        jPanel12.add(jScrollPane6, new org.netbeans.lib.awtextra.AbsoluteConstraints(410, 40, 660, 520));
+        jPanel12.add(jScrollPane6, java.awt.BorderLayout.CENTER);
 
         jPanel15.setBackground(new java.awt.Color(204, 204, 204));
         jPanel15.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jLabel34.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel34.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel34.setText("Correo Electrónico");
         jPanel15.add(jLabel34, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 102, -1, -1));
 
-        jLabel35.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel35.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel35.setText("Password");
         jPanel15.add(jLabel35, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 180, 130, -1));
 
@@ -2206,7 +2980,7 @@ public final class Sistema extends javax.swing.JFrame {
         jPanel15.add(txtPass, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 200, 300, 30));
 
         btnIniciar.setBackground(new java.awt.Color(0, 0, 0));
-        btnIniciar.setFont(new java.awt.Font("Times New Roman", 1, 13)); // NOI18N
+        btnIniciar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         btnIniciar.setForeground(new java.awt.Color(255, 255, 255));
         btnIniciar.setText("Registrar");
         btnIniciar.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -2217,7 +2991,7 @@ public final class Sistema extends javax.swing.JFrame {
         });
         jPanel15.add(btnIniciar, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 440, 300, 50));
 
-        jLabel36.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel36.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel36.setText("Nombre:");
         jPanel15.add(jLabel36, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 280, -1, -1));
 
@@ -2225,7 +2999,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtNombre.setBorder(null);
         jPanel15.add(txtNombre, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 300, 300, 30));
 
-        jLabel37.setFont(new java.awt.Font("Times New Roman", 3, 14)); // NOI18N
+        jLabel37.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel37.setText("Rol:");
         jPanel15.add(jLabel37, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 360, 90, -1));
 
@@ -2280,7 +3054,7 @@ public final class Sistema extends javax.swing.JFrame {
         jPanel21.setBackground(new java.awt.Color(0, 0, 0));
         jPanel21.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jLabel39.setFont(new java.awt.Font("Times New Roman", 1, 18)); // NOI18N
+        jLabel39.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel39.setForeground(new java.awt.Color(255, 255, 255));
         jLabel39.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel39.setText("Nuevo Usuario");
@@ -2288,14 +3062,14 @@ public final class Sistema extends javax.swing.JFrame {
 
         jPanel15.add(jPanel21, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 360, 35));
 
-        jPanel12.add(jPanel15, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 40, 360, 520));
+        jPanel12.add(jPanel15, java.awt.BorderLayout.WEST);
 
         jTabbedPane1.addTab("Usuarios", jPanel12);
 
         jPanel11.setBackground(new java.awt.Color(204, 204, 204));
         jPanel11.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jLabel23.setFont(new java.awt.Font("Tahoma", 3, 12)); // NOI18N
+        jLabel23.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel23.setText("Nombre:");
         jPanel11.add(jLabel23, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 110, -1, -1));
 
@@ -2303,7 +3077,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtNombrePlato.setBorder(null);
         jPanel11.add(txtNombrePlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 100, 170, 30));
 
-        jLabel25.setFont(new java.awt.Font("Tahoma", 3, 12)); // NOI18N
+        jLabel25.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel25.setText("Precio:");
         jPanel11.add(jLabel25, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 180, -1, -1));
 
@@ -2338,7 +3112,7 @@ public final class Sistema extends javax.swing.JFrame {
                 btnEliminarPlatoActionPerformed(evt);
             }
         });
-        jPanel11.add(btnEliminarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 370, 110, 50));
+        jPanel11.add(btnEliminarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 370, 130, 50));
 
         btnNuevoPlato.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/nuevo.png"))); // NOI18N
         btnNuevoPlato.addActionListener(new java.awt.event.ActionListener() {
@@ -2380,7 +3154,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         jPanel39.setBackground(new java.awt.Color(0, 0, 0));
 
-        jLabel40.setFont(new java.awt.Font("Times New Roman", 1, 18)); // NOI18N
+        jLabel40.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel40.setForeground(new java.awt.Color(255, 255, 255));
         jLabel40.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel40.setText("Platos del Día");
@@ -2485,21 +3259,22 @@ public final class Sistema extends javax.swing.JFrame {
                 && !txtNombreConfig.getText().trim().isEmpty()
                 && !txtTelefonoConfig.getText().trim().isEmpty()
                 && !txtDireccionConfig.getText().trim().isEmpty()) {
-            conf.setRif(txtRucConfig.getText().trim());
-            conf.setNombre(txtNombreConfig.getText().trim());
-            conf.setTelefono(txtTelefonoConfig.getText().trim());
-            conf.setDireccion(txtDireccionConfig.getText().trim());
-            conf.setMensaje(txtMensaje.getText().trim());
+            Config candidata = copiarConfiguracion(conf);
+            candidata.setRif(txtRucConfig.getText().trim());
+            candidata.setNombre(txtNombreConfig.getText().trim());
+            candidata.setTelefono(txtTelefonoConfig.getText().trim());
+            candidata.setDireccion(txtDireccionConfig.getText().trim());
+            candidata.setMensaje(txtMensaje.getText().trim());
             if (txtTasaConfig != null && !txtTasaConfig.getText().trim().isEmpty()) {
                 try {
                     BigDecimal tasa = new BigDecimal(txtTasaConfig.getText().trim());
                     if (tasa.compareTo(BigDecimal.ZERO) <= 0 || tasa.scale() > 4 || tasa.precision() - tasa.scale() > 8) {
-                        JOptionPane.showMessageDialog(this, "La tasa de cambio debe ser positiva y caber en DECIMAL(12,4).", "Tasa inválida", JOptionPane.WARNING_MESSAGE);
+                        mostrarAlertaCampo(txtTasaConfig, "La tasa debe ser positiva y tener hasta cuatro decimales.");
                         return;
                     }
-                    conf.setTasaDolar(tasa);
+                    candidata.setTasaDolar(tasa);
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this, "Ingresa una tasa de cambio numérica válida.", "Tasa inválida", JOptionPane.WARNING_MESSAGE);
+                    mostrarAlertaCampo(txtTasaConfig, "Ingresa una tasa de cambio numérica válida.");
                     return;
                 }
             }
@@ -2507,65 +3282,69 @@ public final class Sistema extends javax.swing.JFrame {
                 try {
                     BigDecimal iva = new BigDecimal(txtIvaConfig.getText().trim());
                     if (iva.compareTo(BigDecimal.ZERO) < 0 || iva.compareTo(new BigDecimal("100.00")) > 0 || iva.scale() > 2) {
-                        JOptionPane.showMessageDialog(this, "El IVA debe estar entre 0.00 y 100.00% con hasta dos decimales.", "IVA inválido", JOptionPane.WARNING_MESSAGE);
+                        mostrarAlertaCampo(txtIvaConfig, "El IVA debe estar entre 0 y 100%, con hasta dos decimales.");
                         return;
                     }
-                    conf.setIvaPorcentaje(iva);
+                    candidata.setIvaPorcentaje(iva);
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this, "Ingresa un porcentaje de IVA numérico válido.", "IVA inválido", JOptionPane.WARNING_MESSAGE);
+                    mostrarAlertaCampo(txtIvaConfig, "Ingresa un porcentaje de IVA numérico válido.");
                     return;
                 }
             }
             if (txtRutaLogo != null) {
                 String rutaLogo = txtRutaLogo.getText().trim();
-                conf.setLogoPath(rutaLogo.isEmpty() ? null : rutaLogo);
+                candidata.setLogoPath(rutaLogo.isEmpty() ? null : rutaLogo);
             }
             if (chkImprimirLogoTicket != null) {
-                conf.setImprimirLogoTicket(chkImprimirLogoTicket.isSelected());
+                candidata.setImprimirLogoTicket(chkImprimirLogoTicket.isSelected());
             }
             if (txtClienteDefaultNombre != null && !txtClienteDefaultNombre.getText().trim().isEmpty()) {
-                conf.setClienteDefaultNombre(txtClienteDefaultNombre.getText().trim());
+                candidata.setClienteDefaultNombre(txtClienteDefaultNombre.getText().trim());
             }
             if (txtClienteDefaultDoc != null && !txtClienteDefaultDoc.getText().trim().isEmpty()) {
-                conf.setClienteDefaultDocumento(txtClienteDefaultDoc.getText().trim());
+                candidata.setClienteDefaultDocumento(txtClienteDefaultDoc.getText().trim());
             }
             if (spMesesRetencion != null) {
                 try {
                     int meses = (Integer) spMesesRetencion.getValue();
                     if (meses < 1) {
-                        JOptionPane.showMessageDialog(this, "El período de retención debe ser de al menos 1 mes.", "Valor inválido", JOptionPane.WARNING_MESSAGE);
+                        mostrarAlertaCampo(spMesesRetencion, "El período de retención debe ser de al menos 1 mes.");
                         return;
                     }
-                    conf.setMesesRetencionPedidos(meses);
+                    candidata.setMesesRetencionPedidos(meses);
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Meses de retención inválidos.", "Error", JOptionPane.WARNING_MESSAGE);
+                    mostrarAlertaCampo(spMesesRetencion, "Indica un período de retención válido.");
                     return;
                 }
             }
             try {
                 String idTxt = txtIdConfig.getText().trim();
-                conf.setId(!idTxt.isEmpty() ? Integer.parseInt(idTxt) : (conf.getId() > 0 ? conf.getId() : 1));
+                candidata.setId(!idTxt.isEmpty() ? Integer.parseInt(idTxt) : (candidata.getId() > 0 ? candidata.getId() : 1));
             } catch (NumberFormatException ex) {
-                conf.setId(conf.getId() > 0 ? conf.getId() : 1);
+                candidata.setId(candidata.getId() > 0 ? candidata.getId() : 1);
             }
             if (cbImpresorasConfig != null && cbImpresorasConfig.getSelectedItem() != null) {
                 String impSeleccionada = cbImpresorasConfig.getSelectedItem().toString();
-                conf.setImpresoraTickets(impSeleccionada);
-                Servicio.ServicioImpresionTicket.setImpresoraGlobal(impSeleccionada);
+                candidata.setImpresoraTickets(impSeleccionada);
             }
             if (cbModoSalidaConfig != null && cbModoSalidaConfig.getSelectedItem() instanceof Modelo.ModoSalidaTicket m) {
-                conf.setModoSalidaTickets(m);
-                cambiarModoSalidaGlobal(m);
+                candidata.setModoSalidaTickets(m);
             }
             try {
-                if (lgDao.ModificarDatos(conf)) {
+                if (lgDao.ModificarDatos(candidata)) {
+                    conf = candidata;
                     actualizarNombreRestaurante(conf.getNombre());
                     actualizarLogoEIcono(conf.getLogoPath());
+                    Servicio.ServicioImpresionTicket.setImpresoraGlobal(conf.getImpresoraTickets());
+                    cambiarModoSalidaGlobal(conf.getModoSalidaTickets());
                     actualizarEstadoTasaUI();
-                    RefrescoVistas.notificar(RefrescoVistas.CONFIG);
-                    JOptionPane.showMessageDialog(this, "Datos de la empresa modificados.");
+                    // Sin notificar(CONFIG): el unico suscriptor seria esta misma vista y su
+                    // recarga async pisaria ediciones posteriores al guardado. Los efectos ya
+                    // se aplicaron arriba de forma sincrona. Se invalida igual por seguridad.
+                    versionCargaConfig++;
+                    mostrarAvisoEnBanda("Configuración guardada");
                 } else {
-                    JOptionPane.showMessageDialog(this, "No se aplicaron cambios a la configuración.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                    mostrarAvisoEnBanda("No había cambios en la configuración");
                 }
             } catch (Exception ex) {
                 String mensaje = (ex instanceof ErrorAplicacionException || ex instanceof DataAccessException)
@@ -2573,9 +3352,25 @@ public final class Sistema extends javax.swing.JFrame {
                 JOptionPane.showMessageDialog(this, mensaje, "Error al guardar configuración", JOptionPane.ERROR_MESSAGE);
             }
         } else {
-            JOptionPane.showMessageDialog(null, "Los campos estan vacios");
+            if (txtRucConfig.getText().trim().isEmpty()) mostrarAlertaCampo(txtRucConfig, "El RIF es obligatorio.");
+            else if (txtNombreConfig.getText().trim().isEmpty()) mostrarAlertaCampo(txtNombreConfig, "El nombre de la empresa es obligatorio.");
+            else if (txtTelefonoConfig.getText().trim().isEmpty()) mostrarAlertaCampo(txtTelefonoConfig, "El teléfono es obligatorio.");
+            else mostrarAlertaCampo(txtDireccionConfig, "La dirección es obligatoria.");
         }
     }//GEN-LAST:event_btnActualizarConfigActionPerformed
+
+    private Config copiarConfiguracion(Config original) {
+        Config copia = new Config(original.getId(), original.getRuc(), original.getNombre(),
+                original.getTelefono(), original.getDireccion(), original.getMensaje(),
+                original.getTasaDolar(), original.getIvaPorcentaje(), original.getLogoPath());
+        copia.setClienteDefaultNombre(original.getClienteDefaultNombre());
+        copia.setClienteDefaultDocumento(original.getClienteDefaultDocumento());
+        copia.setMesesRetencionPedidos(original.getMesesRetencionPedidos());
+        copia.setImprimirLogoTicket(original.isImprimirLogoTicket());
+        copia.setImpresoraTickets(original.getImpresoraTickets());
+        copia.setModoSalidaTickets(original.getModoSalidaTickets());
+        return copia;
+    }
 
     private void btnPdfPedidoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnPdfPedidoActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
@@ -2595,12 +3390,7 @@ public final class Sistema extends javax.swing.JFrame {
                 String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
                 boolean impreso = pedidosControlador.reimprimirPdfPedido(id, motivo, usr);
                 if (!impreso) {
-                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
-                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
-                }
-                if (!impreso) {
-                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
-                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
+                    mostrarAvisoEnBanda("PDF generado; impresión abierta en visor PDF");
                 }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
@@ -2611,7 +3401,7 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void btnModificarPedidoActionPerformed(java.awt.event.ActionEvent evt) {
         if (ped == null || ped.getId() <= 0) {
-            JOptionPane.showMessageDialog(this, "No hay pedido seleccionado para modificar.");
+            mostrarAvisoEnBanda("Selecciona un pedido para modificar");
             return;
         }
         LimpiarTableMenu();
@@ -2686,8 +3476,7 @@ public final class Sistema extends javax.swing.JFrame {
             idStr = txtIdPedido.getText().trim();
         }
         if (idStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Seleccione un pedido para previsualizar.",
-                    "Pedido requerido", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Seleccione un pedido para previsualizar");
             return;
         }
         try {
@@ -2739,9 +3528,9 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void btnRegistrarSalaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegistrarSalaActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_SALAS)) return;
-        // TODO add your handling code here:
         if (txtNombreSala.getText().trim().isEmpty() || txtMesas.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Los campos esta vacios");
+            if (txtNombreSala.getText().trim().isEmpty()) mostrarAlertaCampo(txtNombreSala, "El nombre de la sala es obligatorio.");
+            else mostrarAlertaCampo(txtMesas, "El número de mesas es obligatorio.");
         } else {
             try {
                 sl.setNombre(txtNombreSala.getText().trim());
@@ -2749,25 +3538,30 @@ public final class Sistema extends javax.swing.JFrame {
                 if (cbTipoSala != null) {
                     sl.setTipo(String.valueOf(cbTipoSala.getSelectedItem()));
                 }
+                sl.validarParaGuardar();
                 if (salasControlador.registrar(sl)) {
-                    JOptionPane.showMessageDialog(this, "Sala registrada.");
                     LimpiarSala();
                     ListarSalas();
                     RefrescoVistas.notificar(RefrescoVistas.SALAS);
+                    mostrarAvisoEnBanda("Sala registrada");
                 } else {
-                    JOptionPane.showMessageDialog(this, "No se registró la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                    mostrarAvisoEnBanda("No se registró la sala");
                 }
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "El número de mesas debe ser un número entero válido.", "Formato inválido", JOptionPane.WARNING_MESSAGE);
+                mostrarAlertaCampo(txtMesas, "Indica el número de mesas como un entero válido.");
+            } catch (Modelo.DataAccessException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Error al registrar sala", JOptionPane.ERROR_MESSAGE);
+            } catch (ErrorAplicacionException ex) {
+                mostrarAlertaCampo(ex.getMessage().toLowerCase(java.util.Locale.ROOT).contains("nombre")
+                        ? txtNombreSala : txtMesas, ex.getMessage());
             }
         }
     }//GEN-LAST:event_btnRegistrarSalaActionPerformed
 
     private void btnActualizarSalaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnActualizarSalaActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_SALAS)) return;
-        // TODO add your handling code here:
         if ("".equals(txtIdSala.getText())) {
-            JOptionPane.showMessageDialog(null, "Seleecione una fila");
+            mostrarAvisoEnBanda("Seleccione una sala de la tabla");
         } else {
             if (!txtNombreSala.getText().trim().isEmpty()) {
                 try {
@@ -2779,23 +3573,28 @@ public final class Sistema extends javax.swing.JFrame {
                     if (cbTipoSala != null) {
                         sl.setTipo(String.valueOf(cbTipoSala.getSelectedItem()));
                     }
+                    sl.validarParaGuardar();
                     if (salasControlador.modificar(sl)) {
-                        JOptionPane.showMessageDialog(this, "Sala modificada.");
                         LimpiarSala();
                         ListarSalas();
                         RefrescoVistas.notificar(RefrescoVistas.SALAS);
+                        mostrarAvisoEnBanda("Sala modificada");
                     } else {
-                        JOptionPane.showMessageDialog(this, "No se aplicaron cambios a la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                        mostrarAvisoEnBanda("No se aplicaron cambios a la sala");
                     }
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this, "Los identificadores y número de mesas deben ser números enteros válidos.", "Formato inválido", JOptionPane.WARNING_MESSAGE);
+                    mostrarAlertaCampo(txtMesas, "El número de mesas debe ser un entero válido.");
+                } catch (Modelo.DataAccessException ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Error al actualizar sala", JOptionPane.ERROR_MESSAGE);
+                } catch (ErrorAplicacionException ex) {
+                    mostrarAlertaCampo(ex.getMessage().toLowerCase(java.util.Locale.ROOT).contains("nombre")
+                            ? txtNombreSala : txtMesas, ex.getMessage());
                 }
             } else {
-                JOptionPane.showMessageDialog(this, "El nombre de la sala es obligatorio.",
-                        "Dato requerido", JOptionPane.WARNING_MESSAGE);
+                mostrarAlertaCampo(txtNombreSala, "El nombre de la sala es obligatorio.");
             }
         }
-    }//GEN-LAST:event_btnActualizarSalaActionPerformed
+    }//NOI18N:event_btnActualizarSalaActionPerformed
 
     private void btnNuevoSalaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNuevoSalaActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_SALAS)) return;
@@ -2805,21 +3604,26 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void btnEliminarSalaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEliminarSalaActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_SALAS)) return;
-        // TODO add your handling code here:
         if (!"".equals(txtIdSala.getText())) {
-            int pregunta = JOptionPane.showConfirmDialog(null, "Esta seguro de eliminar");
-            if (pregunta == 0) {
-                int id = Integer.parseInt(txtIdSala.getText());
+            try {
+                int id = Integer.parseInt(txtIdSala.getText().trim());
+                int confirmacion = JOptionPane.showConfirmDialog(this,
+                        "¿Eliminar la sala '" + txtNombreSala.getText().trim() + "'? Esta acción no se puede deshacer.",
+                        "Confirmar eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                if (confirmacion != JOptionPane.YES_OPTION) return;
                 if (salasControlador.eliminar(id)) {
                     LimpiarSala();
                     ListarSalas();
                     RefrescoVistas.notificar(RefrescoVistas.SALAS);
+                    mostrarAvisoEnBanda("Sala eliminada");
                 } else {
-                    JOptionPane.showMessageDialog(this, "No se eliminó la sala.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                    mostrarAvisoEnBanda("No se eliminó la sala");
                 }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Identificador de sala inválido.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         } else {
-            JOptionPane.showMessageDialog(null, "Seleccione una fila");
+            mostrarAvisoEnBanda("Seleccione una fila de la tabla");
         }
     }//GEN-LAST:event_btnEliminarSalaActionPerformed
 
@@ -2830,10 +3634,18 @@ public final class Sistema extends javax.swing.JFrame {
     private void btnIniciarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnIniciarActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_USUARIOS)) return;
         if (txtNombre.getText().trim().isEmpty() || txtCorreo.getText().trim().isEmpty() || txtPass.getPassword().length == 0) {
-            JOptionPane.showMessageDialog(null, "Todo los campos son requeridos");
+            if (txtNombre.getText().trim().isEmpty()) mostrarAlertaCampo(txtNombre, "El nombre es obligatorio.");
+            else if (txtCorreo.getText().trim().isEmpty()) mostrarAlertaCampo(txtCorreo, "El correo es obligatorio.");
+            else mostrarAlertaCampo(txtPass, "La contraseña es obligatoria.");
         } else {
             Usuario lg = new Usuario();
-            String correo = txtCorreo.getText();
+            String correo;
+            try {
+                correo = LoginDao.normalizarCorreoRegistro(txtCorreo.getText());
+            } catch (ErrorAplicacionException ex) {
+                mostrarAlertaCampo(txtCorreo, ex.getMessage());
+                return;
+            }
             String pass = String.valueOf(txtPass.getPassword());
             String nom = txtNombre.getText();
             String rol = cbxRol.getSelectedItem().toString();
@@ -2841,12 +3653,18 @@ public final class Sistema extends javax.swing.JFrame {
             lg.setCorreo(correo);
             lg.setPassword(pass);
             lg.setRol(rol);
-            if (lgDao.Registrar(lg)) {
-                JOptionPane.showMessageDialog(this, "Usuario registrado.");
-                ListarUsuarios();
-                RefrescoVistas.notificar(RefrescoVistas.USUARIOS);
-            } else {
-                JOptionPane.showMessageDialog(this, "No se registró el usuario.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+            try {
+                if (lgDao.Registrar(lg)) {
+                    mostrarAvisoEnBanda("Usuario registrado");
+                    ListarUsuarios();
+                    RefrescoVistas.notificar(RefrescoVistas.USUARIOS);
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo registrar el usuario.", "Error al registrar usuario", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Modelo.DataAccessException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Error al registrar usuario", JOptionPane.ERROR_MESSAGE);
+            } catch (ErrorAplicacionException ex) {
+                mostrarAlertaCampo(txtCorreo, ex.getMessage());
             }
         }
     }//GEN-LAST:event_btnIniciarActionPerformed
@@ -2862,8 +3680,9 @@ public final class Sistema extends javax.swing.JFrame {
     private void txtBuscarPlatoKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtBuscarPlatoKeyReleased
         ListarPlatos(tblTemPlatos, txtBuscarPlato.getText());
         if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
-            if (tblTemPlatos.getRowCount() > 0) {
-                tblTemPlatos.setRowSelectionInterval(0, 0);
+            // A1: Enter agrega la fila SELECCIONADA (nunca se fuerza la primera).
+            int fila = tblTemPlatos.getSelectedRow();
+            if (fila >= 0 && fila < tblTemPlatos.getRowCount()) {
                 btnAddPlato.doClick();
                 // Animación visual rápida de feedback (Verde) en la tabla
                 tblTemPlatos.setSelectionBackground(new java.awt.Color(144, 238, 144));
@@ -2892,6 +3711,12 @@ public final class Sistema extends javax.swing.JFrame {
                 }
                 if (coincide) {
                     int cantActual = Integer.parseInt(tableMenu.getValueAt(i, 2).toString());
+                    if (cantActual >= Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO) {
+                        tableMenu.setRowSelectionInterval(i, i);
+                        mostrarAlertaCampo(txtCantidadManual, "La cantidad máxima por plato es "
+                                + Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO + ".");
+                        return;
+                    }
                     setCantidadPlatoPorFila(i, cantActual + 1);
                     return;
                 }
@@ -2921,35 +3746,58 @@ public final class Sistema extends javax.swing.JFrame {
             tableMenu.setModel(tmp);
             TotalPagar(tableMenu, totalMenu);
             actualizarEstadoBotonesCarrito();
+            // UX: dejar preseleccionada la fila agregada para ajustar cantidad al instante (+/- o campo).
+            int nuevaFila = tmp.getRowCount() - 1;
+            if (nuevaFila >= 0) {
+                tableMenu.setRowSelectionInterval(nuevaFila, nuevaFila);
+                tableMenu.scrollRectToVisible(tableMenu.getCellRect(nuevaFila, 0, true));
+                actualizarEstadoBotonesCarrito();
+                // Foco en el input de cantidad para tipeo manual inmediato (con texto seleccionado).
+                if (txtCantidadManual != null) {
+                    txtCantidadManual.requestFocusInWindow();
+                    txtCantidadManual.selectAll();
+                }
+            }
         } else {
-            JOptionPane.showMessageDialog(null, "SELECCIONA UNA FILA");
+            mostrarAvisoEnBanda("Seleccione un plato del menú");
         }
     }//GEN-LAST:event_btnAddPlatoActionPerformed
 
     private void btnGenerarPedidoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGenerarPedidoActionPerformed
         if (tableMenu.getRowCount() > 0) {
-            int confirm = JOptionPane.showConfirmDialog(this,
-                    idPedidoEdicion > 0 ? "¿Está seguro de actualizar este pedido?" : "¿Está seguro de realizar este pedido?",
-                    idPedidoEdicion > 0 ? "Actualizar Pedido" : "Confirmar Pedido",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE);
-            if (confirm != JOptionPane.YES_OPTION) {
-                return;
-            }
+            // Envio directo: sin confirmacion y sin mostrar numero de pedido.
+            boolean eraEdicion = idPedidoEdicion > 0;
+            boolean esPedidoRapido = modoPedidoRapido;
+            String numMesa = esPedidoRapido ? "" : (txtTempNumMesa != null ? txtTempNumMesa.getText().trim() : "");
             try {
-                int idPedido;
-                if (idPedidoEdicion > 0) {
+                int idPedidoRegistrado = -1;
+                if (eraEdicion) {
                     actualizarPedidoEnEdicion();
-                    idPedido = idPedidoEdicion;
-                    JOptionPane.showMessageDialog(this, "PEDIDO N° " + idPedido + " ACTUALIZADO");
                     idPedidoEdicion = -1;
                     btnGenerarPedido.setText("Realizar Pedido");
                 } else {
-                    idPedido = registrarPedidoCompleto();
-                    JOptionPane.showMessageDialog(this, "PEDIDO N° " + idPedido + " REGISTRADO");
+                    idPedidoRegistrado = registrarPedidoCompleto();
                 }
                 LimpiarTableMenu();
-                jTabbedPane1.setSelectedIndex(0);
+                RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
+                RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
+                if (esPedidoRapido && idPedidoRegistrado > 0
+                        && politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+                    modoPedidoRapido = false;
+                    cargarPedidoEnPantalla(idPedidoRegistrado, true);
+                    mostrarAvisoEnBanda("Pedido rápido listo para cobrar");
+                } else if (esPedidoRapido && idPedidoRegistrado > 0) {
+                    modoPedidoRapido = false;
+                    jTabbedPane1.setSelectedIndex(0);
+                    mostrarAvisoEnBanda("Pedido rápido enviado a cocina");
+                } else {
+                    modoPedidoRapido = false;
+                    jTabbedPane1.setSelectedIndex(0);
+                    mostrarAvisoEnBanda(numMesa.isEmpty()
+                            ? (eraEdicion ? "Pedido actualizado" : "Pedido enviado a cocina")
+                            : (eraEdicion ? "Pedido actualizado — Mesa " + numMesa : "Pedido enviado a cocina — Mesa " + numMesa));
+                }
             } catch (Modelo.PedidoPendienteExistenteException ex) {
                 JOptionPane.showMessageDialog(this,
                         "Otra sesión ya registró un pedido para esta mesa. Vuelve a seleccionar la sala para actualizar su estado.",
@@ -2963,14 +3811,13 @@ public final class Sistema extends javax.swing.JFrame {
                         "No se pudo registrar el pedido", JOptionPane.ERROR_MESSAGE);
             }
         } else {
-            JOptionPane.showMessageDialog(null, "NO HAY PRODUCTO EN LA PEDIDO");
+            mostrarAvisoEnBanda("El carrito está vacío: agrega platos antes de enviar");
         }
     }//GEN-LAST:event_btnGenerarPedidoActionPerformed
 
     private void btnEliminarTempPlatoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEliminarTempPlatoActionPerformed
         if (tableMenu.getSelectedRow() < 0) {
-            JOptionPane.showMessageDialog(this, "Selecciona un producto del pedido.",
-                    "Selección requerida", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Selecciona un producto del pedido");
             return;
         }
         modelo = (DefaultTableModel) tableMenu.getModel();
@@ -2991,7 +3838,12 @@ public final class Sistema extends javax.swing.JFrame {
         if (fila == -1) return;
         try {
             int nuevaCant = Integer.parseInt(qtyText.trim());
-            if (nuevaCant <= 0) nuevaCant = 1; // Minimum 1
+            if (nuevaCant < 1 || nuevaCant > Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO) {
+                actualizarEstadoBotonesCarrito();
+                mostrarAlertaCampo(txtCantidadManual, "La cantidad debe estar entre 1 y "
+                        + Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO + ".");
+                return;
+            }
             setCantidadPlatoPorFila(fila, nuevaCant);
         } catch (NumberFormatException e) {
             // Revert to old value
@@ -3000,6 +3852,11 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void setCantidadPlatoPorFila(int fila, int nuevaCant) {
+        if (nuevaCant < 1 || nuevaCant > Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO) {
+            mostrarAlertaCampo(txtCantidadManual, "La cantidad debe estar entre 1 y "
+                    + Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO + ".");
+            return;
+        }
         javax.swing.table.DefaultTableModel tmp = (javax.swing.table.DefaultTableModel) tableMenu.getModel();
         if (fila >= 0 && fila < tmp.getRowCount()) {
             java.math.BigDecimal precio = importeMonetario(tmp.getValueAt(fila, 3));
@@ -3034,8 +3891,7 @@ public final class Sistema extends javax.swing.JFrame {
     public void aumentarCantidadSeleccionada() {
         int fila = tableMenu.getSelectedRow();
         if (fila < 0) {
-            JOptionPane.showMessageDialog(this, "Selecciona un producto del pedido.",
-                    "Selección requerida", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Selecciona un producto del pedido");
             return;
         }
         try {
@@ -3043,9 +3899,9 @@ public final class Sistema extends javax.swing.JFrame {
             if (cantActual < 0) {
                 cantActual = 0;
             }
-            if (cantActual >= 999) {
-                JOptionPane.showMessageDialog(this, "La cantidad máxima por plato es 999.",
-                        "Límite alcanzado", JOptionPane.WARNING_MESSAGE);
+            if (cantActual >= Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO) {
+                mostrarAlertaCampo(txtCantidadManual, "La cantidad máxima por plato es "
+                        + Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO + ".");
                 return;
             }
             int nuevaCantidad = Math.addExact(cantActual, 1);
@@ -3068,8 +3924,7 @@ public final class Sistema extends javax.swing.JFrame {
     public void disminuirCantidadSeleccionada() {
         int fila = tableMenu.getSelectedRow();
         if (fila < 0) {
-            JOptionPane.showMessageDialog(this, "Selecciona un producto del pedido.",
-                    "Selección requerida", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Selecciona un producto del pedido");
             return;
         }
         try {
@@ -3129,7 +3984,7 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         if (tableMenu.getSelectedRow() < 0) {
-            JOptionPane.showMessageDialog(null, "SELECCIONE UNA FILA");
+            mostrarAvisoEnBanda("Seleccione una fila del carrito");
         } else {
             int id = Integer.parseInt(tableMenu.getValueAt(tableMenu.getSelectedRow(), 0).toString());
             for (int i = 0; i < tableMenu.getRowCount(); i++) {
@@ -3146,8 +4001,7 @@ public final class Sistema extends javax.swing.JFrame {
     private void btnFinalizarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnFinalizarActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
         if (txtIdPedido.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Selecciona un pedido antes de finalizarlo.",
-                    "Pedido requerido", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Selecciona un pedido antes de finalizarlo");
             return;
         }
         Config cfg = conf != null ? conf : lgDao.datosEmpresa();
@@ -3156,126 +4010,50 @@ public final class Sistema extends javax.swing.JFrame {
         String defaultDoc = (cfg != null && cfg.getClienteDefaultDocumento() != null)
                 ? cfg.getClienteDefaultDocumento() : "V-00000000";
 
-        javax.swing.JTextField txtNombreCli = new javax.swing.JTextField(defaultNombre, 20);
-        javax.swing.JTextField txtDocCli = new javax.swing.JTextField(defaultDoc, 15);
-
-        javax.swing.JComboBox<String> cbMetodoPago = new javax.swing.JComboBox<>(
-                new String[]{"EFECTIVO_BS", "EFECTIVO_USD", "EFECTIVO", "TRANSFERENCIA", "TARJETA", "PAGO_MOVIL", "MIXTO"});
-        javax.swing.JComboBox<Modelo.ModoSalidaTicket> cbDestinoModal = new javax.swing.JComboBox<>(Modelo.ModoSalidaTicket.values());
-        cbDestinoModal.setSelectedItem(Servicio.ServicioImpresionTicket.getModoGlobal());
-
-        javax.swing.JPanel panelFacturar = new javax.swing.JPanel(new java.awt.GridLayout(0, 1, 4, 4));
-        panelFacturar.add(new javax.swing.JLabel("¿Está seguro de finalizar el pedido y generar la factura?"));
-        panelFacturar.add(new javax.swing.JLabel("Nombre del Cliente:"));
-        panelFacturar.add(txtNombreCli);
-        panelFacturar.add(new javax.swing.JLabel("Cédula / RIF del Cliente:"));
-        panelFacturar.add(txtDocCli);
-        panelFacturar.add(new javax.swing.JLabel("Método de Pago:"));
-        panelFacturar.add(cbMetodoPago);
-        panelFacturar.add(new javax.swing.JLabel("Destino de Impresión / Tickera:"));
-        panelFacturar.add(cbDestinoModal);
-
+        // La tasa de cobro corresponde al pedido ya persistido en la BD.
         if (configServicio != null && configServicio.esTasaDolarDesactualizada()) {
-            javax.swing.JLabel lblAlertaTasaModal = new javax.swing.JLabel("<html><b style='color:#c82333;'>⚠️ ATENCIÓN:</b> La tasa de cambio no ha sido actualizada hoy.</html>");
-            lblAlertaTasaModal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-            panelFacturar.add(lblAlertaTasaModal);
+            mostrarAvisoEnBanda("⚠ Tasa desactualizada: se factura con Bs. "
+                    + (conf != null && conf.getTasaDolar() != null ? conf.getTasaDolar().toPlainString() : "36.50"));
         }
+        if (cbModoSalidaFinalizar.getSelectedItem() instanceof Modelo.ModoSalidaTicket m) {
+            cambiarModoSalidaGlobal(m);
+        }
+        String clienteNombre = txtClienteNombreFac.getText().trim().isEmpty() ? defaultNombre : txtClienteNombreFac.getText().trim();
+        String clienteDoc = txtClienteDocFac.getText().trim().isEmpty() ? defaultDoc : txtClienteDocFac.getText().trim();
+        List<Modelo.PagoPedido> pagos = leerPagosInline();
+        if (pagos == null) return;
+        String metodoPagoSel = pagos.size() == 1 ? pagos.getFirst().metodo() : "MIXTO";
+        {
+            String mesaInfo = ped != null && ped.esPedidoRapido() ? "" : txtNumMesaFinalizar.getText().trim();
+            String totalInfo = totalFinalizar.getText().trim();
 
-        int pregunta = JOptionPane.showConfirmDialog(this,
-                panelFacturar,
-                "Confirmar Finalización y Facturación",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE);
-        if (pregunta == JOptionPane.YES_OPTION) {
-            if (configServicio != null && configServicio.esTasaDolarDesactualizada()) {
-                Object[] opcionesTasa = new Object[]{"Ir a Configuración y Actualizar", "Continuar con Tasa Registrada"};
-                int decisionTasa = JOptionPane.showOptionDialog(this,
-                        "⚠️ La tasa de cambio del dólar no ha sido actualizada en la fecha de hoy.\n"
-                        + "Tasa registrada actual: Bs. " + (conf != null && conf.getTasaDolar() != null ? conf.getTasaDolar() : "36.50") + "\n\n"
-                        + "¿Desea actualizar la tasa primero (Recomendado) o continuar facturando con la tasa registrada?",
-                        "Advertencia de Tasa Desactualizada",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE,
-                        null,
-                        opcionesTasa,
-                        opcionesTasa[0]);
-                if (decisionTasa == 0) {
-                    jTabbedPane1.setSelectedIndex(5);
-                    if (txtTasaConfig != null) {
-                        txtTasaConfig.requestFocus();
-                        txtTasaConfig.selectAll();
-                    }
-                    return;
-                } else if (decisionTasa != 1) {
-                    return;
-                }
-            }
-            if (cbDestinoModal.getSelectedItem() instanceof Modelo.ModoSalidaTicket m) {
-                cambiarModoSalidaGlobal(m);
-            }
-            String clienteNombre = txtNombreCli.getText().trim().isEmpty() ? defaultNombre : txtNombreCli.getText().trim();
-            String clienteDoc = txtDocCli.getText().trim().isEmpty() ? defaultDoc : txtDocCli.getText().trim();
-            String metodoPagoSel = (String) cbMetodoPago.getSelectedItem();
-            if (metodoPagoSel == null || metodoPagoSel.isBlank()) metodoPagoSel = "EFECTIVO";
-
-            java.math.BigDecimal efectivoPagoBs = null;
-            java.math.BigDecimal efectivoPagoUsd = null;
-            if ("MIXTO".equalsIgnoreCase(metodoPagoSel)) {
-                java.math.BigDecimal[] desglose = solicitarEfectivoPagoMixto();
-                if (desglose == null) return;
-                efectivoPagoBs = desglose[0];
-                efectivoPagoUsd = desglose[1];
-            }
-
-
-
-            if (metodoPagoSel.contains("EFECTIVO") && !"MIXTO".equalsIgnoreCase(metodoPagoSel)) {
-                try {
-                    double totalFactura = 0;
-                    String simbolo = "$";
-                    if (ped != null) {
-                        if ("EFECTIVO_BS".equals(metodoPagoSel) && ped.getTotalBs() != null) {
-                            totalFactura = ped.getTotalBs().doubleValue();
-                            simbolo = "Bs.";
-                        } else if (ped.getTotalDecimal() != null) {
-                            totalFactura = ped.getTotalDecimal().doubleValue();
-                        }
-                    }
-                    if (totalFactura > 0) {
-                        calcularVueltoUx(metodoPagoSel, totalFactura, simbolo);
-                    }
-                } catch(Exception ignored) {}
-            }
             int idPedido = Integer.parseInt(txtIdPedido.getText());
             long version = versionPedidoPantalla;
             btnFinalizar.setEnabled(false);
             new FinalizarPedidoSwingWorker(pedidosControlador, idPedido, clienteNombre, clienteDoc, metodoPagoSel,
-                    efectivoPagoBs, efectivoPagoUsd, resultado -> {
+                    pagos, resultado -> {
                 boolean finalizado = resultado.finalizado();
                 boolean impresoDirecto = resultado.impresoDirecto();
                 boolean mismoPedido = version == versionPedidoPantalla
                         && String.valueOf(idPedido).equals(txtIdPedido.getText());
                 if (finalizado) {
                     if (mismoPedido) {
-                        btnFinalizar.setEnabled(false);
-                        btnPdfPedido.setEnabled(true);
-                        if (btnPrevisualizarPedido != null) btnPrevisualizarPedido.setEnabled(true);
+                        volverAInicioSeleccionSala();
                     }
                     ListarPedidos();
                     RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
                     RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
                     RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
                     if (impresoDirecto) {
-                        JOptionPane.showMessageDialog(this, "Pedido finalizado y PDF generado a nombre de " + clienteNombre + ".",
-                                "Pedido finalizado", JOptionPane.INFORMATION_MESSAGE);
+                        mostrarAvisoEnBanda(mesaInfo.isEmpty()
+                                ? "Pedido facturado — " + totalInfo
+                                : "Mesa " + mesaInfo + " facturada — " + totalInfo);
                     } else {
-                        JOptionPane.showMessageDialog(this, "Pedido finalizado a nombre de " + clienteNombre + ".\\nSin embargo, falló el envío a la impresora (degradado a visor PDF).",
-                                "Pedido finalizado - Impresión degradada", JOptionPane.WARNING_MESSAGE);
+                        mostrarAvisoEnBanda("Pedido finalizado; falló la impresión directa y el PDF se abrió en el visor");
                     }
                 } else {
                     if (mismoPedido) btnFinalizar.setEnabled(true);
-                    JOptionPane.showMessageDialog(this, "El pedido no se finalizó.",
-                            "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                    mostrarAvisoEnBanda("El pedido no se finalizó");
                 }
             }, (error, finalizacionConfirmada) -> {
                 if (finalizacionConfirmada) {
@@ -3288,13 +4066,9 @@ public final class Sistema extends javax.swing.JFrame {
                         && String.valueOf(idPedido).equals(txtIdPedido.getText());
                 if (finalizacionConfirmada) {
                     if (mismoPedido) {
-                        btnFinalizar.setEnabled(false);
-                        btnPdfPedido.setEnabled(true);
-                        if (btnPrevisualizarPedido != null) btnPrevisualizarPedido.setEnabled(true);
+                        volverAInicioSeleccionSala();
                     }
-                    JOptionPane.showMessageDialog(this,
-                            "El pedido quedó finalizado, pero no se pudo completar el PDF: " + mensajeError(error),
-                            "Pedido finalizado", JOptionPane.WARNING_MESSAGE);
+                    mostrarErrorPdfFinalizado(idPedido, error);
                 } else {
                     if (mismoPedido) btnFinalizar.setEnabled(true);
                     JOptionPane.showMessageDialog(this,
@@ -3308,96 +4082,79 @@ public final class Sistema extends javax.swing.JFrame {
     
     
     
-    private void calcularVueltoUx(String metodo, double totalFactura, String simbolo) {
-        if (!metodo.contains("EFECTIVO") || totalFactura <= 0) return;
-        
-        javax.swing.JPanel pnl = new javax.swing.JPanel(new java.awt.BorderLayout(8, 8));
-        javax.swing.JLabel lblInfo = new javax.swing.JLabel("Total a pagar: " + simbolo + " " + String.format(java.util.Locale.US, "%.2f", totalFactura));
-        lblInfo.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 16));
-        pnl.add(lblInfo, java.awt.BorderLayout.NORTH);
-        
-        javax.swing.JTextField txtRecibido = new javax.swing.JTextField(10);
-        txtRecibido.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 18));
-        javax.swing.JLabel lblVuelto = new javax.swing.JLabel("Vuelto: " + simbolo + " 0.00");
-        lblVuelto.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 18));
-        lblVuelto.setForeground(java.awt.Color.BLUE);
-        
-        javax.swing.JPanel pnlCentro = new javax.swing.JPanel(new java.awt.GridLayout(2, 2, 4, 4));
-        pnlCentro.add(new javax.swing.JLabel("Monto Entregado:"));
-        pnlCentro.add(txtRecibido);
-        pnlCentro.add(new javax.swing.JLabel(""));
-        pnlCentro.add(lblVuelto);
-        pnl.add(pnlCentro, java.awt.BorderLayout.CENTER);
-        
-        javax.swing.JPanel pnlBotones = new javax.swing.JPanel(new java.awt.FlowLayout());
-        double[] billetes = {10, 20, 50, 100};
-        for (double b : billetes) {
-            if (b >= totalFactura || b == 100) {
-                javax.swing.JButton btnB = new javax.swing.JButton(simbolo + " " + (int)b);
-                btnB.addActionListener(e -> {
-                    txtRecibido.setText(String.valueOf(b));
-                    double vuelto = b - totalFactura;
-                    lblVuelto.setText("Vuelto: " + simbolo + " " + String.format(java.util.Locale.US, "%.2f", vuelto));
-                });
-                pnlBotones.add(btnB);
+    private void actualizarResumenPagosFac() {
+        if (lblResumenPagosFac == null || modeloPagosFac == null) return;
+        if (tasaPagoFac == null || tasaPagoFac.signum() <= 0 || totalPagoBsFac == null) {
+            lblResumenPagosFac.setText("Tasa del pedido no disponible en BD; el cobro está bloqueado.");
+            return;
+        }
+        BigDecimal asignadoBs = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        for (int fila = 0; fila < modeloPagosFac.getRowCount(); fila++) {
+            try {
+                String metodo = String.valueOf(modeloPagosFac.getValueAt(fila, 0));
+                String moneda = String.valueOf(modeloPagosFac.getValueAt(fila, 1));
+                String texto = String.valueOf(modeloPagosFac.getValueAt(fila, 2)).trim().replace(',', '.');
+                BigDecimal monto = new BigDecimal(texto);
+                asignadoBs = asignadoBs.add(new Modelo.PagoPedido(metodo, moneda, monto).equivalenteBs(tasaPagoFac));
+            } catch (RuntimeException ignorado) {
+                // La fila incompleta se señala al intentar finalizar; el resumen no interrumpe la edición.
             }
         }
-        javax.swing.JButton btnExacto = new javax.swing.JButton("Exacto");
-        btnExacto.addActionListener(e -> {
-            txtRecibido.setText(String.format(java.util.Locale.US, "%.2f", totalFactura));
-            lblVuelto.setText("Vuelto: " + simbolo + " 0.00");
-        });
-        pnlBotones.add(btnExacto);
-        pnl.add(pnlBotones, java.awt.BorderLayout.SOUTH);
-        
-        txtRecibido.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyReleased(java.awt.event.KeyEvent evt) {
-                try {
-                    double rec = Double.parseDouble(txtRecibido.getText().replace(",", "."));
-                    double vuelto = rec - totalFactura;
-                    lblVuelto.setText("Vuelto: " + simbolo + " " + String.format(java.util.Locale.US, "%.2f", vuelto));
-                } catch(Exception ignored){}
-            }
-        });
-        
-        // Auto-select text on focus
-        txtRecibido.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                txtRecibido.setBackground(new java.awt.Color(230, 245, 255));
-                txtRecibido.selectAll();
-            }
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                txtRecibido.setBackground(java.awt.Color.WHITE);
-            }
-        });
-        
-        // Poner foco después de renderizar
-        javax.swing.SwingUtilities.invokeLater(txtRecibido::requestFocusInWindow);
-        JOptionPane.showMessageDialog(this, pnl, "Calculadora Rápida de Vuelto", JOptionPane.PLAIN_MESSAGE);
+        asignadoBs = asignadoBs.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal saldoBs = totalPagoBsFac.subtract(asignadoBs).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal saldoUsd = saldoBs.abs().divide(tasaPagoFac, 2, RoundingMode.HALF_UP);
+        String estado = saldoBs.signum() > 0 ? "Saldo" : saldoBs.signum() < 0 ? "Exceso" : "Saldo";
+        lblResumenPagosFac.setText("Tasa Bs. " + tasaPagoFac.stripTrailingZeros().toPlainString()
+                + "/USD | Pagado Bs. " + asignadoBs.toPlainString() + " | " + estado + " Bs. "
+                + saldoBs.abs().toPlainString() + " (USD " + saldoUsd.toPlainString() + ")");
     }
 
-    private java.math.BigDecimal[] solicitarEfectivoPagoMixto() {
-        javax.swing.JTextField txtBs = new javax.swing.JTextField("0.00", 12);
-        javax.swing.JTextField txtUsd = new javax.swing.JTextField("0.00", 12);
-        javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.GridLayout(0, 1, 4, 4));
-        panel.add(new javax.swing.JLabel("Efectivo recibido en Bs. (0 si no aplica):"));
-        panel.add(txtBs);
-        panel.add(new javax.swing.JLabel("Efectivo recibido en USD (0 si no aplica):"));
-        panel.add(txtUsd);
-        int opcion = JOptionPane.showConfirmDialog(this, panel,
-                "Desglose del pago mixto", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (opcion != JOptionPane.OK_OPTION) return null;
-        try {
-            java.math.BigDecimal bs = new java.math.BigDecimal(txtBs.getText().trim()).setScale(2, java.math.RoundingMode.UNNECESSARY);
-            java.math.BigDecimal usd = new java.math.BigDecimal(txtUsd.getText().trim()).setScale(2, java.math.RoundingMode.UNNECESSARY);
-            if (bs.signum() < 0 || usd.signum() < 0) throw new NumberFormatException("El monto no puede ser negativo.");
-            return new java.math.BigDecimal[]{bs, usd};
-        } catch (NumberFormatException | ArithmeticException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Indica montos no negativos con hasta dos decimales.",
-                    "Desglose inválido", JOptionPane.ERROR_MESSAGE);
+    private List<Modelo.PagoPedido> leerPagosInline() {
+        if (tablaPagosFac.isEditing() && !tablaPagosFac.getCellEditor().stopCellEditing()) return null;
+        if (tasaPagoFac == null || tasaPagoFac.signum() <= 0 || totalPagoBsFac == null) {
+            lblAlertaPagosFac.setText("No se puede cobrar: falta una tasa válida guardada en el pedido.");
+            lblResumenPagosFac.setForeground(COLOR_PELIGRO);
             return null;
         }
+        List<Modelo.PagoPedido> pagos = new ArrayList<>();
+        BigDecimal sumaBs = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        for (int fila = 0; fila < modeloPagosFac.getRowCount(); fila++) {
+            try {
+                String metodo = String.valueOf(modeloPagosFac.getValueAt(fila, 0));
+                String moneda = String.valueOf(modeloPagosFac.getValueAt(fila, 1));
+                String texto = String.valueOf(modeloPagosFac.getValueAt(fila, 2)).trim().replace(',', '.');
+                if (texto.isEmpty()) throw new IllegalArgumentException("Ingrese el monto.");
+                BigDecimal monto = new BigDecimal(texto);
+                Modelo.PagoPedido pago = new Modelo.PagoPedido(metodo, moneda, monto);
+                pagos.add(pago);
+                sumaBs = sumaBs.add(pago.equivalenteBs(tasaPagoFac));
+            } catch (RuntimeException ex) {
+                lblAlertaPagosFac.setText("Revise método, moneda y monto de la fila " + (fila + 1) + ".");
+                lblResumenPagosFac.setForeground(COLOR_TEXTO_INPUT);
+                tablaPagosFac.changeSelection(fila, 2, false, false);
+                tablaPagosFac.requestFocusInWindow();
+                return null;
+            }
+        }
+        sumaBs = sumaBs.setScale(2, RoundingMode.HALF_UP);
+        int comparacion = sumaBs.compareTo(totalPagoBsFac.setScale(2, RoundingMode.HALF_UP));
+        if (comparacion != 0) {
+            BigDecimal diferencia = totalPagoBsFac.subtract(sumaBs).abs().setScale(2, RoundingMode.HALF_UP);
+            BigDecimal diferenciaUsd = diferencia.divide(tasaPagoFac, 2, RoundingMode.HALF_UP);
+            lblAlertaPagosFac.setText((comparacion > 0 ? "Falta " : "Excede ") + "Bs. "
+                    + diferencia.toPlainString() + " (USD " + diferenciaUsd.toPlainString() + "). Ajuste los pagos al total.");
+            lblResumenPagosFac.setForeground(COLOR_PELIGRO);
+            return null;
+        }
+        lblAlertaPagosFac.setText(" ");
+        lblResumenPagosFac.setForeground(COLOR_TEXTO_INPUT);
+        return List.copyOf(pagos);
+    }
+
+    private void volverAInicioSeleccionSala() {
+        LimpiarTableMenu();
+        jTabbedPane1.setSelectedIndex(0);
+        panelSalas();
     }
 
     private String mensajeError(Throwable error) {
@@ -3427,79 +4184,82 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void btnGuardarPlatoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarPlatoActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) return;
-        // TODO add your handling code here:
-        if (!txtNombrePlato.getText().trim().isEmpty() && !txtPrecioPlato.getText().trim().isEmpty()) {
+        if (txtNombrePlato.getText().trim().isEmpty()) {
+            mostrarAlertaCampo(txtNombrePlato, "El nombre del plato es obligatorio.");
+            return;
+        }
+        if (txtPrecioPlato.getText().trim().isEmpty()) {
+            mostrarAlertaCampo(txtPrecioPlato, "El precio del plato es obligatorio.");
+            return;
+        }
+        try {
             pla.setNombre(txtNombrePlato.getText());
             pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText()));
             pla.setFecha(fechaActual());
             pla.setAplicaIva(chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected());
             if (platosControlador.registrar(pla)) {
-                JOptionPane.showMessageDialog(null, "Plato Registrado");
                 ListarPlatos(TablePlatos, "");
                 LimpiarPlatos();
                 RefrescoVistas.notificar(RefrescoVistas.PLATOS);
+                mostrarAvisoEnBanda("Plato registrado");
             } else {
-                JOptionPane.showMessageDialog(this, "No se registró el plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                mostrarAvisoEnBanda("No se registró el plato");
             }
-
-        } else {
-            JOptionPane.showMessageDialog(null, "Los campos estan vacios");
+        } catch (ErrorAplicacionException ex) {
+            mostrarAlertaCampo(txtPrecioPlato, ex.getMessage());
         }
     }//GEN-LAST:event_btnGuardarPlatoActionPerformed
 
     private void btnEditarPlatoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditarPlatoActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) return;
-        // TODO add your handling code here:
         if ("".equals(txtIdPlato.getText())) {
-            JOptionPane.showMessageDialog(null, "Seleecione una fila");
+            mostrarAvisoEnBanda("Seleccione un plato de la tabla");
         } else {
-            if (!txtNombrePlato.getText().trim().isEmpty() && !txtPrecioPlato.getText().trim().isEmpty()) {
+            if (txtNombrePlato.getText().trim().isEmpty()) {
+                mostrarAlertaCampo(txtNombrePlato, "El nombre del plato es obligatorio.");
+            } else if (txtPrecioPlato.getText().trim().isEmpty()) {
+                mostrarAlertaCampo(txtPrecioPlato, "El precio del plato es obligatorio.");
+            } else {
                 try {
                     pla.setNombre(txtNombrePlato.getText().trim());
                     pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText().trim()));
                     pla.setId(Integer.parseInt(txtIdPlato.getText().trim()));
                     pla.setAplicaIva(chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected());
                     if (platosControlador.modificar(pla)) {
-                        JOptionPane.showMessageDialog(null, "Plato Modificado");
                         ListarPlatos(TablePlatos, "");
                         LimpiarPlatos();
                         RefrescoVistas.notificar(RefrescoVistas.PLATOS);
+                        mostrarAvisoEnBanda("Plato modificado");
                     } else {
-                        JOptionPane.showMessageDialog(this, "No se aplicaron cambios al plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
+                        mostrarAvisoEnBanda("No se aplicaron cambios al plato");
                     }
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this, "Identificador de plato inválido.", "Error", JOptionPane.WARNING_MESSAGE);
+                    mostrarAvisoEnBanda("No se pudo leer el identificador del plato");
+                } catch (ErrorAplicacionException ex) {
+                    mostrarAlertaCampo(txtPrecioPlato, ex.getMessage());
                 }
-            } else {
-                JOptionPane.showMessageDialog(this, "El nombre y el precio del plato son obligatorios.",
-                        "Datos requeridos", JOptionPane.WARNING_MESSAGE);
             }
         }
-    }//GEN-LAST:event_btnEditarPlatoActionPerformed
+    }//NOI18N:event_btnEditarPlatoActionPerformed
 
     private void btnEliminarPlatoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEliminarPlatoActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) return;
         if (!"".equals(txtIdPlato.getText())) {
-            int pregunta = JOptionPane.showConfirmDialog(this,
-                    "¿Está seguro de desactivar este plato? Dejará de mostrarse en el menú.",
-                    "Confirmar Desactivación", JOptionPane.YES_NO_OPTION);
-            if (pregunta == JOptionPane.YES_OPTION) {
-                try {
-                    int id = Integer.parseInt(txtIdPlato.getText().trim());
-                    if (platosControlador.desactivar(id)) {
-                        JOptionPane.showMessageDialog(this, "Plato desactivado con éxito.", "Platos", JOptionPane.INFORMATION_MESSAGE);
-                        LimpiarPlatos();
-                        ListarPlatos(TablePlatos, "");
-                        RefrescoVistas.notificar(RefrescoVistas.PLATOS);
-                    } else {
-                        JOptionPane.showMessageDialog(this, "No se desactivó el plato.", "Sin cambios", JOptionPane.WARNING_MESSAGE);
-                    }
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this, "Identificador de plato inválido.", "Error", JOptionPane.WARNING_MESSAGE);
+            try {
+                int id = Integer.parseInt(txtIdPlato.getText().trim());
+                if (platosControlador.desactivar(id)) {
+                    LimpiarPlatos();
+                    ListarPlatos(TablePlatos, "");
+                    RefrescoVistas.notificar(RefrescoVistas.PLATOS);
+                    mostrarAvisoEnBanda("Plato desactivado");
+                } else {
+                    mostrarAvisoEnBanda("No se desactivó el plato");
                 }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Identificador de plato inválido.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         } else {
-            JOptionPane.showMessageDialog(this, "Selecciona una fila", "Aviso", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Selecciona un plato de la tabla");
         }
     }//GEN-LAST:event_btnEliminarPlatoActionPerformed
 
@@ -3648,6 +4408,21 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JTextField txtIdConfig;
     private javax.swing.JTextField txtIdHistorialPedido;
     private javax.swing.JTextField txtIdPedido;
+    private javax.swing.JTextField txtClienteNombreFac;
+    private javax.swing.JTextField txtClienteDocFac;
+    private javax.swing.table.DefaultTableModel modeloPagosFac;
+    private javax.swing.JTable tablaPagosFac;
+    private javax.swing.JButton btnAgregarPagoFac;
+    private javax.swing.JButton btnQuitarPagoFac;
+    private javax.swing.JScrollPane scrollPagosFac;
+    private javax.swing.JLabel lblClienteFac;
+    private javax.swing.JLabel lblDocFac;
+    private javax.swing.JLabel lblPagoFac;
+    private javax.swing.JLabel lblMesoneroFin;
+    private javax.swing.JLabel lblResumenPagosFac;
+    private javax.swing.JLabel lblAlertaPagosFac;
+    private BigDecimal tasaPagoFac;
+    private BigDecimal totalPagoBsFac;
     private javax.swing.JTextField txtIdPlato;
     private javax.swing.JTextField txtIdSala;
     private javax.swing.JTextField txtMensaje;
@@ -3736,7 +4511,8 @@ public final class Sistema extends javax.swing.JFrame {
         
         javax.swing.JLabel lblTitulo = new javax.swing.JLabel(titulo);
         lblTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 18));
-        lblTitulo.setForeground(new java.awt.Color(255, 255, 255));
+        lblTitulo.setForeground(COLOR_CABECERA);
+        lblTitulo.setName("uxTituloEncabezado");
         header.add(lblTitulo);
         
         wrap.add(header, java.awt.BorderLayout.NORTH);
@@ -3788,6 +4564,58 @@ public final class Sistema extends javax.swing.JFrame {
         public boolean getScrollableTracksViewportHeight() {
             return getParent() != null && getParent().getHeight() >= getPreferredSize().height;
         }
+    }
+
+    private void mostrarErrorPdfFinalizado(int idPedido, Throwable error) {
+        String[] opciones = {"Reintentar PDF", "Abrir historial", "Cerrar"};
+        int opcion = JOptionPane.showOptionDialog(this,
+                "La factura del pedido #" + idPedido + " quedó registrada y la mesa está cerrada, "
+                + "pero no se pudo generar o abrir el PDF tras dos intentos.\n\n"
+                + mensajeError(error) + "\n\nPuede reintentar el PDF sin volver a facturar.",
+                "Factura registrada; PDF pendiente",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, opciones, opciones[0]);
+        if (opcion == 0) {
+            reintentarPdfFinalizado(idPedido);
+        } else if (opcion == 1) {
+            abrirHistorialPedido(idPedido);
+        }
+    }
+
+    private void reintentarPdfFinalizado(int idPedido) {
+        new javax.swing.SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() {
+                // Este flujo solo vuelve a generar/abrir el PDF; no toca el estado de la mesa ni la factura.
+                return pedidosControlador.generarPdfPedido(idPedido);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    boolean salidaDirecta = get();
+                    mostrarAvisoEnBanda(salidaDirecta
+                            ? "PDF del pedido #" + idPedido + " generado y enviado correctamente"
+                            : "PDF del pedido #" + idPedido + " generado; revise el visor o reintente desde el historial");
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    mostrarErrorPdfFinalizado(idPedido, ex);
+                } catch (java.util.concurrent.ExecutionException ex) {
+                    Throwable causa = ex.getCause() != null ? ex.getCause() : ex;
+                    mostrarErrorPdfFinalizado(idPedido, causa);
+                }
+            }
+        }.execute();
+    }
+
+    private void abrirHistorialPedido(int idPedido) {
+        filtroEstadoSeleccionado = null;
+        filtroSoloHoyActivo = false;
+        if (txtFiltroFechaDesde != null) txtFiltroFechaDesde.setText("");
+        if (txtFiltroFechaHasta != null) txtFiltroFechaHasta.setText("");
+        if (txtBuscarHistorial != null) txtBuscarHistorial.setText(String.valueOf(idPedido));
+        int indiceHistorial = jTabbedPane1.indexOfComponent(jPanel6);
+        if (indiceHistorial >= 0) jTabbedPane1.setSelectedIndex(indiceHistorial);
+        aplicarFiltroHistorial();
     }
         
 
@@ -3852,12 +4680,12 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void aplicarEncabezados() {
-        // --- UX de Encabezados con Color Coding (un color distinto por pantalla) ---
-        envolverConEncabezado(jPanel9, "INICIO - SELECCIÓN DE SALA", new java.awt.Color(41, 128, 185), null);   // Azul
-        envolverConEncabezado(jPanel4, "GESTIÓN DE SALAS", new java.awt.Color(22, 160, 133), null);             // Turquesa
-        envolverConEncabezado(jPanel22, "SELECCIÓN DE MESAS", new java.awt.Color(44, 62, 80), null);            // Azul pizarra
+        // --- UX: un color pastel distinto por pantalla, acorde a su funcion ---
+        envolverConEncabezado(jPanel9, "INICIO - SELECCIÓN DE SALA", new java.awt.Color(214, 234, 251), null);   // Azul cielo: recepcion
+        envolverConEncabezado(jPanel4, "GESTIÓN DE SALAS", new java.awt.Color(253, 235, 208), null);             // Melocoton: espacios
+        envolverConEncabezado(jPanel22, "SELECCIÓN DE MESAS", new java.awt.Color(209, 242, 235), null);          // Turquesa: comedor
 
-        envolverConEncabezado(jPanel23, "TOMA DE PEDIDO", new java.awt.Color(230, 126, 34), () -> {             // Naranja
+        envolverConEncabezado(jPanel23, "TOMA DE PEDIDO", new java.awt.Color(213, 245, 227), () -> {             // Verde menta: accion
             if (idSalaActualMesas > 0 && cantMesasActual > 0) {
                 panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
                 int idx = jTabbedPane1.indexOfTab("Mesas");
@@ -3868,17 +4696,17 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
 
-        envolverConEncabezado(jPanel25, "CAJA Y FACTURACIÓN", new java.awt.Color(39, 174, 96), () -> {          // Verde
+        envolverConEncabezado(jPanel25, "CAJA Y FACTURACIÓN", new java.awt.Color(254, 249, 231), () -> {          // Amarillo manteca: dinero
             int idx = jTabbedPane1.indexOfTab("Platos");
             if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
         });
-        envolverConEncabezado(jPanel6, "HISTORIAL Y CIERRES", new java.awt.Color(211, 84, 0), null);           // Naranja quemado
+        envolverConEncabezado(jPanel6, "HISTORIAL Y CIERRES", new java.awt.Color(234, 236, 238), null);           // Gris perla: archivo
 
-        envolverConEncabezado(jPanel7, "CONFIGURACIÓN", new java.awt.Color(142, 68, 173), null);               // Morado
-        envolverConEncabezado(jPanel12, "USUARIOS", new java.awt.Color(192, 57, 43), null);                    // Rojo
-        envolverConEncabezado(jPanel2, "GESTIÓN DE PLATOS", new java.awt.Color(191, 128, 0), null);             // Ámbar oscuro
-        if(panelCategorias != null) envolverConEncabezado(panelCategorias, "GESTIÓN DE CATEGORÍAS", new java.awt.Color(103, 58, 183), null); // Índigo
-        if(panelDashboard != null) envolverConEncabezado(panelDashboard, "DASHBOARD", new java.awt.Color(69, 90, 100), null);               // Gris azulado
+        envolverConEncabezado(jPanel7, "CONFIGURACIÓN", new java.awt.Color(232, 218, 239), null);               // Lila: ajustes
+        envolverConEncabezado(jPanel12, "USUARIOS", new java.awt.Color(249, 235, 234), null);                   // Rosa palido: personas
+        envolverConEncabezado(jPanel2, "GESTIÓN DE PLATOS", new java.awt.Color(250, 215, 160), null);             // Terracota: comida
+        if(panelCategorias != null) envolverConEncabezado(panelCategorias, "GESTIÓN DE CATEGORÍAS", new java.awt.Color(169, 223, 191), null); // Salvia: clasificar
+        if(panelDashboard != null) envolverConEncabezado(panelDashboard, "DASHBOARD", new java.awt.Color(212, 230, 241), null);               // Acero: metricas
         // -----------------------------------------------------------------
     }
 
@@ -3897,7 +4725,7 @@ public final class Sistema extends javax.swing.JFrame {
             }
             public void focusLost(java.awt.event.FocusEvent evt) {
                 if (evt.getComponent() instanceof javax.swing.JTextField) {
-                    evt.getComponent().setBackground(java.awt.Color.WHITE);
+                    evt.getComponent().setBackground(COLOR_TIFFANY);
                 }
             }
         };
@@ -3911,31 +4739,56 @@ public final class Sistema extends javax.swing.JFrame {
             }
         }
         
-        // Global Shortcuts via KeyboardFocusManager
-        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
-            if (e.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
-                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F1) {
-                    mostrarPanelAyuda();
-                    return true;
-                } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F2) {
-                    jTabbedPane1.setSelectedIndex(3);
-                    txtBuscarPlato.requestFocusInWindow(); // Ir a Tab Pedidos
-                    txtBuscarPlato.requestFocus();
-                    return true;
-                } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F5) {
-                    if (jTabbedPane1.getSelectedIndex() == 3) {
-                        btnGenerarPedido.doClick(); // Click en Actualizar/Generar
-                        return true;
-                    }
-                } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
-                    if (jTabbedPane1.getSelectedIndex() == 3) {
-                        // Opcional: Limpiar mesa o cancelar
-                        LimpiarTableMenu();
-                        return true;
-                    }
+        configurarAtajos();
+    }
+
+    /**
+     * A2: atajos via InputMap/ActionMap del rootPane (WHEN_IN_FOCUSED_WINDOW) en
+     * lugar de un KeyEventDispatcher global (process-wide). ESC se acota al panel
+     * del carrito (jPanel23) para no secuestrar la tecla en combos, dialogos ni
+     * editores de celda.
+     */
+    private void configurarAtajos() {
+        javax.swing.JRootPane rootPane = getRootPane();
+        javax.swing.InputMap im = rootPane.getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
+        javax.swing.ActionMap am = rootPane.getActionMap();
+
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F1, 0), "ux.ayuda");
+        am.put("ux.ayuda", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                mostrarPanelAyuda();
+            }
+        });
+
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F2, 0), "ux.irMenu");
+        am.put("ux.irMenu", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                jTabbedPane1.setSelectedIndex(3);
+                txtBuscarPlato.requestFocusInWindow();
+                txtBuscarPlato.requestFocus();
+            }
+        });
+
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, 0), "ux.generar");
+        am.put("ux.generar", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (jTabbedPane1.getSelectedIndex() == 3) {
+                    btnGenerarPedido.doClick();
                 }
             }
-            return false;
+        });
+
+        javax.swing.InputMap imCarrito = jPanel23.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        javax.swing.ActionMap amCarrito = jPanel23.getActionMap();
+        imCarrito.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0), "ux.cancelarPedido");
+        amCarrito.put("ux.cancelarPedido", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                LimpiarTableMenu();
+            }
         });
     }
 
@@ -3946,7 +4799,7 @@ public final class Sistema extends javax.swing.JFrame {
             + "<li><b>[F2]</b>: Ir directo al buscador de platos de la mesa actual.</li>"
             + "<li><b>[F5]</b>: Finalizar o Actualizar Pedido (cuando estás en el carrito).</li>"
             + "<li><b>[ESC]</b>: Limpiar el carrito de la mesa actual.</li>"
-            + "<li><b>[Enter] en Buscador</b>: Agrega automáticamente el primer plato de la lista.</li>"
+            + "<li><b>[Enter] en Buscador</b>: Agrega el plato actualmente seleccionado de la lista.</li>"
             + "</ul><p>¡Usar estos atajos en horas pico agilizará tus pedidos significativamente!</p></html>";
         JOptionPane.showMessageDialog(this, ayuda, "Ayuda de Atajos", JOptionPane.INFORMATION_MESSAGE);
     }
@@ -3965,16 +4818,47 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     public void ListarConfig() {
-        try {
-            conf = lgDao.datosEmpresa();
-        } catch (Exception ex) {
-            conf = null;
-        }
         if (conf == null) {
-            conf = new Config();
-            conf.setId(1);
-            conf.setTasaDolar(new BigDecimal("36.5000"));
-            conf.setIvaPorcentaje(new BigDecimal("16.00"));
+            conf = nuevoConfigPorDefecto();
+        }
+        final long miVersion = ++versionCargaConfig;
+        Servicio.ConcurrenciaServicio.ejecutarAsync(
+                this::cargarConfigEnFondo,
+                carga -> { if (miVersion == versionCargaConfig) mostrarConfigEnPantalla(carga); },
+                ex -> { if (miVersion == versionCargaConfig) mostrarConfigEnPantalla(new CargaConfig(null, java.util.List.of())); });
+    }
+
+    private static Config nuevoConfigPorDefecto() {
+        Config c = new Config();
+        c.setId(1);
+        c.setTasaDolar(new BigDecimal("36.5000"));
+        c.setIvaPorcentaje(new BigDecimal("16.00"));
+        return c;
+    }
+
+    /** Lectura de configuracion + impresoras fuera del EDT. */
+    private CargaConfig cargarConfigEnFondo() {
+        Config c;
+        try {
+            c = lgDao.datosEmpresa();
+        } catch (Exception ex) {
+            c = null;
+        }
+        java.util.List<String> impresoras;
+        try {
+            impresoras = Servicio.ServicioImpresionTicket.listarImpresorasDisponibles();
+        } catch (Exception ex) {
+            impresoras = java.util.List.of();
+        }
+        return new CargaConfig(c, impresoras);
+    }
+
+    private record CargaConfig(Config conf, java.util.List<String> impresoras) {}
+
+    private void mostrarConfigEnPantalla(CargaConfig carga) {
+        conf = carga.conf();
+        if (conf == null) {
+            conf = nuevoConfigPorDefecto();
         }
         txtIdConfig.setText("" + conf.getId());
         txtRucConfig.setText(conf.getRif() != null ? conf.getRif() : "");
@@ -4004,7 +4888,7 @@ public final class Sistema extends javax.swing.JFrame {
             spMesesRetencion.setValue(conf.getMesesRetencionPedidos() > 0 ? conf.getMesesRetencionPedidos() : 24);
         }
         if (cbImpresorasConfig != null) {
-            refrescarImpresorasEnCombo(conf.getImpresoraTickets());
+            refrescarImpresorasEnCombo(conf.getImpresoraTickets(), carga.impresoras());
         }
         if (conf.getImpresoraTickets() != null) {
             Servicio.ServicioImpresionTicket.setImpresoraGlobal(conf.getImpresoraTickets());
@@ -4230,8 +5114,11 @@ public final class Sistema extends javax.swing.JFrame {
         pnlMesonerosDashboard.add(new javax.swing.JScrollPane(tableMesonerosDashboard), java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableMesonerosDashboard);
         tabLeftDashboard.addTab("Mesoneros", pnlMesonerosDashboard);
+        // Tope de ancho: evita scroll horizontal en pantallas de 1366 px.
+        tabLeftDashboard.setPreferredSize(new java.awt.Dimension(360, 600));
 
         splitPrincipal.setDividerLocation(360);
+        splitPrincipal.setResizeWeight(0.30);
         splitPrincipal.setLeftComponent(tabLeftDashboard);
 
         // Panel Derecho: Clientes y Facturas
@@ -4352,22 +5239,7 @@ public final class Sistema extends javax.swing.JFrame {
         // Añadir Pestaña a jTabbedPane1
         jTabbedPane1.addTab("Dashboard", panelDashboard);
 
-        // Añadir botón en la barra lateral
-        btnDashboard = new javax.swing.JButton("Dashboard");
-        btnDashboard.setBackground(new java.awt.Color(0, 0, 0));
-        btnDashboard.setForeground(new java.awt.Color(255, 255, 255));
-        btnDashboard.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
-        btnDashboard.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        btnDashboard.setFocusable(false);
-        java.net.URL urlDash = getClass().getResource("/Img/pedidos.png");
-        if (urlDash != null) btnDashboard.setIcon(new javax.swing.ImageIcon(urlDash));
-        btnDashboard.addActionListener(e -> {
-            int idx = jTabbedPane1.indexOfTab("Dashboard");
-            if(idx != -1) jTabbedPane1.setSelectedIndex(idx);
-            cargarDashboardYClientes();
-        });
-        getContentPane().add(btnDashboard, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 625, 150, 45));
-        getContentPane().setComponentZOrder(btnDashboard, 0);
+        // El boton Dashboard vive en el GroupLayout de la barra lateral (ver initComponents).
     }
 
     private javax.swing.JPanel crearCardKpi(String titulo, javax.swing.JLabel lblValor, java.awt.Color fondo, java.awt.Color borde) {
@@ -4542,8 +5414,8 @@ public final class Sistema extends javax.swing.JFrame {
                                 modelFac.addRow(new Object[]{
                                     p.getId(),
                                     p.getFecha(),
-                                    p.getSala(),
-                                    p.getNum_mesa(),
+                                    p.esPedidoRapido() ? "Pedido rápido" : p.getSala(),
+                                    p.esPedidoRapido() ? "—" : p.getNum_mesa(),
                                     "$ " + (p.getTotalDecimal() != null ? p.getTotalDecimal().toPlainString() : "0.00"),
                                     "Bs. " + (p.getTotalBs() != null ? p.getTotalBs().toPlainString() : "0.00"),
                                     p.getUsuario(),
@@ -4563,8 +5435,7 @@ public final class Sistema extends javax.swing.JFrame {
     public void reimprimirFacturaClienteSeleccionada() {
         int fila = tableFacturasCliente.getSelectedRow();
         if (fila < 0) {
-            JOptionPane.showMessageDialog(this, "Selecciona una factura de la tabla para ver/reimprimir.",
-                    "Factura requerida", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Selecciona una factura de la tabla para ver/reimprimir");
             return;
         }
         int idPedido = Integer.parseInt(String.valueOf(tableFacturasCliente.getValueAt(fila, 0)));
@@ -4574,10 +5445,7 @@ public final class Sistema extends javax.swing.JFrame {
             if (motivo == null) return;
             String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
             boolean impreso = pedidosControlador.reimprimirPdfPedido(idPedido, motivo, usr);
-                if (!impreso) {
-                    JOptionPane.showMessageDialog(this, "El PDF fue generado pero falló el envío directo a la impresora (degradado a visor PDF).",
-                            "Impresión Degradada", JOptionPane.WARNING_MESSAGE);
-                }
+            if (!impreso) mostrarAvisoEnBanda("PDF generado; impresión abierta en visor PDF");
             } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                     "Error", JOptionPane.ERROR_MESSAGE);
@@ -4587,8 +5455,7 @@ public final class Sistema extends javax.swing.JFrame {
     public void previsualizarFacturaClienteSeleccionada() {
         int fila = tableFacturasCliente.getSelectedRow();
         if (fila < 0) {
-            JOptionPane.showMessageDialog(this, "Selecciona una factura de la tabla para previsualizar.",
-                    "Factura requerida", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Selecciona una factura de la tabla para previsualizar");
             return;
         }
         int idPedido = Integer.parseInt(String.valueOf(tableFacturasCliente.getValueAt(fila, 0)));
@@ -4621,9 +5488,9 @@ public final class Sistema extends javax.swing.JFrame {
         Object[] ob = new Object[7];
         for (int i = 0; i < Listar.size(); i++) {
             ob[0] = Listar.get(i).getId();
-            ob[1] = Listar.get(i).getSala();
+            ob[1] = Listar.get(i).esPedidoRapido() ? "Pedido rápido" : Listar.get(i).getSala();
             ob[2] = Listar.get(i).getUsuario();
-            ob[3] = Listar.get(i).getNum_mesa();
+            ob[3] = Listar.get(i).esPedidoRapido() ? "—" : Listar.get(i).getNum_mesa();
             ob[4] = Listar.get(i).getFecha();
             BigDecimal montoUsd = Listar.get(i).getTotalDecimal() != null ? Listar.get(i).getTotalDecimal().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
             BigDecimal montoBs = Listar.get(i).getTotalBs() != null ? Listar.get(i).getTotalBs().setScale(2, RoundingMode.HALF_UP) : null;
@@ -4823,6 +5690,10 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     public void refrescarImpresorasEnCombo(String seleccionPrevia) {
+        refrescarImpresorasEnCombo(seleccionPrevia, Servicio.ServicioImpresionTicket.listarImpresorasDisponibles());
+    }
+
+    public void refrescarImpresorasEnCombo(String seleccionPrevia, java.util.List<String> impresoras) {
         if (cbImpresorasConfig == null) {
             return;
         }
@@ -4830,7 +5701,7 @@ public final class Sistema extends javax.swing.JFrame {
         try {
             cbImpresorasConfig.removeAllItems();
             cbImpresorasConfig.addItem("DEFAULT");
-            java.util.List<String> lista = Servicio.ServicioImpresionTicket.listarImpresorasDisponibles();
+            java.util.List<String> lista = impresoras != null ? impresoras : java.util.List.of();
             for (String imp : lista) {
                 cbImpresorasConfig.addItem(imp);
             }
@@ -4883,9 +5754,7 @@ public final class Sistema extends javax.swing.JFrame {
                 try {
                     boolean ok = get();
                     if (ok) {
-                        JOptionPane.showMessageDialog(Sistema.this,
-                                "Ticket de prueba generado y enviado correctamente.\n• Impresora: " + imp + "\n• Modo: " + modo.getEtiqueta(),
-                                "Impresión de Prueba Exitosa", JOptionPane.INFORMATION_MESSAGE);
+                        mostrarAvisoEnBanda("Ticket de prueba enviado a " + imp + " (" + modo.getEtiqueta() + ")");
                     } else {
                         JOptionPane.showMessageDialog(Sistema.this,
                                 "No se pudo completar la prueba de impresión hacia '" + imp + "'. Revise la conexión de la tickera.",
@@ -4914,30 +5783,83 @@ public final class Sistema extends javax.swing.JFrame {
         panel.add(new javax.swing.JLabel(desc));
         panel.add(new javax.swing.JLabel("Fecha de la jornada a cerrar (AAAA-MM-DD):"));
         panel.add(txtFecha);
+        javax.swing.JLabel alertaFecha = new javax.swing.JLabel(" ");
+        alertaFecha.setForeground(COLOR_PELIGRO);
+        panel.add(alertaFecha);
         javax.swing.JTextField txtEfectivoContadoBs = new javax.swing.JTextField("", 10);
         txtEfectivoContadoBs.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13));
         panel.add(new javax.swing.JLabel("Efectivo Contado en Gaveta (Bs. - dejar vacío para omitir):"));
         panel.add(txtEfectivoContadoBs);
+        javax.swing.JLabel alertaEfectivoBs = new javax.swing.JLabel(" ");
+        alertaEfectivoBs.setForeground(COLOR_PELIGRO);
+        panel.add(alertaEfectivoBs);
         javax.swing.JTextField txtEfectivoContadoUsd = new javax.swing.JTextField("", 10);
         txtEfectivoContadoUsd.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13));
         panel.add(new javax.swing.JLabel("Efectivo Contado en Gaveta ($ USD - dejar vacío para omitir):"));
         panel.add(txtEfectivoContadoUsd);
+        javax.swing.JLabel alertaEfectivoUsd = new javax.swing.JLabel(" ");
+        alertaEfectivoUsd.setForeground(COLOR_PELIGRO);
+        panel.add(alertaEfectivoUsd);
         javax.swing.JComboBox<Modelo.ModoSalidaTicket> cbDestinoCierre = new javax.swing.JComboBox<>(Modelo.ModoSalidaTicket.values());
         cbDestinoCierre.setSelectedItem(Servicio.ServicioImpresionTicket.getModoGlobal());
         panel.add(new javax.swing.JLabel("Destino de Impresión:"));
         panel.add(cbDestinoCierre);
 
-        Object[] opciones = new Object[]{"Imprimir Directo (80mm)", "Previsualizar", "Cancelar"};
-        int seleccion = JOptionPane.showOptionDialog(
-                this,
-                panel,
-                tipo.getEtiqueta(),
-                JOptionPane.YES_NO_CANCEL_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                opciones,
-                opciones[0]
-        );
+        javax.swing.JDialog dialogoCierre = new javax.swing.JDialog(this, tipo.getEtiqueta(), true);
+        dialogoCierre.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        dialogoCierre.add(panel, java.awt.BorderLayout.CENTER);
+        javax.swing.JButton imprimir = new javax.swing.JButton("Imprimir Directo (80mm)");
+        javax.swing.JButton previsualizar = new javax.swing.JButton("Previsualizar");
+        javax.swing.JButton cancelar = new javax.swing.JButton("Cancelar");
+        JPanel botonesCierre = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        botonesCierre.add(cancelar);
+        botonesCierre.add(previsualizar);
+        botonesCierre.add(imprimir);
+        dialogoCierre.add(botonesCierre, java.awt.BorderLayout.SOUTH);
+        java.util.concurrent.atomic.AtomicInteger seleccionRef = new java.util.concurrent.atomic.AtomicInteger(-1);
+        Runnable validarYContinuar = () -> {
+            alertaFecha.setText(" ");
+            alertaEfectivoBs.setText(" ");
+            alertaEfectivoUsd.setText(" ");
+            String fechaIngresada = txtFecha.getText().trim();
+            try {
+                java.time.LocalDate parsed = java.time.LocalDate.parse(fechaIngresada.isEmpty() ? fechaDefecto : fechaIngresada,
+                        java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+                if (parsed.isAfter(java.time.LocalDate.now())) {
+                    alertaFecha.setText("La fecha del cierre no puede ser futura.");
+                    txtFecha.setBorder(javax.swing.BorderFactory.createLineBorder(COLOR_PELIGRO, 2));
+                    txtFecha.requestFocusInWindow();
+                    return;
+                }
+            } catch (Exception ex) {
+                alertaFecha.setText("Usa una fecha válida con formato AAAA-MM-DD.");
+                txtFecha.setBorder(javax.swing.BorderFactory.createLineBorder(COLOR_PELIGRO, 2));
+                txtFecha.requestFocusInWindow();
+                return;
+            }
+            if (!montoArqueoValido(txtEfectivoContadoBs, alertaEfectivoBs)
+                    || !montoArqueoValido(txtEfectivoContadoUsd, alertaEfectivoUsd)) return;
+        };
+        imprimir.addActionListener(e -> {
+            validarYContinuar.run();
+            if (alertaFecha.getText().isBlank() && alertaEfectivoBs.getText().isBlank() && alertaEfectivoUsd.getText().isBlank()) {
+                seleccionRef.set(0);
+                dialogoCierre.dispose();
+            }
+        });
+        previsualizar.addActionListener(e -> {
+            validarYContinuar.run();
+            if (alertaFecha.getText().isBlank() && alertaEfectivoBs.getText().isBlank() && alertaEfectivoUsd.getText().isBlank()) {
+                seleccionRef.set(1);
+                dialogoCierre.dispose();
+            }
+        });
+        cancelar.addActionListener(e -> dialogoCierre.dispose());
+        dialogoCierre.pack();
+        dialogoCierre.setLocationRelativeTo(this);
+        dialogoCierre.setVisible(true);
+        int seleccion = seleccionRef.get();
+        if (seleccion < 0) return;
 
         if (seleccion == 0 || seleccion == 1) {
             if (cbDestinoCierre.getSelectedItem() instanceof Modelo.ModoSalidaTicket m) {
@@ -4951,15 +5873,11 @@ public final class Sistema extends javax.swing.JFrame {
             try {
                 fechaParsed = java.time.LocalDate.parse(fecha, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this,
-                        "La fecha ingresada no es válida. Debe tener formato AAAA-MM-DD (ej: " + fechaDefecto + ").",
-                        "Fecha inválida", JOptionPane.ERROR_MESSAGE);
+                mostrarAlertaCampo(txtFecha, "Usa una fecha válida con formato AAAA-MM-DD.");
                 return;
             }
             if (fechaParsed.isAfter(java.time.LocalDate.now())) {
-                JOptionPane.showMessageDialog(this,
-                        "No es posible generar el cierre para una fecha futura (" + fecha + ").",
-                        "Fecha inválida", JOptionPane.ERROR_MESSAGE);
+                mostrarAlertaCampo(txtFecha, "La fecha del cierre no puede ser futura.");
                 return;
             }
 
@@ -4967,17 +5885,13 @@ public final class Sistema extends javax.swing.JFrame {
             String efBsTxt = txtEfectivoContadoBs.getText().trim();
             if (!efBsTxt.isEmpty()) {
                 try {
-                    efBs = new java.math.BigDecimal(efBsTxt);
+                    efBs = new java.math.BigDecimal(efBsTxt.replace(',', '.'));
                     if (efBs.compareTo(java.math.BigDecimal.ZERO) < 0) {
-                        JOptionPane.showMessageDialog(this,
-                                "El efectivo contado en Bs no puede ser negativo.",
-                                "Monto inválido", JOptionPane.ERROR_MESSAGE);
+                        mostrarAlertaCampo(txtEfectivoContadoBs, "El efectivo contado en Bs. no puede ser negativo.");
                         return;
                     }
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this,
-                            "El monto de efectivo en Bs no es un número válido: '" + efBsTxt + "'.\nIngrese un número positivo o deje la casilla en blanco para omitir arqueo.",
-                            "Monto inválido", JOptionPane.ERROR_MESSAGE);
+                    mostrarAlertaCampo(txtEfectivoContadoBs, "Ingresa un monto válido o deja el campo vacío.");
                     return;
                 }
             }
@@ -4986,17 +5900,13 @@ public final class Sistema extends javax.swing.JFrame {
             String efUsdTxt = txtEfectivoContadoUsd.getText().trim();
             if (!efUsdTxt.isEmpty()) {
                 try {
-                    efUsd = new java.math.BigDecimal(efUsdTxt);
+                    efUsd = new java.math.BigDecimal(efUsdTxt.replace(',', '.'));
                     if (efUsd.compareTo(java.math.BigDecimal.ZERO) < 0) {
-                        JOptionPane.showMessageDialog(this,
-                                "El efectivo contado en USD no puede ser negativo.",
-                                "Monto inválido", JOptionPane.ERROR_MESSAGE);
+                        mostrarAlertaCampo(txtEfectivoContadoUsd, "El efectivo contado en USD no puede ser negativo.");
                         return;
                     }
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this,
-                            "El monto de efectivo en USD no es un número válido: '" + efUsdTxt + "'.\nIngrese un número positivo o deje la casilla en blanco para omitir arqueo.",
-                            "Monto inválido", JOptionPane.ERROR_MESSAGE);
+                    mostrarAlertaCampo(txtEfectivoContadoUsd, "Ingresa un monto válido o deja el campo vacío.");
                     return;
                 }
             }
@@ -5063,9 +5973,7 @@ public final class Sistema extends javax.swing.JFrame {
                             } else {
                                 detalleDestino = "falló el envío a la impresora, degradado a visor PDF.";
                             }
-                            JOptionPane.showMessageDialog(Sistema.this,
-                                    "Ticket de " + tipo.getEtiqueta() + " procesado (" + detalleDestino + ")\nArchivo: " + resultado.archivo().getFileName(),
-                                    "Cierre de Caja", JOptionPane.INFORMATION_MESSAGE);
+                            mostrarAvisoEnBanda("Cierre " + tipo.getEtiqueta() + " procesado (" + detalleDestino + ")");
                         }
                     } catch (Exception ex) {
                         JOptionPane.showMessageDialog(Sistema.this,
@@ -5074,6 +5982,21 @@ public final class Sistema extends javax.swing.JFrame {
                     }
                 }
             }.execute();
+        }
+    }
+
+    private boolean montoArqueoValido(JTextField campo, JLabel alerta) {
+        String texto = campo.getText().trim();
+        if (texto.isEmpty()) return true;
+        try {
+            BigDecimal monto = new BigDecimal(texto.replace(',', '.'));
+            if (monto.signum() < 0 || monto.scale() > 2) throw new NumberFormatException();
+            return true;
+        } catch (NumberFormatException ex) {
+            alerta.setText("Ingresa un monto no negativo con hasta dos decimales, o deja el campo vacío.");
+            campo.setBorder(javax.swing.BorderFactory.createLineBorder(COLOR_PELIGRO, 2));
+            campo.requestFocusInWindow();
+            return false;
         }
     }
 
@@ -5089,8 +6012,7 @@ public final class Sistema extends javax.swing.JFrame {
             meses = (Integer) spMesesRetencion.getValue();
         }
         if (meses < 1) {
-            JOptionPane.showMessageDialog(this, "El período de retención debe ser de al menos 1 mes.",
-                    "Valor inválido", JOptionPane.WARNING_MESSAGE);
+            mostrarAlertaCampo(spMesesRetencion, "El período de retención debe ser de al menos 1 mes.");
             return;
         }
 
@@ -5103,23 +6025,43 @@ public final class Sistema extends javax.swing.JFrame {
         }
 
         // Diálogo 2: Contraseña de administrador obligatoria
-        javax.swing.JPasswordField pwd = new javax.swing.JPasswordField();
-        int opcionPwd = JOptionPane.showConfirmDialog(this,
-                new Object[]{"Ingrese la contraseña de administrador para autorizar la purga:", pwd},
-                "Autorización de Administrador Requerida",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (opcionPwd != JOptionPane.OK_OPTION) {
-            return;
-        }
+        javax.swing.JPasswordField pwd = new javax.swing.JPasswordField(18);
+        javax.swing.JDialog dialogoClave = new javax.swing.JDialog(this, "Autorización de administrador", true);
+        dialogoClave.setLayout(new java.awt.BorderLayout(8, 8));
+        JPanel panelClave = new JPanel(new java.awt.BorderLayout(6, 6));
+        panelClave.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 4, 12));
+        panelClave.add(new JLabel("Ingrese la contraseña de administrador para autorizar la purga:"), java.awt.BorderLayout.NORTH);
+        panelClave.add(pwd, java.awt.BorderLayout.CENTER);
+        JLabel alertaClave = new JLabel(" ");
+        alertaClave.setForeground(COLOR_PELIGRO);
+        panelClave.add(alertaClave, java.awt.BorderLayout.SOUTH);
+        dialogoClave.add(panelClave, java.awt.BorderLayout.CENTER);
+        JButton confirmarClave = new JButton("Autorizar purga");
+        JButton cancelarClave = new JButton("Cancelar");
+        JPanel botonesClave = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        botonesClave.add(cancelarClave);
+        botonesClave.add(confirmarClave);
+        dialogoClave.add(botonesClave, java.awt.BorderLayout.SOUTH);
+        java.util.concurrent.atomic.AtomicBoolean claveConfirmada = new java.util.concurrent.atomic.AtomicBoolean();
+        confirmarClave.addActionListener(e -> {
+            if (pwd.getPassword().length == 0) {
+                alertaClave.setText("La contraseña es obligatoria.");
+                pwd.setBorder(javax.swing.BorderFactory.createLineBorder(COLOR_PELIGRO, 2));
+                pwd.requestFocusInWindow();
+                return;
+            }
+            claveConfirmada.set(true);
+            dialogoClave.dispose();
+        });
+        cancelarClave.addActionListener(e -> dialogoClave.dispose());
+        dialogoClave.getRootPane().setDefaultButton(confirmarClave);
+        dialogoClave.pack();
+        dialogoClave.setLocationRelativeTo(this);
+        dialogoClave.setVisible(true);
+        if (!claveConfirmada.get()) return;
 
         char[] claveChars = pwd.getPassword();
         try {
-            if (claveChars.length == 0) {
-                JOptionPane.showMessageDialog(this, "Debe ingresar una contraseña válida.",
-                        "Contraseña requerida", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
             AutenticacionServicio auth = new AutenticacionServicio(lgDao);
             String correoAdmin = (usuarioActual != null && usuarioActual.getCorreo() != null)
                     ? usuarioActual.getCorreo().trim() : "";
@@ -5165,9 +6107,7 @@ public final class Sistema extends javax.swing.JFrame {
                 }
                 try {
                     int eliminados = get();
-                    JOptionPane.showMessageDialog(Sistema.this,
-                            "Purga completada exitosamente. Se eliminaron " + eliminados + " pedidos finalizados.",
-                            "Purga Exitosa", JOptionPane.INFORMATION_MESSAGE);
+                    mostrarAvisoEnBanda("Purga completada: " + eliminados + " pedidos finalizados eliminados");
                     if (jTabbedPane1.getSelectedIndex() == 5) {
                         ListarPedidos();
                     }
@@ -5188,9 +6128,7 @@ public final class Sistema extends javax.swing.JFrame {
         }
         List<Platos> inactivos = platosControlador.listarInactivos();
         if (inactivos == null || inactivos.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "No hay platos desactivados en el sistema.",
-                    "Reactivar Platos", JOptionPane.INFORMATION_MESSAGE);
+            mostrarAvisoEnBanda("No hay platos desactivados para reactivar");
             return;
         }
 
@@ -5239,26 +6177,20 @@ public final class Sistema extends javax.swing.JFrame {
             }
             int id = (int) tablaInactivos.getValueAt(fila, 0);
             String nombrePlato = tablaInactivos.getValueAt(fila, 1).toString();
-            int confirm = JOptionPane.showConfirmDialog(dialogo,
-                    "¿Desea reactivar el plato \"" + nombrePlato + "\" para que aparezca nuevamente en el menú?",
-                    "Confirmar reactivación", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                try {
-                    if (platosControlador.reactivar(id)) {
-                        JOptionPane.showMessageDialog(dialogo, "El plato ha sido reactivado con éxito.",
-                                "Éxito", JOptionPane.INFORMATION_MESSAGE);
-                        dialogo.dispose();
-                        LimpiarPlatos();
-                        ListarPlatos(TablePlatos, "");
-                        RefrescoVistas.notificar(RefrescoVistas.PLATOS);
-                    } else {
-                        JOptionPane.showMessageDialog(dialogo, "No se pudo reactivar el plato.",
-                                "Error", JOptionPane.ERROR_MESSAGE);
-                    }
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(dialogo, "Error al reactivar el plato: " + mensajeError(ex),
+            try {
+                if (platosControlador.reactivar(id)) {
+                    dialogo.dispose();
+                    LimpiarPlatos();
+                    ListarPlatos(TablePlatos, "");
+                    RefrescoVistas.notificar(RefrescoVistas.PLATOS);
+                    mostrarAvisoEnBanda("Plato reactivado: " + nombrePlato);
+                } else {
+                    JOptionPane.showMessageDialog(dialogo, "No se pudo reactivar el plato.",
                             "Error", JOptionPane.ERROR_MESSAGE);
                 }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(dialogo, "Error al reactivar el plato: " + mensajeError(ex),
+                        "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -5443,7 +6375,7 @@ public final class Sistema extends javax.swing.JFrame {
         panel.add(btnModificar);
 
         javax.swing.JButton btnVacaciones = new javax.swing.JButton("Vacaciones");
-        btnVacaciones.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        btnVacaciones.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         btnVacaciones.setToolTipText("Alternar estado Activo / Vacaciones del mesonero seleccionado");
         btnVacaciones.setBounds(221, 90, 110, 28);
         btnVacaciones.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -5451,7 +6383,7 @@ public final class Sistema extends javax.swing.JFrame {
         panel.add(btnVacaciones);
 
         javax.swing.JButton btnEliminar = new javax.swing.JButton("Eliminar");
-        btnEliminar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        btnEliminar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         btnEliminar.setForeground(java.awt.Color.WHITE);
         btnEliminar.setBackground(COLOR_PELIGRO);
         btnEliminar.setContentAreaFilled(true);
@@ -5464,7 +6396,7 @@ public final class Sistema extends javax.swing.JFrame {
         panel.add(btnEliminar);
 
         javax.swing.JButton btnNuevo = new javax.swing.JButton("Nuevo");
-        btnNuevo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        btnNuevo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         btnNuevo.setBounds(442, 90, 85, 28);
         btnNuevo.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnNuevo.addActionListener(e -> limpiarFormularioMesonero());
@@ -5488,6 +6420,19 @@ public final class Sistema extends javax.swing.JFrame {
         scrollTabla.setBounds(15, 130, 545, 310);
         panel.add(scrollTabla);
         configurarTablaIndividual(tableMesonerosConfig);
+        // Scroll proporcional al tamano del panel (el panel usa layout nulo).
+        panel.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int w = panel.getWidth();
+                int h = panel.getHeight();
+                if (w <= 0 || h <= 0) {
+                    return;
+                }
+                scrollTabla.setBounds(15, 130, Math.max(300, w - 30), Math.max(200, h - 145));
+                scrollTabla.validate();
+            }
+        });
 
         listarMesonerosConfig();
         return panel;
@@ -5550,20 +6495,18 @@ public final class Sistema extends javax.swing.JFrame {
         boolean activo = chkMesoneroActivo.isSelected();
 
         if (nombre.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "El nombre completo del mesonero es obligatorio.", "Validación", JOptionPane.WARNING_MESSAGE);
-            txtMesoneroNombre.requestFocus();
+            mostrarAlertaCampo(txtMesoneroNombre, "El nombre completo del mesonero es obligatorio.");
             return;
         }
         if (cedula.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "La cédula / documento del mesonero es obligatoria.", "Validación", JOptionPane.WARNING_MESSAGE);
-            txtMesoneroCedula.requestFocus();
+            mostrarAlertaCampo(txtMesoneroCedula, "La cédula o documento del mesonero es obligatorio.");
             return;
         }
 
         try {
             Mesonero m = new Mesonero(nombre, cedula, telefono, activo);
             mesoneroDao.registrar(m);
-            JOptionPane.showMessageDialog(this, "Mesonero '" + nombre + "' registrado con éxito.", "Registro exitoso", JOptionPane.INFORMATION_MESSAGE);
+            mostrarAvisoEnBanda("Mesonero '" + nombre + "' registrado");
             limpiarFormularioMesonero();
             listarMesonerosConfig();
             cargarComboMesoneros();
@@ -5578,7 +6521,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) return;
         String idStr = txtMesoneroId.getText().trim();
         if (idStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Seleccione un mesonero de la tabla para modificar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Seleccione un mesonero para modificar");
             return;
         }
         int id = Integer.parseInt(idStr);
@@ -5588,7 +6531,8 @@ public final class Sistema extends javax.swing.JFrame {
         boolean activo = chkMesoneroActivo.isSelected();
 
         if (nombre.isEmpty() || cedula.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "El nombre completo y la cédula son obligatorios.", "Validación", JOptionPane.WARNING_MESSAGE);
+            mostrarAlertaCampo(nombre.isEmpty() ? txtMesoneroNombre : txtMesoneroCedula,
+                    nombre.isEmpty() ? "El nombre completo es obligatorio." : "La cédula o documento es obligatorio.");
             return;
         }
 
@@ -5596,7 +6540,7 @@ public final class Sistema extends javax.swing.JFrame {
             Mesonero m = new Mesonero(id, nombre, cedula, telefono, activo, false);
             boolean ok = mesoneroDao.modificar(m);
             if (ok) {
-                JOptionPane.showMessageDialog(this, "Mesonero actualizado correctamente.", "Actualizado", JOptionPane.INFORMATION_MESSAGE);
+                mostrarAvisoEnBanda("Mesonero actualizado");
                 limpiarFormularioMesonero();
                 listarMesonerosConfig();
                 cargarComboMesoneros();
@@ -5614,7 +6558,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) return;
         String idStr = txtMesoneroId.getText().trim();
         if (idStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Seleccione un mesonero de la tabla para alternar su estado.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Seleccione un mesonero para cambiar su estado");
             return;
         }
         int id = Integer.parseInt(idStr);
@@ -5625,7 +6569,7 @@ public final class Sistema extends javax.swing.JFrame {
             boolean ok = mesoneroDao.cambiarActivo(id, nuevo);
             if (ok) {
                 String estadoStr = nuevo ? "Activo / Disponible" : "De Vacaciones / Inactivo";
-                JOptionPane.showMessageDialog(this, "El estado del mesonero se cambió a: " + estadoStr, "Estado actualizado", JOptionPane.INFORMATION_MESSAGE);
+                mostrarAvisoEnBanda("Estado del mesonero: " + estadoStr);
                 chkMesoneroActivo.setSelected(nuevo);
                 listarMesonerosConfig();
                 cargarComboMesoneros();
@@ -5641,7 +6585,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) return;
         String idStr = txtMesoneroId.getText().trim();
         if (idStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Seleccione un mesonero de la tabla para eliminar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Seleccione un mesonero para eliminar");
             return;
         }
         int id = Integer.parseInt(idStr);
@@ -5654,7 +6598,7 @@ public final class Sistema extends javax.swing.JFrame {
             try {
                 boolean ok = mesoneroDao.eliminarLogico(id);
                 if (ok) {
-                    JOptionPane.showMessageDialog(this, "Mesonero eliminado correctamente.", "Eliminado", JOptionPane.INFORMATION_MESSAGE);
+                    mostrarAvisoEnBanda("Mesonero eliminado");
                     limpiarFormularioMesonero();
                     listarMesonerosConfig();
                     cargarComboMesoneros();
@@ -5697,12 +6641,7 @@ public final class Sistema extends javax.swing.JFrame {
                 try {
                     java.nio.file.Path p = get();
                     long tamBytes = java.nio.file.Files.size(p);
-                    JOptionPane.showMessageDialog(Sistema.this,
-                            "Respaldo generado exitosamente.\n\n"
-                            + "Archivo: " + p.getFileName() + "\n"
-                            + "Tamaño: " + (tamBytes / 1024) + " KB\n"
-                            + "Ruta: " + p.toAbsolutePath(),
-                            "Respaldo Creado", JOptionPane.INFORMATION_MESSAGE);
+                    mostrarAvisoEnBanda("Respaldo creado: " + p.getFileName() + " (" + (tamBytes / 1024) + " KB)");
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(Sistema.this,
                             "No se pudo crear el respaldo: " + mensajeError(ex),
@@ -5754,9 +6693,7 @@ public final class Sistema extends javax.swing.JFrame {
             protected void done() {
                 try {
                     get();
-                    JOptionPane.showMessageDialog(Sistema.this,
-                            "Base de datos restaurada correctamente a partir de:\n" + archivoSel.getName(),
-                            "Restauración Exitosa", JOptionPane.INFORMATION_MESSAGE);
+                    mostrarAvisoEnBanda("Base de datos restaurada: " + archivoSel.getName());
                     ListarConfig();
                     ListarPedidos();
                     ListarPlatos(TablePlatos, "");
@@ -5779,28 +6716,22 @@ public final class Sistema extends javax.swing.JFrame {
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
         String idStr = txtIdHistorialPedido.getText().trim();
         if (idStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Seleccione un pedido de la tabla para anular.", "Pedido requerido", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Seleccione un pedido de la tabla para anular");
             return;
         }
         int id = Integer.parseInt(idStr);
-        String motivo = JOptionPane.showInputDialog(this,
-                "Ingrese el motivo de la anulación del pedido #" + id + ":",
-                "Anulación de Pedido", JOptionPane.WARNING_MESSAGE);
+        String motivo = solicitarMotivoAnulacion(id);
         if (motivo == null) return;
-        if (motivo.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar un motivo para anular el pedido.", "Motivo obligatorio", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        int confirmar = JOptionPane.showConfirmDialog(this,
-                "¿Confirma la anulación del pedido #" + id + "?\nMotivo: " + motivo.trim(),
-                "Confirmar Anulación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (confirmar != JOptionPane.YES_OPTION) return;
+        int confirmacion = JOptionPane.showConfirmDialog(this,
+                "¿Confirma anular el pedido #" + id + "? Esta acción no se puede deshacer.",
+                "Confirmar anulación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirmacion != JOptionPane.YES_OPTION) return;
 
         String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
         try {
             boolean exito = pedidosControlador.anularPedido(id, motivo.trim(), usr);
             if (exito) {
-                JOptionPane.showMessageDialog(this, "El pedido #" + id + " ha sido anulado con éxito.", "Pedido Anulado", JOptionPane.INFORMATION_MESSAGE);
+                mostrarAvisoEnBanda("Pedido #" + id + " anulado");
                 ListarPedidos();
                 RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
                 RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
@@ -5812,17 +6743,55 @@ public final class Sistema extends javax.swing.JFrame {
         }
     }
 
+    private String solicitarMotivoAnulacion(int idPedido) {
+        javax.swing.JDialog dialogo = new javax.swing.JDialog(this, "Motivo de anulación", true);
+        dialogo.setLayout(new java.awt.BorderLayout(8, 8));
+        JPanel contenido = new JPanel(new java.awt.BorderLayout(6, 6));
+        contenido.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 4, 12));
+        contenido.add(new JLabel("Indique el motivo para anular el pedido #" + idPedido + ":"), java.awt.BorderLayout.NORTH);
+        JTextField campoMotivo = new JTextField(32);
+        contenido.add(campoMotivo, java.awt.BorderLayout.CENTER);
+        JLabel alerta = new JLabel(" ");
+        alerta.setForeground(COLOR_PELIGRO);
+        alerta.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        contenido.add(alerta, java.awt.BorderLayout.SOUTH);
+        dialogo.add(contenido, java.awt.BorderLayout.CENTER);
+        JButton aceptar = new JButton("Continuar");
+        JButton cancelar = new JButton("Cancelar");
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        acciones.add(cancelar);
+        acciones.add(aceptar);
+        dialogo.add(acciones, java.awt.BorderLayout.SOUTH);
+        java.util.concurrent.atomic.AtomicReference<String> resultado = new java.util.concurrent.atomic.AtomicReference<>();
+        aceptar.addActionListener(e -> {
+            if (campoMotivo.getText().trim().isEmpty()) {
+                alerta.setText("El motivo es obligatorio.");
+                campoMotivo.setBorder(javax.swing.BorderFactory.createLineBorder(COLOR_PELIGRO, 2));
+                campoMotivo.requestFocusInWindow();
+                return;
+            }
+            resultado.set(campoMotivo.getText().trim());
+            dialogo.dispose();
+        });
+        cancelar.addActionListener(e -> dialogo.dispose());
+        dialogo.getRootPane().setDefaultButton(aceptar);
+        dialogo.pack();
+        dialogo.setLocationRelativeTo(this);
+        dialogo.setVisible(true);
+        return resultado.get();
+    }
+
     void mostrarAuditoriaPedidoSeleccionado() {
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
         String idStr = txtIdHistorialPedido.getText().trim();
         if (idStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Seleccione un pedido de la tabla para ver su auditoría.", "Pedido requerido", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Seleccione un pedido de la tabla para ver su auditoría");
             return;
         }
         int id = Integer.parseInt(idStr);
         List<Modelo.AuditoriaPedido> lista = pedidosControlador.obtenerAuditoriaPedido(id);
         if (lista == null || lista.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No se encontraron eventos de auditoría para el pedido #" + id + ".", "Auditoría Vacía", JOptionPane.INFORMATION_MESSAGE);
+            mostrarAvisoEnBanda("No hay eventos de auditoría para el pedido #" + id);
             return;
         }
 
@@ -5867,7 +6836,14 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void ListarUsuarios() {
-        List<Usuario> Listar = lgDao.ListarUsuarios();
+        final long miVersion = ++versionCargaUsuarios;
+        Servicio.ConcurrenciaServicio.ejecutarAsync(
+                () -> lgDao.ListarUsuarios(),
+                lista -> { if (miVersion == versionCargaUsuarios) mostrarUsuariosEnTabla(lista); },
+                ex -> { if (miVersion == versionCargaUsuarios) mostrarErrorCargaUsuarios(ex); });
+    }
+
+    private void mostrarUsuariosEnTabla(List<Usuario> Listar) {
         modelo = (DefaultTableModel) TableUsuarios.getModel();
         modelo.setRowCount(0);
         Object[] ob = new Object[4];
@@ -5879,6 +6855,13 @@ public final class Sistema extends javax.swing.JFrame {
             modelo.addRow(ob);
         }
         colorHeader(TableUsuarios);
+    }
+
+    private void mostrarErrorCargaUsuarios(Throwable error) {
+        String mensaje = error instanceof ErrorAplicacionException
+                ? error.getMessage()
+                : "No se pudieron cargar los usuarios. El detalle quedó registrado.";
+        JOptionPane.showMessageDialog(this, mensaje, "Error al cargar usuarios", JOptionPane.ERROR_MESSAGE);
     }
 
     private void ListarSalas() {
@@ -6004,6 +6987,29 @@ public final class Sistema extends javax.swing.JFrame {
                 this::mostrarErrorCargaSalas).execute();
     }
 
+    private void abrirPedidoRapido() {
+        if (!autorizar(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS)) return;
+        LimpiarTableMenu();
+        modoPedidoRapido = true;
+        idPedidoEdicion = -1;
+        txtTempIdSala.setText("0");
+        txtTempNumMesa.setText("0");
+        txtComentario.setText("");
+        txtBuscarPlato.setText("");
+        jPanel23.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                javax.swing.BorderFactory.createLineBorder(COLOR_CABECERA, 1),
+                "PEDIDO RÁPIDO | PARA LLEVAR",
+                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
+                javax.swing.border.TitledBorder.DEFAULT_POSITION,
+                new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14), COLOR_CABECERA));
+        btnGenerarPedido.setText(politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)
+                ? "Cobrar y finalizar" : "Enviar a cocina");
+        cargarComboMesoneros();
+        ListarPlatos(tblTemPlatos, "");
+        jTabbedPane1.setSelectedIndex(3);
+        txtBuscarPlato.requestFocusInWindow();
+    }
+
     private void mostrarSalasEnPanel(List<Salas> Listar) {
         PanelSalas.removeAll();
         Map<Integer, Integer> ocupadasPorSala = Collections.emptyMap();
@@ -6021,16 +7027,25 @@ public final class Sistema extends javax.swing.JFrame {
             salaTipoMap.put(id, s.getTipo());
 
             int ocupadas = ocupadasPorSala.getOrDefault(id, 0);
-            String unidad = esBarra ? "puestos" : "mesas";
-            String textoBoton = esBarra
-                    ? nombre + " (" + ocupadas + "/" + cantidad + " puestos)"
-                    : nombre + " (" + ocupadas + "/" + cantidad + " ocupadas)";
-            JButton boton = new JButton(textoBoton, new ImageIcon(getClass().getResource("/Img/salas.png")));
+            String unidad = esBarra ? "puestos" : "ocupadas";
+            String colorOcupacion = ocupadas >= cantidad ? "#B42828" : (ocupadas == 0 ? "#1C7430" : "#B1580E");
+            String nombreHtml = nombre.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+            javax.swing.ImageIcon iconoSala = new javax.swing.ImageIcon(getClass().getResource("/Img/salas.png"));
+            java.awt.Image imgSala = iconoSala.getImage().getScaledInstance(64, 64, java.awt.Image.SCALE_SMOOTH);
+            JButton boton = new JButton();
+            boton.setIcon(new javax.swing.ImageIcon(imgSala));
+            boton.setText("<html><center><b>" + nombreHtml + "</b><br><span style='color:" + colorOcupacion + ";'>"
+                    + ocupadas + "/" + cantidad + " " + unidad + "</span></center></html>");
             boton.setToolTipText(nombre + (esBarra ? " [BARRA]" : "") + " - " + ocupadas + " de " + cantidad + " " + (esBarra ? "puestos ocupados" : "mesas ocupadas"));
             boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
             boton.setHorizontalTextPosition(JButton.CENTER);
             boton.setVerticalTextPosition(JButton.BOTTOM);
-            boton.setBackground(new Color(204, 204, 204));
+            boton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+            boton.setBackground(new Color(255, 255, 255));
+            boton.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                    javax.swing.BorderFactory.createLineBorder(COLOR_CABECERA, 1),
+                    javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+            boton.setFocusPainted(false);
             PanelSalas.add(boton);
             boton.addActionListener((ActionEvent e) -> {
                 panelMesas(id, nombre, cantidad, esBarra);
@@ -6039,6 +7054,40 @@ public final class Sistema extends javax.swing.JFrame {
         }
         PanelSalas.revalidate();
         PanelSalas.repaint();
+        ajustarColumnasSalas();
+    }
+
+    /** Ancho objetivo de cada tarjeta de sala para el calculo proporcional de columnas. */
+    private static final int ANCHO_TARJETA_SALA_OBJETIVO = 220;
+
+    /**
+     * Rejilla proporcional de salas: las columnas se calculan como porcentaje del
+     * ancho visible (ancho viewport / ancho objetivo), limitadas al numero de salas.
+     * Asi en pantallas angostas salen 2 o mas filas y en pantallas anchas las tarjetas
+     * se reparten el 100 % del ancho sin cortarse. Si hay mas salas de las que caben,
+     * el scroll vertical las muestra todas.
+     */
+    private void ajustarColumnasSalas() {
+        if (PanelSalas == null || jScrollPane8 == null || jScrollPane8.getViewport() == null) {
+            return;
+        }
+        int ancho = jScrollPane8.getViewport().getExtentSize().width;
+        if (ancho <= 0) {
+            ancho = jScrollPane8.getWidth();
+        }
+        if (ancho <= 0) {
+            return;
+        }
+        int n = PanelSalas.getComponentCount();
+        if (n == 0) {
+            return;
+        }
+        int cols = Math.max(1, ancho / ANCHO_TARJETA_SALA_OBJETIVO);
+        cols = Math.min(cols, n);
+        if (PanelSalas.getLayout() instanceof java.awt.GridLayout rejilla && rejilla.getColumns() != cols) {
+            rejilla.setColumns(cols);
+            PanelSalas.revalidate();
+        }
     }
 
     private void initIvaPlatosYBarraSalas() {
@@ -6057,7 +7106,7 @@ public final class Sistema extends javax.swing.JFrame {
         // 2. Combo Tipo de Sala en formulario de Salas (Tab 8)
         if (jPanel10 != null) {
             javax.swing.JLabel lblTipoSala = new javax.swing.JLabel("Tipo:");
-            lblTipoSala.setFont(new java.awt.Font("Times New Roman", java.awt.Font.BOLD | java.awt.Font.ITALIC, 14));
+            lblTipoSala.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
             jPanel10.add(lblTipoSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 185, 60, 25));
 
             cbTipoSala = new javax.swing.JComboBox<>(new String[]{"SALÓN", "BARRA"});
@@ -6146,7 +7195,7 @@ public final class Sistema extends javax.swing.JFrame {
         lblLeyendaTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         panelFooter.add(lblLeyendaTitulo);
         panelFooter.add(cuadroColor(new java.awt.Color(0, 102, 102), "Libre"));
-        panelFooter.add(cuadroColor(new java.awt.Color(255, 51, 51), "Ocupada"));
+        panelFooter.add(cuadroColor(new java.awt.Color(192, 57, 43), "Ocupada"));
 
         jPanel22.add(panelFooter, java.awt.BorderLayout.SOUTH);
         jPanel22.revalidate();
@@ -6259,7 +7308,7 @@ public final class Sistema extends javax.swing.JFrame {
 
             String prefijo = esBarra ? "PUESTO N°: " : "MESA N°: ";
             if (verificar > 0) {
-                boton.setBackground(new Color(255, 51, 51));
+                boton.setBackground(new Color(192, 57, 43));
                 if (visual != null && !visual.isBlank()) {
                     boton.setText("<html><center>" + prefijo + i + "<br><font color='#FFFF99' size='2'><b>" + visual + "</b></font></center></html>");
                     boton.setToolTipText((esBarra ? "Puesto Ocupado" : "Ocupada") + " - Atendida por: " + nombreMesonero);
@@ -6343,10 +7392,15 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void mostrarPlatosEnTabla(JTable tabla, List<Platos> Listar) {
+        // A1: preservar la seleccion por ID entre refrescos (el filtrado no debe perderla).
+        int filaSel = tabla.getSelectedRow();
+        String idSel = (filaSel >= 0 && filaSel < tabla.getRowCount())
+                ? String.valueOf(tabla.getValueAt(filaSel, 0)) : null;
         modelo = (DefaultTableModel) tabla.getModel();
         modelo.setRowCount(0);
         boolean tieneColumnaIva = tabla.getColumnCount() >= 4;
         Object[] ob = new Object[tieneColumnaIva ? 4 : 3];
+        int filaRestaurar = -1;
         for (int i = 0; i < Listar.size(); i++) {
             Platos p = Listar.get(i);
             platoAplicaIvaMap.put(p.getId(), p.isAplicaIva());
@@ -6364,13 +7418,19 @@ public final class Sistema extends javax.swing.JFrame {
                 ob[3] = p.isAplicaIva() ? "Sí (16%)" : "Exento (0%)";
             }
             modelo.addRow(ob);
+            if (idSel != null && idSel.equals(String.valueOf(p.getId()))) {
+                filaRestaurar = modelo.getRowCount() - 1;
+            }
+        }
+        if (filaRestaurar >= 0 && filaRestaurar < tabla.getRowCount()) {
+            tabla.setRowSelectionInterval(filaRestaurar, filaRestaurar);
         }
         installarRenderersPlatos(tabla);
         colorHeader(tabla);
     }
 
     private void installarRenderersPlatos(JTable tabla) {
-        RendererPlato renderer = new RendererPlato(tabla == tblTemPlatos, platosPorId);
+        RendererPlato renderer = new RendererPlato(platosPorId);
         for (int i = 0; i < tabla.getColumnCount(); i++) {
             tabla.getColumnModel().getColumn(i).setCellRenderer(renderer);
         }
@@ -6502,9 +7562,17 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void cargarCategorias() {
+        final Modelo.Categoria seleccionada = listaCategorias != null ? listaCategorias.getSelectedValue() : null;
+        final long miVersion = ++versionCargaCategorias;
+        Servicio.ConcurrenciaServicio.ejecutarAsync(
+                () -> categoriaControlador().listar(),
+                categorias -> { if (miVersion == versionCargaCategorias) mostrarCategoriasEnLista(categorias, seleccionada); },
+                ex -> { if (miVersion == versionCargaCategorias) mostrarErrorCategorias(ex); });
+    }
+
+    private void mostrarCategoriasEnLista(java.util.List<Modelo.Categoria> categorias,
+            Modelo.Categoria seleccionada) {
         try {
-            List<Modelo.Categoria> categorias = categoriaControlador().listar();
-            Modelo.Categoria seleccionada = listaCategorias.getSelectedValue();
             modeloListaCategorias.clear();
             for (Modelo.Categoria c : categorias) {
                 modeloListaCategorias.addElement(c);
@@ -6592,6 +7660,10 @@ public final class Sistema extends javax.swing.JFrame {
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) {
             return;
         }
+        if (txtNombreCategoria.getText().trim().isEmpty()) {
+            mostrarAlertaCampo(txtNombreCategoria, "El nombre de la categoría es obligatorio.");
+            return;
+        }
         try {
             Modelo.Categoria c = new Modelo.Categoria();
             c.setNombre(txtNombreCategoria.getText());
@@ -6600,6 +7672,7 @@ public final class Sistema extends javax.swing.JFrame {
             limpiarFormularioCategoria();
             cargarCategorias();
             RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
+            mostrarAvisoEnBanda("Categoría registrada");
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }
@@ -6611,7 +7684,11 @@ public final class Sistema extends javax.swing.JFrame {
         }
         Modelo.Categoria seleccionada = listaCategorias.getSelectedValue();
         if (seleccionada == null) {
-            JOptionPane.showMessageDialog(this, "Selecciona una categoría para modificar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Selecciona una categoría para modificar");
+            return;
+        }
+        if (txtNombreCategoria.getText().trim().isEmpty()) {
+            mostrarAlertaCampo(txtNombreCategoria, "El nombre de la categoría es obligatorio.");
             return;
         }
         try {
@@ -6665,7 +7742,7 @@ public final class Sistema extends javax.swing.JFrame {
         }
         Modelo.Categoria seleccionada = listaCategorias.getSelectedValue();
         if (seleccionada == null) {
-            JOptionPane.showMessageDialog(this, "Selecciona una categoría para eliminar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            mostrarAvisoEnBanda("Selecciona una categoría para eliminar");
             return;
         }
         int confirm = JOptionPane.showConfirmDialog(this,
@@ -6734,8 +7811,12 @@ public final class Sistema extends javax.swing.JFrame {
         }
         Platos p = (Platos) cbPlatoAsignacion.getSelectedItem();
         Modelo.Categoria c = (Modelo.Categoria) cbCategoriaPlato.getSelectedItem();
-        if (p == null || c == null) {
-            JOptionPane.showMessageDialog(this, "Selecciona un plato y una categoría.", "Aviso", JOptionPane.WARNING_MESSAGE);
+        if (p == null) {
+            mostrarAlertaCampo(cbPlatoAsignacion, "Selecciona un plato.");
+            return;
+        }
+        if (c == null) {
+            mostrarAlertaCampo(cbCategoriaPlato, "Selecciona una categoría.");
             return;
         }
         try {
@@ -6750,9 +7831,11 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void mostrarErrorCategorias(Throwable error) {
-        String mensaje = error instanceof ErrorAplicacionException
-                ? error.getMessage()
-                : "No se pudieron actualizar las categorías. El detalle quedó registrado.";
+        if (error instanceof ErrorAplicacionException) {
+            mostrarAlertaCampo(txtNombreCategoria, error.getMessage());
+            return;
+        }
+        String mensaje = "No se pudieron actualizar las categorías. El detalle quedó registrado.";
         JOptionPane.showMessageDialog(this, mensaje, "Categorías", JOptionPane.ERROR_MESSAGE);
     }
 
@@ -6828,12 +7911,10 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private final class RendererPlato implements javax.swing.table.TableCellRenderer {
-        private final boolean menuPedido;
         private final Map<Integer, Platos> porId;
         private final javax.swing.JLabel etiqueta;
 
-        private RendererPlato(boolean menuPedido, Map<Integer, Platos> porId) {
-            this.menuPedido = menuPedido;
+        private RendererPlato(Map<Integer, Platos> porId) {
             this.porId = porId;
             this.etiqueta = new JLabel();
             this.etiqueta.setOpaque(true);
@@ -6859,7 +7940,7 @@ public final class Sistema extends javax.swing.JFrame {
                 etiqueta.setForeground(tabla.getSelectionForeground());
             } else {
                 Color fondo = null;
-                if (menuPedido && p != null && p.getCategoriaColor() != null) {
+                if (p != null && p.getCategoriaColor() != null) {
                     try {
                         fondo = Color.decode(p.getCategoriaColor());
                     } catch (NumberFormatException ignored) {}
@@ -6872,12 +7953,20 @@ public final class Sistema extends javax.swing.JFrame {
                     etiqueta.setForeground(tabla.getForeground());
                 }
             }
-            if (menuPedido && columna == 1 && p != null && p.isFavorito()) {
+            if (columna == 1 && p != null && p.isFavorito()) {
                 etiqueta.setText("★ " + etiqueta.getText());
-                etiqueta.setToolTipText("Favorito: siempre visible entre los primeros platos.");
             }
-            if (p != null && p.getCategoriaNombre() != null) {
-                etiqueta.setToolTipText("Categoría: " + p.getCategoriaNombre());
+            if (p != null) {
+                StringBuilder tip = new StringBuilder();
+                if (p.isFavorito()) {
+                    tip.append("Favorito. ");
+                }
+                if (p.getCategoriaNombre() != null) {
+                    tip.append("Categoría: ").append(p.getCategoriaNombre());
+                }
+                if (tip.length() > 0) {
+                    etiqueta.setToolTipText(tip.toString().trim());
+                }
             }
             return etiqueta;
         }
@@ -6926,6 +8015,7 @@ public final class Sistema extends javax.swing.JFrame {
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(id_sala);
         pedido.setNum_mesa(num_mesa);
+        pedido.setTipoPedido(modoPedidoRapido ? "RAPIDO" : "MESA");
         pedido.setSubtotal(fiscal.subtotalUsd());
         pedido.setIvaPorcentaje(fiscal.ivaPorcentaje());
         pedido.setIvaMonto(fiscal.ivaUsd());
@@ -7075,24 +8165,31 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void mostrarPedidoEnPantalla(Pedidos pedido, List<DetallePedido> Listar) {
         ped = pedido;
-        BigDecimal tasa = (ped.getTasaCambio() != null && ped.getTasaCambio().compareTo(BigDecimal.ZERO) > 0)
-                ? ped.getTasaCambio()
-                : ((conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000"));
-        BigDecimal totalBs = ped.getTotalBs() != null ? ped.getTotalBs() : ped.getTotalDecimal().multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal totalBs2Dec = totalBs.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal tasa = ped.getTasaCambio();
+        boolean tasaValida = tasa != null && tasa.signum() > 0;
+        BigDecimal totalBs = ped.getTotalBs();
+        if (totalBs == null && tasaValida) {
+            totalBs = ped.getTotalDecimal().multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        }
+        BigDecimal totalBs2Dec = totalBs != null ? totalBs.setScale(2, RoundingMode.HALF_UP) : null;
         BigDecimal totalUsd2Dec = ped.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal subtotalUsd = ped.getSubtotal() != null ? ped.getSubtotal().setScale(2, RoundingMode.HALF_UP) : totalUsd2Dec;
         BigDecimal ivaUsd = ped.getIvaMonto() != null ? ped.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+        BigDecimal ivaBs = ped.getIvaBs() != null
+                ? ped.getIvaBs().setScale(2, RoundingMode.HALF_UP)
+                : tasaValida ? ivaUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP) : null;
         BigDecimal ivaPct = ped.getIvaPorcentaje() != null ? ped.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
 
-        String totalBsStr = String.format(java.util.Locale.US, "%.2f", totalBs2Dec);
+        String totalBsStr = totalBs2Dec != null
+                ? String.format(java.util.Locale.US, "%.2f", totalBs2Dec) : "N/D";
         String totalUsdStr = String.format(java.util.Locale.US, "%.2f", totalUsd2Dec);
         String subtotalUsdStr = String.format(java.util.Locale.US, "%.2f", subtotalUsd);
         String ivaUsdStr = String.format(java.util.Locale.US, "%.2f", ivaUsd);
+        String ivaBsStr = ivaBs != null ? String.format(java.util.Locale.US, "%.2f", ivaBs) : "N/D";
         String ivaPctStr = String.format(java.util.Locale.US, "%.2f", ivaPct);
 
-        totalFinalizar.setText("Bs. " + totalBsStr + " ($ " + totalUsdStr + ")");
+        totalFinalizar.setText("USD $ " + totalUsdStr + "  |  Bs. " + totalBsStr);
         if (ivaPct.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal baseImpUsd = ivaUsd.multiply(new BigDecimal("100")).divide(ivaPct, 2, RoundingMode.HALF_UP);
             BigDecimal exentoUsd = subtotalUsd.subtract(baseImpUsd);
@@ -7100,24 +8197,38 @@ public final class Sistema extends javax.swing.JFrame {
                 totalFinalizar.setToolTipText("Subtotal: $ " + subtotalUsdStr
                         + " (Base Imponible: $ " + String.format(java.util.Locale.US, "%.2f", baseImpUsd)
                         + ", Exento: $ " + String.format(java.util.Locale.US, "%.2f", exentoUsd) + ")"
-                        + " | IVA (" + ivaPctStr + "%): $ " + ivaUsdStr
-                        + " | Total a Pagar: $ " + totalUsdStr
-                        + " (Bs. " + totalBsStr + ")");
+                        + " | IVA (" + ivaPctStr + "%): $ " + ivaUsdStr + " (Bs. " + ivaBsStr + ")"
+                        + " | Total a Pagar (IVA incluido): USD $ " + totalUsdStr
+                        + " | Bs. " + totalBsStr);
             } else {
                 totalFinalizar.setToolTipText("Subtotal: $ " + subtotalUsdStr
-                        + " | IVA (" + ivaPctStr + "%): $ " + ivaUsdStr
-                        + " | Total a Pagar: $ " + totalUsdStr
-                        + " (Bs. " + totalBsStr + ")");
+                        + " | IVA (" + ivaPctStr + "%): $ " + ivaUsdStr + " (Bs. " + ivaBsStr + ")"
+                        + " | Total a Pagar (IVA incluido): USD $ " + totalUsdStr
+                        + " | Bs. " + totalBsStr);
             }
         } else {
             totalFinalizar.setToolTipText("Subtotal: $ " + subtotalUsdStr
-                    + " | Total a Pagar: $ " + totalUsdStr
-                    + " (Bs. " + totalBsStr + ")");
+                    + " | IVA: $ " + ivaUsdStr + " (Bs. " + ivaBsStr + ")"
+                    + " | Total a Pagar (IVA incluido): USD $ " + totalUsdStr
+                    + " | Bs. " + totalBsStr);
         }
 
         txtFechaHora.setText("" + ped.getFecha());
-        txtSalaFinalizar.setText("" + ped.getSala());
-        txtNumMesaFinalizar.setText("" + ped.getNum_mesa());
+        txtSalaFinalizar.setText(ped.esPedidoRapido() ? "Para llevar" : String.valueOf(ped.getSala()));
+        txtNumMesaFinalizar.setText(ped.esPedidoRapido() ? "—" : String.valueOf(ped.getNum_mesa()));
+        jLabel8.setText(ped.esPedidoRapido() ? "Tipo:" : "Sala:");
+        jLabel9.setText(ped.esPedidoRapido() ? "Mesa:" : "N° Mesa:");
+        tasaPagoFac = tasa;
+        totalPagoBsFac = totalBs2Dec;
+        modeloPagosFac.setRowCount(0);
+        modeloPagosFac.addRow(new Object[]{"EFECTIVO_BS", "VES",
+                totalBs2Dec == null ? "" : totalBs2Dec.toPlainString()});
+        if (!tasaValida || totalBs2Dec == null) {
+            lblAlertaPagosFac.setText("No se puede cobrar: el pedido no tiene tasa/total Bs. válidos guardados en BD.");
+        } else {
+            lblAlertaPagosFac.setText(" ");
+        }
+        actualizarResumenPagosFac();
         if (ped.getSala() != null && ped.getSala().toUpperCase(java.util.Locale.ROOT).contains("BARRA")) {
             txtNumMesaFinalizar.setToolTipText("Puesto N° " + ped.getNum_mesa());
         }
@@ -7136,8 +8247,10 @@ public final class Sistema extends javax.swing.JFrame {
             ob[2] = Listar.get(i).getCantidad();
             BigDecimal precio = Listar.get(i).getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
             BigDecimal subtotalPlato = precio.multiply(BigDecimal.valueOf(Listar.get(i).getCantidad())).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal precioBs = precio.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-            ob[3] = "$ " + String.format(java.util.Locale.US, "%.2f", precio) + " (Bs. " + String.format(java.util.Locale.US, "%.2f", precioBs) + ")";
+            String precioBs = tasaValida
+                    ? "Bs. " + String.format(java.util.Locale.US, "%.2f", precio.multiply(tasa).setScale(2, RoundingMode.HALF_UP))
+                    : "Bs. N/D";
+            ob[3] = "$ " + String.format(java.util.Locale.US, "%.2f", precio) + " (" + precioBs + ")";
             ob[4] = "$ " + String.format(java.util.Locale.US, "%.2f", subtotalPlato);
             ob[5] = Listar.get(i).getComentario();
             modelo.addRow(ob);

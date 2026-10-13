@@ -154,6 +154,12 @@ public final class PedidosControlador {
                 metodoPago, efectivoBs, efectivoUsd);
     }
 
+    public boolean finalizarPedidoConCliente(int idPedido, String clienteNombre, String clienteDocumento,
+            String metodoPago, List<Modelo.PagoPedido> pagos) {
+        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        return consultas.finalizarConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago, pagos);
+    }
+
     private static final java.util.logging.Logger LOGGER =
             java.util.logging.Logger.getLogger(PedidosControlador.class.getName());
 

@@ -33,7 +33,9 @@ public final class PedidoServicio {
         if (pedido == null) {
             throw ErrorAplicacionException.validacion("El pedido es obligatorio.");
         }
-        if (pedido.getId_sala() <= 0 || pedido.getNum_mesa() <= 0) {
+        boolean rapido = pedido.esPedidoRapido();
+        if ((!rapido && (pedido.getId_sala() <= 0 || pedido.getNum_mesa() <= 0))
+                || (rapido && (pedido.getId_sala() != 0 || pedido.getNum_mesa() != 0))) {
             throw ErrorAplicacionException.validacion("La sala y el número de mesa deben ser válidos.");
         }
         if (pedido.getUsuario() == null || pedido.getUsuario().trim().isEmpty()) {

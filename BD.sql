@@ -90,8 +90,9 @@ DROP TABLE IF EXISTS `pedidos`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `pedidos` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `id_sala` int(11) NOT NULL,
-  `num_mesa` int(11) NOT NULL,
+  `id_sala` int(11) DEFAULT NULL,
+  `num_mesa` int(11) DEFAULT NULL,
+  `tipo_pedido` varchar(16) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'MESA',
   `fecha` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `total` decimal(10,2) NOT NULL,
   `estado` enum('PENDIENTE','FINALIZADO') COLLATE utf8_spanish_ci NOT NULL DEFAULT 'PENDIENTE',
@@ -118,6 +119,23 @@ CREATE TABLE `pedidos` (
   CONSTRAINT `pedidos_ibfk_1` FOREIGN KEY (`id_sala`) REFERENCES `salas` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+-- Desglose persistente por medio para facturas pagadas con varias formas de pago.
+CREATE TABLE `pedido_pagos` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `id_pedido` int(11) NOT NULL,
+  `metodo_pago` varchar(30) COLLATE utf8_spanish_ci NOT NULL,
+  `moneda` char(3) COLLATE utf8_spanish_ci NOT NULL,
+  `monto` decimal(14,2) NOT NULL,
+  `tasa_cambio` decimal(12,4) NOT NULL,
+  `monto_bs` decimal(14,2) NOT NULL,
+  `monto_usd` decimal(14,2) NOT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_pedido_pagos_pedido` (`id_pedido`),
+  KEY `idx_pedido_pagos_metodo_fecha` (`metodo_pago`,`creado_en`),
+  CONSTRAINT `fk_pedido_pagos_pedido` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
 --
 -- Dumping data for table `pedidos`
@@ -319,6 +337,13 @@ CREATE TABLE `cierres_caja` (
   PRIMARY KEY (`id`),
   KEY `idx_cierres_fecha` (`fecha_jornada`),
   KEY `idx_cierres_tipo` (`tipo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+CREATE TABLE IF NOT EXISTS `preferencias_tabla` (
+  `usuario_id` int NOT NULL,
+  `tabla_clave` varchar(64) COLLATE utf8_spanish_ci NOT NULL,
+  `layout_json` varchar(2000) COLLATE utf8_spanish_ci NOT NULL,
+  `actualizado_en` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`usuario_id`,`tabla_clave`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

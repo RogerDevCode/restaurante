@@ -36,6 +36,7 @@ import org.junit.rules.TemporaryFolder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -79,6 +80,22 @@ public class ConfiguracionNegocioRifLogoTest {
     // =========================================================================
     // 1. Etiqueta RIF en la interfaz gráfica en lugar de RUC
     // =========================================================================
+
+    private static void esperarTextoConfig(javax.swing.JTextField campo, String esperado) throws Exception {
+        String actual = null;
+        long fin = System.currentTimeMillis() + 8000;
+        while (System.currentTimeMillis() < fin) {
+            final String[] v = new String[1];
+            javax.swing.SwingUtilities.invokeAndWait(() -> v[0] = campo.getText());
+            actual = v[0];
+            if (esperado.equals(actual)) {
+                return;
+            }
+            Thread.sleep(100);
+        }
+        fail("Timeout esperando '" + esperado + "' (actual='" + actual + "')");
+    }
+
     @Test
     public void testEtiquetaConfiguracionEsRifEnVezDeRuc() throws Exception {
         Sistema sistema = crearSistema(usuarioAdmin, new Config(1, "J-30987654-1", "Arepera Caracas", "0412-1234567",
@@ -89,6 +106,8 @@ public class ConfiguracionNegocioRifLogoTest {
             assertEquals("La etiqueta en pantalla debe ser RIF para Venezuela", "RIF", lblRif.getText());
 
             JTextField txtRif = campo(sistema, "txtRucConfig", JTextField.class);
+            // C3: la carga es asincrona; esperar a que pinte el valor.
+            esperarTextoConfig(txtRif, "J-30987654-1");
             assertEquals("J-30987654-1", txtRif.getText());
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
@@ -172,6 +191,10 @@ public class ConfiguracionNegocioRifLogoTest {
 
             assertNotNull("La vista previa del logo debe estar inicializada", lblPreview);
             assertNotNull("El campo de ruta del logo debe estar inicializado", txtRuta);
+
+            // C3: esperar a que la carga asincrona llene los campos (el guardado valida no vacios).
+            JTextField txtNombreCfg = campo(sistema, "txtNombreConfig", JTextField.class);
+            esperarTextoConfig(txtNombreCfg, "Restaurante Ávila");
 
             // Establecer la nueva ruta del logo y actualizar
             SwingUtilities.invokeAndWait(() -> {

@@ -15,6 +15,7 @@ import Modelo.MesoneroDao;
 import Modelo.PedidoPendienteExistenteException;
 import Modelo.Pedidos;
 import Modelo.PedidosDao;
+import Modelo.PagoPedido;
 import Modelo.Platos;
 import Modelo.PlatosDao;
 import Modelo.Salas;
@@ -22,13 +23,16 @@ import Modelo.SalasDao;
 import Modelo.Usuario;
 import Servicio.GeneradorPdfPedido;
 import Servicio.PedidoPdfServicio;
+import Servicio.ServicioRespaldoBaseDatos;
 import infraestructura.ConfiguracionLogs;
+import infraestructura.DiarioRecuperacionBD;
 import infraestructura.ProveedorConexionJdbc;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Properties;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -56,6 +60,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /** Pruebas de integración: requieren MySQL de docker-compose.integration.yml. */
@@ -147,6 +152,156 @@ public class MySqlIntegrationIT {
             assertTrue(conexion.getMetaData().getDatabaseProductVersion().startsWith("8.4"));
             assertTrue(resultado.next());
             assertTrue(resultado.getInt(1) > 0);
+        }
+    }
+
+    @Test
+    public void barreraEsperaEscrituraActivaYRechazaEscriturasDuranteMantenimiento() throws Exception {
+        try (Connection preparar = new ProveedorConexionJdbc().getConnection()) {
+            infraestructura.ControlMantenimientoBD.asegurarTablaControl(preparar);
+        }
+        java.util.concurrent.ExecutorService executor = Executors.newSingleThreadExecutor();
+        String idOperacion = UUID.randomUUID().toString();
+        try (Connection escritor = new ProveedorConexionJdbc().getConnection()) {
+            escritor.setAutoCommit(false);
+            try (Statement st = escritor.createStatement()) {
+                st.executeUpdate("UPDATE config SET tasa_dolar = tasa_dolar LIMIT 1");
+            }
+            Future<String> mantenimiento = executor.submit(() -> {
+                try (Connection con = new ProveedorConexionJdbc().getConnection()) {
+                    return infraestructura.ControlMantenimientoBD.iniciarMantenimiento(con, "IT", idOperacion);
+                }
+            });
+            Thread.sleep(250);
+            assertFalse("El inicio de mantenimiento debe esperar el commit de la escritura en curso", mantenimiento.isDone());
+            escritor.commit();
+            String token = mantenimiento.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            assertEquals("IT:" + idOperacion, token);
+            try (Connection pruebaEscritura = new ProveedorConexionJdbc().getConnection();
+                 Statement st = pruebaEscritura.createStatement()) {
+                boolean rechazada = false;
+                try {
+                    st.executeUpdate("UPDATE config SET tasa_dolar = tasa_dolar LIMIT 1");
+                } catch (SQLException esperado) {
+                    rechazada = true;
+                }
+                assertTrue("La escritura nueva debe rechazarse durante mantenimiento", rechazada);
+            }
+            try (Connection con = new ProveedorConexionJdbc().getConnection()) {
+                infraestructura.ControlMantenimientoBD.terminarMantenimiento(con, token);
+            }
+        } finally {
+            executor.shutdownNow();
+            try (Connection con = new ProveedorConexionJdbc().getConnection()) {
+                String estado = infraestructura.ControlMantenimientoBD.estado(con);
+                if ("MANTENIMIENTO".equalsIgnoreCase(estado)) {
+                    String actual = infraestructura.ControlMantenimientoBD.operacionActual(con);
+                    if (actual != null && actual.startsWith("IT:")) {
+                        infraestructura.ControlMantenimientoBD.terminarMantenimiento(con, actual);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void respaldoRestauradoConservaControlYRecuperaDatosExactos() throws Exception {
+        Path directorio = Files.createTempDirectory("restaurante-restore-it-");
+        Path diarioPath = directorio.resolve("recovery.properties");
+        ServicioRespaldoBaseDatos servicio = new ServicioRespaldoBaseDatos(new ProveedorConexionJdbc(),
+                directorio, new DiarioRecuperacionBD(diarioPath));
+        try (Connection con = conexion(); Statement st = con.createStatement()) {
+            st.execute("DROP TRIGGER IF EXISTS trg_restaurante_it_error_detalle");
+        }
+        try {
+            Path respaldo = servicio.crearRespaldo(directorio);
+            Properties manifiesto = new Properties();
+            try (var reader = Files.newBufferedReader(respaldo.resolveSibling(respaldo.getFileName() + ".manifest"))) {
+                manifiesto.load(reader);
+            }
+            int cantidad = Integer.parseInt(manifiesto.getProperty("tablas.cantidad"));
+            for (int i = 0; i < cantidad; i++) {
+                assertFalse("El control de mantenimiento nunca debe incluirse en el respaldo",
+                        "restaurante_control".equalsIgnoreCase(manifiesto.getProperty("tabla." + i + ".nombre")));
+            }
+            String nombreAntes;
+            try (Connection con = conexion()) { nombreAntes = valorEscalar(con, "SELECT nombre FROM config WHERE id=1"); }
+            try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement("UPDATE config SET nombre='CAMBIO_POST_RESPALDO' WHERE id=1")) {
+                assertEquals(1, ps.executeUpdate());
+            }
+            servicio.restaurarRespaldo(respaldo);
+            try (Connection con = conexion()) {
+                assertEquals(nombreAntes, valorEscalar(con, "SELECT nombre FROM config WHERE id=1"));
+            }
+            assertFalse("El diario debe eliminarse al terminar la restauración", Files.exists(diarioPath));
+            try (Connection con = new ProveedorConexionJdbc().getConnection()) {
+                assertEquals("OPERATIVO", infraestructura.ControlMantenimientoBD.estado(con));
+            }
+        } finally {
+            try (Connection con = conexion(); Statement st = con.createStatement()) {
+                st.execute("DROP TRIGGER IF EXISTS trg_restaurante_it_error_detalle");
+                st.execute("CREATE TRIGGER trg_restaurante_it_error_detalle "
+                        + "BEFORE INSERT ON detalle_pedidos FOR EACH ROW "
+                        + "BEGIN IF NEW.comentario = '__FALLAR_DETALLE_IT__' THEN "
+                        + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Fallo provocado por integración'; "
+                        + "END IF; END");
+            }
+            try (var paths = Files.walk(directorio)) {
+                paths.sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                    try { Files.deleteIfExists(path); } catch (IOException ex) { throw new RuntimeException(ex); }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void inicioRecuperaUnaRestauracionInterrumpidaEnFaseAplicando() throws Exception {
+        Path directorio = Files.createTempDirectory("restaurante-recovery-it-");
+        DiarioRecuperacionBD diario = new DiarioRecuperacionBD(directorio.resolve("recovery.properties"));
+        ServicioRespaldoBaseDatos servicio = new ServicioRespaldoBaseDatos(new ProveedorConexionJdbc(), directorio, diario);
+        try (Connection con = conexion(); Statement st = con.createStatement()) {
+            st.execute("DROP TRIGGER IF EXISTS trg_restaurante_it_error_detalle");
+        }
+        try {
+            Path respaldo = servicio.crearRespaldo(directorio);
+            String nombreOriginal;
+            try (Connection con = conexion()) { nombreOriginal = valorEscalar(con, "SELECT nombre FROM config WHERE id=1"); }
+            try (Connection con = conexion(); Statement st = con.createStatement()) {
+                st.executeUpdate("UPDATE config SET nombre='CAMBIO_SIN_CONFIRMAR' WHERE id=1");
+            }
+            String hash = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(Files.readAllBytes(respaldo)));
+            DiarioRecuperacionBD.Operacion nueva = diario.nueva(respaldo.toString(), hash);
+            DiarioRecuperacionBD.Operacion interrumpida = new DiarioRecuperacionBD.Operacion(
+                    nueva.id(), "APLICANDO", respaldo.toString(), hash, respaldo.toString(), hash, nueva.creadaEn());
+            diario.guardar(interrumpida);
+            try (Connection con = new ProveedorConexionJdbc().getConnection()) {
+                infraestructura.ControlMantenimientoBD.asegurarTablaControl(con);
+                infraestructura.ControlMantenimientoBD.iniciarMantenimiento(con, "RESTAURACION", nueva.id());
+            }
+
+            servicio.recuperarOperacionInterrumpida();
+            try (Connection con = conexion()) {
+                assertEquals(nombreOriginal, valorEscalar(con, "SELECT nombre FROM config WHERE id=1"));
+            }
+            assertFalse(Files.exists(diario.getArchivo()));
+            try (Connection con = new ProveedorConexionJdbc().getConnection()) {
+                assertEquals("OPERATIVO", infraestructura.ControlMantenimientoBD.estado(con));
+            }
+        } finally {
+            try (Connection con = conexion(); Statement st = con.createStatement()) {
+                st.execute("DROP TRIGGER IF EXISTS trg_restaurante_it_error_detalle");
+                st.execute("CREATE TRIGGER trg_restaurante_it_error_detalle "
+                        + "BEFORE INSERT ON detalle_pedidos FOR EACH ROW "
+                        + "BEGIN IF NEW.comentario = '__FALLAR_DETALLE_IT__' THEN "
+                        + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Fallo provocado por integración'; "
+                        + "END IF; END");
+            }
+            try (var paths = Files.walk(directorio)) {
+                paths.sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                    try { Files.deleteIfExists(path); } catch (IOException ex) { throw new RuntimeException(ex); }
+                });
+            }
         }
     }
 
@@ -623,12 +778,12 @@ public class MySqlIntegrationIT {
 
     @Test
     public void metodosDeEfectivoSeGuardanSeVuelvenALeerYConciliacionSumaPagoMixto() throws Exception {
-        int idSala = crearSalaPrueba();
+        int idSala = crearSalaPrueba(3);
         PedidosDao pedidosDao = new PedidosDao();
         List<String> metodos = List.of("EFECTIVO_BS", "EFECTIVO_USD", "MIXTO");
         List<Integer> ids = new ArrayList<>();
         for (int i = 0; i < metodos.size(); i++) {
-            int id = pedidosDao.registrarPedidoCompleto(pedido(idSala, mesaPrueba()), detallesValidos());
+            int id = pedidosDao.registrarPedidoCompleto(pedido(idSala, i + 1), detallesValidos());
             assertTrue(id > 0);
             ids.add(id);
         }
@@ -636,7 +791,7 @@ public class MySqlIntegrationIT {
         assertTrue(pedidosDao.actualizarEstadoConCliente(ids.get(0), "Cliente", "V-101", "EFECTIVO_BS"));
         assertTrue(pedidosDao.actualizarEstadoConCliente(ids.get(1), "Cliente", "V-102", "EFECTIVO_USD"));
         assertTrue(pedidosDao.actualizarEstadoConCliente(ids.get(2), "Cliente", "V-103", "MIXTO",
-                new BigDecimal("20.00"), new BigDecimal("0.50")));
+                new BigDecimal("1295.38"), new BigDecimal("0.01")));
 
         Pedidos efectivoBs = pedidosDao.verPedido(ids.get(0));
         Pedidos efectivoUsd = pedidosDao.verPedido(ids.get(1));
@@ -646,16 +801,106 @@ public class MySqlIntegrationIT {
         assertEquals("EFECTIVO_USD", efectivoUsd.getMetodoPago());
         assertEquals(0, efectivoUsd.getEfectivoUsd().compareTo(efectivoUsd.getTotalDecimal()));
         assertEquals("MIXTO", mixto.getMetodoPago());
-        assertEquals(new BigDecimal("20.00"), mixto.getEfectivoBs());
-        assertEquals(new BigDecimal("0.50"), mixto.getEfectivoUsd());
+        assertEquals(new BigDecimal("1295.38"), mixto.getEfectivoBs());
+        assertEquals(new BigDecimal("0.01"), mixto.getEfectivoUsd());
 
         Config config = new Config();
         config.setTasaDolar(new BigDecimal("36.5000"));
         CierreCaja cierre = new CierreCajaDao().consultarCierre(
                 LocalDate.now().toString(), CierreCaja.TipoCierre.TOTAL, "Admin", config);
-        assertEquals(new BigDecimal("1315.75"), cierre.getTotalEfectivoBs());
-        assertEquals(new BigDecimal("36.00"), cierre.getTotalEfectivoUsd());
+        assertEquals(new BigDecimal("2591.13"), cierre.getTotalEfectivoBs());
+        assertEquals(new BigDecimal("35.51"), cierre.getTotalEfectivoUsd());
         assertEquals(0, cierre.getPagosMixtosSinDesglose());
+    }
+
+    @Test
+    public void pagoInlineRegistraBsUsdYVariosMediosConLaTasaDelPedido() throws Exception {
+        int idSala = crearSalaPrueba(1);
+        PedidosDao pedidosDao = new PedidosDao();
+        int idPedido = pedidosDao.registrarPedidoCompleto(pedido(idSala, 1), detallesValidos());
+        Pedidos pendiente = pedidosDao.verPedido(idPedido);
+        BigDecimal tasa = pendiente.getTasaCambio();
+        BigDecimal totalBs = pendiente.getTotalBs();
+        BigDecimal efectivoUsd = new BigDecimal("0.50");
+        BigDecimal transferenciaBs = new BigDecimal("10.00");
+        BigDecimal efectivoBs = totalBs.subtract(efectivoUsd.multiply(tasa).setScale(2, java.math.RoundingMode.HALF_UP))
+                .subtract(transferenciaBs).setScale(2, java.math.RoundingMode.HALF_UP);
+        List<PagoPedido> pagos = List.of(
+                new PagoPedido("TRANSFERENCIA", "VES", transferenciaBs),
+                new PagoPedido("EFECTIVO_USD", "USD", efectivoUsd),
+                new PagoPedido("EFECTIVO_BS", "VES", efectivoBs));
+
+        assertTrue(pedidosDao.actualizarEstadoConCliente(idPedido, "Cliente IT", "V-810", "MIXTO", pagos));
+        Pedidos finalizado = pedidosDao.verPedido(idPedido);
+        assertEquals("MIXTO", finalizado.getMetodoPago());
+        assertEquals(3, finalizado.getPagos().size());
+        assertEquals(0, finalizado.getTasaCambio().compareTo(tasa));
+        assertEquals("TRANSFERENCIA", finalizado.getPagos().get(0).metodo());
+        assertEquals("VES", finalizado.getPagos().get(0).moneda());
+        assertEquals(0, finalizado.getPagos().get(0).monto().compareTo(transferenciaBs));
+        assertEquals(0, finalizado.getPagos().get(0).equivalenteBs(finalizado.getTasaCambio()).compareTo(transferenciaBs));
+
+        assertEquals("EFECTIVO_USD", finalizado.getPagos().get(1).metodo());
+        assertEquals("USD", finalizado.getPagos().get(1).moneda());
+        assertEquals(0, finalizado.getPagos().get(1).monto().compareTo(efectivoUsd));
+        BigDecimal esperadoUsdEnBs = efectivoUsd.multiply(tasa).setScale(2, java.math.RoundingMode.HALF_UP);
+        assertEquals(0, finalizado.getPagos().get(1).equivalenteBs(finalizado.getTasaCambio()).compareTo(esperadoUsdEnBs));
+
+        assertEquals("EFECTIVO_BS", finalizado.getPagos().get(2).metodo());
+        assertEquals("VES", finalizado.getPagos().get(2).moneda());
+        assertEquals(0, finalizado.getPagos().get(2).monto().compareTo(efectivoBs));
+        assertEquals(0, finalizado.getPagos().get(2).equivalenteBs(finalizado.getTasaCambio()).compareTo(efectivoBs));
+
+        BigDecimal sumaEquivalentesBs = finalizado.getPagos().stream()
+                .map(p -> p.equivalenteBs(finalizado.getTasaCambio()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertEquals(0, sumaEquivalentesBs.compareTo(totalBs));
+
+        try (Connection con = conexion();
+             PreparedStatement ps = con.prepareStatement("SELECT tasa_cambio FROM pedido_pagos WHERE id_pedido = ?")) {
+            ps.setInt(1, idPedido);
+            try (ResultSet rs = ps.executeQuery()) {
+                int count = 0;
+                while (rs.next()) {
+                    count++;
+                    assertEquals(0, rs.getBigDecimal(1).compareTo(tasa));
+                }
+                assertEquals(3, count);
+            }
+        }
+        assertEquals(0, finalizado.getEfectivoBs().compareTo(efectivoBs));
+        assertEquals(0, finalizado.getEfectivoUsd().compareTo(efectivoUsd));
+
+        Config config = new Config();
+        config.setTasaDolar(new BigDecimal("36.5000"));
+        CierreCaja cierre = new CierreCajaDao().consultarCierre(
+                LocalDate.now().toString(), CierreCaja.TipoCierre.TOTAL, "Admin", config);
+        assertEquals(0, cierre.getTotalEfectivoBs().compareTo(efectivoBs));
+        assertEquals(0, cierre.getTotalEfectivoUsd().compareTo(efectivoUsd));
+    }
+
+    @Test
+    public void pagoIncompletoOConTasaAusenteNoFinalizaNiGuardaPagos() throws Exception {
+        int idSala = crearSalaPrueba(2);
+        PedidosDao pedidosDao = new PedidosDao();
+        int idPedido = pedidosDao.registrarPedidoCompleto(pedido(idSala, 1), detallesValidos());
+        Pedidos pendiente = pedidosDao.verPedido(idPedido);
+        BigDecimal totalBs = pendiente.getTotalBs();
+        List<PagoPedido> incompleto = List.of(new PagoPedido("EFECTIVO_BS", "VES", totalBs.subtract(new BigDecimal("0.01"))));
+        assertThrows(ErrorAplicacionException.class,
+                () -> pedidosDao.actualizarEstadoConCliente(idPedido, "Cliente IT", "V-811", "EFECTIVO_BS", incompleto));
+        assertEquals("PENDIENTE", estadoPedido(idPedido));
+        assertEquals(0, pedidosDao.verPedido(idPedido).getPagos().size());
+
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement("UPDATE pedidos SET tasa_cambio=0 WHERE id=?")) {
+            ps.setInt(1, idPedido);
+            assertEquals(1, ps.executeUpdate());
+        }
+        List<PagoPedido> exactoEnBs = List.of(new PagoPedido("EFECTIVO_BS", "VES", totalBs));
+        assertThrows(ErrorAplicacionException.class,
+                () -> pedidosDao.actualizarEstadoConCliente(idPedido, "Cliente IT", "V-811", "EFECTIVO_BS", exactoEnBs));
+        assertEquals("PENDIENTE", estadoPedido(idPedido));
+        assertEquals(0, pedidosDao.verPedido(idPedido).getPagos().size());
     }
 
     @Test
@@ -766,9 +1011,13 @@ public class MySqlIntegrationIT {
     }
 
     private int crearSalaPrueba() throws SQLException {
+        return crearSalaPrueba(2);
+    }
+
+    private int crearSalaPrueba(int mesas) throws SQLException {
         Salas sala = new Salas();
         sala.setNombre("IT-SALA-" + UUID.randomUUID());
-        sala.setMesas(2);
+        sala.setMesas(mesas);
         assertTrue(new SalasDao().RegistrarSala(sala));
         return idSalaPorNombre(sala.getNombre());
     }
@@ -872,7 +1121,8 @@ public class MySqlIntegrationIT {
     }
 
     private int mesaPrueba() {
-        return 10000 + (int) (Math.random() * 1000000);
+        // Mesas validas: las salas de prueba se crean con 2 mesas (regla 1..mesas).
+        return 1 + (int) (Math.random() * 2);
     }
 
     private Pedidos pedido(int idSala, int mesa) {

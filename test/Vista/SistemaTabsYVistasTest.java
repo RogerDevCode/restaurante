@@ -54,6 +54,7 @@ import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -236,6 +237,22 @@ public class SistemaTabsYVistasTest {
     // 1. Roles y RBAC en Vistas y Pantallas
     // =========================================================================
 
+
+    private static void esperarTextoConfig(javax.swing.JTextField campo, String esperado) throws Exception {
+        String actual = null;
+        long fin = System.currentTimeMillis() + 8000;
+        while (System.currentTimeMillis() < fin) {
+            final String[] v = new String[1];
+            javax.swing.SwingUtilities.invokeAndWait(() -> v[0] = campo.getText());
+            actual = v[0];
+            if (esperado.equals(actual)) {
+                return;
+            }
+            Thread.sleep(100);
+        }
+        fail("Timeout esperando '" + esperado + "' (actual='" + actual + "')");
+    }
+
     @Test
     public void testControlesActivosSegunRolAdministrador() throws Exception {
         Sistema sistema = crearSistemaEnEdt(admin, true);
@@ -289,10 +306,13 @@ public class SistemaTabsYVistasTest {
             assertEquals(2, panelSalas.getComponentCount());
             JButton btn1 = (JButton) panelSalas.getComponent(0);
             JButton btn2 = (JButton) panelSalas.getComponent(1);
-            assertTrue(btn1.getText().startsWith("Terraza"));
-            assertTrue(btn1.getText().contains("ocupadas"));
-            assertTrue(btn2.getText().startsWith("Salón VIP"));
-            assertTrue(btn2.getText().contains("ocupadas"));
+            // El texto es HTML (nombre en negrita + badge de ocupacion): comparar texto visible.
+            String txt1 = btn1.getText().replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+            String txt2 = btn2.getText().replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+            assertTrue(txt1.startsWith("Terraza"));
+            assertTrue(txt1.contains("ocupadas"));
+            assertTrue(txt2.startsWith("Salón VIP"));
+            assertTrue(txt2.contains("ocupadas"));
 
             // Simular click en la sala 1 para navegar a mesas (Tab 2)
             SwingUtilities.invokeAndWait(() -> btn1.getActionListeners()[0].actionPerformed(
@@ -373,9 +393,9 @@ public class SistemaTabsYVistasTest {
             assertEquals("MESA N°: 1", btnMesa1.getText());
             assertEquals("MESA N°: 2", btnMesa2.getText());
 
-            // Mesa libre color verde (0, 102, 102), ocupada color rojo (255, 51, 51)
+            // Mesa libre color verde (0, 102, 102), ocupada color rojo oscuro (192, 57, 43)
             assertEquals(new Color(0, 102, 102), btnMesa1.getBackground());
-            assertEquals(new Color(255, 51, 51), btnMesa2.getBackground());
+            assertEquals(new Color(192, 57, 43), btnMesa2.getBackground());
 
             // Click en mesa libre debe navegar a Tab 3 (Pedidos) y fijar identificadores
             SwingUtilities.invokeAndWait(() -> btnMesa1.getActionListeners()[0].actionPerformed(
@@ -624,15 +644,15 @@ public class SistemaTabsYVistasTest {
             assertEquals("Pabellón", tableFinalizar.getValueAt(0, 1));
             assertEquals(2, tableFinalizar.getValueAt(0, 2));
 
-            // totalFinalizar muestra totales con 2 decimales en USD y Bs
-            assertEquals("Bs. 846.80 ($ 23.20)", totalFinalizar.getText());
+            // Total inclusivo de IVA, visible en ambas monedas.
+            assertEquals("USD $ 23.20  |  Bs. 846.80", totalFinalizar.getText());
 
             // Y el desglose fiscal detallado en el tooltip con 2 decimales:
             String tooltip = totalFinalizar.getToolTipText();
             assertNotNull(tooltip);
             assertTrue("Debe contener Subtotal en tooltip", tooltip.contains("Subtotal: $ 20.00"));
-            assertTrue("Debe contener IVA % y monto en tooltip", tooltip.contains("IVA (16.00%): $ 3.20") || tooltip.contains("IVA (16%): $ 3.20"));
-            assertTrue("Debe contener Total a Pagar en tooltip", tooltip.contains("Total a Pagar: $ 23.20 (Bs. 846.80)"));
+            assertTrue("Debe contener IVA % y monto en tooltip", tooltip.contains("IVA (16.00%): $ 3.20 (Bs. 116.80)") || tooltip.contains("IVA (16%): $ 3.20 (Bs. 116.80)"));
+            assertTrue("Debe aclarar que el total incluye IVA", tooltip.contains("Total a Pagar (IVA incluido): USD $ 23.20 | Bs. 846.80"));
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
         }
@@ -672,25 +692,26 @@ public class SistemaTabsYVistasTest {
 
     @Test
     public void testTab6ListarConfigYValidacionesEmpresa() throws Exception {
+        loginDaoFalso.configuracionActual = new Config();
+        loginDaoFalso.configuracionActual.setId(1);
+        loginDaoFalso.configuracionActual.setRuc("J-12345678-9");
+        loginDaoFalso.configuracionActual.setNombre("Restaurante Gourmet");
+        loginDaoFalso.configuracionActual.setTelefono("04141234567");
+        loginDaoFalso.configuracionActual.setDireccion("Av. Principal");
+        loginDaoFalso.configuracionActual.setMensaje("¡Gracias!");
+        loginDaoFalso.configuracionActual.setTasaDolar(new BigDecimal("38.5000"));
+        loginDaoFalso.configuracionActual.setIvaPorcentaje(new BigDecimal("16.00"));
+
         Sistema sistema = crearSistemaEnEdt(admin, true);
         try {
-            loginDaoFalso.configuracionActual = new Config();
-            loginDaoFalso.configuracionActual.setId(1);
-            loginDaoFalso.configuracionActual.setRuc("J-12345678-9");
-            loginDaoFalso.configuracionActual.setNombre("Restaurante Gourmet");
-            loginDaoFalso.configuracionActual.setTelefono("04141234567");
-            loginDaoFalso.configuracionActual.setDireccion("Av. Principal");
-            loginDaoFalso.configuracionActual.setMensaje("¡Gracias!");
-            loginDaoFalso.configuracionActual.setTasaDolar(new BigDecimal("38.5000"));
-            loginDaoFalso.configuracionActual.setIvaPorcentaje(new BigDecimal("16.00"));
-
-            SwingUtilities.invokeAndWait(sistema::ListarConfig);
-
             JTextField txtRuc = campo(sistema, "txtRucConfig", JTextField.class);
             JTextField txtNombre = campo(sistema, "txtNombreConfig", JTextField.class);
             JTextField txtTasa = campo(sistema, "txtTasaConfig", JTextField.class);
             JTextField txtIva = campo(sistema, "txtIvaConfig", JTextField.class);
             JButton btnActualizar = campo(sistema, "btnActualizarConfig", JButton.class);
+
+            // C3: la carga es asincrona; esperar a que pinte los valores.
+            esperarTextoConfig(txtNombre, "Restaurante Gourmet");
 
             assertEquals("J-12345678-9", txtRuc.getText());
             assertEquals("Restaurante Gourmet", txtNombre.getText());
@@ -712,8 +733,11 @@ public class SistemaTabsYVistasTest {
 
     @Test
     public void testTab6RetencionYPurgaPorRol() throws Exception {
+        loginDaoFalso.configuracionActual.setMesesRetencionPedidos(24);
         Sistema sistemaAdmin = crearSistemaEnEdt(admin, true);
         try {
+            // C3: esperar a que la carga asincrona pinte los valores del falso.
+            esperarTextoConfig(campo(sistemaAdmin, "txtNombreConfig", JTextField.class), "Restaurante Demo");
             javax.swing.JSpinner spRetencion = sistemaAdmin.getSpMesesRetencion();
             JButton btnPurga = sistemaAdmin.getBtnPurgarHistorial();
 
@@ -767,7 +791,15 @@ public class SistemaTabsYVistasTest {
                 invocar(sistema, "ListarUsuarios", new Class<?>[]{}, new Object[]{});
             });
 
+            // C3: la carga es asincrona; esperar las filas.
             JTable tableUsuarios = campo(sistema, "TableUsuarios", JTable.class);
+            long finUsu = System.currentTimeMillis() + 8000;
+            while (System.currentTimeMillis() < finUsu) {
+                final int[] n = new int[1];
+                SwingUtilities.invokeAndWait(() -> n[0] = tableUsuarios.getRowCount());
+                if (n[0] == 2) break;
+                Thread.sleep(100);
+            }
             assertEquals(2, tableUsuarios.getRowCount());
             assertEquals("Administrador", tableUsuarios.getValueAt(0, 1));
             assertEquals("Cajero", tableUsuarios.getValueAt(1, 1));

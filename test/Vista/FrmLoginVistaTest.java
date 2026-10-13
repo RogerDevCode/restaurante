@@ -36,7 +36,7 @@ public class FrmLoginVistaTest {
     }
 
     @Test
-    public void camposVienenPreLlenadosConAdminYAdmin() throws Exception {
+    public void comboUsuariosOrdenadoConAdminPreseleccionado() throws Exception {
         AtomicReference<FrmLogin> ref = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> {
             LoginControlador ctrl = new LoginControlador(new AutenticacionServicio(new RepositorioLoginFalso()));
@@ -47,12 +47,36 @@ public class FrmLoginVistaTest {
         FrmLogin login = ref.get();
         assertNotNull(login);
 
-        JTextField txtCorreo = obtenerCampo(login, "txtCorreo", JTextField.class);
-        JPasswordField txtPass = obtenerCampo(login, "txtPass", JPasswordField.class);
-        JButton btnIniciar = obtenerCampo(login, "btnIniciar", JButton.class);
+        java.util.List<Usuario> usuarios = new java.util.ArrayList<>();
+        Usuario zoe = new Usuario();
+        zoe.setNombre("Zoe");
+        zoe.setCorreo("zoe@restaurante.test");
+        usuarios.add(zoe);
+        Usuario admin = new Usuario();
+        admin.setNombre("Administrador");
+        admin.setCorreo("admin");
+        usuarios.add(admin);
+        Usuario ana = new Usuario();
+        ana.setNombre("ana");
+        ana.setCorreo("ana@restaurante.test");
+        usuarios.add(ana);
 
-        assertEquals("admin", txtCorreo.getText());
-        assertEquals("admin", new String(txtPass.getPassword()));
+        SwingUtilities.invokeAndWait(() -> login.llenarComboUsuarios(usuarios));
+
+        @SuppressWarnings("unchecked")
+        javax.swing.JComboBox<Usuario> combo =
+                obtenerCampo(login, "cbUsuario", javax.swing.JComboBox.class);
+        assertTrue(combo.isEditable());
+        assertEquals(3, combo.getItemCount());
+        assertEquals("Administrador", ((Usuario) combo.getItemAt(0)).getNombre());
+        assertEquals("ana", ((Usuario) combo.getItemAt(1)).getNombre());
+        assertEquals("Zoe", ((Usuario) combo.getItemAt(2)).getNombre());
+        assertEquals("admin", ((Usuario) combo.getSelectedItem()).getCorreo());
+
+        JPasswordField txtPass = obtenerCampo(login, "txtPass", JPasswordField.class);
+        assertEquals("", new String(txtPass.getPassword()));
+
+        JButton btnIniciar = obtenerCampo(login, "btnIniciar", JButton.class);
         assertTrue(btnIniciar.isEnabled());
 
         SwingUtilities.invokeAndWait(login::dispose);

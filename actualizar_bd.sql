@@ -378,9 +378,44 @@ BEGIN
     ) THEN
         ALTER TABLE salas ADD COLUMN tipo VARCHAR(20) NOT NULL DEFAULT 'SALON';
     END IF;
+
+    -- 25. Preferencias de ancho de columnas por usuario y tabla (persisten el layout)
+    CREATE TABLE IF NOT EXISTS preferencias_tabla (
+        usuario_id INT NOT NULL,
+        tabla_clave VARCHAR(64) NOT NULL,
+        layout_json VARCHAR(2000) NOT NULL,
+        actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (usuario_id, tabla_clave)
+    );
+
+    -- 26. Desglose de cada medio y moneda aplicado a pagos mixtos.
+    CREATE TABLE IF NOT EXISTS pedido_pagos (
+        id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        id_pedido INT NOT NULL,
+        metodo_pago VARCHAR(30) NOT NULL,
+        moneda CHAR(3) NOT NULL,
+        monto DECIMAL(14,2) NOT NULL,
+        tasa_cambio DECIMAL(12,4) NOT NULL,
+        monto_bs DECIMAL(14,2) NOT NULL,
+        monto_usd DECIMAL(14,2) NOT NULL,
+        creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_pedido_pagos_pedido (id_pedido),
+        INDEX idx_pedido_pagos_metodo_fecha (metodo_pago, creado_en),
+        CONSTRAINT fk_pedido_pagos_pedido FOREIGN KEY (id_pedido)
+            REFERENCES pedidos(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    -- 27. Pedidos rápidos sin asociar una mesa física.
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'tipo_pedido'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN tipo_pedido VARCHAR(16) NOT NULL DEFAULT 'MESA';
+    END IF;
+    ALTER TABLE pedidos MODIFY COLUMN id_sala INT NULL DEFAULT NULL;
+    ALTER TABLE pedidos MODIFY COLUMN num_mesa INT NULL DEFAULT NULL;
 END$$
 DELIMITER ;
 
 CALL upgrade_restaurante_schema();
 DROP PROCEDURE IF EXISTS upgrade_restaurante_schema;
-

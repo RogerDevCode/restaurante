@@ -20,7 +20,7 @@ public class Tables extends DefaultTableCellRenderer {
         String estado = estadoCelda == null ? "" : estadoCelda.toString();
         switch (estado) {
             case "PENDIENTE":
-                setBackground(new Color(255, 51, 51));
+                setBackground(new Color(192, 57, 43));
                 setForeground(Color.WHITE);
                 break;
             case "FINALIZADO":

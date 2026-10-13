@@ -17,6 +17,7 @@ final class FinalizarPedidoSwingWorker extends SwingWorker<FinalizarPedidoSwingW
     private final String metodoPago;
     private final java.math.BigDecimal efectivoBs;
     private final java.math.BigDecimal efectivoUsd;
+    private final java.util.List<Modelo.PagoPedido> pagosMixtos;
     private final Consumer<ResultadoFinalizacion> alCompletar;
     private final BiConsumer<Throwable, Boolean> alFallar;
     private volatile boolean finalizacionConfirmada;
@@ -53,19 +54,54 @@ final class FinalizarPedidoSwingWorker extends SwingWorker<FinalizarPedidoSwingW
         this.metodoPago = metodoPago != null && !metodoPago.trim().isEmpty() ? metodoPago.trim().toUpperCase() : "EFECTIVO";
         this.efectivoBs = efectivoBs;
         this.efectivoUsd = efectivoUsd;
+        this.pagosMixtos = null;
+        this.alCompletar = alCompletar;
+        this.alFallar = alFallar;
+    }
+
+    FinalizarPedidoSwingWorker(PedidosControlador controlador, int idPedido,
+            String clienteNombre, String clienteDocumento, String metodoPago,
+            java.util.List<Modelo.PagoPedido> pagosMixtos,
+            Consumer<ResultadoFinalizacion> alCompletar, BiConsumer<Throwable, Boolean> alFallar) {
+        if (controlador == null || idPedido <= 0 || alCompletar == null || alFallar == null) {
+            throw ErrorAplicacionException.validacion("El pedido y callbacks de finalización son obligatorios.");
+        }
+        this.controlador = controlador;
+        this.idPedido = idPedido;
+        this.clienteNombre = clienteNombre != null && !clienteNombre.trim().isEmpty() ? clienteNombre.trim() : "Consumidor Final";
+        this.clienteDocumento = clienteDocumento != null && !clienteDocumento.trim().isEmpty() ? clienteDocumento.trim() : "V-00000000";
+        this.metodoPago = metodoPago != null && !metodoPago.trim().isEmpty() ? metodoPago.trim().toUpperCase() : "EFECTIVO";
+        this.efectivoBs = null;
+        this.efectivoUsd = null;
+        this.pagosMixtos = pagosMixtos != null ? java.util.List.copyOf(pagosMixtos) : null;
         this.alCompletar = alCompletar;
         this.alFallar = alFallar;
     }
 
     @Override
     protected ResultadoFinalizacion doInBackground() {
-        boolean finalizado = controlador.finalizarPedidoConCliente(idPedido, clienteNombre, clienteDocumento,
-                metodoPago, efectivoBs, efectivoUsd);
+        boolean finalizado = pagosMixtos != null
+                ? controlador.finalizarPedidoConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago, pagosMixtos)
+                : controlador.finalizarPedidoConCliente(idPedido, clienteNombre, clienteDocumento,
+                        metodoPago, efectivoBs, efectivoUsd);
         if (!finalizado) {
             return new ResultadoFinalizacion(false, false);
         }
         finalizacionConfirmada = true;
-        boolean impresoDirecto = controlador.generarPdfPedido(idPedido);
+        boolean impresoDirecto;
+        try {
+            impresoDirecto = controlador.generarPdfPedido(idPedido);
+        } catch (RuntimeException primerIntento) {
+            try {
+                // La factura ya está confirmada en BD. Se reintenta solamente el PDF/salida;
+                // nunca se vuelve a ejecutar la finalización ni se crea otra factura.
+                impresoDirecto = controlador.generarPdfPedido(idPedido);
+            } catch (RuntimeException segundoIntento) {
+                segundoIntento.addSuppressed(primerIntento);
+                throw new ErrorAplicacionException(
+                        "No se pudo generar o abrir el PDF después de dos intentos.", segundoIntento);
+            }
+        }
         return new ResultadoFinalizacion(true, impresoDirecto);
     }
 

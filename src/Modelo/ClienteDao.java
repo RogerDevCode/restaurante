@@ -162,9 +162,9 @@ public class ClienteDao implements ClienteRepositorio {
         String sql = """
             SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto,
                    p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado,
-                   s.nombre AS nombre_sala, p.cliente_nombre, p.cliente_documento
+                   p.tipo_pedido, COALESCE(s.nombre, 'Pedido rápido') AS nombre_sala, p.cliente_nombre, p.cliente_documento
             FROM pedidos p
-            INNER JOIN salas s ON p.id_sala = s.id
+            LEFT JOIN salas s ON p.id_sala = s.id
             WHERE (p.cliente_documento = ? OR p.cliente_nombre LIKE ?)
               AND p.estado = 'FINALIZADO'
             ORDER BY p.fecha DESC
@@ -180,6 +180,7 @@ public class ClienteDao implements ClienteRepositorio {
                     Pedidos ped = new Pedidos();
                     ped.setId(rs.getInt("id"));
                     ped.setId_sala(rs.getInt("id_sala"));
+                    ped.setTipoPedido(rs.getString("tipo_pedido"));
                     ped.setSala(rs.getString("nombre_sala"));
                     ped.setNum_mesa(rs.getInt("num_mesa"));
                     ped.setFecha(rs.getString("fecha"));
@@ -341,11 +342,11 @@ public class ClienteDao implements ClienteRepositorio {
             // 6. Top Salas con mayor movimiento
             try {
                 String sqlTopSalas = """
-                    SELECT s.nombre, COUNT(p.id) AS cant, SUM(p.total) AS total_usd
+                    SELECT COALESCE(s.nombre, 'Pedido rápido') AS nombre, COUNT(p.id) AS cant, SUM(p.total) AS total_usd
                     FROM pedidos p
-                    INNER JOIN salas s ON p.id_sala = s.id
+                    LEFT JOIN salas s ON p.id_sala = s.id
                     WHERE p.estado = 'FINALIZADO'
-                    GROUP BY s.nombre
+                    GROUP BY COALESCE(s.nombre, 'Pedido rápido')
                     ORDER BY total_usd DESC
                     LIMIT 5
                     """;

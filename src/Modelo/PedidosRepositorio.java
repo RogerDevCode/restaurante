@@ -40,6 +40,12 @@ public interface PedidosRepositorio {
         return actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago);
     }
 
+    /** Finaliza el pedido guardando cada medio de un pago MIXTO. */
+    default boolean actualizarEstadoConCliente(int idPedido, String clienteNombre, String clienteDocumento,
+            String metodoPago, java.util.List<PagoPedido> pagos) {
+        return actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago);
+    }
+
     /** Devuelve el historial de pedidos ordenado por fecha descendente. */
     List<Pedidos> listarPedidos();
 

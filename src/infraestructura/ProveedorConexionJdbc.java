@@ -100,10 +100,10 @@ public class ProveedorConexionJdbc {
 
         boolean poolHabilitado = !"false".equalsIgnoreCase(setting("DB_POOL_ENABLED", localConfig));
         if (!poolHabilitado) {
-            return crearConexionFisica(url, user, password, localConfig);
+            return ControlMantenimientoBD.proteger(crearConexionFisica(url, user, password, localConfig));
         }
 
-        return obtenerConexionPool(url, user, password, localConfig);
+        return ControlMantenimientoBD.proteger(obtenerConexionPool(url, user, password, localConfig));
     }
 
     private Connection obtenerConexionPool(String url, String user, String password, Properties localConfig) throws SQLException {

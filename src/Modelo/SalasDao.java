@@ -28,6 +28,7 @@ public class SalasDao implements SalasRepositorio {
         if (sala == null) {
             throw ErrorAplicacionException.validacion("Los datos de la sala son obligatorios.");
         }
+        sala.validarParaGuardar();
         String sql = """
             INSERT INTO salas (nombre, mesas, tipo)
             VALUES (?, ?, ?)
@@ -136,6 +137,10 @@ public class SalasDao implements SalasRepositorio {
     public boolean modificar(Salas sala) {
         if (sala == null) {
             throw ErrorAplicacionException.validacion("Los datos de la sala son obligatorios.");
+        }
+        sala.validarParaGuardar();
+        if (sala.getId() <= 0) {
+            throw ErrorAplicacionException.validacion("Seleccione una sala válida para modificar.");
         }
         String sql = """
             UPDATE salas

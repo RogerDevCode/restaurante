@@ -203,7 +203,7 @@ public final class ServicioImpresionTicket {
 
     /**
      * Procesa la salida del archivo PDF generado según el modo global y la impresora configurada.
-     * @return true si el ticket se imprimió o despachó directamente según el modo elegido; false si se tuvo que degradar al visor de emergencia.
+     * @return true si se entregó según el modo elegido; false si falló la salida directa y se abrió el visor como alternativa.
      */
     public static boolean procesarSalida(Path archivoPdf) throws IOException {
         String imp = !"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada();
@@ -212,7 +212,7 @@ public final class ServicioImpresionTicket {
 
     /**
      * Procesa la salida del archivo PDF generado según el modo especificado.
-     * @return true si el ticket se imprimió o despachó directamente según el modo elegido; false si se tuvo que degradar al visor de emergencia.
+     * @return true si se entregó según el modo elegido; false si falló la salida directa y se abrió el visor como alternativa.
      */
     public static boolean procesarSalida(Path archivoPdf, Modelo.ModoSalidaTicket modo, String impresoraConfigurada) throws IOException {
         if (archivoPdf == null || !Files.isRegularFile(archivoPdf)) {
@@ -235,7 +235,7 @@ public final class ServicioImpresionTicket {
                     return true;
                 } else {
                     LOGGER.warning(() -> "No se pudo imprimir directamente a " + imp + ". Abriendo visor como alternativa.");
-                    abrirVisor(archivoPdf);
+                    abrirVisorAlternativo(archivoPdf);
                     return false;
                 }
             }
@@ -243,13 +243,14 @@ public final class ServicioImpresionTicket {
                 boolean exito = despacharPdf24(archivoPdf);
                 if (!exito) {
                     LOGGER.warning("No se pudo despachar a PDF24 Creator. Abriendo visor estándar como alternativa.");
-                    abrirVisor(archivoPdf);
+                    abrirVisorAlternativo(archivoPdf);
                     return false;
                 }
                 return true;
             }
             case VISOR_PDF -> {
-                    return abrirVisor(archivoPdf);
+                abrirVisorAlternativo(archivoPdf);
+                return true;
                 }
         }
         return false;
@@ -484,6 +485,13 @@ public final class ServicioImpresionTicket {
         } else {
             LOGGER.info(() -> "Entorno sin Desktop.open soportado. Archivo generado en: " + archivoPdf.toAbsolutePath());
             return false;
+        }
+    }
+
+    private static void abrirVisorAlternativo(Path archivoPdf) throws IOException {
+        if (!abrirVisor(archivoPdf)) {
+            throw new IOException("El PDF se generó, pero no hay un visor disponible para abrirlo: "
+                    + archivoPdf.toAbsolutePath());
         }
     }
 

@@ -69,10 +69,12 @@ public class Restaurante {
         ManejadorErroresSwing.instalar();
         infraestructura.ConfiguracionLogs.configurar();
         if (args != null && args.length == 1 && "--migrate-db".equalsIgnoreCase(args[0])) {
+            new Servicio.ServicioRespaldoBaseDatos().recuperarOperacionInterrumpida();
             infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
             System.out.println("Migración de base de datos validada correctamente.");
             return;
         }
+        new Servicio.ServicioRespaldoBaseDatos().recuperarOperacionInterrumpida();
         infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
         Thread.ofVirtual().name("backup-diario-inicio").start(() -> {
             try {

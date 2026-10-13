@@ -92,6 +92,13 @@ public final class ConsultaPedidosServicio {
                 metodoPago, efectivoBs, efectivoUsd);
     }
 
+    public boolean finalizarConCliente(int idPedido, String clienteNombre, String clienteDocumento,
+            String metodoPago, java.util.List<Modelo.PagoPedido> pagos) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        validarId(idPedido);
+        return repositorio.actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago, pagos);
+    }
+
     public boolean anular(int idPedido, String motivo, String usuario) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         validarId(idPedido);

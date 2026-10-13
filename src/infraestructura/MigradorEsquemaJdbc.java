@@ -25,16 +25,23 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 4;
+    private static final int VERSION_ESQUEMA = 7;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
     private static final String CHECKSUM_MIGRACION_V2 = calcularChecksum(DEFINICION_MIGRACION_V2);
     private static final String DEFINICION_MIGRACION_V3 = "v3:platos_aplica_iva,salas_tipo";
     private static final String DEFINICION_MIGRACION_V4 = "v4:categorias,plato_categoria,plato_favorito,platos_nombre_clave,detalle_pedidos_nombre_clave,pedidos_estado_anulado";
-    private static final String CHECKSUM_MIGRACION = calcularChecksum(DEFINICION_MIGRACION_V4);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v4";
+    private static final String DEFINICION_MIGRACION_V5 = "v5:preferencias_tabla";
+    private static final String CHECKSUM_MIGRACION_V5 = calcularChecksum(DEFINICION_MIGRACION_V5);
+    private static final String DEFINICION_MIGRACION_V6 = "v6:pedido_pagos_mixtos";
+    private static final String CHECKSUM_MIGRACION_V6 = calcularChecksum(DEFINICION_MIGRACION_V6);
+    private static final String DEFINICION_MIGRACION_V7 = "v7:pedidos_rapidos_sin_mesa";
+    private static final String CHECKSUM_MIGRACION = calcularChecksum(DEFINICION_MIGRACION_V7);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v7";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
+
+    public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
 
     @FunctionalInterface
     public interface RespaldoPrevio {
@@ -57,15 +64,31 @@ public final class MigradorEsquemaJdbc {
             throw new IllegalArgumentException("La operación de respaldo previo es obligatoria.");
         }
 
-        try (Connection con = proveedor.getConnection()) {
+        try (AutoCloseable modoInterno = ControlMantenimientoBD.permitirOperacionInterna();
+             Connection con = proveedor.getConnection()) {
             adquirirBloqueo(con);
             try {
                 validarEsquemaExistente(con);
-                if (!migracionAplicada(con)) {
+                ControlMantenimientoBD.asegurarTablaControl(con);
+                String estadoMantenimiento = ControlMantenimientoBD.estado(con);
+                String operacionMantenimiento = ControlMantenimientoBD.operacionActual(con);
+                if ("MANTENIMIENTO".equalsIgnoreCase(estadoMantenimiento)
+                        && (operacionMantenimiento == null || !operacionMantenimiento.startsWith("MIGRACION-"))) {
+                    throw new SQLException("La BD tiene una operación de mantenimiento/restauración pendiente: "
+                            + operacionMantenimiento + ". No se abrirá la aplicación.");
+                }
+
+                boolean pendiente = !migracionAplicada(con);
+                String operacionId = operacionMantenimiento;
+                if (pendiente) {
+                    if (!"MANTENIMIENTO".equalsIgnoreCase(estadoMantenimiento)) {
+                        operacionId = ControlMantenimientoBD.iniciarMantenimiento(con, "MIGRACION-v" + VERSION_ESQUEMA);
+                    }
                     Path respaldo = respaldoPrevio.crear(proveedor);
                     if (respaldo == null) {
                         throw new SQLException("No se confirmó un respaldo previo válido; se cancela la migración.");
                     }
+                    new ServicioRespaldoBaseDatos(proveedor).validarRestaurableEnEsquemaTemporal(respaldo);
                     LOGGER.info("Respaldo previo a migración confirmado: " + respaldo.toAbsolutePath());
                     registrarMigracionEnCurso(con);
                     asegurarEsquema(con);
@@ -73,6 +96,10 @@ public final class MigradorEsquemaJdbc {
                     registrarMigracionAplicada(con);
                 } else {
                     validarPostcondiciones(con);
+                }
+                if ("MANTENIMIENTO".equalsIgnoreCase(ControlMantenimientoBD.estado(con))
+                        && operacionId != null && operacionId.startsWith("MIGRACION-")) {
+                    ControlMantenimientoBD.terminarMantenimiento(con, operacionId);
                 }
             } finally {
                 liberarBloqueo(con);
@@ -187,12 +214,15 @@ public final class MigradorEsquemaJdbc {
         DatabaseMetaData meta = con.getMetaData();
         String catalogo = con.getCatalog();
         for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja", "mesoneros",
-                "categorias", "plato_categoria", "plato_favorito")) {
+                "categorias", "plato_categoria", "plato_favorito", "preferencias_tabla", "pedido_pagos")) {
             if (!tablaExiste(con, tabla)) throw new SQLException("Postcondición no cumplida: falta tabla " + tabla);
         }
         for (String[] par : new String[][] {
                 {"pedidos", "total_bs"},
                 {"pedidos", "metodo_pago"},
+                {"pedidos", "tipo_pedido"},
+                {"pedidos", "id_sala"},
+                {"pedidos", "num_mesa"},
                 {"platos", "activo"},
                 {"pedidos", "id_mesonero"},
                 {"platos", "aplica_iva"},
@@ -206,6 +236,13 @@ public final class MigradorEsquemaJdbc {
         }
         if (!pedidosEstadoAdmiteAnulacion(con)) {
             throw new SQLException("Postcondición no cumplida: pedidos.estado no admite 'ANULADO'.");
+        }
+        for (String columna : new String[]{"id_sala", "num_mesa"}) {
+            try (ResultSet rs = meta.getColumns(catalogo, null, "pedidos", columna)) {
+                if (!rs.next() || rs.getInt("NULLABLE") != DatabaseMetaData.columnNullable) {
+                    throw new SQLException("Postcondición no cumplida: pedidos." + columna + " debe aceptar NULL.");
+                }
+            }
         }
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery("SELECT COUNT(DISTINCT clave) FROM configuracion_sistema WHERE clave IN "
@@ -236,6 +273,19 @@ public final class MigradorEsquemaJdbc {
             st.executeUpdate("INSERT IGNORE INTO clientes (documento, nombre) VALUES ('V-00000000', 'Consumidor Final')");
         }
 
+        // 1b. Preferencias de ancho de columnas por usuario y tabla (v5).
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS preferencias_tabla (
+                    usuario_id INT NOT NULL,
+                    tabla_clave VARCHAR(64) NOT NULL,
+                    layout_json VARCHAR(2000) NOT NULL,
+                    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (usuario_id, tabla_clave)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+        }
+
         // 2. Columnas en pedidos
         asegurarColumna(con, meta, catalogo, "pedidos", "total_bs", "DECIMAL(14,2) NULL DEFAULT NULL");
         asegurarColumna(con, meta, catalogo, "pedidos", "subtotal_bs", "DECIMAL(14,2) NOT NULL DEFAULT 0.00");
@@ -249,6 +299,9 @@ public final class MigradorEsquemaJdbc {
         asegurarColumna(con, meta, catalogo, "pedidos", "metodo_pago", "VARCHAR(30) NOT NULL DEFAULT 'EFECTIVO'");
         asegurarColumna(con, meta, catalogo, "pedidos", "efectivo_bs", "DECIMAL(14,2) NULL DEFAULT NULL");
         asegurarColumna(con, meta, catalogo, "pedidos", "efectivo_usd", "DECIMAL(14,2) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "tipo_pedido", "VARCHAR(16) NOT NULL DEFAULT 'MESA'");
+        asegurarPermiteNulos(con, meta, catalogo, "pedidos", "id_sala", "INT NULL DEFAULT NULL");
+        asegurarPermiteNulos(con, meta, catalogo, "pedidos", "num_mesa", "INT NULL DEFAULT NULL");
         asegurarColumna(con, meta, catalogo, "pedidos", "id_sala_pendiente",
                 "INT GENERATED ALWAYS AS (CASE WHEN estado = 'PENDIENTE' THEN id_sala ELSE NULL END) STORED");
         asegurarColumna(con, meta, catalogo, "pedidos", "num_mesa_pendiente",
@@ -319,6 +372,27 @@ public final class MigradorEsquemaJdbc {
 
         // 15. Ampliar pedidos.estado con 'ANULADO' para que la anulación de pedidos funcione
         asegurarEstadoPedidosConAnulacion(con);
+
+        // 16. Guardar cada medio y moneda que compone los pagos mixtos.
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS pedido_pagos (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    id_pedido INT NOT NULL,
+                    metodo_pago VARCHAR(30) NOT NULL,
+                    moneda CHAR(3) NOT NULL,
+                    monto DECIMAL(14,2) NOT NULL,
+                    tasa_cambio DECIMAL(12,4) NOT NULL,
+                    monto_bs DECIMAL(14,2) NOT NULL,
+                    monto_usd DECIMAL(14,2) NOT NULL,
+                    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_pedido_pagos_pedido (id_pedido),
+                    INDEX idx_pedido_pagos_metodo_fecha (metodo_pago, creado_en),
+                    CONSTRAINT fk_pedido_pagos_pedido FOREIGN KEY (id_pedido)
+                        REFERENCES pedidos(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+        }
     }
 
     private static void asegurarColumna(Connection con, DatabaseMetaData meta, String catalogo,
@@ -334,6 +408,19 @@ public final class MigradorEsquemaJdbc {
                 }
                 LOGGER.info("Columna sincronizada automáticamente: " + tabla + "." + columna);
             }
+        }
+    }
+
+    private static void asegurarPermiteNulos(Connection con, DatabaseMetaData meta, String catalogo,
+            String tabla, String columna, String definicionNullable) throws SQLException {
+        try (ResultSet rs = meta.getColumns(catalogo, null, tabla, columna)) {
+            if (!rs.next()) {
+                throw new SQLException("Falta columna requerida para pedidos rápidos: " + tabla + "." + columna);
+            }
+            if (rs.getInt("NULLABLE") != DatabaseMetaData.columnNoNulls) return;
+        }
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("ALTER TABLE " + tabla + " MODIFY COLUMN " + columna + " " + definicionNullable);
         }
     }
 
@@ -557,9 +644,30 @@ public final class MigradorEsquemaJdbc {
         if (pedidosEstadoAdmiteAnulacion(con)) {
             return;
         }
+        String definicion;
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COLUMN_TYPE FROM information_schema.COLUMNS "
+                     + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pedidos' AND COLUMN_NAME = 'estado'")) {
+            if (!rs.next()) throw new SQLException("Falta pedidos.estado; se cancela el cambio de tipo.");
+            definicion = rs.getString(1);
+        }
+        if (definicion == null || !definicion.toUpperCase(java.util.Locale.ROOT).startsWith("ENUM(")) {
+            throw new SQLException("Tipo de pedidos.estado no reconocido; se requiere migración manual sin conversión automática: " + definicion);
+        }
+        java.util.regex.Matcher valores = java.util.regex.Pattern.compile("'((?:[^'\\\\]|\\\\.)*)'").matcher(definicion);
+        java.util.LinkedHashSet<String> opciones = new java.util.LinkedHashSet<>();
+        while (valores.find()) {
+            opciones.add(valores.group(1).replace("\\\\'", "'").replace("\\\\\\\\", "\\\\"));
+        }
+        if (!opciones.containsAll(Set.of("PENDIENTE", "FINALIZADO"))) {
+            throw new SQLException("pedidos.estado no contiene los estados estándar; no se reemplazará su definición: " + definicion);
+        }
+        opciones.add("ANULADO");
+        String lista = opciones.stream().map(v -> "'" + v.replace("\\\\", "\\\\\\\\").replace("'", "\\\\'") + "'")
+                .collect(java.util.stream.Collectors.joining(","));
         try (Statement st = con.createStatement()) {
-            st.executeUpdate("ALTER TABLE pedidos MODIFY COLUMN estado "
-                    + "ENUM('PENDIENTE','FINALIZADO','ANULADO') COLLATE utf8_spanish_ci NOT NULL DEFAULT 'PENDIENTE'");
+            st.executeUpdate("ALTER TABLE pedidos MODIFY COLUMN estado ENUM(" + lista
+                    + ") COLLATE utf8_spanish_ci NOT NULL DEFAULT 'PENDIENTE'");
         }
         LOGGER.info("pedidos.estado ampliado automáticamente con 'ANULADO'.");
     }

@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public class DetallePedido {
+    public static final int CANTIDAD_MAXIMA_POR_PLATO = 999;
+
     private int id;
     private String nombre;
     private BigDecimal precio = BigDecimal.ZERO.setScale(2);

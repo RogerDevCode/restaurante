@@ -215,20 +215,29 @@ public class PedidosDaoTest {
     @Test
     public void testActualizarPedidoCompleto_SimulacionUsuario() {
         PedidosDao dao = new PedidosDao();
-        // 1. Crear un pedido inicial
-        int randomMesa = (int) (Math.random() * 1000) + 100;
-        Pedidos pInicial = new Pedidos();
-        pInicial.setId_sala(1);
-        pInicial.setNum_mesa(randomMesa);
-        pInicial.setTotalDecimal(new BigDecimal("10.00"));
-        pInicial.setUsuario("TestUser");
-        DetallePedido d1 = new DetallePedido(0, "Pollo", new BigDecimal("10.00"), 1, "", 0);
-        int idPedido = dao.registrarPedidoCompleto(pInicial, Arrays.asList(d1));
-        
-        // 2. Simulamos que el usuario "Agrega Productos" al mismo pedido
-        Pedidos pModificado = new Pedidos();
-        pModificado.setId_sala(1);
-        pModificado.setNum_mesa(randomMesa);
+        // Mesas validas de sala 1 (regla 1..mesas); reintentar si esta ocupada en vivo.
+        int idPedido = -1;
+        int mesaLibre = -1;
+        for (int m = 1; m <= 4 && idPedido < 0; m++) {
+            Pedidos p = new Pedidos();
+            p.setId_sala(1);
+            p.setNum_mesa(m);
+            p.setTotalDecimal(new BigDecimal("10.00"));
+            p.setUsuario("TestUser");
+            DetallePedido d1 = new DetallePedido(0, "Pollo", new BigDecimal("10.00"), 1, "", 0);
+            try {
+                idPedido = dao.registrarPedidoCompleto(p, Arrays.asList(d1));
+                mesaLibre = m;
+            } catch (Modelo.PedidoPendienteExistenteException ocupado) {
+                // Probar la siguiente mesa.
+            }
+        }
+        org.junit.Assume.assumeTrue("Sin mesa libre en sala 1 para la prueba", idPedido > 0);
+        try {
+            // 2. Simulamos que el usuario "Agrega Productos" al mismo pedido
+            Pedidos pModificado = new Pedidos();
+            pModificado.setId_sala(1);
+            pModificado.setNum_mesa(mesaLibre);
         pModificado.setTotalDecimal(new BigDecimal("25.00"));
         pModificado.setUsuario("TestUser");
         pModificado.setSubtotal(new BigDecimal("25.00"));
@@ -252,16 +261,20 @@ public class PedidosDaoTest {
         
         boolean tienePolloX2 = detallesGuardados.stream().anyMatch(d -> d.getNombre().equals("Pollo") && d.getCantidad() == 2);
         boolean tieneRefresco = detallesGuardados.stream().anyMatch(d -> d.getNombre().equals("Refresco") && d.getCantidad() == 1);
-        
+
         assertTrue(tienePolloX2);
         assertTrue(tieneRefresco);
-        
-        // Cleanup
+        } finally {
+        // Cleanup (detalles primero por FK).
         try (Connection conn = new infraestructura.ProveedorConexionJdbc().getConnection();
-             PreparedStatement st = conn.prepareStatement("DELETE FROM pedidos WHERE id = ?")) {
-            st.setInt(1, idPedido);
-            st.executeUpdate();
+             PreparedStatement stDet = conn.prepareStatement("DELETE FROM detalle_pedidos WHERE id_pedido = ?");
+             PreparedStatement stPed = conn.prepareStatement("DELETE FROM pedidos WHERE id = ?")) {
+            stDet.setInt(1, idPedido);
+            stDet.executeUpdate();
+            stPed.setInt(1, idPedido);
+            stPed.executeUpdate();
         } catch(SQLException ex) {}
+        }
     }
 
 }

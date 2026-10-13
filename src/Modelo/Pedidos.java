@@ -15,6 +15,7 @@ public class Pedidos {
     private String sala;
     private String usuario;
     private String estado;
+    private String tipoPedido = "MESA";
     private BigDecimal tasaCambio;
     private BigDecimal subtotalBs;
     private BigDecimal ivaBs;
@@ -24,6 +25,7 @@ public class Pedidos {
     private String metodoPago = "EFECTIVO";
     private BigDecimal efectivoBs;
     private BigDecimal efectivoUsd;
+    private java.util.List<PagoPedido> pagos = new java.util.ArrayList<>();
     private Integer idMesonero;
     private String mesoneroNombre;
 
@@ -138,6 +140,22 @@ public class Pedidos {
         this.estado = estado;
     }
 
+    public String getTipoPedido() {
+        return tipoPedido == null || tipoPedido.isBlank() ? "MESA" : tipoPedido;
+    }
+
+    public void setTipoPedido(String tipoPedido) {
+        String valor = tipoPedido == null || tipoPedido.isBlank() ? "MESA" : tipoPedido.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!"MESA".equals(valor) && !"RAPIDO".equals(valor)) {
+            throw ErrorAplicacionException.validacion("El tipo de pedido debe ser MESA o RAPIDO.");
+        }
+        this.tipoPedido = valor;
+    }
+
+    public boolean esPedidoRapido() {
+        return "RAPIDO".equalsIgnoreCase(getTipoPedido());
+    }
+
     public BigDecimal getTasaCambio() {
         return tasaCambio;
     }
@@ -210,6 +228,14 @@ public class Pedidos {
 
     public BigDecimal getEfectivoUsd() {
         return efectivoUsd;
+    }
+
+    public java.util.List<PagoPedido> getPagos() {
+        return java.util.Collections.unmodifiableList(pagos);
+    }
+
+    public void setPagos(java.util.List<PagoPedido> pagos) {
+        this.pagos = pagos == null ? new java.util.ArrayList<>() : new java.util.ArrayList<>(pagos);
     }
 
     public void setEfectivoUsd(BigDecimal efectivoUsd) {

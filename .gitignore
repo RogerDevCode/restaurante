@@ -12,3 +12,11 @@ respaldos/
 nbproject/private/
 .nb-cache/
 .commandcode/
+
+# Scratch files
+Test*.java
+test_tab*
+*.class
+*.bak
+debug.log
+target.txt

@@ -69,8 +69,8 @@ public class PedidosDao implements PedidosRepositorio {
         }
 
         String sqlPedido = """
-            INSERT INTO pedidos (id_sala, num_mesa, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO pedidos (id_sala, num_mesa, tipo_pedido, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         String sqlDetalle = """
             INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido)
@@ -82,23 +82,30 @@ public class PedidosDao implements PedidosRepositorio {
                 conexion.setAutoCommit(false);
                 int idPedido;
                 try (PreparedStatement sentenciaPedido = conexion.prepareStatement(sqlPedido, Statement.RETURN_GENERATED_KEYS)) {
-                    sentenciaPedido.setInt(1, pedido.getId_sala());
-                    sentenciaPedido.setInt(2, pedido.getNum_mesa());
-                    sentenciaPedido.setBigDecimal(3, importePersistible(pedido.getSubtotal(), "El subtotal del pedido"));
-                    sentenciaPedido.setBigDecimal(4, pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : BigDecimal.ZERO);
-                    sentenciaPedido.setBigDecimal(5, pedido.getIvaMonto() != null ? pedido.getIvaMonto() : BigDecimal.ZERO);
-                    sentenciaPedido.setBigDecimal(6, importePersistible(pedido.getTotalDecimal(), "El total del pedido"));
-                    sentenciaPedido.setString(7, pedido.getUsuario());
-                    sentenciaPedido.setBigDecimal(8, pedido.getTasaCambio());
-                    sentenciaPedido.setBigDecimal(9, pedido.getSubtotalBs());
-                    sentenciaPedido.setBigDecimal(10, pedido.getIvaBs());
-                    sentenciaPedido.setBigDecimal(11, pedido.getTotalBs());
-                    if (pedido.getIdMesonero() != null && pedido.getIdMesonero() > 0) {
-                        sentenciaPedido.setInt(12, pedido.getIdMesonero());
+                    boolean pedidoRapido = pedido.esPedidoRapido();
+                    if (pedidoRapido) {
+                        sentenciaPedido.setNull(1, java.sql.Types.INTEGER);
+                        sentenciaPedido.setNull(2, java.sql.Types.INTEGER);
                     } else {
-                        sentenciaPedido.setNull(12, java.sql.Types.INTEGER);
+                        sentenciaPedido.setInt(1, pedido.getId_sala());
+                        sentenciaPedido.setInt(2, pedido.getNum_mesa());
                     }
-                    sentenciaPedido.setString(13, pedido.getMesoneroNombre());
+                    sentenciaPedido.setString(3, pedido.getTipoPedido());
+                    sentenciaPedido.setBigDecimal(4, importePersistible(pedido.getSubtotal(), "El subtotal del pedido"));
+                    sentenciaPedido.setBigDecimal(5, pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : BigDecimal.ZERO);
+                    sentenciaPedido.setBigDecimal(6, pedido.getIvaMonto() != null ? pedido.getIvaMonto() : BigDecimal.ZERO);
+                    sentenciaPedido.setBigDecimal(7, importePersistible(pedido.getTotalDecimal(), "El total del pedido"));
+                    sentenciaPedido.setString(8, pedido.getUsuario());
+                    sentenciaPedido.setBigDecimal(9, pedido.getTasaCambio());
+                    sentenciaPedido.setBigDecimal(10, pedido.getSubtotalBs());
+                    sentenciaPedido.setBigDecimal(11, pedido.getIvaBs());
+                    sentenciaPedido.setBigDecimal(12, pedido.getTotalBs());
+                    if (pedido.getIdMesonero() != null && pedido.getIdMesonero() > 0) {
+                        sentenciaPedido.setInt(13, pedido.getIdMesonero());
+                    } else {
+                        sentenciaPedido.setNull(13, java.sql.Types.INTEGER);
+                    }
+                    sentenciaPedido.setString(14, pedido.getMesoneroNombre());
                     if (sentenciaPedido.executeUpdate() != 1) {
                         throw new SQLException("No se pudo insertar el encabezado del pedido.");
                     }
@@ -333,11 +340,38 @@ public class PedidosDao implements PedidosRepositorio {
         }
     }
 
+    /**
+     * Regla de negocio: la mesa debe existir en la sala (1..salas.mesas).
+     * Si la sala no se puede leer (mocks/tests), no bloquea: el INSERT o la FK decidirán.
+     */
+    private void validarMesaEnSala(int idSala, int numMesa) {
+        try (Connection conexion = conexiones.getConnection();
+             PreparedStatement st = conexion.prepareStatement("SELECT mesas FROM salas WHERE id = ?")) {
+            st.setInt(1, idSala);
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    int max = rs.getInt(1);
+                    if (!rs.wasNull() && (numMesa < 1 || numMesa > max)) {
+                        throw ErrorAplicacionException.validacion(
+                                "La mesa " + numMesa + " no existe en la sala seleccionada (1.." + max + ").");
+                    }
+                }
+            }
+        } catch (ErrorAplicacionException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            Logger.getLogger(PedidosDao.class.getName())
+                    .log(java.util.logging.Level.FINE, "Sin validar rango de mesa: " + ex.getMessage());
+        }
+    }
+
     private void validarPedidoPersistible(Pedidos pedido, List<DetallePedido> detalles) {
         if (pedido == null) {
             throw ErrorAplicacionException.validacion("El pedido es obligatorio.");
         }
-        if (pedido.getId_sala() <= 0 || pedido.getNum_mesa() <= 0
+        boolean rapido = pedido.esPedidoRapido();
+        if ((!rapido && (pedido.getId_sala() <= 0 || pedido.getNum_mesa() <= 0))
+                || (rapido && (pedido.getId_sala() != 0 || pedido.getNum_mesa() != 0))
                 || pedido.getUsuario() == null || pedido.getUsuario().trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("La sala, mesa y usuario del pedido deben ser válidos.");
         }
@@ -347,8 +381,10 @@ public class PedidosDao implements PedidosRepositorio {
         BigDecimal sumaDetalles = BigDecimal.ZERO.setScale(2);
         for (DetallePedido detalle : detalles) {
             if (detalle == null || detalle.getNombre() == null || detalle.getNombre().trim().isEmpty()
-                    || detalle.getCantidad() <= 0) {
-                throw ErrorAplicacionException.validacion("Cada detalle debe tener nombre y cantidad positiva.");
+                    || detalle.getCantidad() <= 0
+                    || detalle.getCantidad() > DetallePedido.CANTIDAD_MAXIMA_POR_PLATO) {
+                throw ErrorAplicacionException.validacion("Cada detalle debe tener nombre y una cantidad entre 1 y "
+                        + DetallePedido.CANTIDAD_MAXIMA_POR_PLATO + ".");
             }
             BigDecimal precio = importePersistible(detalle.getPrecioDecimal(), "El precio de cada plato");
             sumaDetalles = sumaDetalles.add(precio.multiply(BigDecimal.valueOf(detalle.getCantidad())));
@@ -408,6 +444,7 @@ public class PedidosDao implements PedidosRepositorio {
         if (pedido.getIvaMonto() == null) {
             pedido.setIvaMonto(ivaMonto);
         }
+        validarMesaEnSala(pedido.getId_sala(), pedido.getNum_mesa());
     }
 
     private BigDecimal importePersistible(BigDecimal importe, String campo) {
@@ -464,10 +501,10 @@ public class PedidosDao implements PedidosRepositorio {
         }
         Pedidos ped = null;
         String sql = """
-            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala,
+            SELECT p.id, p.id_sala, p.num_mesa, p.tipo_pedido, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, COALESCE(s.nombre, 'Pedido rápido') AS nombre_sala,
                    p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd, p.id_mesonero, p.mesonero_nombre
             FROM pedidos p
-            INNER JOIN salas s ON p.id_sala = s.id
+            LEFT JOIN salas s ON p.id_sala = s.id
             WHERE p.id = ?
             """;
         try (Connection conexion = conexiones.getConnection();
@@ -478,6 +515,7 @@ public class PedidosDao implements PedidosRepositorio {
                     ped = new Pedidos();
                     ped.setId(resultados.getInt("id"));
                     ped.setId_sala(resultados.getInt("id_sala"));
+                    ped.setTipoPedido(resultados.getString("tipo_pedido"));
                     ped.setFecha(resultados.getString("fecha"));
                     ped.setSala(resultados.getString("nombre_sala"));
                     ped.setNum_mesa(resultados.getInt("num_mesa"));
@@ -516,15 +554,37 @@ public class PedidosDao implements PedidosRepositorio {
                     "No existe el pedido " + id_pedido + ".",
                     new IllegalStateException("La consulta no encontró el pedido solicitado."));
         }
+        ped.setPagos(obtenerPagosPedido(id_pedido));
         return ped;
+    }
+
+    private List<PagoPedido> obtenerPagosPedido(int idPedido) {
+        List<PagoPedido> pagos = new ArrayList<>();
+        try (Connection conexion = conexiones.getConnection();
+             PreparedStatement ps = conexion.prepareStatement(
+                     "SELECT metodo_pago, moneda, monto FROM pedido_pagos WHERE id_pedido = ? ORDER BY id")) {
+            ps.setInt(1, idPedido);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    pagos.add(new PagoPedido(rs.getString("metodo_pago"), rs.getString("moneda"), rs.getBigDecimal("monto")));
+                }
+            }
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1146 || "42S02".equals(ex.getSQLState())) {
+                LOGGER.fine("La BD legacy aún no tiene desglose pedido_pagos.");
+                return pagos;
+            }
+            throw new DataAccessException("No se pudo consultar el desglose del pago.", ex);
+        }
+        return pagos;
     }
 
     private Pedidos verPedidoLegacy(int id_pedido) {
         Pedidos ped = null;
         String sql = """
-            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
+            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, COALESCE(s.nombre, 'Sala no disponible') AS nombre_sala
             FROM pedidos p
-            INNER JOIN salas s ON p.id_sala = s.id
+            LEFT JOIN salas s ON p.id_sala = s.id
             WHERE p.id = ?
             """;
         try (Connection conexion = conexiones.getConnection();
@@ -578,6 +638,141 @@ public class PedidosDao implements PedidosRepositorio {
     @Override
     public boolean actualizarEstadoConCliente(int id_pedido, String clienteNombre, String clienteDocumento, String metodoPago) {
         return actualizarEstadoConCliente(id_pedido, clienteNombre, clienteDocumento, metodoPago, null, null);
+    }
+
+    @Override
+    public boolean actualizarEstadoConCliente(int id_pedido, String clienteNombre, String clienteDocumento,
+            String metodoPago, List<PagoPedido> pagos) {
+        if (id_pedido <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para finalizarlo.");
+        }
+        if (pagos == null || pagos.isEmpty()) {
+            throw ErrorAplicacionException.validacion("Registre al menos un medio de pago para finalizar.");
+        }
+        String doc = clienteDocumento == null || clienteDocumento.trim().isEmpty() ? "V-00000000" : clienteDocumento.trim();
+        String nom = clienteNombre == null || clienteNombre.trim().isEmpty() ? "Consumidor Final" : clienteNombre.trim();
+        try (Connection conexion = conexiones.getConnection()) {
+            boolean autoCommitOriginal = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
+            try {
+                BigDecimal totalBs;
+                BigDecimal tasa;
+                try (PreparedStatement ps = conexion.prepareStatement(
+                        "SELECT total, total_bs, tasa_cambio FROM pedidos WHERE id = ? AND estado = 'PENDIENTE' FOR UPDATE")) {
+                    ps.setInt(1, id_pedido);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            boolean yaFinalizado = validarMotivoNoFinalizado(conexion, id_pedido);
+                            conexion.rollback();
+                            return yaFinalizado;
+                        }
+                        tasa = rs.getBigDecimal("tasa_cambio");
+                        if (tasa == null || tasa.signum() <= 0) {
+                            throw ErrorAplicacionException.validacion(
+                                    "No se puede cobrar: el pedido no tiene una tasa de cambio válida guardada en la BD.");
+                        }
+                        totalBs = rs.getBigDecimal("total_bs");
+                        if (totalBs == null) {
+                            totalBs = rs.getBigDecimal("total").multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                        }
+                    }
+                }
+
+                BigDecimal recibidoBs = BigDecimal.ZERO.setScale(2);
+                BigDecimal efectivoBs = BigDecimal.ZERO.setScale(2);
+                BigDecimal efectivoUsd = BigDecimal.ZERO.setScale(2);
+                for (PagoPedido pago : pagos) {
+                    if (pago == null) {
+                        throw ErrorAplicacionException.validacion("Complete cada línea del desglose de pago.");
+                    }
+                    recibidoBs = recibidoBs.add(pago.equivalenteBs(tasa));
+                    if ("EFECTIVO_BS".equals(pago.metodo())) efectivoBs = efectivoBs.add(pago.monto());
+                    if ("EFECTIVO_USD".equals(pago.metodo())) efectivoUsd = efectivoUsd.add(pago.monto());
+                }
+                String metodoResumen = pagos.size() == 1 ? pagos.getFirst().metodo() : "MIXTO";
+                if (metodoPago != null && !metodoPago.isBlank()
+                        && !"MIXTO".equalsIgnoreCase(metodoPago)
+                        && !metodoResumen.equalsIgnoreCase(metodoPago)) {
+                    throw ErrorAplicacionException.validacion("El método seleccionado no coincide con el detalle del pago.");
+                }
+                recibidoBs = recibidoBs.setScale(2, RoundingMode.HALF_UP);
+                if (recibidoBs.compareTo(totalBs.setScale(2, RoundingMode.HALF_UP)) != 0) {
+                    throw ErrorAplicacionException.validacion("El desglose debe completar exactamente Bs. "
+                            + totalBs.setScale(2, RoundingMode.HALF_UP).toPlainString()
+                            + "; se registraron Bs. " + recibidoBs.toPlainString() + ".");
+                }
+
+                String sqlActualizar = """
+                    UPDATE pedidos
+                    SET estado = 'FINALIZADO', cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
+                        efectivo_bs = ?, efectivo_usd = ?
+                    WHERE id = ? AND estado = 'PENDIENTE'
+                    """;
+                try (PreparedStatement ps = conexion.prepareStatement(sqlActualizar)) {
+                    ps.setString(1, nom);
+                    ps.setString(2, doc);
+                    ps.setString(3, metodoResumen);
+                    ps.setBigDecimal(4, efectivoBs);
+                    ps.setBigDecimal(5, efectivoUsd);
+                    ps.setInt(6, id_pedido);
+                    int filas = ps.executeUpdate();
+                    if (filas == 0) {
+                        boolean yaFinalizado = validarMotivoNoFinalizado(conexion, id_pedido);
+                        conexion.rollback();
+                        return yaFinalizado;
+                    }
+                    ErrorAplicacionException.resultadoUnaFila(filas, "finalizar pedido " + id_pedido);
+                }
+
+                String sqlPago = """
+                    INSERT INTO pedido_pagos
+                        (id_pedido, metodo_pago, moneda, monto, tasa_cambio, monto_bs, monto_usd)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """;
+                try (PreparedStatement ps = conexion.prepareStatement(sqlPago)) {
+                    for (PagoPedido pago : pagos) {
+                        ps.setInt(1, id_pedido);
+                        ps.setString(2, pago.metodo());
+                        ps.setString(3, pago.moneda());
+                        ps.setBigDecimal(4, pago.monto());
+                        ps.setBigDecimal(5, tasa);
+                        ps.setBigDecimal(6, pago.equivalenteBs(tasa));
+                        ps.setBigDecimal(7, pago.equivalenteUsd(tasa));
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+
+                try (PreparedStatement ps = conexion.prepareStatement("""
+                        INSERT INTO clientes (documento, nombre) VALUES (?, ?)
+                        ON DUPLICATE KEY UPDATE nombre = VALUES(nombre)
+                        """)) {
+                    ps.setString(1, doc);
+                    ps.setString(2, nom);
+                    ps.executeUpdate();
+                } catch (SQLException ign) {
+                    // La factura no se bloquea si la tabla de clientes no existe en una BD legacy.
+                }
+                conexion.commit();
+                return true;
+            } catch (RuntimeException | SQLException ex) {
+                try {
+                    conexion.rollback();
+                } catch (SQLException rollbackEx) {
+                    ex.addSuppressed(rollbackEx);
+                }
+                if (ex instanceof RuntimeException runtime) throw runtime;
+                throw new DataAccessException("No se pudo guardar el detalle del pago.", ex);
+            } finally {
+                try {
+                    conexion.setAutoCommit(autoCommitOriginal);
+                } catch (SQLException ex) {
+                    LOGGER.warning("No se pudo restaurar autoCommit luego de finalizar pago mixto: " + ex.getMessage());
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo finalizar el pedido con el desglose de pago.", ex);
+        }
     }
 
     @Override
@@ -705,8 +900,9 @@ public class PedidosDao implements PedidosRepositorio {
                 }
                 BigDecimal equivalenteBs = efectivoBs.add(efectivoUsd.multiply(tasa))
                         .setScale(2, RoundingMode.HALF_UP);
-                if (equivalenteBs.compareTo(totalBs) > 0) {
-                    throw ErrorAplicacionException.validacion("El efectivo indicado para el pago mixto supera el total del pedido.");
+                if (equivalenteBs.compareTo(totalBs) != 0) {
+                    throw ErrorAplicacionException.validacion("El desglose del pago mixto debe completar exactamente Bs. "
+                            + totalBs.setScale(2, RoundingMode.HALF_UP).toPlainString() + ".");
                 }
             }
         }
@@ -812,10 +1008,10 @@ public class PedidosDao implements PedidosRepositorio {
     public List<Pedidos> listarPedidos() {
         List<Pedidos> lista = new ArrayList<>();
         String sql = """
-            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala,
+            SELECT p.id, p.id_sala, p.num_mesa, p.tipo_pedido, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, COALESCE(s.nombre, 'Pedido rápido') AS nombre_sala,
                    p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd, p.id_mesonero, p.mesonero_nombre
             FROM pedidos p
-            INNER JOIN salas s ON p.id_sala = s.id
+            LEFT JOIN salas s ON p.id_sala = s.id
             ORDER BY p.fecha DESC
             """;
         try (Connection conexion = conexiones.getConnection();
@@ -824,6 +1020,8 @@ public class PedidosDao implements PedidosRepositorio {
             while (resultados.next()) {
                 Pedidos ped = new Pedidos();
                 ped.setId(resultados.getInt("id"));
+                ped.setId_sala(resultados.getInt("id_sala"));
+                ped.setTipoPedido(resultados.getString("tipo_pedido"));
                 ped.setSala(resultados.getString("nombre_sala"));
                 ped.setNum_mesa(resultados.getInt("num_mesa"));
                 ped.setFecha(resultados.getString("fecha"));
@@ -863,9 +1061,9 @@ public class PedidosDao implements PedidosRepositorio {
     private List<Pedidos> listarPedidosLegacy() {
         List<Pedidos> lista = new ArrayList<>();
         String sql = """
-            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, s.nombre AS nombre_sala
+            SELECT p.id, p.id_sala, p.num_mesa, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, COALESCE(s.nombre, 'Pedido rápido') AS nombre_sala
             FROM pedidos p
-            INNER JOIN salas s ON p.id_sala = s.id
+            LEFT JOIN salas s ON p.id_sala = s.id
             ORDER BY p.fecha DESC
             """;
         try (Connection conexion = conexiones.getConnection();

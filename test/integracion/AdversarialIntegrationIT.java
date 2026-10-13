@@ -1,6 +1,7 @@
 package integracion;
 
 import Modelo.Config;
+import Modelo.ErrorAplicacionException;
 import Modelo.LoginDao;
 import Modelo.Usuario;
 import infraestructura.ProveedorConexionJdbc;
@@ -82,7 +83,13 @@ public class AdversarialIntegrationIT {
         user.setPassword("pass");
         user.setRol("Asistente");
 
-        login.Registrar(user);
+        boolean registrado = false;
+        try {
+            registrado = login.Registrar(user);
+        } catch (ErrorAplicacionException rechazoEsperado) {
+            // El payload también viola la validación de correo; un rechazo controlado es válido.
+        }
+        assertFalse("Un payload que no es correo válido no puede registrar usuarios", registrado);
 
         // Verificamos que no se borro la tabla, si se puede consultar config
         Config config = login.datosEmpresa();

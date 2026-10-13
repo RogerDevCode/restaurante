@@ -140,19 +140,32 @@ public class CierreCajaDao {
                 // 3. Desglose por método de pago
                 List<CierreCaja.ResumenMetodoPago> metodos = new ArrayList<>();
                 String sqlMetodos = """
-                    SELECT COALESCE(NULLIF(TRIM(metodo_pago), ''), 'EFECTIVO') AS metodo,
-                           COUNT(*) AS cant,
-                           COALESCE(SUM(total), 0) AS total_usd,
+                    SELECT metodo, COUNT(DISTINCT id_pedido) AS cant,
+                           COALESCE(SUM(total_usd), 0) AS total_usd,
                            COALESCE(SUM(total_bs), 0) AS total_bs
-                    FROM pedidos
-                    WHERE estado = 'FINALIZADO'
-                      AND (fecha LIKE ? OR DATE(fecha) = ?)
+                    FROM (
+                        SELECT pp.id_pedido, pp.metodo_pago AS metodo, pp.monto_usd AS total_usd,
+                               pp.monto_bs AS total_bs
+                        FROM pedido_pagos pp
+                        INNER JOIN pedidos p ON p.id = pp.id_pedido
+                        WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                        UNION ALL
+                        SELECT p.id AS id_pedido,
+                               COALESCE(NULLIF(TRIM(p.metodo_pago), ''), 'EFECTIVO') AS metodo,
+                               COALESCE(p.total, 0) AS total_usd,
+                               COALESCE(p.total_bs, p.total * COALESCE(NULLIF(p.tasa_cambio, 0), 36.5000), 0) AS total_bs
+                        FROM pedidos p
+                        WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                          AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id)
+                    ) pagos
                     GROUP BY metodo
                     ORDER BY total_usd DESC
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlMetodos)) {
                     ps.setString(1, likeParam);
                     ps.setString(2, fechaFiltro);
+                    ps.setString(3, likeParam);
+                    ps.setString(4, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
                             metodos.add(new CierreCaja.ResumenMetodoPago(
@@ -168,24 +181,31 @@ public class CierreCajaDao {
 
                 String sqlEfectivo = """
                     SELECT
-                        COALESCE(SUM(CASE
-                            WHEN metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(efectivo_bs, total_bs, 0)
-                            WHEN metodo_pago = 'MIXTO' THEN COALESCE(efectivo_bs, 0)
-                            ELSE 0 END), 0) AS efectivo_bs,
-                        COALESCE(SUM(CASE
-                            WHEN metodo_pago = 'EFECTIVO_USD' THEN COALESCE(efectivo_usd, total, 0)
-                            WHEN metodo_pago = 'MIXTO' THEN COALESCE(efectivo_usd, 0)
-                            ELSE 0 END), 0) AS efectivo_usd,
-                        COALESCE(SUM(CASE
-                            WHEN metodo_pago = 'MIXTO' AND (efectivo_bs IS NULL OR efectivo_usd IS NULL) THEN 1
-                            ELSE 0 END), 0) AS mixtos_sin_desglose
-                    FROM pedidos
-                    WHERE estado = 'FINALIZADO'
-                      AND (fecha LIKE ? OR DATE(fecha) = ?)
+                        COALESCE(SUM(CASE WHEN metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS', 'MIXTO') THEN monto_bs ELSE 0 END), 0) AS efectivo_bs,
+                        COALESCE(SUM(CASE WHEN metodo_pago IN ('EFECTIVO_USD', 'MIXTO') THEN monto_usd ELSE 0 END), 0) AS efectivo_usd,
+                        COALESCE(SUM(mixto_sin_desglose), 0) AS mixtos_sin_desglose
+                    FROM (
+                        SELECT pp.id_pedido, pp.metodo_pago, pp.monto_bs, pp.monto_usd, 0 AS mixto_sin_desglose
+                        FROM pedido_pagos pp
+                        INNER JOIN pedidos p ON p.id = pp.id_pedido
+                        WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                        UNION ALL
+                        SELECT p.id AS id_pedido, COALESCE(NULLIF(TRIM(p.metodo_pago), ''), 'EFECTIVO') AS metodo_pago,
+                               CASE WHEN p.metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(p.efectivo_bs, p.total_bs, 0)
+                                    WHEN p.metodo_pago = 'MIXTO' THEN COALESCE(p.efectivo_bs, 0) ELSE 0 END AS monto_bs,
+                               CASE WHEN p.metodo_pago = 'EFECTIVO_USD' THEN COALESCE(p.efectivo_usd, p.total, 0)
+                                    WHEN p.metodo_pago = 'MIXTO' THEN COALESCE(p.efectivo_usd, 0) ELSE 0 END AS monto_usd,
+                               CASE WHEN p.metodo_pago = 'MIXTO' AND (p.efectivo_bs IS NULL OR p.efectivo_usd IS NULL) THEN 1 ELSE 0 END AS mixto_sin_desglose
+                        FROM pedidos p
+                        WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                          AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id)
+                    ) pagos
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlEfectivo)) {
                     ps.setString(1, likeParam);
                     ps.setString(2, fechaFiltro);
+                    ps.setString(3, likeParam);
+                    ps.setString(4, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             cierre.setResumenEfectivo(

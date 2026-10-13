@@ -12,11 +12,16 @@ import java.util.Optional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.Locale;
+import java.util.regex.Pattern;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class LoginDao implements AutenticacionRepositorio {
     private static final Logger LOGGER = Logger.getLogger(LoginDao.class.getName());
+    private static final Pattern PATRON_CORREO = Pattern.compile(
+            "^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\\.)+[A-Z]{2,63}$",
+            Pattern.CASE_INSENSITIVE);
     private final ProveedorConexionJdbc conexiones;
     private final PasswordHasher passwordHasher;
     private final ConfiguracionRepositorio configuracionRepo;
@@ -95,7 +100,7 @@ public class LoginDao implements AutenticacionRepositorio {
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, reg.getNombre());
-            sentencia.setString(2, reg.getCorreo());
+            sentencia.setString(2, normalizarCorreoRegistro(reg.getCorreo()));
             sentencia.setString(3, passwordHasher.hash(reg.getPassword().toCharArray()));
             sentencia.setString(4, reg.getRol());
             return ErrorAplicacionException.resultadoUnaFila(
@@ -181,6 +186,20 @@ public class LoginDao implements AutenticacionRepositorio {
         if (!"Administrador".equals(reg.getRol()) && !"Asistente".equals(reg.getRol())) {
             throw ErrorAplicacionException.validacion("El rol del usuario no es válido.");
         }
+        normalizarCorreoRegistro(reg.getCorreo());
+    }
+
+    public static String normalizarCorreoRegistro(String correo) {
+        if (correo == null) {
+            throw ErrorAplicacionException.validacion("El correo electrónico es obligatorio.");
+        }
+        String normalizado = correo.trim().toLowerCase(Locale.ROOT);
+        int arroba = normalizado.lastIndexOf('@');
+        if (normalizado.length() > 254 || arroba < 1 || arroba > 64
+                || !PATRON_CORREO.matcher(normalizado).matches()) {
+            throw ErrorAplicacionException.validacion("Ingresa un correo electrónico válido.");
+        }
+        return normalizado;
     }
 
     public List<Usuario> ListarUsuarios() {

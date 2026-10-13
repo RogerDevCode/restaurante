@@ -39,6 +39,7 @@ import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Pruebas unitarias e integradas para el Dashboard, Clientes y Facturación personalizada.
@@ -77,6 +78,22 @@ public class DashboardYClientesTest {
         if (autoDismissTimer != null) {
             autoDismissTimer.cancel();
         }
+    }
+
+
+    private static void esperarTextoConfig(javax.swing.JTextField campo, String esperado) throws Exception {
+        String actual = null;
+        long fin = System.currentTimeMillis() + 8000;
+        while (System.currentTimeMillis() < fin) {
+            final String[] v = new String[1];
+            javax.swing.SwingUtilities.invokeAndWait(() -> v[0] = campo.getText());
+            actual = v[0];
+            if (esperado.equals(actual)) {
+                return;
+            }
+            Thread.sleep(100);
+        }
+        fail("Timeout esperando '" + esperado + "' (actual='" + actual + "')");
     }
 
     @Test
@@ -227,6 +244,8 @@ public class DashboardYClientesTest {
             // Campos en jPanel8 (Configuración)
             JTextField txtClienteDefNom = campo(sistema, "txtClienteDefaultNombre", JTextField.class);
             assertNotNull(txtClienteDefNom);
+            // C3: la carga es asincrona; esperar a que pinte el valor.
+            esperarTextoConfig(txtClienteDefNom, "Consumidor Habitual");
             assertEquals("Consumidor Habitual", txtClienteDefNom.getText());
 
             JTextField txtClienteDefDoc = campo(sistema, "txtClienteDefaultDoc", JTextField.class);

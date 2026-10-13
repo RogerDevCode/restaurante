@@ -38,8 +38,8 @@ public class FrmLogin extends javax.swing.JFrame {
     private static final Color DORADO = new Color(218, 166, 91);
     private static final Color FONDO = new Color(250, 248, 243);
     private static final Color TEXTO = new Color(37, 46, 43);
-    private static final Color SECUNDARIO = new Color(112, 120, 115);
-    private static final Color ROJO_SALIR = new Color(197, 107, 98);
+    private static final Color SECUNDARIO = new Color(88, 96, 91);
+    private static final Color ROJO_SALIR = new Color(168, 70, 60);
     private Usuario usuarioAutenticado;
     private final LoginControlador controlador;
     private final Function<Usuario, Sistema> crearSistema;
@@ -57,10 +57,12 @@ public class FrmLogin extends javax.swing.JFrame {
         this.crearSistema = crearSistema;
         initComponents();
         construirInterfazLogin();
+        cargarUsuariosEnCombo();
         this.setLocationRelativeTo(null);
         barra.setVisible(false);
         ImageIcon img = new ImageIcon(getClass().getResource("/Img/logo.png"));
         this.setIconImage(img.getImage());
+        Sistema.aplicarFondoTiffanyInputs(getContentPane());
     }
 
     private void construirInterfazLogin() {
@@ -80,6 +82,16 @@ public class FrmLogin extends javax.swing.JFrame {
         setPreferredSize(new Dimension(980, 620));
         setResizable(true);
         getRootPane().setDefaultButton(btnIniciar);
+        // ESC cierra la aplicacion desde cualquier parte de la ventana.
+        getRootPane().getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0), "salir");
+        getRootPane().getActionMap().put("salir", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                dispose();
+                System.exit(0);
+            }
+        });
         pack();
         setLocationRelativeTo(null);
     }
@@ -189,17 +201,19 @@ public class FrmLogin extends javax.swing.JFrame {
         ayuda.setForeground(SECUNDARIO);
         ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        configurarEtiqueta(jLabel3, "Usuario / Correo");
+        configurarEtiqueta(jLabel3, "Usuario");
         configurarEtiqueta(jLabel4, "Contraseña");
-        configurarCampo(txtCorreo);
+        configurarCombo(cbUsuario);
         configurarCampo(txtPass);
-        txtCorreo.setText("admin");
-        txtPass.setText("admin");
+        txtPass.addActionListener(e -> {
+            if (btnIniciar.isEnabled()) {
+                btnIniciar.doClick();
+            }
+        });
 
         btnIniciar.setText("Ingresar");
         btnIniciar.setFont(new Font("SansSerif", Font.BOLD, 15));
-        btnIniciar.setForeground(Color.WHITE);
-        btnIniciar.setBackground(VERDE_BOTON);
+        Sistema.botonSolido(btnIniciar, VERDE_BOTON, Color.WHITE);
         btnIniciar.setFocusPainted(false);
         btnIniciar.setBorder(BorderFactory.createEmptyBorder(0, 18, 0, 18));
         btnIniciar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -209,10 +223,8 @@ public class FrmLogin extends javax.swing.JFrame {
 
         jButton1.setText("Salir");
         jButton1.setFont(new Font("SansSerif", Font.BOLD, 14));
-        jButton1.setForeground(Color.WHITE);
-        jButton1.setBackground(ROJO_SALIR);
+        Sistema.botonSolido(jButton1, ROJO_SALIR, Color.WHITE);
         jButton1.setFocusPainted(false);
-        jButton1.setContentAreaFilled(true);
         jButton1.setOpaque(true);
         jButton1.setBorder(BorderFactory.createEmptyBorder(0, 18, 0, 18));
         jButton1.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -240,7 +252,7 @@ public class FrmLogin extends javax.swing.JFrame {
         formulario.add(Box.createVerticalStrut(34));
         formulario.add(jLabel3);
         formulario.add(Box.createVerticalStrut(9));
-        formulario.add(txtCorreo);
+        formulario.add(cbUsuario);
         formulario.add(Box.createVerticalStrut(22));
         formulario.add(jLabel4);
         formulario.add(Box.createVerticalStrut(9));
@@ -262,6 +274,51 @@ public class FrmLogin extends javax.swing.JFrame {
         etiqueta.setFont(new Font("SansSerif", Font.BOLD, 13));
         etiqueta.setForeground(TEXTO);
         etiqueta.setAlignmentX(Component.LEFT_ALIGNMENT);
+    }
+
+    private void configurarCombo(javax.swing.JComboBox<Usuario> combo) {
+        combo.setEditable(true);
+        combo.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        combo.setForeground(TEXTO);
+        combo.setBackground(Color.WHITE);
+        combo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        combo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        combo.setPreferredSize(new Dimension(390, 46));
+        combo.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(javax.swing.JList<?> list, Object value,
+                    int index, boolean seleccionado, boolean conFoco) {
+                super.getListCellRendererComponent(list, value, index, seleccionado, conFoco);
+                if (value instanceof Usuario u) {
+                    setText(u.getNombre() + " (" + u.getCorreo() + ")");
+                }
+                return this;
+            }
+        });
+        combo.setEditor(new javax.swing.plaf.basic.BasicComboBoxEditor() {
+            private String texto(Usuario u) {
+                return u.getNombre() + " (" + u.getCorreo() + ")";
+            }
+            @Override
+            public void setItem(Object objeto) {
+                editor.setText(objeto instanceof Usuario u ? texto(u) : (objeto == null ? "" : objeto.toString()));
+            }
+            @Override
+            public Object getItem() {
+                String t = editor.getText();
+                for (int i = 0; i < combo.getItemCount(); i++) {
+                    Usuario u = combo.getItemAt(i);
+                    if (u != null && texto(u).equals(t)) {
+                        return u;
+                    }
+                }
+                return t;
+            }
+        });
+        javax.swing.JTextField editor = (javax.swing.JTextField) combo.getEditor().getEditorComponent();
+        editor.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        editor.setForeground(TEXTO);
+        editor.setCaretColor(VERDE_BOTON);
     }
 
     private void configurarCampo(javax.swing.JTextField campo) {
@@ -293,8 +350,50 @@ public class FrmLogin extends javax.swing.JFrame {
             }
         }
     }
+    private void cargarUsuariosEnCombo() {
+        try {
+            llenarComboUsuarios(new Modelo.LoginDao().ListarUsuarios());
+        } catch (RuntimeException ex) {
+            // Sin BD el combo queda editable para ingreso manual del correo.
+        }
+    }
+
+    void llenarComboUsuarios(java.util.List<Usuario> usuarios) {
+        Object actual = cbUsuario.getSelectedItem();
+        cbUsuario.removeAllItems();
+        java.util.List<Usuario> ordenada = usuarios == null
+                ? java.util.List.of()
+                : new java.util.ArrayList<>(usuarios);
+        ordenada.sort(java.util.Comparator.comparing(
+                (Usuario u) -> u.getNombre() == null ? "" : u.getNombre(),
+                String.CASE_INSENSITIVE_ORDER));
+        Usuario admin = null;
+        for (Usuario u : ordenada) {
+            if (u == null) {
+                continue;
+            }
+            cbUsuario.addItem(u);
+            if (admin == null && "admin".equalsIgnoreCase(u.getCorreo())) {
+                admin = u;
+            }
+        }
+        if (admin != null) {
+            cbUsuario.setSelectedItem(admin);
+        } else if (actual instanceof Usuario || actual instanceof String) {
+            cbUsuario.setSelectedItem(actual);
+        } else if (cbUsuario.getItemCount() > 0) {
+            cbUsuario.setSelectedIndex(0);
+        }
+    }
+
     public void validar(){
-        String correo = txtCorreo.getText().trim();
+        Object sel = cbUsuario.getSelectedItem();
+        String correo = "";
+        if (sel instanceof Usuario u) {
+            correo = u.getCorreo() == null ? "" : u.getCorreo().trim();
+        } else if (sel != null) {
+            correo = sel.toString().trim();
+        }
         char[] claveCapturada = txtPass.getPassword();
         String pass = new String(claveCapturada);
         java.util.Arrays.fill(claveCapturada, '\0');
@@ -342,7 +441,7 @@ public class FrmLogin extends javax.swing.JFrame {
 
     private void cambiarEstadoFormulario(boolean habilitado) {
         btnIniciar.setEnabled(habilitado);
-        txtCorreo.setEnabled(habilitado);
+        cbUsuario.setEnabled(habilitado);
         txtPass.setEnabled(habilitado);
     }
     /**
@@ -357,7 +456,7 @@ public class FrmLogin extends javax.swing.JFrame {
         jPanel2 = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
-        txtCorreo = new javax.swing.JTextField();
+        cbUsuario = new javax.swing.JComboBox<>();
         txtPass = new javax.swing.JPasswordField();
         btnIniciar = new javax.swing.JButton();
         jButton1 = new javax.swing.JButton();
@@ -380,16 +479,6 @@ public class FrmLogin extends javax.swing.JFrame {
         jLabel4.setText("Password");
         jPanel2.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 280, -1, -1));
 
-        txtCorreo.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtCorreo.setBorder(null);
-        txtCorreo.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtCorreoActionPerformed(evt);
-            }
-        });
-        jPanel2.add(txtCorreo, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 220, 250, 35));
-
-        txtPass.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         txtPass.setBorder(null);
         jPanel2.add(txtPass, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 300, 250, 35));
 
@@ -450,10 +539,6 @@ public class FrmLogin extends javax.swing.JFrame {
       validar();
     }//GEN-LAST:event_btnIniciarActionPerformed
 
-    private void txtCorreoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtCorreoActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_txtCorreoActionPerformed
-
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // TODO add your handling code here:
         System.exit(0);
@@ -468,7 +553,7 @@ public class FrmLogin extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel4;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel4;
-    private javax.swing.JTextField txtCorreo;
+    private javax.swing.JComboBox<Usuario> cbUsuario;
     private javax.swing.JPasswordField txtPass;
     // End of variables declaration//GEN-END:variables
 }

@@ -290,9 +290,11 @@ public class MejorasUIYServicioTest {
             JButton btn1 = (JButton) panelSalas.getComponent(0);
             String texto = btn1.getText();
             assertNotNull(texto);
+            // El texto es HTML (nombre en negrita + badge de ocupacion): comparar texto visible.
+            String visible = texto.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
             assertTrue("Debe indicar las mesas ocupadas en el texto del botón",
-                    texto.contains("ocupadas"));
-            assertEquals("Terraza (2/10 ocupadas)", texto);
+                    visible.contains("ocupadas"));
+            assertEquals("Terraza 2/10 ocupadas", visible);
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
         }
