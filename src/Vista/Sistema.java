@@ -1628,10 +1628,13 @@ public final class Sistema extends javax.swing.JFrame {
             lblBannerTasa.setBounds(anchoBarra + 5, 12, 305, 65);
         }
         if (panelConmutadorModoGlobal != null) {
-            panelConmutadorModoGlobal.setBounds(anchoBarra + 315, 12, 275, 65);
+            panelConmutadorModoGlobal.setBounds(anchoBarra + 315, 12, 280, 65);
+            try {
+                cp.setComponentZOrder(panelConmutadorModoGlobal, 0);
+            } catch (Exception ignored) {}
         }
         if (jLabel38 != null) {
-            int xTitulo = Math.max(anchoBarra + 595, ancho - 545);
+            int xTitulo = Math.max(anchoBarra + 600, ancho - 545);
             jLabel38.setBounds(xTitulo, 0, 540, ALTO_CABECERA);
         }
         if (jTabbedPane1 != null) {
@@ -1647,19 +1650,23 @@ public final class Sistema extends javax.swing.JFrame {
         switch (title) {
             case "Mesas" -> {
                 refrescarPanelMesasActual();
-                sincronizarCombosModo("OPCION_B");
             }
             case "Panel" -> {
                 panelSalas();
-                sincronizarCombosModo("CLASICO");
             }
             case "Salas" -> ListarSalas();
-            case "Platos" -> ListarPlatos(TablePlatos, "");
+            case "Platos" -> {
+                int selIdx = jTabbedPane1.getSelectedIndex();
+                if (selIdx == 3) {
+                    refrescarMenuPlatos();
+                } else {
+                    ListarPlatos(TablePlatos, "");
+                }
+            }
             case "Datos de la Empresa" -> ListarConfig();
             case "Usuarios" -> ListarUsuarios();
             case "Dashboard" -> { if (politicaAcceso.esAdministrador()) cargarDashboardYClientes(); }
             case "Atención Directa (Split)" -> {
-                sincronizarCombosModo("OPCION_C");
                 if (panelSplitScreen != null && !salasCache.isEmpty()) {
                     panelSplitScreen.actualizarSalas(salasCache, salaIdAPrefijo);
                 }
@@ -7615,7 +7622,7 @@ public final class Sistema extends javax.swing.JFrame {
         getContentPane().add(panelConmutadorModoGlobal, new org.netbeans.lib.awtextra.AbsoluteConstraints(520, 15, 275, 65));
     }
 
-    private void cambiarModoAtencion(int nuevoIndice) {
+    void cambiarModoAtencion(int nuevoIndice) {
         if (cambiandoModoProgramaticamente) return;
         cambiandoModoProgramaticamente = true;
         try {
@@ -7686,7 +7693,7 @@ public final class Sistema extends javax.swing.JFrame {
         asegurarSalasCargadas();
         if (idSalaActualMesas <= 0 && !salasCache.isEmpty()) {
             Salas primera = salasCache.get(0);
-            panelMesas(primera.getId(), primera.getNombre(), primera.getMesas());
+            panelMesas(primera.getId(), primera.getNombre(), primera.getMesas(), primera.esBarra());
         } else if (idSalaActualMesas > 0) {
             refrescarPanelMesasActual();
         } else {
@@ -7701,11 +7708,13 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void abrirModoA() {
         asegurarSalasCargadas();
-        int idx = jTabbedPane1.indexOfTab("Platos");
-        if (idx != -1) {
+        if (tblTemPlatos != null) {
+            ListarPlatos(tblTemPlatos, "");
+        }
+        cargarComboMesoneros();
+        int idx = 3;
+        if (jTabbedPane1.getTabCount() > 3) {
             jTabbedPane1.setSelectedIndex(idx);
-        } else {
-            jTabbedPane1.setSelectedIndex(3);
         }
         if (txtCodigoMesaDirecto != null) {
             txtCodigoMesaDirecto.requestFocusInWindow();
@@ -7716,6 +7725,10 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void abrirModoC() {
         asegurarSalasCargadas();
+        if (salaIdAPrefijo.isEmpty() && !salasCache.isEmpty()) {
+            salaIdAPrefijo.putAll(ServicioMesa.generarPrefijosSalas(salasCache));
+            prefijoASalaId.putAll(ServicioMesa.invertirPrefijos(salaIdAPrefijo));
+        }
         int idx = jTabbedPane1.indexOfTab("Atención Directa (Split)");
         if (idx != -1) {
             jTabbedPane1.setSelectedIndex(idx);
@@ -7757,6 +7770,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (texto == null || texto.trim().isEmpty()) {
             return;
         }
+        asegurarSalasCargadas();
         if (prefijoASalaId.isEmpty() && !salasCache.isEmpty()) {
             salaIdAPrefijo.clear();
             salaIdAPrefijo.putAll(ServicioMesa.generarPrefijosSalas(salasCache));
@@ -7819,6 +7833,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void mostrarMenuSeleccionMesaDirecta(java.awt.Component invoker) {
+        asegurarSalasCargadas();
         if (salasCache == null || salasCache.isEmpty()) {
             mostrarAvisoEnBanda("Cargando salas...");
             panelSalas();
@@ -7884,6 +7899,34 @@ public final class Sistema extends javax.swing.JFrame {
 
     public void cargarPedidoEnPantallaDesdeSplit(int idPedido) {
         cargarPedidoEnPantalla(idPedido, true);
+    }
+
+    public javax.swing.JComboBox<String> getCbModoAtencion() {
+        return cbModoAtencion;
+    }
+
+    public javax.swing.JComboBox<String> getCbModoAtencionGlobal() {
+        return cbModoAtencionGlobal;
+    }
+
+    public String getModoAtencionActual() {
+        return modoAtencionActual;
+    }
+
+    public javax.swing.JButton getBtnAtencionDirecta() {
+        return btnAtencionDirecta;
+    }
+
+    public javax.swing.JTextField getTxtCodigoMesaDirecto() {
+        return txtCodigoMesaDirecto;
+    }
+
+    public javax.swing.JButton getBtnSelectorMesaCabecera() {
+        return btnSelectorMesaCabecera;
+    }
+
+    public PanelAtencionMesasSplit getPanelSplitScreen() {
+        return panelSplitScreen;
     }
 
     // platos

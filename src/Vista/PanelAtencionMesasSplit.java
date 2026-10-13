@@ -925,4 +925,29 @@ public class PanelAtencionMesasSplit extends JPanel {
             }
         } catch (Exception ignored) {}
     }
+
+    public void seleccionarSalaPorId(int idSala) {
+        for (Salas s : salasCache) {
+            if (s.getId() == idSala) {
+                seleccionarSala(s);
+                return;
+            }
+        }
+    }
+
+    public void seleccionarMesa(int numMesa, String codigoMesa) {
+        seleccionarMesaParaComanda(numMesa, codigoMesa, -1);
+    }
+
+    public int getCantidadItemsEnCarrito() {
+        return modeloCarrito != null ? modeloCarrito.getRowCount() : 0;
+    }
+
+    public JTable getTablaCatalogo() {
+        return tblCatalogoPlatos;
+    }
+
+    public void agregarPlatoSeleccionadoACarrito() {
+        agregarPlatoSeleccionadoAlCarrito();
+    }
 }
