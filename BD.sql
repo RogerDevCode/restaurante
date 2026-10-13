@@ -36,6 +36,8 @@ CREATE TABLE `config` (
   `cliente_predeterminado_documento` varchar(30) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'V-00000000',
   `meses_retencion_pedidos` int(11) NOT NULL DEFAULT 24,
   `imprimir_logo_ticket` tinyint(1) NOT NULL DEFAULT 1,
+  `impresora_tickets` varchar(150) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'DEFAULT',
+  `modo_salida_tickets` varchar(50) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'TERMICA_DIRECTA',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -46,7 +48,7 @@ CREATE TABLE `config` (
 
 LOCK TABLES `config` WRITE;
 /*!40000 ALTER TABLE `config` DISABLE KEYS */;
-INSERT INTO `config` VALUES (1,'J-12345678-0','Restaurante la Delicia','0414-1234567','Caracas - Venezuela','Gracias por su compra',36.5000,16.00,NULL,'Consumidor Final','V-00000000',24,1);
+INSERT INTO `config` (`id`, `ruc`, `nombre`, `telefono`, `direccion`, `mensaje`, `tasa_dolar`, `iva_porcentaje`, `logo_path`, `cliente_predeterminado_nombre`, `cliente_predeterminado_documento`, `meses_retencion_pedidos`, `imprimir_logo_ticket`, `impresora_tickets`, `modo_salida_tickets`) VALUES (1,'J-12345678-0','Restaurante la Delicia','0414-1234567','Caracas - Venezuela','Gracias por su compra',36.5000,16.00,NULL,'Consumidor Final','V-00000000',24,1,'DEFAULT','TERMICA_DIRECTA');
 /*!40000 ALTER TABLE `config` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -64,9 +66,11 @@ CREATE TABLE `detalle_pedidos` (
   `cantidad` int(11) NOT NULL,
   `comentario` text COLLATE utf8_spanish_ci DEFAULT NULL,
   `id_pedido` int(11) NOT NULL,
+  `nombre_clave` varchar(200) GENERATED ALWAYS AS (lower(trim(`nombre`))) STORED,
   PRIMARY KEY (`id`),
   KEY `id_pedido` (`id_pedido`),
   KEY `idx_detalle_pedidos_nombre` (`nombre`),
+  KEY `idx_detalle_pedidos_nombre_clave` (`nombre_clave`),
   CONSTRAINT `detalle_pedidos_ibfk_1` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -77,7 +81,7 @@ CREATE TABLE `detalle_pedidos` (
 
 LOCK TABLES `detalle_pedidos` WRITE;
 /*!40000 ALTER TABLE `detalle_pedidos` DISABLE KEYS */;
-INSERT INTO `detalle_pedidos` VALUES (1,'CHAUFA',20.00,1,'',1),(2,'ARROZ CON POLLO',10.00,5,'ARTO MAYONESA',1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',1),(4,'ARROZ CON POLLO',10.00,1,'',2),(5,'CHAUFA',20.00,1,'',2),(6,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',3),(7,'CHAUFA',20.00,1,'',3),(8,'ARROZ CON POLLO',10.00,2,'',4);
+INSERT INTO `detalle_pedidos` (`id`, `nombre`, `precio`, `cantidad`, `comentario`, `id_pedido`) VALUES (1,'CHAUFA',20.00,1,'',1),(2,'ARROZ CON POLLO',10.00,5,'ARTO MAYONESA',1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',1),(4,'ARROZ CON POLLO',10.00,1,'',2),(5,'CHAUFA',20.00,1,'',2),(6,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',3),(7,'CHAUFA',20.00,1,'',3),(8,'ARROZ CON POLLO',10.00,2,'',4);
 /*!40000 ALTER TABLE `detalle_pedidos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -95,32 +99,41 @@ CREATE TABLE `pedidos` (
   `tipo_pedido` varchar(16) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'MESA',
   `fecha` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `total` decimal(10,2) NOT NULL,
-  `estado` enum('PENDIENTE','FINALIZADO') COLLATE utf8_spanish_ci NOT NULL DEFAULT 'PENDIENTE',
+  `estado` enum('PENDIENTE','FINALIZADO','ANULADO') COLLATE utf8_spanish_ci NOT NULL DEFAULT 'PENDIENTE',
   `usuario` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
   `id_sala_pendiente` int(11) GENERATED ALWAYS AS (CASE WHEN `estado` = 'PENDIENTE' THEN `id_sala` ELSE NULL END) STORED,
   `num_mesa_pendiente` int(11) GENERATED ALWAYS AS (CASE WHEN `estado` = 'PENDIENTE' THEN `num_mesa` ELSE NULL END) STORED,
   `subtotal` decimal(10,2) NOT NULL DEFAULT 0.00,
   `iva_porcentaje` decimal(5,2) NOT NULL DEFAULT 0.00,
   `iva_monto` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `tasa_cambio` decimal(12,4) NULL DEFAULT NULL,
+  `tasa_cambio` decimal(12,4) DEFAULT NULL,
   `subtotal_bs` decimal(14,2) NOT NULL DEFAULT 0.00,
   `iva_bs` decimal(14,2) NOT NULL DEFAULT 0.00,
-  `total_bs` decimal(14,2) NULL DEFAULT NULL,
+  `total_bs` decimal(14,2) DEFAULT NULL,
   `cliente_nombre` varchar(150) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'Consumidor Final',
   `cliente_documento` varchar(30) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'V-00000000',
   `metodo_pago` varchar(30) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'EFECTIVO',
   `efectivo_bs` decimal(14,2) DEFAULT NULL,
   `efectivo_usd` decimal(14,2) DEFAULT NULL,
+  `id_mesonero` int(11) DEFAULT NULL,
+  `mesonero_nombre` varchar(150) COLLATE utf8_spanish_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `id_sala` (`id_sala`),
   KEY `idx_pedidos_estado_fecha` (`estado`,`fecha`),
   KEY `idx_pedidos_cliente_doc` (`cliente_documento`),
+  KEY `idx_pedidos_mesonero` (`id_mesonero`),
   UNIQUE KEY `uq_pedidos_mesa_pendiente` (`id_sala_pendiente`,`num_mesa_pendiente`),
   CONSTRAINT `pedidos_ibfk_1` FOREIGN KEY (`id_sala`) REFERENCES `salas` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
--- Desglose persistente por medio para facturas pagadas con varias formas de pago.
+--
+-- Table structure for table `pedido_pagos`
+--
+
+DROP TABLE IF EXISTS `pedido_pagos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `pedido_pagos` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `id_pedido` int(11) NOT NULL,
@@ -136,6 +149,7 @@ CREATE TABLE `pedido_pagos` (
   KEY `idx_pedido_pagos_metodo_fecha` (`metodo_pago`,`creado_en`),
   CONSTRAINT `fk_pedido_pagos_pedido` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `pedidos`
@@ -172,7 +186,7 @@ CREATE TABLE `clientes` (
 
 LOCK TABLES `clientes` WRITE;
 /*!40000 ALTER TABLE `clientes` DISABLE KEYS */;
-INSERT INTO `clientes` VALUES (1,'V-00000000','Consumidor Final',NULL,NULL,'2026-10-06 00:00:00');
+INSERT INTO `clientes` (`id`, `documento`, `nombre`, `telefono`, `direccion`, `creado_en`) VALUES (1,'V-00000000','Consumidor Final',NULL,NULL,'2026-10-06 00:00:00');
 /*!40000 ALTER TABLE `clientes` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -190,7 +204,10 @@ CREATE TABLE `platos` (
   `fecha` date DEFAULT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT 1,
   `desactivado_en` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  `aplica_iva` tinyint(1) NOT NULL DEFAULT 1,
+  `nombre_clave` varchar(200) GENERATED ALWAYS AS (lower(trim(`nombre`))) STORED,
+  PRIMARY KEY (`id`),
+  KEY `idx_platos_nombre_clave` (`nombre_clave`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -200,7 +217,7 @@ CREATE TABLE `platos` (
 
 LOCK TABLES `platos` WRITE;
 /*!40000 ALTER TABLE `platos` DISABLE KEYS */;
-INSERT INTO `platos` VALUES (1,'ARROZ CON POLLO',10.00,CURRENT_DATE(),1,NULL),(2,'CHAUFA',20.00,CURRENT_DATE(),1,NULL),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,CURRENT_DATE(),1,NULL);
+INSERT INTO `platos` (`id`, `nombre`, `precio`, `fecha`, `activo`, `desactivado_en`, `aplica_iva`) VALUES (1,'ARROZ CON POLLO',10.00,CURRENT_DATE(),1,NULL,1),(2,'CHAUFA',20.00,CURRENT_DATE(),1,NULL,1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,CURRENT_DATE(),1,NULL,1);
 /*!40000 ALTER TABLE `platos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -215,6 +232,7 @@ CREATE TABLE `salas` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
   `mesas` int(11) NOT NULL,
+  `tipo` varchar(20) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'SALON',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -225,7 +243,7 @@ CREATE TABLE `salas` (
 
 LOCK TABLES `salas` WRITE;
 /*!40000 ALTER TABLE `salas` DISABLE KEYS */;
-INSERT INTO `salas` VALUES (1,'SALA PRINCIPAL',15),(2,'SEGUNDO PISO',10);
+INSERT INTO `salas` (`id`, `nombre`, `mesas`, `tipo`) VALUES (1,'SALA PRINCIPAL',15,'SALON'),(2,'SEGUNDO PISO',10,'SALON');
 /*!40000 ALTER TABLE `salas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -253,10 +271,9 @@ CREATE TABLE `usuarios` (
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` VALUES (1,'Administrador','admin','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador'),(2,'ANGEL SIFUENTES','info@angelsifuentes.com','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador');
+INSERT INTO `usuarios` (`id`, `nombre`, `correo`, `pass`, `rol`) VALUES (1,'Administrador','admin','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador'),(2,'ANGEL SIFUENTES','info@angelsifuentes.com','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador');
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 --
 -- Table structure for table `configuracion_sistema`
@@ -269,10 +286,14 @@ CREATE TABLE `configuracion_sistema` (
   `clave` varchar(80) COLLATE utf8_spanish_ci NOT NULL,
   `valor` text COLLATE utf8_spanish_ci NOT NULL,
   `descripcion` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
-  `actualizado_en` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `actualizado_en` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`clave`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `configuracion_sistema`
+--
 
 LOCK TABLES `configuracion_sistema` WRITE;
 /*!40000 ALTER TABLE `configuracion_sistema` DISABLE KEYS */;
@@ -301,7 +322,7 @@ CREATE TABLE `auditoria_pedidos` (
   `accion` varchar(50) COLLATE utf8_spanish_ci NOT NULL,
   `motivo` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
   `usuario` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
-  `fecha_hora` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fecha_hora` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_auditoria_pedidos_pedido` (`id_pedido`),
   KEY `idx_auditoria_pedidos_fecha` (`fecha_hora`)
@@ -333,20 +354,136 @@ CREATE TABLE `cierres_caja` (
   `estado_conciliacion_usd` varchar(20) COLLATE utf8_spanish_ci DEFAULT NULL,
   `tasa_cambio` decimal(12,4) NOT NULL DEFAULT 36.5000,
   `ruta_pdf` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
-  `creado_en` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_cierres_fecha` (`fecha_jornada`),
   KEY `idx_cierres_tipo` (`tipo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
-CREATE TABLE IF NOT EXISTS `preferencias_tabla` (
-  `usuario_id` int NOT NULL,
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `preferencias_tabla`
+--
+
+DROP TABLE IF EXISTS `preferencias_tabla`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `preferencias_tabla` (
+  `usuario_id` int(11) NOT NULL,
   `tabla_clave` varchar(64) COLLATE utf8_spanish_ci NOT NULL,
   `layout_json` varchar(2000) COLLATE utf8_spanish_ci NOT NULL,
-  `actualizado_en` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `actualizado_en` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`usuario_id`,`tabla_clave`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Table structure for table `mesoneros`
+--
+
+DROP TABLE IF EXISTS `mesoneros`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `mesoneros` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre_completo` varchar(150) COLLATE utf8_spanish_ci NOT NULL,
+  `cedula` varchar(30) COLLATE utf8_spanish_ci NOT NULL,
+  `telefono` varchar(30) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `eliminado` tinyint(1) NOT NULL DEFAULT 0,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_mesoneros_activo` (`activo`),
+  KEY `idx_mesoneros_eliminado` (`eliminado`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `categorias`
+--
+
+DROP TABLE IF EXISTS `categorias`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `categorias` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(60) COLLATE utf8_spanish_ci NOT NULL,
+  `color` char(7) COLLATE utf8_spanish_ci NOT NULL DEFAULT '#6B7280',
+  `orden` int(11) NOT NULL DEFAULT 0,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_categorias_nombre` (`nombre`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `categorias`
+--
+
+LOCK TABLES `categorias` WRITE;
+/*!40000 ALTER TABLE `categorias` DISABLE KEYS */;
+INSERT INTO `categorias` (`id`, `nombre`, `color`, `orden`) VALUES (1,'General','#6B7280',0);
+/*!40000 ALTER TABLE `categorias` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `plato_categoria`
+--
+
+DROP TABLE IF EXISTS `plato_categoria`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `plato_categoria` (
+  `nombre_clave` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
+  `id_categoria` int(11) NOT NULL,
+  `actualizado_en` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`nombre_clave`),
+  KEY `idx_plato_categoria_categoria` (`id_categoria`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `plato_favorito`
+--
+
+DROP TABLE IF EXISTS `plato_favorito`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `plato_favorito` (
+  `nombre_clave` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`nombre_clave`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `restaurante_control`
+--
+
+DROP TABLE IF EXISTS `restaurante_control`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `restaurante_control` (
+  `id` tinyint(4) NOT NULL,
+  `estado` varchar(20) COLLATE utf8_spanish_ci NOT NULL,
+  `operacion_id` varchar(100) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `actualizado_en` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  CONSTRAINT `chk_restaurante_control_estado` CHECK (`estado` in ('OPERATIVO','MANTENIMIENTO'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `restaurante_control`
+--
+
+LOCK TABLES `restaurante_control` WRITE;
+/*!40000 ALTER TABLE `restaurante_control` DISABLE KEYS */;
+INSERT INTO `restaurante_control` (`id`, `estado`) VALUES (1,'OPERATIVO');
+/*!40000 ALTER TABLE `restaurante_control` ENABLE KEYS */;
+UNLOCK TABLES;
+
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
@@ -355,4 +492,4 @@ CREATE TABLE IF NOT EXISTS `preferencias_tabla` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2022-05-17 20:08:47
+-- Dump completed on 2026-10-13 16:30:00

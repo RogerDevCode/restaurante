@@ -63,6 +63,7 @@ q <<'EOSQL'
 SET FOREIGN_KEY_CHECKS=0;
 TRUNCATE TABLE detalle_pedidos;
 TRUNCATE TABLE auditoria_pedidos;
+TRUNCATE TABLE pedido_pagos;
 TRUNCATE TABLE pedidos;
 TRUNCATE TABLE cierres_caja;
 TRUNCATE TABLE clientes;

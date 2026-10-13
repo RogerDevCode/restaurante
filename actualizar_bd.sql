@@ -414,6 +414,75 @@ BEGIN
     END IF;
     ALTER TABLE pedidos MODIFY COLUMN id_sala INT NULL DEFAULT NULL;
     ALTER TABLE pedidos MODIFY COLUMN num_mesa INT NULL DEFAULT NULL;
+
+    -- 28. Identidad normalizada de platos, categorías, favoritos y estado ANULADO
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'platos' AND column_name = 'nombre_clave'
+    ) THEN
+        ALTER TABLE platos ADD COLUMN nombre_clave VARCHAR(200)
+          GENERATED ALWAYS AS (LOWER(TRIM(nombre))) STORED;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'platos' AND index_name = 'idx_platos_nombre_clave'
+    ) THEN
+        ALTER TABLE platos ADD INDEX idx_platos_nombre_clave (nombre_clave);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'detalle_pedidos' AND column_name = 'nombre_clave'
+    ) THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN nombre_clave VARCHAR(200)
+          GENERATED ALWAYS AS (LOWER(TRIM(nombre))) STORED;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'detalle_pedidos' AND index_name = 'idx_detalle_pedidos_nombre_clave'
+    ) THEN
+        ALTER TABLE detalle_pedidos ADD INDEX idx_detalle_pedidos_nombre_clave (nombre_clave);
+    END IF;
+
+    CREATE TABLE IF NOT EXISTS categorias (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(60) NOT NULL UNIQUE,
+        color CHAR(7) NOT NULL DEFAULT '#6B7280',
+        orden INT NOT NULL DEFAULT 0,
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    INSERT IGNORE INTO categorias (nombre, color, orden) VALUES ('General', '#6B7280', 0);
+
+    CREATE TABLE IF NOT EXISTS plato_categoria (
+        nombre_clave VARCHAR(200) NOT NULL,
+        id_categoria INT NOT NULL,
+        actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (nombre_clave),
+        INDEX idx_plato_categoria_categoria (id_categoria)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    CREATE TABLE IF NOT EXISTS plato_favorito (
+        nombre_clave VARCHAR(200) NOT NULL,
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (nombre_clave)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    ALTER TABLE pedidos MODIFY COLUMN estado
+        ENUM('PENDIENTE','FINALIZADO','ANULADO') COLLATE utf8_spanish_ci NOT NULL DEFAULT 'PENDIENTE';
+
+    -- 29. Barrera de control de mantenimiento concurrente
+    CREATE TABLE IF NOT EXISTS restaurante_control (
+        id TINYINT NOT NULL PRIMARY KEY,
+        estado VARCHAR(20) NOT NULL,
+        operacion_id VARCHAR(100) NULL,
+        actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT chk_restaurante_control_estado CHECK (estado IN ('OPERATIVO', 'MANTENIMIENTO'))
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    INSERT IGNORE INTO restaurante_control (id, estado) VALUES (1, 'OPERATIVO');
 END$$
 DELIMITER ;
 
