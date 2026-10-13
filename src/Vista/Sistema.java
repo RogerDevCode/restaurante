@@ -4617,6 +4617,12 @@ public final class Sistema extends javax.swing.JFrame {
         wrap.add(header, java.awt.BorderLayout.NORTH);
         jTabbedPane1.setComponentAt(idx, wrap);
 
+        if (target == panelSplitScreen) {
+            wrap.add(target, java.awt.BorderLayout.CENTER);
+            target.setVisible(true);
+            return;
+        }
+
         javax.swing.JPanel contenido = new PanelScrollable(new java.awt.BorderLayout());
         contenido.add(target, java.awt.BorderLayout.CENTER);
         javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(contenido,

@@ -154,17 +154,25 @@ public class PanelAtencionMesasSplit extends JPanel {
         scrollTabs.setBorder(null);
         scrollTabs.setOpaque(false);
         scrollTabs.getViewport().setOpaque(false);
-        scrollTabs.setPreferredSize(new Dimension(440, 48));
+        scrollTabs.setPreferredSize(new Dimension(440, 44));
         pnlNorteSalas.add(scrollTabs, BorderLayout.CENTER);
 
         pnlIzquierdo.add(pnlNorteSalas, BorderLayout.NORTH);
 
-        // Grilla de mesas
+        // Grilla de mesas top-aligned (evita que 1 sola fila se estire verticalmente)
         panelGrillaMesas = new JPanel(new GridLayout(0, 4, 6, 6));
         panelGrillaMesas.setBackground(Color.WHITE);
         panelGrillaMesas.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        scrollMesas = new JScrollPane(panelGrillaMesas);
+
+        JPanel pnlContenedorMesas = new JPanel(new BorderLayout());
+        pnlContenedorMesas.setBackground(Color.WHITE);
+        pnlContenedorMesas.add(panelGrillaMesas, BorderLayout.NORTH);
+
+        scrollMesas = new JScrollPane(pnlContenedorMesas,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollMesas.setBorder(BorderFactory.createLineBorder(new Color(220, 224, 230), 1));
+        scrollMesas.getVerticalScrollBar().setUnitIncrement(16);
         pnlIzquierdo.add(scrollMesas, BorderLayout.CENTER);
 
         // Footer izquierdo: leyenda y actualización
@@ -253,12 +261,15 @@ public class PanelAtencionMesasSplit extends JPanel {
             }
         };
         tblCatalogoPlatos = new JTable(modeloCatalogoPlatos);
-        tblCatalogoPlatos.setRowHeight(22);
+        tblCatalogoPlatos.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        tblCatalogoPlatos.setRowHeight(24);
         tblCatalogoPlatos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tblCatalogoPlatos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
-        tblCatalogoPlatos.getColumnModel().getColumn(0).setMaxWidth(45);
-        tblCatalogoPlatos.getColumnModel().getColumn(2).setPreferredWidth(75);
-        tblCatalogoPlatos.getColumnModel().getColumn(2).setMaxWidth(90);
+        tblCatalogoPlatos.getColumnModel().getColumn(0).setPreferredWidth(45);
+        tblCatalogoPlatos.getColumnModel().getColumn(0).setMaxWidth(55);
+        tblCatalogoPlatos.getColumnModel().getColumn(1).setPreferredWidth(350);
+        tblCatalogoPlatos.getColumnModel().getColumn(2).setPreferredWidth(85);
+        tblCatalogoPlatos.getColumnModel().getColumn(2).setMaxWidth(110);
 
         tblCatalogoPlatos.addMouseListener(new MouseAdapter() {
             @Override
@@ -292,14 +303,20 @@ public class PanelAtencionMesasSplit extends JPanel {
             }
         };
         tblCarrito = new JTable(modeloCarrito);
-        tblCarrito.setRowHeight(22);
+        tblCarrito.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        tblCarrito.setRowHeight(24);
         tblCarrito.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tblCarrito.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
-        tblCarrito.getColumnModel().getColumn(0).setMaxWidth(40);
-        tblCarrito.getColumnModel().getColumn(2).setPreferredWidth(45);
+        tblCarrito.getColumnModel().getColumn(0).setPreferredWidth(40);
+        tblCarrito.getColumnModel().getColumn(0).setMaxWidth(50);
+        tblCarrito.getColumnModel().getColumn(1).setPreferredWidth(220);
+        tblCarrito.getColumnModel().getColumn(2).setPreferredWidth(48);
         tblCarrito.getColumnModel().getColumn(2).setMaxWidth(55);
-        tblCarrito.getColumnModel().getColumn(3).setPreferredWidth(65);
-        tblCarrito.getColumnModel().getColumn(4).setPreferredWidth(75);
+        tblCarrito.getColumnModel().getColumn(3).setPreferredWidth(70);
+        tblCarrito.getColumnModel().getColumn(3).setMaxWidth(85);
+        tblCarrito.getColumnModel().getColumn(4).setPreferredWidth(80);
+        tblCarrito.getColumnModel().getColumn(4).setMaxWidth(95);
+        tblCarrito.getColumnModel().getColumn(5).setPreferredWidth(120);
 
         tblCarrito.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && tblCarrito.getSelectedRow() >= 0) {
@@ -358,18 +375,23 @@ public class PanelAtencionMesasSplit extends JPanel {
         JPanel pnlAcciones = new JPanel();
         pnlAcciones.setLayout(new BoxLayout(pnlAcciones, BoxLayout.Y_AXIS));
         pnlAcciones.setOpaque(false);
-        pnlAcciones.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
+        pnlAcciones.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(210, 215, 220)),
+                BorderFactory.createEmptyBorder(4, 4, 4, 4)
+        ));
 
         // Fila 1: Mesonero y Totales
-        JPanel pnlFilaTotales = new JPanel(new BorderLayout(10, 0));
+        JPanel pnlFilaTotales = new JPanel(new BorderLayout(8, 0));
         pnlFilaTotales.setOpaque(false);
 
         JPanel pnlMesonero = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         pnlMesonero.setOpaque(false);
-        pnlMesonero.add(new JLabel("Mesonero:"));
+        JLabel lblMesoneroPrompt = new JLabel("Mesonero:");
+        lblMesoneroPrompt.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        pnlMesonero.add(lblMesoneroPrompt);
         cbMesonero = new JComboBox<>();
         cbMesonero.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        cbMesonero.setPreferredSize(new Dimension(190, 26));
+        cbMesonero.setPreferredSize(new Dimension(180, 26));
         cbMesonero.setRenderer(new DefaultListCellRenderer() {
             @Override
             public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -399,27 +421,30 @@ public class PanelAtencionMesasSplit extends JPanel {
         pnlAcciones.add(pnlFilaTotales);
 
         // Fila 2: Botones de Acción
-        JPanel pnlBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 6));
+        JPanel pnlBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
         pnlBotones.setOpaque(false);
 
         btnLimpiar = new JButton("Limpiar Comanda");
         btnLimpiar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnLimpiar.setPreferredSize(new Dimension(130, 28));
         btnLimpiar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnLimpiar.addActionListener(e -> limpiarComanda());
         pnlBotones.add(btnLimpiar);
 
         btnEnviarCocina = new JButton("Enviar a Cocina");
-        btnEnviarCocina.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnEnviarCocina.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnEnviarCocina.setBackground(new Color(0, 102, 102));
         btnEnviarCocina.setForeground(Color.WHITE);
+        btnEnviarCocina.setPreferredSize(new Dimension(140, 28));
         btnEnviarCocina.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnEnviarCocina.addActionListener(e -> enviarPedidoCocina());
         pnlBotones.add(btnEnviarCocina);
 
         btnCobrar = new JButton("Cobrar / Facturar");
-        btnCobrar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnCobrar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnCobrar.setBackground(new Color(40, 116, 166));
         btnCobrar.setForeground(Color.WHITE);
+        btnCobrar.setPreferredSize(new Dimension(145, 28));
         btnCobrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCobrar.addActionListener(e -> cobrarPedidoDirecto());
         pnlBotones.add(btnCobrar);
@@ -565,6 +590,9 @@ public class PanelAtencionMesasSplit extends JPanel {
                     : null;
 
             JButton btnMesa = new JButton();
+            btnMesa.setPreferredSize(new Dimension(100, 75));
+            btnMesa.setMinimumSize(new Dimension(80, 65));
+            btnMesa.putClientProperty("numMesa", numMesa);
             btnMesa.setFocusable(false);
             btnMesa.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
@@ -612,7 +640,8 @@ public class PanelAtencionMesasSplit extends JPanel {
         // Actualizar bordes de selección en la grilla
         for (java.awt.Component c : panelGrillaMesas.getComponents()) {
             if (c instanceof JButton b) {
-                if (b.getText().contains("<b>" + codigoMesa + "</b>")) {
+                Object val = b.getClientProperty("numMesa");
+                if (val instanceof Integer nm && nm == numMesa) {
                     b.setBorder(BorderFactory.createLineBorder(new Color(241, 196, 15), 3));
                 } else {
                     b.setBorder(BorderFactory.createLineBorder(b.getBackground().darker(), 1));
@@ -896,6 +925,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             }
             refrescarMesasSalaActual();
         } catch (Exception ex) {
+            sistema.mostrarAvisoEnBanda("Error al procesar: " + ex.getMessage());
             JOptionPane.showMessageDialog(this, "Error al procesar el pedido: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
