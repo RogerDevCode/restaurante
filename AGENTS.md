@@ -47,6 +47,7 @@
 
 ## Notas para agentes
 - DB prod: `docker exec restaurante-db-1 mysql -uadmin -padmin restaurante -e "..."`. No hay `mysql` CLI en el host.
+- **Tests E2E**: SIEMPRE deben ejecutarse en una ventana virtual aislada (mediante `./e2e_virtual.sh [clase]` sobre Xvfb `:99`), con teclado y mouse virtuales propios, sin interferir jamás con el escritorio ni el cursor del operador.
 - No reiniciar la app en horario de servicio sin pedirlo; el jar desplegado se activa al próximo arranque.
 - Los tests unitarios tocan la BD real (vía `.env`); no correr `ant test` tras sembrar datos limpios salvo necesario.
 - `pkill -f "[R]estaurante.jar"` (con corchetes; el patrón plano se auto-matchea).
