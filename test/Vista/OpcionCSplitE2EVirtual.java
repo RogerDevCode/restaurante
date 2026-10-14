@@ -58,11 +58,26 @@ public final class OpcionCSplitE2EVirtual {
     }
 
     private static final class PlatosMemoria implements PlatosRepositorio {
-        private final List<Platos> platos = List.of(
-                new Platos(1, "Pollo a la Brasa", new BigDecimal("12.50"), LocalDate.now().toString(), true),
-                new Platos(2, "Papas Fritas", new BigDecimal("3.00"), LocalDate.now().toString(), false),
-                new Platos(3, "Refresco", new BigDecimal("1.50"), LocalDate.now().toString(), false)
-        );
+        private final List<Platos> platos;
+
+        public PlatosMemoria() {
+            Platos p1 = new Platos(1, "Pollo a la Brasa", new BigDecimal("12.50"), LocalDate.now().toString(), true);
+            p1.setFavorito(true);
+            p1.setRankingTotal(new BigDecimal("25"));
+            p1.setCategoriaNombre("Pollos");
+            p1.setCategoriaColor("#E67E22");
+
+            Platos p2 = new Platos(2, "Papas Fritas", new BigDecimal("3.00"), LocalDate.now().toString(), false);
+            p2.setCategoriaNombre("Guarniciones");
+            p2.setCategoriaColor("#F39C12");
+
+            Platos p3 = new Platos(3, "Refresco", new BigDecimal("1.50"), LocalDate.now().toString(), false);
+            p3.setCategoriaNombre("Bebidas");
+            p3.setCategoriaColor("#3498DB");
+
+            platos = List.of(p1, p2, p3);
+        }
+
         @Override public List<Platos> listarPorFecha(String desde, String hasta) {
             String criterio = desde == null ? "" : desde.trim().toLowerCase(java.util.Locale.ROOT);
             if (criterio.isEmpty()) return platos;
@@ -239,6 +254,13 @@ public final class OpcionCSplitE2EVirtual {
             JTable tblCatalogo = split.getTablaCatalogo();
             check(tblCatalogo != null, "Tabla de catálogo de platos accesible");
             check(tblCatalogo.getRowCount() >= 3, "Catálogo tiene platos cargados (encontrados: " + tblCatalogo.getRowCount() + ")");
+
+            // Validar estilo y presentación sincronizada del catálogo de platos:
+            javax.swing.table.TableCellRenderer cr = tblCatalogo.getCellRenderer(0, 1);
+            java.awt.Component comp0 = cr.getTableCellRendererComponent(tblCatalogo, tblCatalogo.getValueAt(0, 1), false, false, 0, 1);
+            check(comp0 instanceof JLabel && ((JLabel) comp0).getText().contains("★"), "Plato favorito/top muestra distintivo '★' en el catálogo");
+            check(comp0 instanceof JLabel && ((JLabel) comp0).getBackground().equals(java.awt.Color.decode("#E67E22")), "Plato tiene color de su categoría en el catálogo");
+            check("Pollo a la Brasa".equals(tblCatalogo.getValueAt(0, 1)), "El valor en el modelo conserva el nombre limpio sin alterar la base de datos");
 
             SwingUtilities.invokeAndWait(() -> {
                 tblCatalogo.setRowSelectionInterval(0, 0);

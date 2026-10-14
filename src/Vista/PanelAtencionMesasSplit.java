@@ -95,6 +95,7 @@ public class PanelAtencionMesasSplit extends JPanel {
     private JTextField txtBuscarPlato;
     private JTable tblCatalogoPlatos;
     private DefaultTableModel modeloCatalogoPlatos;
+    private final Map<Integer, Platos> platosPorId = new HashMap<>();
     private JTable tblCarrito;
     private DefaultTableModel modeloCarrito;
     private JLabel lblTotalUsd;
@@ -233,24 +234,57 @@ public class PanelAtencionMesasSplit extends JPanel {
         pnlBuscar.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
         txtBuscarPlato = new JTextField();
         txtBuscarPlato.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        txtBuscarPlato.putClientProperty("JTextField.placeholderText", "Buscar plato...");
+        txtBuscarPlato.putClientProperty("JTextField.placeholderText", "Buscar plato o categoría...");
         txtBuscarPlato.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    if (tblCatalogoPlatos.getSelectedRow() < 0 && tblCatalogoPlatos.getRowCount() > 0) {
+                        tblCatalogoPlatos.setRowSelectionInterval(0, 0);
+                    }
+                    agregarPlatoSeleccionadoAlCarrito();
+                    return;
+                }
+                if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                    if (tblCatalogoPlatos.getRowCount() > 0) {
+                        tblCatalogoPlatos.requestFocusInWindow();
+                        if (tblCatalogoPlatos.getSelectedRow() < 0) {
+                            tblCatalogoPlatos.setRowSelectionInterval(0, 0);
+                        }
+                    }
+                    return;
+                }
                 filtrarCatalogoPlatos(txtBuscarPlato.getText().trim());
             }
         });
         pnlBuscar.add(new JLabel(" Buscar: "), BorderLayout.WEST);
         pnlBuscar.add(txtBuscarPlato, BorderLayout.CENTER);
 
+        JPanel pnlAccionesBuscar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        pnlAccionesBuscar.setOpaque(false);
+
         JButton btnLimpiarBuscar = new JButton("x");
         btnLimpiarBuscar.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnLimpiarBuscar.setFocusable(false);
+        btnLimpiarBuscar.setToolTipText("Limpiar filtro de búsqueda");
         btnLimpiarBuscar.addActionListener(e -> {
             txtBuscarPlato.setText("");
             filtrarCatalogoPlatos("");
+            txtBuscarPlato.requestFocusInWindow();
         });
-        pnlBuscar.add(btnLimpiarBuscar, BorderLayout.EAST);
+
+        JButton btnAddPlato = new JButton("+");
+        btnAddPlato.setFont(new Font("Arial Black", Font.BOLD, 14));
+        btnAddPlato.setBackground(new Color(0, 102, 102));
+        btnAddPlato.setForeground(Color.WHITE);
+        btnAddPlato.setFocusable(false);
+        btnAddPlato.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAddPlato.setToolTipText("Agregar plato seleccionado al pedido (Enter)");
+        btnAddPlato.addActionListener(e -> agregarPlatoSeleccionadoAlCarrito());
+
+        pnlAccionesBuscar.add(btnLimpiarBuscar);
+        pnlAccionesBuscar.add(btnAddPlato);
+        pnlBuscar.add(pnlAccionesBuscar, BorderLayout.EAST);
 
         pnlCatalogo.add(pnlBuscar, BorderLayout.NORTH);
 
@@ -262,7 +296,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         };
         tblCatalogoPlatos = new JTable(modeloCatalogoPlatos);
         tblCatalogoPlatos.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-        tblCatalogoPlatos.setRowHeight(24);
+        tblCatalogoPlatos.setRowHeight(25);
         tblCatalogoPlatos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tblCatalogoPlatos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
         tblCatalogoPlatos.getColumnModel().getColumn(0).setPreferredWidth(45);
@@ -275,6 +309,15 @@ public class PanelAtencionMesasSplit extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() >= 1 && tblCatalogoPlatos.getSelectedRow() >= 0) {
+                    agregarPlatoSeleccionadoAlCarrito();
+                }
+            }
+        });
+        tblCatalogoPlatos.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    e.consume();
                     agregarPlatoSeleccionadoAlCarrito();
                 }
             }
@@ -708,22 +751,57 @@ public class PanelAtencionMesasSplit extends JPanel {
         new javax.swing.SwingWorker<List<Platos>, Void>() {
             @Override
             protected List<Platos> doInBackground() {
-                return platosControlador.listarPorFecha(filtro, java.time.LocalDate.now().toString());
+                String hoy = java.time.LocalDate.now().toString();
+                List<Platos> platos = platosControlador.listarPorFecha(filtro, hoy);
+                if ((platos == null || platos.isEmpty()) && (filtro == null || filtro.isBlank())) {
+                    try (java.sql.Connection c = new Modelo.Conexion().getConnection();
+                         java.sql.PreparedStatement ps = c.prepareStatement("SELECT MAX(fecha) FROM platos WHERE activo = 1");
+                         java.sql.ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            String fechaMax = rs.getString(1);
+                            if (fechaMax != null && !fechaMax.isBlank() && !fechaMax.equals(hoy)) {
+                                platos = platosControlador.listarPorFecha(filtro, fechaMax);
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+                return platos;
             }
 
             @Override
             protected void done() {
                 try {
                     List<Platos> platos = get();
+                    int filaSel = tblCatalogoPlatos.getSelectedRow();
+                    Integer idSel = (filaSel >= 0 && filaSel < tblCatalogoPlatos.getRowCount())
+                            ? (Integer) tblCatalogoPlatos.getValueAt(filaSel, 0) : null;
+                    platosPorId.clear();
                     modeloCatalogoPlatos.setRowCount(0);
-                    for (Platos p : platos) {
-                        BigDecimal precio = p.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
-                        modeloCatalogoPlatos.addRow(new Object[]{
-                                p.getId(),
-                                p.getNombre(),
-                                "$ " + String.format(java.util.Locale.US, "%.2f", precio)
-                        });
+                    int filaRestaurar = -1;
+                    if (platos != null) {
+                        for (Platos p : platos) {
+                            platosPorId.put(p.getId(), p);
+                            BigDecimal precio = p.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                            modeloCatalogoPlatos.addRow(new Object[]{
+                                    p.getId(),
+                                    p.getNombre(),
+                                    "$ " + String.format(java.util.Locale.US, "%.2f", precio)
+                            });
+                            if (idSel != null && idSel.equals(p.getId())) {
+                                filaRestaurar = modeloCatalogoPlatos.getRowCount() - 1;
+                            }
+                        }
                     }
+                    if (filaRestaurar >= 0 && filaRestaurar < tblCatalogoPlatos.getRowCount()) {
+                        tblCatalogoPlatos.setRowSelectionInterval(filaRestaurar, filaRestaurar);
+                    } else if (tblCatalogoPlatos.getRowCount() > 0) {
+                        tblCatalogoPlatos.setRowSelectionInterval(0, 0);
+                    }
+                    RendererPlato renderer = new RendererPlato(platosPorId);
+                    for (int i = 0; i < tblCatalogoPlatos.getColumnCount(); i++) {
+                        tblCatalogoPlatos.getColumnModel().getColumn(i).setCellRenderer(renderer);
+                    }
+                    tblCatalogoPlatos.repaint();
                 } catch (Exception ignored) {}
             }
         }.execute();
@@ -737,6 +815,10 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         int fila = tblCatalogoPlatos.getSelectedRow();
         if (fila < 0) return;
+
+        // Feedback visual verde de confirmacion al agregar
+        tblCatalogoPlatos.setSelectionBackground(new Color(144, 238, 144));
+        new javax.swing.Timer(300, ev -> tblCatalogoPlatos.setSelectionBackground(javax.swing.UIManager.getColor("Table.selectionBackground"))).start();
 
         int idPlato = (int) tblCatalogoPlatos.getValueAt(fila, 0);
         String nombre = (String) tblCatalogoPlatos.getValueAt(fila, 1);

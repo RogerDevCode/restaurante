@@ -79,6 +79,43 @@ public class PlatosServicioTest {
         assertThrows(ErrorAplicacionException.class, () -> servicio.reactivar(1));
     }
 
+    @Test
+    public void priorizaFavoritosMasPedidosYCategorias() {
+        FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
+        Platos p1 = plato(1, "Zumo", "2.00"); // no fav, rank 0, sin cat
+        
+        Platos p2 = plato(2, "Pollo", "10.00"); // fav, rank 5
+        p2.setFavorito(true);
+        p2.setRankingTotal(new BigDecimal("5"));
+
+        Platos p3 = plato(3, "Asado", "12.00"); // fav, rank 10
+        p3.setFavorito(true);
+        p3.setRankingTotal(new BigDecimal("10"));
+
+        Platos p4 = plato(4, "Empanada", "3.00"); // no fav, rank 50 (mas pedido)
+        p4.setRankingTotal(new BigDecimal("50"));
+
+        Platos p5 = plato(5, "Agua", "1.00"); // no fav, rank 0, cat Bebidas
+        p5.setCategoriaNombre("Bebidas");
+
+        repositorio.listaRetorno = java.util.Arrays.asList(p1, p2, p3, p4, p5);
+
+        PlatosServicio servicio = new PlatosServicio(repositorio, politica("Asistente"));
+        List<Platos> resultado = servicio.listarPorFecha("", "2026-10-05");
+
+        assertEquals(5, resultado.size());
+        // 1. Favorito con mayor ranking: Asado (fav, rank 10)
+        assertEquals("Asado", resultado.get(0).getNombre());
+        // 2. Favorito con menor ranking: Pollo (fav, rank 5)
+        assertEquals("Pollo", resultado.get(1).getNombre());
+        // 3. No favorito con mayor ranking: Empanada (rank 50)
+        assertEquals("Empanada", resultado.get(2).getNombre());
+        // 4. No favorito con categoria: Agua (cat Bebidas)
+        assertEquals("Agua", resultado.get(3).getNombre());
+        // 5. No favorito sin categoria: Zumo
+        assertEquals("Zumo", resultado.get(4).getNombre());
+    }
+
     private PoliticaAcceso politica(String rol) {
         Usuario usuario = new Usuario();
         usuario.setRol(rol);
@@ -99,6 +136,7 @@ public class PlatosServicioTest {
         private final AtomicReference<Platos> recibido = new AtomicReference<>();
         private final AtomicReference<String> filtro = new AtomicReference<>();
         private final AtomicReference<String> fecha = new AtomicReference<>();
+        private List<Platos> listaRetorno = Collections.emptyList();
         private boolean resultado = true;
         private RuntimeException fallo;
 
@@ -108,7 +146,7 @@ public class PlatosServicioTest {
             if (fallo != null) throw fallo;
             filtro.set(nombre);
             fecha.set(fechaConsulta);
-            return Collections.emptyList();
+            return listaRetorno;
         }
         @Override public boolean desactivar(int id) { escritura(null); return true; }
         @Override public boolean reactivar(int id) { escritura(null); return true; }

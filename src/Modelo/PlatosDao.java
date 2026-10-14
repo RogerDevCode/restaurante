@@ -93,8 +93,8 @@ public class PlatosDao implements PlatosRepositorio {
                   ORDER BY total DESC
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
-              WHERE p.fecha = ? AND p.activo = 1 AND p.nombre LIKE ?
-              ORDER BY c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
+              WHERE p.fecha = ? AND p.activo = 1 AND (p.nombre LIKE ? OR c.nombre LIKE ?)
+              ORDER BY favorito DESC, COALESCE(r.total, 0) DESC, c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
               """
             : """
               SELECT p.id, p.nombre, p.precio, p.fecha, p.aplica_iva,
@@ -117,13 +117,15 @@ public class PlatosDao implements PlatosRepositorio {
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
               WHERE p.fecha = ? AND p.activo = 1
-              ORDER BY c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
+              ORDER BY favorito DESC, COALESCE(r.total, 0) DESC, c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
               """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
             sentencia.setString(1, fecha);
             if (filtrarNombre) {
-                sentencia.setString(2, "%" + valor.trim() + "%");
+                String filtro = "%" + valor.trim() + "%";
+                sentencia.setString(2, filtro);
+                sentencia.setString(3, filtro);
             }
             try (ResultSet resultados = sentencia.executeQuery()) {
                 while (resultados.next()) {

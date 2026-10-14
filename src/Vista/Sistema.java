@@ -2372,6 +2372,20 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
 
+        tblTemPlatos.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                    e.consume();
+                    if (tblTemPlatos.getSelectedRow() >= 0) {
+                        btnAddPlato.doClick();
+                        tblTemPlatos.setSelectionBackground(new java.awt.Color(144, 238, 144));
+                        new javax.swing.Timer(300, ev -> tblTemPlatos.setSelectionBackground(javax.swing.UIManager.getColor("Table.selectionBackground"))).start();
+                    }
+                }
+            }
+        });
+
 
         btnAddPlato.setBackground(new java.awt.Color(0, 0, 0));
         btnAddPlato.setFont(new java.awt.Font("Arial Black", 1, 24)); // NOI18N
@@ -7239,11 +7253,56 @@ public final class Sistema extends javax.swing.JFrame {
             jPanel10.add(cbTipoSala, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 185, 190, 28));
         }
 
-        // 3. Agregar columna IVA a TablePlatos si no la tiene
+        // 3. Agregar columna IVA y buscador estándar a TablePlatos
         if (TablePlatos != null && TablePlatos.getModel() instanceof DefaultTableModel modelPlatos) {
             if (modelPlatos.getColumnCount() == 3) {
                 modelPlatos.addColumn("IVA");
             }
+            TablePlatos.setRowHeight(25);
+        }
+        if (jPanel2 != null && jScrollPane4 != null && TablePlatos != null) {
+            javax.swing.JPanel pnlDerechaPlatos = new javax.swing.JPanel(new java.awt.BorderLayout(0, 8));
+            pnlDerechaPlatos.setOpaque(false);
+
+            javax.swing.JPanel pnlBuscarAdmin = new javax.swing.JPanel(new java.awt.BorderLayout(6, 0));
+            pnlBuscarAdmin.setOpaque(false);
+            pnlBuscarAdmin.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 6, 0));
+
+            javax.swing.JLabel lblBuscarAdmin = new javax.swing.JLabel(" Buscar plato: ");
+            lblBuscarAdmin.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+            pnlBuscarAdmin.add(lblBuscarAdmin, java.awt.BorderLayout.WEST);
+
+            javax.swing.JTextField txtBuscarAdmin = new javax.swing.JTextField();
+            txtBuscarAdmin.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+            txtBuscarAdmin.putClientProperty("JTextField.placeholderText", "Buscar por nombre o categoría...");
+            txtBuscarAdmin.addKeyListener(new java.awt.event.KeyAdapter() {
+                @Override
+                public void keyReleased(java.awt.event.KeyEvent e) {
+                    ListarPlatos(TablePlatos, txtBuscarAdmin.getText().trim());
+                }
+            });
+            pnlBuscarAdmin.add(txtBuscarAdmin, java.awt.BorderLayout.CENTER);
+
+            javax.swing.JButton btnLimpiarAdmin = new javax.swing.JButton("x");
+            btnLimpiarAdmin.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+            btnLimpiarAdmin.setFocusable(false);
+            btnLimpiarAdmin.setToolTipText("Limpiar filtro");
+            btnLimpiarAdmin.addActionListener(e -> {
+                txtBuscarAdmin.setText("");
+                ListarPlatos(TablePlatos, "");
+                txtBuscarAdmin.requestFocusInWindow();
+            });
+            pnlBuscarAdmin.add(btnLimpiarAdmin, java.awt.BorderLayout.EAST);
+
+            jPanel2.removeAll();
+            jPanel2.setLayout(new java.awt.BorderLayout(20, 10));
+            jPanel2.setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
+            jPanel2.add(jPanel11, java.awt.BorderLayout.WEST);
+            pnlDerechaPlatos.add(pnlBuscarAdmin, java.awt.BorderLayout.NORTH);
+            pnlDerechaPlatos.add(jScrollPane4, java.awt.BorderLayout.CENTER);
+            jPanel2.add(pnlDerechaPlatos, java.awt.BorderLayout.CENTER);
+            jPanel2.revalidate();
+            jPanel2.repaint();
         }
 
         // 4. Agregar columna Tipo a tableSala si no la tiene
@@ -8435,7 +8494,19 @@ public final class Sistema extends javax.swing.JFrame {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             if (value instanceof Platos p) {
                 String categoria = p.getCategoriaNombre() != null ? " · " + p.getCategoriaNombre() : "";
-                setText((p.isFavorito() ? "★ " : "") + p.getNombre() + categoria);
+                StringBuilder prefijo = new StringBuilder();
+                if (p.isFavorito()) {
+                    prefijo.append("★ ");
+                }
+                if (p.getRankingTotal() != null && p.getRankingTotal().compareTo(BigDecimal.ZERO) > 0) {
+                    prefijo.append("🔥 ");
+                }
+                setText(prefijo.toString() + p.getNombre() + categoria);
+                if (p.getCategoriaColor() != null) {
+                    setIcon(new IconoColor(p.getCategoriaColor()));
+                } else {
+                    setIcon(null);
+                }
             }
             return this;
         }
@@ -8473,72 +8544,6 @@ public final class Sistema extends javax.swing.JFrame {
         }
     }
 
-    private final class RendererPlato implements javax.swing.table.TableCellRenderer {
-        private final Map<Integer, Platos> porId;
-        private final javax.swing.JLabel etiqueta;
-
-        private RendererPlato(Map<Integer, Platos> porId) {
-            this.porId = porId;
-            this.etiqueta = new JLabel();
-            this.etiqueta.setOpaque(true);
-            this.etiqueta.setHorizontalAlignment(SwingConstants.LEFT);
-            etiqueta.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
-                boolean enfocado, int fila, int columna) {
-            etiqueta.setFont(tabla.getFont());
-            etiqueta.setText(valor == null ? "" : valor.toString());
-            etiqueta.setToolTipText(null);
-            Object idObj = tabla.getModel().getValueAt(fila, 0);
-            Platos p = null;
-            if (idObj != null) {
-                try {
-                    p = porId.get(Integer.parseInt(idObj.toString()));
-                } catch (NumberFormatException ignored) {}
-            }
-            if (seleccionado) {
-                etiqueta.setBackground(tabla.getSelectionBackground());
-                etiqueta.setForeground(tabla.getSelectionForeground());
-            } else {
-                Color fondo = null;
-                if (p != null && p.getCategoriaColor() != null) {
-                    try {
-                        fondo = Color.decode(p.getCategoriaColor());
-                    } catch (NumberFormatException ignored) {}
-                }
-                if (fondo != null) {
-                    etiqueta.setBackground(fondo);
-                    etiqueta.setForeground(colorContraste(fondo));
-                } else {
-                    etiqueta.setBackground(tabla.getBackground());
-                    etiqueta.setForeground(tabla.getForeground());
-                }
-            }
-            if (columna == 1 && p != null && p.isFavorito()) {
-                etiqueta.setText("★ " + etiqueta.getText());
-            }
-            if (p != null) {
-                StringBuilder tip = new StringBuilder();
-                if (p.isFavorito()) {
-                    tip.append("Favorito. ");
-                }
-                if (p.getCategoriaNombre() != null) {
-                    tip.append("Categoría: ").append(p.getCategoriaNombre());
-                }
-                if (tip.length() > 0) {
-                    etiqueta.setToolTipText(tip.toString().trim());
-                }
-            }
-            return etiqueta;
-        }
-    }
-
-    private Color colorContraste(Color fondo) {
-        double luminancia = (0.299 * fondo.getRed() + 0.587 * fondo.getGreen() + 0.114 * fondo.getBlue()) / 255.0;
-        return luminancia > 0.5 ? Color.BLACK : Color.WHITE;
-    }
 
     //registrar pedido
     private int registrarPedidoCompleto() {
