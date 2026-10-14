@@ -473,7 +473,78 @@ BEGIN
     ALTER TABLE pedidos MODIFY COLUMN estado
         ENUM('PENDIENTE','FINALIZADO','ANULADO') COLLATE utf8_spanish_ci NOT NULL DEFAULT 'PENDIENTE';
 
-    -- 29. Barrera de control de mantenimiento concurrente
+    -- 29. Condición fiscal por línea y nombres de usuario únicos/formateados.
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'detalle_pedidos' AND column_name = 'aplica_iva'
+    ) THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN aplica_iva TINYINT(1) NULL DEFAULT NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND column_name = 'nombre_unico'
+    ) THEN
+        ALTER TABLE usuarios ADD COLUMN nombre_unico VARCHAR(200)
+          GENERATED ALWAYS AS (LOWER(TRIM(nombre))) STORED;
+    END IF;
+
+    UPDATE usuarios SET nombre = TRIM(nombre);
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND index_name = 'uq_usuarios_nombre'
+    ) THEN
+        ALTER TABLE usuarios ADD UNIQUE KEY uq_usuarios_nombre (nombre_unico);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND constraint_name = 'chk_usuarios_nombre_formato'
+    ) THEN
+        ALTER TABLE usuarios ADD CONSTRAINT chk_usuarios_nombre_formato CHECK
+          (CHAR_LENGTH(nombre) BETWEEN 3 AND 60 AND REGEXP_LIKE(nombre, '^[[:alnum:]][[:alnum:] ._-]{1,58}[[:alnum:]]$'));
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_schema = DATABASE() AND table_name = 'detalle_pedidos' AND constraint_name = 'chk_detalle_aplica_iva'
+    ) THEN
+        ALTER TABLE detalle_pedidos ADD CONSTRAINT chk_detalle_aplica_iva
+          CHECK ((aplica_iva IS NULL) OR (aplica_iva IN (0,1)));
+    END IF;
+
+    IF EXISTS (
+        SELECT d.nombre_clave FROM detalle_pedidos d JOIN platos p ON p.nombre_clave = d.nombre_clave
+        WHERE d.aplica_iva IS NULL GROUP BY d.nombre_clave HAVING COUNT(DISTINCT COALESCE(p.aplica_iva, 1)) > 1
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Catálogo ambiguo: hay platos duplicados con distinta condición de IVA.';
+    END IF;
+
+    UPDATE detalle_pedidos d LEFT JOIN platos p ON p.nombre_clave = d.nombre_clave
+      SET d.aplica_iva = COALESCE(p.aplica_iva, 1) WHERE d.aplica_iva IS NULL;
+
+    ALTER TABLE detalle_pedidos MODIFY COLUMN aplica_iva TINYINT(1) NOT NULL DEFAULT 1;
+
+    UPDATE pedidos p LEFT JOIN (
+        SELECT id_pedido, SUM(precio * cantidad) AS subtotal,
+               SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) AS base_imponible
+        FROM detalle_pedidos GROUP BY id_pedido
+    ) d ON d.id_pedido = p.id
+    SET p.tasa_cambio = COALESCE(p.tasa_cambio, 36.5000),
+        p.subtotal = COALESCE(d.subtotal, p.subtotal),
+        p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2),
+        p.total = COALESCE(d.subtotal, p.subtotal)
+            + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2),
+        p.subtotal_bs = ROUND(COALESCE(d.subtotal, p.subtotal) * COALESCE(p.tasa_cambio, 36.5000), 2),
+        p.iva_bs = ROUND(ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2)
+            * COALESCE(p.tasa_cambio, 36.5000), 2),
+        p.total_bs = ROUND((COALESCE(d.subtotal, p.subtotal)
+            + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2))
+            * COALESCE(p.tasa_cambio, 36.5000), 2)
+    WHERE d.id_pedido IS NOT NULL;
+
+    -- 30. Barrera de control de mantenimiento concurrente
     CREATE TABLE IF NOT EXISTS restaurante_control (
         id TINYINT NOT NULL PRIMARY KEY,
         estado VARCHAR(20) NOT NULL,

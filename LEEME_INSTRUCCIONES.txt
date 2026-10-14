@@ -96,12 +96,13 @@ En Linux / macOS:
 --------------------------------------------------------------------------------
 (Cargados en BD.sql)
 
-Rol Administrador (PRE-LLENADO POR DEFECTO EN PANTALLA):
+Las únicas cuentas incluidas en BD.sql tienen rol Administrador y comparten la
+contraseña de demostración admin:
    - Usuario / Correo : admin
-   - Password         : admin
-   (Simplemente presione el botón "Ingresar" o Enter)
+   - Usuario / Correo : info@angelsifuentes.com
 
-Rol Asistente / Empleado:
-   - Usuario / Correo : empleado@restaurante.com
-   - Password         : user
+La contraseña inicial es la misma para ambas cuentas. No se siembra ninguna
+cuenta Asistente; debe crearla desde la pestaña Usuarios después de iniciar
+sesión con una cuenta Administrador. Son credenciales de demostración y no
+deben utilizarse en una instalación de producción.
 ================================================================================

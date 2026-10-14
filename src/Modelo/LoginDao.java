@@ -107,6 +107,9 @@ public class LoginDao implements AutenticacionRepositorio {
                     sentencia.executeUpdate(), "registrar usuario");
         } catch (SQLException ex) {
             if (ex.getErrorCode() == 1062) {
+                if (ex.getMessage() != null && ex.getMessage().contains("uq_usuarios_nombre")) {
+                    throw new ErrorAplicacionException("Ese nombre de usuario ya está registrado.", ex, Level.WARNING);
+                }
                 throw new ErrorAplicacionException("El correo electrónico ya está registrado.", ex, Level.WARNING);
             }
             throw new DataAccessException("No se pudo registrar el usuario.", ex);
@@ -186,6 +189,7 @@ public class LoginDao implements AutenticacionRepositorio {
         if (!"Administrador".equals(reg.getRol()) && !"Asistente".equals(reg.getRol())) {
             throw ErrorAplicacionException.validacion("El rol del usuario no es válido.");
         }
+        reg.setNombre(NombreUsuario.normalizar(reg.getNombre()));
         normalizarCorreoRegistro(reg.getCorreo());
     }
 

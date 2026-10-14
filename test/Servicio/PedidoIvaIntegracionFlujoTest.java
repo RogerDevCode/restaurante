@@ -68,6 +68,49 @@ public class PedidoIvaIntegracionFlujoTest {
     }
 
     @Test
+    public void calculaIvaDesdeLaCondicionFiscalPersistidaEnCadaLinea() {
+        DetallePedido gravado = new DetallePedido();
+        gravado.setNombre("Plato gravado");
+        gravado.setCantidad(1);
+        gravado.setPrecioDecimal(new BigDecimal("10.00"));
+        gravado.setAplicaIva(true);
+        DetallePedido exento = new DetallePedido();
+        exento.setNombre("Plato exento");
+        exento.setCantidad(1);
+        exento.setPrecioDecimal(new BigDecimal("5.00"));
+        exento.setAplicaIva(false);
+        List<DetallePedido> detalles = List.of(gravado, exento);
+
+        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(
+                detalles, new BigDecimal("16.00"), new BigDecimal("40.0000"));
+        assertEquals(new BigDecimal("15.00"), fiscal.subtotalUsd());
+        assertEquals(new BigDecimal("10.00"), fiscal.baseImponibleUsd());
+        assertEquals(new BigDecimal("5.00"), fiscal.exentoUsd());
+        assertEquals(new BigDecimal("1.60"), fiscal.ivaUsd());
+        assertEquals(new BigDecimal("16.60"), fiscal.totalUsd());
+
+        Pedidos pedido = new Pedidos();
+        pedido.setId_sala(1);
+        pedido.setNum_mesa(5);
+        pedido.setUsuario("Mesero");
+        pedido.setSubtotal(fiscal.subtotalUsd());
+        pedido.setIvaPorcentaje(fiscal.ivaPorcentaje());
+        pedido.setIvaMonto(fiscal.ivaUsd());
+        pedido.setTotalDecimal(fiscal.totalUsd());
+        assertEquals(103, new PedidoServicio(new PedidosRepositorioFalso() {
+            @Override
+            public int registrarPedidoCompleto(Pedidos recibido, List<DetallePedido> lineas) {
+                return 103;
+            }
+        }).registrarPedidoCompleto(pedido, detalles));
+
+        pedido.setIvaMonto(new BigDecimal("0.00"));
+        pedido.setTotalDecimal(new BigDecimal("15.00"));
+        assertThrows(ErrorAplicacionException.class,
+                () -> new PedidoServicio(new PedidosRepositorioFalso()).registrarPedidoCompleto(pedido, detalles));
+    }
+
+    @Test
     public void aceptaPedidoSinIvaPrevioAFacturacion() {
         AtomicInteger llamadas = new AtomicInteger();
         PedidosRepositorio repositorio = new PedidosRepositorioFalso() {

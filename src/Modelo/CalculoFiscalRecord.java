@@ -2,6 +2,7 @@ package Modelo;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -78,6 +79,29 @@ public record CalculoFiscalRecord(
             throw ErrorAplicacionException.validacion("El subtotal en USD no puede ser negativo.");
         }
         return calcular(subtotalUsd, BigDecimal.ZERO, ivaPorcentaje, tasaCambio);
+    }
+
+    /** Calcula el impuesto desde la condición fiscal guardada en cada detalle del pedido. */
+    public static CalculoFiscalRecord calcular(List<DetallePedido> detalles, BigDecimal ivaPorcentaje, BigDecimal tasaCambio) {
+        if (detalles == null || detalles.isEmpty()) {
+            throw ErrorAplicacionException.validacion("El pedido debe incluir detalles para calcular sus impuestos.");
+        }
+        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
+        BigDecimal exento = BigDecimal.ZERO.setScale(2);
+        for (DetallePedido detalle : detalles) {
+            if (detalle == null || detalle.getAplicaIva() == null || detalle.getCantidad() <= 0
+                    || detalle.getPrecioDecimal() == null || detalle.getPrecioDecimal().signum() < 0) {
+                throw ErrorAplicacionException.validacion("Cada detalle debe incluir una condición fiscal válida.");
+            }
+            BigDecimal importe = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(detalle.getCantidad()));
+            if (detalle.getAplicaIva()) {
+                baseImponible = baseImponible.add(importe);
+            } else {
+                exento = exento.add(importe);
+            }
+        }
+        return calcular(baseImponible, exento, ivaPorcentaje, tasaCambio);
     }
 
     /**

@@ -12,6 +12,8 @@ public class DetallePedido {
     private int cantidad;
     private String comentario;
     private int id_pedido;
+    // NULL identifica detalles históricos cuyo tratamiento fiscal no quedó registrado.
+    private Boolean aplicaIva = Boolean.TRUE;
 
     public DetallePedido() {
     }
@@ -74,6 +76,14 @@ public class DetallePedido {
 
     public void setId_pedido(int id_pedido) {
         this.id_pedido = id_pedido;
+    }
+
+    public Boolean getAplicaIva() {
+        return aplicaIva;
+    }
+
+    public void setAplicaIva(Boolean aplicaIva) {
+        this.aplicaIva = aplicaIva;
     }
     
 }

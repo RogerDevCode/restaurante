@@ -46,6 +46,7 @@ public final class PedidoServicio {
             throw ErrorAplicacionException.validacion("El pedido debe incluir al menos un detalle.");
         }
         BigDecimal totalDetalles = BigDecimal.ZERO.setScale(2);
+        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
         for (DetallePedido detalle : detalles) {
             if (detalle == null) {
                 throw ErrorAplicacionException.validacion("El pedido contiene un detalle vacío.");
@@ -58,18 +59,25 @@ public final class PedidoServicio {
             }
             validarImporte(detalle.getPrecioDecimal(), "El precio de cada plato");
             BigDecimal precio = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
-            totalDetalles = totalDetalles.add(precio.multiply(BigDecimal.valueOf(detalle.getCantidad())));
+            BigDecimal importe = precio.multiply(BigDecimal.valueOf(detalle.getCantidad()));
+            totalDetalles = totalDetalles.add(importe);
+            if (detalle.getAplicaIva() == null) {
+                throw ErrorAplicacionException.validacion("Cada detalle debe indicar si aplica IVA.");
+            }
+            if (detalle.getAplicaIva()) {
+                baseImponible = baseImponible.add(importe);
+            }
         }
 
         BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
         BigDecimal subtotalEsperado = totalDetalles;
-        BigDecimal ivaEsperado = BigDecimal.ZERO;
-        BigDecimal totalConIva = subtotalEsperado;
-
-        if (ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0) {
-            ivaEsperado = subtotalEsperado.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-            totalConIva = subtotalEsperado.add(ivaEsperado).setScale(2, RoundingMode.HALF_UP);
+        if (ivaPorcentaje == null || ivaPorcentaje.signum() < 0
+                || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0 || ivaPorcentaje.scale() > 2) {
+            throw ErrorAplicacionException.validacion("El porcentaje de IVA debe estar entre 0.00% y 100.00%.");
         }
+        BigDecimal ivaEsperado = ivaPorcentaje.signum() > 0
+                ? baseImponible.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2);
 
         if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP).compareTo(subtotalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
@@ -77,15 +85,15 @@ public final class PedidoServicio {
 
         if (pedido.getIvaMonto() != null) {
             BigDecimal ivaMonto = pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP);
-            if (ivaMonto.compareTo(BigDecimal.ZERO) < 0 || ivaMonto.compareTo(ivaEsperado) > 0) {
-                throw ErrorAplicacionException.validacion("El monto del IVA no coincide con el porcentaje aplicado.");
+            if (ivaMonto.compareTo(ivaEsperado) != 0) {
+                throw ErrorAplicacionException.validacion("El monto del IVA no coincide con la condición fiscal de los detalles.");
             }
         }
 
         BigDecimal totalPedido = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
         BigDecimal ivaAplicado = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : ivaEsperado;
         BigDecimal totalEsperadoExacto = subtotalEsperado.add(ivaAplicado).setScale(2, RoundingMode.HALF_UP);
-        if (totalPedido.compareTo(totalEsperadoExacto) != 0 && totalPedido.compareTo(subtotalEsperado) != 0) {
+        if (totalPedido.compareTo(totalEsperadoExacto) != 0) {
             throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles.");
         }
     }

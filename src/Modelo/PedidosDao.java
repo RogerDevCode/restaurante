@@ -73,8 +73,8 @@ public class PedidosDao implements PedidosRepositorio {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         String sqlDetalle = """
-            INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido, aplica_iva)
+            VALUES (?, ?, ?, ?, ?, ?)
             """;
 
         try (Connection conexion = conexiones.getConnection()) {
@@ -128,6 +128,7 @@ public class PedidosDao implements PedidosRepositorio {
                         sentenciaDetalle.setInt(3, detalle.getCantidad());
                         sentenciaDetalle.setString(4, detalle.getComentario());
                         sentenciaDetalle.setInt(5, idPedido);
+                        sentenciaDetalle.setBoolean(6, detalle.getAplicaIva());
                         if (sentenciaDetalle.executeUpdate() != 1) {
                             throw new SQLException("No se pudo insertar uno de los detalles del pedido.");
                         }
@@ -148,6 +149,9 @@ public class PedidosDao implements PedidosRepositorio {
                             && mensaje != null
                             && mensaje.contains("uq_pedidos_mesa_pendiente")) {
                         throw new PedidoPendienteExistenteException(pedido.getNum_mesa(), errorSql);
+                    }
+                    if (errorSql.getErrorCode() == 1054 && mensaje != null && mensaje.contains("aplica_iva")) {
+                        throw new DataAccessException("La base de datos requiere la migración fiscal de detalles antes de guardar pedidos.", errorSql);
                     }
                     if (errorSql.getErrorCode() == 1054) {
                         return registrarPedidoCompletoLegacy(conexion, pedido, detalles);
@@ -171,7 +175,7 @@ public class PedidosDao implements PedidosRepositorio {
             WHERE id = ? AND estado = 'PENDIENTE'
             """;
         String sqlDeleteDetalles = "DELETE FROM detalle_pedidos WHERE id_pedido = ?";
-        String sqlInsertDetalle = "INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido) VALUES (?, ?, ?, ?, ?)";
+        String sqlInsertDetalle = "INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido, aplica_iva) VALUES (?, ?, ?, ?, ?, ?)";
         
         try (Connection conexion = conexiones.getConnection()) {
             conexion.setAutoCommit(false);
@@ -210,6 +214,7 @@ public class PedidosDao implements PedidosRepositorio {
                     insDetalle.setInt(3, det.getCantidad());
                     insDetalle.setString(4, det.getComentario() == null ? "" : det.getComentario());
                     insDetalle.setInt(5, idPedido);
+                    insDetalle.setBoolean(6, det.getAplicaIva());
                     insDetalle.addBatch();
                 }
                 insDetalle.executeBatch();
@@ -217,6 +222,9 @@ public class PedidosDao implements PedidosRepositorio {
                 return true;
             } catch (SQLException error) {
                 conexion.rollback();
+                if (error.getErrorCode() == 1054 && error.getMessage() != null && error.getMessage().contains("aplica_iva")) {
+                    throw new DataAccessException("La base de datos requiere la migración fiscal de detalles antes de actualizar pedidos.", error);
+                }
                 if (error.getErrorCode() == 1054) {
                     return actualizarPedidoCompletoLegacy(conexion, idPedido, pedidoModificado, detallesNuevos);
                 }
@@ -234,7 +242,7 @@ public class PedidosDao implements PedidosRepositorio {
             WHERE id = ? AND estado = 'PENDIENTE'
             """;
         String sqlDeleteDetalles = "DELETE FROM detalle_pedidos WHERE id_pedido = ?";
-        String sqlInsertDetalle = "INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido) VALUES (?, ?, ?, ?, ?)";
+        String sqlInsertDetalle = "INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido, aplica_iva) VALUES (?, ?, ?, ?, ?, ?)";
         
         try (PreparedStatement updatePed = conexion.prepareStatement(sqlUpdatePedido);
              PreparedStatement delDetalles = conexion.prepareStatement(sqlDeleteDetalles);
@@ -264,6 +272,7 @@ public class PedidosDao implements PedidosRepositorio {
                  insDetalle.setInt(3, det.getCantidad());
                  insDetalle.setString(4, det.getComentario() == null ? "" : det.getComentario());
                  insDetalle.setInt(5, idPedido);
+                 insDetalle.setBoolean(6, det.getAplicaIva());
                  insDetalle.addBatch();
              }
              insDetalle.executeBatch();
@@ -281,8 +290,8 @@ public class PedidosDao implements PedidosRepositorio {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         String sqlDetalle = """
-            INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido, aplica_iva)
+            VALUES (?, ?, ?, ?, ?, ?)
             """;
         try {
             int idPedido;
@@ -317,6 +326,7 @@ public class PedidosDao implements PedidosRepositorio {
                     sentenciaDetalle.setInt(3, detalle.getCantidad());
                     sentenciaDetalle.setString(4, detalle.getComentario());
                     sentenciaDetalle.setInt(5, idPedido);
+                    sentenciaDetalle.setBoolean(6, detalle.getAplicaIva());
                     if (sentenciaDetalle.executeUpdate() != 1) {
                         throw new SQLException("No se pudo insertar uno de los detalles del pedido.");
                     }
@@ -379,6 +389,7 @@ public class PedidosDao implements PedidosRepositorio {
             throw ErrorAplicacionException.validacion("El pedido debe incluir al menos un detalle.");
         }
         BigDecimal sumaDetalles = BigDecimal.ZERO.setScale(2);
+        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
         for (DetallePedido detalle : detalles) {
             if (detalle == null || detalle.getNombre() == null || detalle.getNombre().trim().isEmpty()
                     || detalle.getCantidad() <= 0
@@ -387,13 +398,24 @@ public class PedidosDao implements PedidosRepositorio {
                         + DetallePedido.CANTIDAD_MAXIMA_POR_PLATO + ".");
             }
             BigDecimal precio = importePersistible(detalle.getPrecioDecimal(), "El precio de cada plato");
-            sumaDetalles = sumaDetalles.add(precio.multiply(BigDecimal.valueOf(detalle.getCantidad())));
+            BigDecimal importeDetalle = precio.multiply(BigDecimal.valueOf(detalle.getCantidad()));
+            sumaDetalles = sumaDetalles.add(importeDetalle);
+            if (detalle.getAplicaIva() == null) {
+                throw ErrorAplicacionException.validacion("Cada detalle debe indicar si aplica IVA.");
+            }
+            if (detalle.getAplicaIva()) {
+                baseImponible = baseImponible.add(importeDetalle);
+            }
         }
 
         BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
         BigDecimal subtotalEsperado = sumaDetalles;
-        BigDecimal ivaMaximo = (ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0)
-                ? subtotalEsperado.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
+        if (ivaPorcentaje == null || ivaPorcentaje.signum() < 0
+                || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0 || ivaPorcentaje.scale() > 2) {
+            throw ErrorAplicacionException.validacion("El porcentaje de IVA debe estar entre 0.00% y 100.00%.");
+        }
+        BigDecimal ivaEsperado = ivaPorcentaje.signum() > 0
+                ? baseImponible.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO.setScale(2);
 
         BigDecimal subtotal = importePersistible(pedido.getSubtotal() != null ? pedido.getSubtotal() : subtotalEsperado, "El subtotal del pedido");
@@ -401,9 +423,9 @@ public class PedidosDao implements PedidosRepositorio {
             throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
         }
 
-        BigDecimal ivaMonto = importePersistible(pedido.getIvaMonto() != null ? pedido.getIvaMonto() : ivaMaximo, "El monto del IVA");
-        if (ivaMonto.compareTo(BigDecimal.ZERO) < 0 || ivaMonto.compareTo(ivaMaximo) > 0) {
-            throw ErrorAplicacionException.validacion("El monto del IVA no coincide con el porcentaje aplicado.");
+        BigDecimal ivaMonto = importePersistible(pedido.getIvaMonto() != null ? pedido.getIvaMonto() : ivaEsperado, "El monto del IVA");
+        if (ivaMonto.compareTo(ivaEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El monto del IVA no coincide con la condición fiscal de los detalles.");
         }
 
         BigDecimal totalEsperado = subtotal.add(ivaMonto).setScale(2, RoundingMode.HALF_UP);
@@ -465,7 +487,7 @@ public class PedidosDao implements PedidosRepositorio {
         }
         List<DetallePedido> lista = new ArrayList<>();
         String sql = """
-            SELECT d.id, d.nombre, d.precio, d.cantidad, d.comentario, d.id_pedido
+            SELECT d.id, d.nombre, d.precio, d.cantidad, d.comentario, d.id_pedido, d.aplica_iva
             FROM pedidos p
             INNER JOIN detalle_pedidos d ON p.id = d.id_pedido
             WHERE p.id = ?
@@ -481,6 +503,8 @@ public class PedidosDao implements PedidosRepositorio {
                     det.setPrecioDecimal(resultados.getBigDecimal("precio"));
                     det.setCantidad(resultados.getInt("cantidad"));
                     det.setComentario(resultados.getString("comentario"));
+                    boolean aplicaIva = resultados.getBoolean("aplica_iva");
+                    det.setAplicaIva(resultados.wasNull() ? null : aplicaIva);
                     lista.add(det);
                 }
             }

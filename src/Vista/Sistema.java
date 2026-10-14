@@ -3519,11 +3519,13 @@ public final class Sistema extends javax.swing.JFrame {
         for (Modelo.DetallePedido det : detalles) {
             String nombre = det.getNombre();
             int idPlato = 0;
-            boolean aplicaIva = true;
+            boolean aplicaIva = det.getAplicaIva() != null ? det.getAplicaIva() : true;
             for (int k = 0; k < tblTemPlatos.getRowCount(); k++) {
                 if (tblTemPlatos.getValueAt(k, 1).toString().equalsIgnoreCase(nombre)) {
                     idPlato = Integer.parseInt(tblTemPlatos.getValueAt(k, 0).toString());
-                    aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
+                    if (det.getAplicaIva() == null) {
+                        aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
+                    }
                     break;
                 }
             }
@@ -3754,7 +3756,9 @@ public final class Sistema extends javax.swing.JFrame {
             } catch (Modelo.DataAccessException ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Error al registrar usuario", JOptionPane.ERROR_MESSAGE);
             } catch (ErrorAplicacionException ex) {
-                mostrarAlertaCampo(txtCorreo, ex.getMessage());
+                String mensaje = ex.getMessage() != null ? ex.getMessage() : "No se pudo validar el usuario.";
+                mostrarAlertaCampo(mensaje.toLowerCase(java.util.Locale.ROOT).contains("nombre de usuario")
+                        ? txtNombre : txtCorreo, mensaje);
             }
         }
     }//GEN-LAST:event_btnIniciarActionPerformed
@@ -8551,34 +8555,8 @@ public final class Sistema extends javax.swing.JFrame {
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
         BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
         BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
-
-        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
-        BigDecimal exento = BigDecimal.ZERO.setScale(2);
-        for (int i = 0; i < tableMenu.getRowCount(); i++) {
-            BigDecimal subtotal = importeMonetario(tableMenu.getValueAt(i, 4));
-            boolean itemAplicaIva = true;
-            if (tableMenu.getColumnCount() > 6 && tableMenu.getValueAt(i, 6) != null) {
-                String valIva = tableMenu.getValueAt(i, 6).toString().toLowerCase(java.util.Locale.ROOT);
-                if (valIva.contains("exento") || valIva.contains("no") || valIva.equals("false") || valIva.equals("0")) {
-                    itemAplicaIva = false;
-                }
-            } else {
-                Object idObj = tableMenu.getValueAt(i, 0);
-                if (idObj != null) {
-                    try {
-                        int idPlato = Integer.parseInt(idObj.toString());
-                        itemAplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
-                    } catch (Exception ignored) {}
-                }
-            }
-            if (itemAplicaIva) {
-                baseImponible = baseImponible.add(subtotal);
-            } else {
-                exento = exento.add(subtotal);
-            }
-        }
-
-        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(baseImponible, exento, ivaPorcentaje, tasa);
+        List<DetallePedido> detalles = construirDetallesDesdeCarrito();
+        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(detalles, ivaPorcentaje, tasa);
 
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(id_sala);
@@ -8598,16 +8576,6 @@ public final class Sistema extends javax.swing.JFrame {
             pedido.setMesoneroNombre(m.getNombreCompleto());
         }
 
-        List<DetallePedido> detalles = new ArrayList<>();
-        for (int i = 0; i < tableMenu.getRowCount(); i++) {
-            DetallePedido detalle = new DetallePedido();
-            detalle.setNombre(tableMenu.getValueAt(i, 1).toString());
-            detalle.setCantidad(Integer.parseInt(tableMenu.getValueAt(i, 2).toString()));
-            detalle.setPrecioDecimal(importeMonetario(tableMenu.getValueAt(i, 3)));
-            Object comentario = tableMenu.getValueAt(i, 5);
-            detalle.setComentario(comentario == null ? "" : comentario.toString());
-            detalles.add(detalle);
-        }
         return pedidosControlador.registrarPedidoCompleto(pedido, detalles);
     }
 
@@ -8617,33 +8585,8 @@ public final class Sistema extends javax.swing.JFrame {
         BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
         BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
 
-        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
-        BigDecimal exento = BigDecimal.ZERO.setScale(2);
-        for (int i = 0; i < tableMenu.getRowCount(); i++) {
-            BigDecimal subtotal = importeMonetario(tableMenu.getValueAt(i, 4));
-            boolean itemAplicaIva = true;
-            if (tableMenu.getColumnCount() > 6 && tableMenu.getValueAt(i, 6) != null) {
-                String valIva = tableMenu.getValueAt(i, 6).toString().toLowerCase(java.util.Locale.ROOT);
-                if (valIva.contains("exento") || valIva.contains("no") || valIva.equals("false") || valIva.equals("0")) {
-                    itemAplicaIva = false;
-                }
-            } else {
-                Object idObj = tableMenu.getValueAt(i, 0);
-                if (idObj != null) {
-                    try {
-                        int idPlato = Integer.parseInt(idObj.toString());
-                        itemAplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
-                    } catch (Exception ignored) {}
-                }
-            }
-            if (itemAplicaIva) {
-                baseImponible = baseImponible.add(subtotal);
-            } else {
-                exento = exento.add(subtotal);
-            }
-        }
-
-        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(baseImponible, exento, ivaPorcentaje, tasa);
+        List<DetallePedido> detalles = construirDetallesDesdeCarrito();
+        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(detalles, ivaPorcentaje, tasa);
 
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(id_sala);
@@ -8662,6 +8605,10 @@ public final class Sistema extends javax.swing.JFrame {
             pedido.setMesoneroNombre(m.getNombreCompleto());
         }
 
+        pedidosControlador.actualizarPedidoCompleto(idPedidoEdicion, pedido, detalles);
+    }
+
+    private List<DetallePedido> construirDetallesDesdeCarrito() {
         List<DetallePedido> detalles = new ArrayList<>();
         for (int i = 0; i < tableMenu.getRowCount(); i++) {
             DetallePedido detalle = new DetallePedido();
@@ -8670,9 +8617,26 @@ public final class Sistema extends javax.swing.JFrame {
             detalle.setPrecioDecimal(importeMonetario(tableMenu.getValueAt(i, 3)));
             Object comentario = tableMenu.getValueAt(i, 5);
             detalle.setComentario(comentario == null ? "" : comentario.toString());
+            detalle.setAplicaIva(aplicaIvaEnFila(i));
             detalles.add(detalle);
         }
-        pedidosControlador.actualizarPedidoCompleto(idPedidoEdicion, pedido, detalles);
+        return detalles;
+    }
+
+    private boolean aplicaIvaEnFila(int fila) {
+        if (tableMenu.getColumnCount() > 6 && tableMenu.getValueAt(fila, 6) != null) {
+            String valor = tableMenu.getValueAt(fila, 6).toString().toLowerCase(java.util.Locale.ROOT);
+            return !(valor.contains("exento") || valor.contains("no") || valor.equals("false") || valor.equals("0"));
+        }
+        Object idObj = tableMenu.getValueAt(fila, 0);
+        if (idObj != null) {
+            try {
+                return platoAplicaIvaMap.getOrDefault(Integer.parseInt(idObj.toString()), true);
+            } catch (NumberFormatException ignored) {
+                // Las líneas sin ID de plato conservan el comportamiento gravado por defecto.
+            }
+        }
+        return true;
     }
 
     private String fechaActual() {

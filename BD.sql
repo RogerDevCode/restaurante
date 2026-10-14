@@ -66,11 +66,13 @@ CREATE TABLE `detalle_pedidos` (
   `cantidad` int(11) NOT NULL,
   `comentario` text COLLATE utf8_spanish_ci DEFAULT NULL,
   `id_pedido` int(11) NOT NULL,
+  `aplica_iva` tinyint(1) NOT NULL DEFAULT 1,
   `nombre_clave` varchar(200) GENERATED ALWAYS AS (lower(trim(`nombre`))) STORED,
   PRIMARY KEY (`id`),
   KEY `id_pedido` (`id_pedido`),
   KEY `idx_detalle_pedidos_nombre` (`nombre`),
   KEY `idx_detalle_pedidos_nombre_clave` (`nombre_clave`),
+  CONSTRAINT `chk_detalle_aplica_iva` CHECK (`aplica_iva` in (0,1)),
   CONSTRAINT `detalle_pedidos_ibfk_1` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -81,7 +83,7 @@ CREATE TABLE `detalle_pedidos` (
 
 LOCK TABLES `detalle_pedidos` WRITE;
 /*!40000 ALTER TABLE `detalle_pedidos` DISABLE KEYS */;
-INSERT INTO `detalle_pedidos` (`id`, `nombre`, `precio`, `cantidad`, `comentario`, `id_pedido`) VALUES (1,'CHAUFA',20.00,1,'',1),(2,'ARROZ CON POLLO',10.00,5,'ARTO MAYONESA',1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',1),(4,'ARROZ CON POLLO',10.00,1,'',2),(5,'CHAUFA',20.00,1,'',2),(6,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',3),(7,'CHAUFA',20.00,1,'',3),(8,'ARROZ CON POLLO',10.00,2,'',4);
+INSERT INTO `detalle_pedidos` (`id`, `nombre`, `precio`, `cantidad`, `comentario`, `id_pedido`, `aplica_iva`) VALUES (1,'CHAUFA',20.00,1,'',1,1),(2,'ARROZ CON POLLO',10.00,5,'ARTO MAYONESA',1,1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',1,1),(4,'ARROZ CON POLLO',10.00,1,'',2,1),(5,'CHAUFA',20.00,1,'',2,1),(6,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',3,1),(7,'CHAUFA',20.00,1,'',3,1),(8,'ARROZ CON POLLO',10.00,2,'',4,1);
 /*!40000 ALTER TABLE `detalle_pedidos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -260,8 +262,11 @@ CREATE TABLE `usuarios` (
   `correo` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
   `pass` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
   `rol` varchar(20) COLLATE utf8_spanish_ci NOT NULL,
+  `nombre_unico` varchar(200) GENERATED ALWAYS AS (lower(trim(`nombre`))) STORED,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_usuarios_correo` (`correo`)
+  UNIQUE KEY `uq_usuarios_correo` (`correo`),
+  UNIQUE KEY `uq_usuarios_nombre` (`nombre_unico`),
+  CONSTRAINT `chk_usuarios_nombre_formato` CHECK ((char_length(`nombre`) between 3 and 60) and regexp_like(`nombre`, '^[[:alnum:]][[:alnum:] ._-]{1,58}[[:alnum:]]$'))
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
