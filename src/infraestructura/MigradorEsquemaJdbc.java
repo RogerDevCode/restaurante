@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 10;
+    private static final int VERSION_ESQUEMA = 11;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
@@ -44,7 +44,9 @@ public final class MigradorEsquemaJdbc {
     private static final String CHECKSUM_MIGRACION_V9 = calcularChecksum(DEFINICION_MIGRACION_V9);
     private static final String DEFINICION_MIGRACION_V10 = "v10:reserva_alias_admin_repara_fk_login_cascade";
     private static final String CHECKSUM_MIGRACION_V10 = calcularChecksum(DEFINICION_MIGRACION_V10);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v10";
+    private static final String DEFINICION_MIGRACION_V11 = "v11:precios_duales,snapshot_fiscal,cierre_mesa,liquidaciones,auditoria_precios,pagos_inmutables";
+    private static final String CHECKSUM_MIGRACION_V11 = calcularChecksum(DEFINICION_MIGRACION_V11);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v11";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
@@ -182,7 +184,7 @@ public final class MigradorEsquemaJdbc {
             if (!rs.next()) return false;
             String checksum = rs.getString("checksum");
             String estado = rs.getString("estado");
-            if (!CHECKSUM_MIGRACION_V10.equals(checksum)) {
+            if (!CHECKSUM_MIGRACION_V11.equals(checksum)) {
                 throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
             }
             return "APLICADA".equalsIgnoreCase(estado);
@@ -219,7 +221,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V10 + "','EN_CURSO','asegurar_esquema') "
+                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V11 + "','EN_CURSO','asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -234,7 +236,8 @@ public final class MigradorEsquemaJdbc {
         DatabaseMetaData meta = con.getMetaData();
         String catalogo = con.getCatalog();
         for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja", "mesoneros",
-                "categorias", "plato_categoria", "plato_favorito", "preferencias_tabla", "pedido_pagos", "login_intentos")) {
+                "categorias", "plato_categoria", "plato_favorito", "preferencias_tabla", "pedido_pagos", "login_intentos",
+                "auditoria_cambios_precio", "pedido_liquidaciones", "pedido_saldos_movimientos")) {
             if (!tablaExiste(con, tabla)) throw new SQLException("Postcondición no cumplida: falta tabla " + tabla);
         }
         for (String[] par : new String[][] {
@@ -250,6 +253,15 @@ public final class MigradorEsquemaJdbc {
                 {"platos", "nombre_clave"},
                 {"detalle_pedidos", "nombre_clave"},
                 {"detalle_pedidos", "aplica_iva"},
+                {"platos", "moneda_base"}, {"platos", "precio_usd"}, {"platos", "precio_ves"},
+                {"platos", "precio_clasificado"}, {"platos", "precio_incluye_iva"},
+                {"detalle_pedidos", "id_plato"}, {"detalle_pedidos", "moneda_base"},
+                {"detalle_pedidos", "precio_incluye_iva"}, {"detalle_pedidos", "iva_porcentaje"},
+                {"detalle_pedidos", "precio_congelado"}, {"detalle_pedidos", "congelado_motivo"},
+                {"detalle_pedidos", "congelado_por"}, {"detalle_pedidos", "congelado_en"},
+                {"pedidos", "cerrada_en"}, {"pedidos", "version_precio"},
+                {"pedido_pagos", "monto_recibido"}, {"pedido_pagos", "monto_aplicado"},
+                {"pedido_pagos", "cambio_devuelto"}, {"pedido_pagos", "es_legado"},
                 {"usuarios", "nombre_unico"},
                 {"login_intentos", "usuario_id"},
                 {"login_intentos", "intentos"},
@@ -282,18 +294,23 @@ public final class MigradorEsquemaJdbc {
             }
         }
         if (!checkExiste(con, "detalle_pedidos", "chk_detalle_aplica_iva")
+                || !checkExiste(con, "platos", "chk_platos_precio_clasificado")
+                || !checkExiste(con, "platos", "chk_platos_precio_iva_coherente")
+                || !checkExiste(con, "detalle_pedidos", "chk_detalle_precio_iva_coherente")
+                || !checkExiste(con, "pedido_pagos", "chk_pedido_pagos_montos")
                 || !checkExiste(con, "usuarios", "chk_usuarios_nombre_formato")) {
             throw new SQLException("Postcondición no cumplida: faltan restricciones de formato fiscal o de usuario.");
         }
-        try (ResultSet rs = meta.getColumns(catalogo, null, "detalle_pedidos", "aplica_iva")) {
-            if (!rs.next() || rs.getInt("NULLABLE") != DatabaseMetaData.columnNoNulls) {
-                throw new SQLException("Postcondición no cumplida: detalle_pedidos.aplica_iva debe ser NOT NULL.");
-            }
+        if (!foreignKeyExiste(con, "detalle_pedidos", "id_plato", "platos", "id", "SET NULL")
+                || !foreignKeyExiste(con, "pedido_pagos", "id_pedido", "pedidos", "id", "RESTRICT")
+                || !foreignKeyExiste(con, "pedido_pagos", "id_liquidacion", "pedido_liquidaciones", "id", "RESTRICT")) {
+            throw new SQLException("Postcondición no cumplida: faltan las relaciones históricas restrictivas del nuevo esquema monetario.");
         }
-        try (Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM detalle_pedidos WHERE aplica_iva IS NULL")) {
-            if (!rs.next() || rs.getLong(1) != 0) {
-                throw new SQLException("Postcondición no cumplida: quedan detalles sin condición fiscal.");
+        for (String columna : new String[]{"total", "subtotal", "iva_monto"}) {
+            try (ResultSet rs = meta.getColumns(catalogo, null, "pedidos", columna)) {
+                if (!rs.next() || rs.getInt("DECIMAL_DIGITS") != 2 || rs.getInt("COLUMN_SIZE") < 14) {
+                    throw new SQLException("Postcondición no cumplida: pedidos." + columna + " no es DECIMAL(14,2).");
+                }
             }
         }
         if (!pedidosEstadoAdmiteAnulacion(con)) {
@@ -440,10 +457,8 @@ public final class MigradorEsquemaJdbc {
         asegurarCheck(con, "detalle_pedidos", "chk_detalle_aplica_iva",
                 "((aplica_iva IS NULL) OR (aplica_iva IN (0,1)))");
         asegurarNombreUsuario(con, meta, catalogo);
-        recalcularFiscalidadHistorica(con);
-        try (Statement st = con.createStatement()) {
-            st.executeUpdate("ALTER TABLE detalle_pedidos MODIFY COLUMN aplica_iva TINYINT(1) NOT NULL DEFAULT 1");
-        }
+        // Los NULL históricos expresan una clasificación fiscal desconocida. No inferirlos
+        // del catálogo actual ni forzarlos a gravado/exento durante la migración.
 
         // 12. Asegurar tabla de categorías con paleta de colores (semilla: General)
         asegurarTablaCategorias(con, meta, catalogo);
@@ -476,6 +491,230 @@ public final class MigradorEsquemaJdbc {
                         REFERENCES pedidos(id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
                 """);
+        }
+
+        // 17. Precio base explícito, snapshots por línea, cierre independiente del pago y ledger.
+        asegurarEsquemaPrecios(con);
+    }
+
+    private static void asegurarEsquemaPrecios(Connection con) throws SQLException {
+        DatabaseMetaData meta = con.getMetaData();
+        String catalogo = con.getCatalog();
+        asegurarColumna(con, meta, catalogo, "platos", "moneda_base", "CHAR(3) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "platos", "precio_usd", "DECIMAL(14,2) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "platos", "precio_ves", "DECIMAL(14,2) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "platos", "precio_clasificado", "TINYINT(1) NOT NULL DEFAULT 0");
+        asegurarColumna(con, meta, catalogo, "platos", "precio_incluye_iva", "TINYINT(1) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "id_plato", "INT NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "moneda_base", "CHAR(3) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "precio_incluye_iva", "TINYINT(1) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "iva_porcentaje", "DECIMAL(5,2) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "precio_congelado", "TINYINT(1) NOT NULL DEFAULT 0");
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "congelado_motivo", "VARCHAR(500) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "congelado_por", "VARCHAR(100) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "congelado_en", "DATETIME NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "cerrada_en", "DATETIME NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "version_precio", "INT NOT NULL DEFAULT 1");
+
+        try (Statement st = con.createStatement()) {
+            // Aumentar rango sin recalcular ni convertir los valores históricos.
+            st.executeUpdate("ALTER TABLE platos MODIFY COLUMN precio DECIMAL(10,2) NULL DEFAULT NULL");
+            st.executeUpdate("ALTER TABLE detalle_pedidos MODIFY COLUMN precio DECIMAL(14,2) NOT NULL");
+            st.executeUpdate("ALTER TABLE pedidos MODIFY COLUMN subtotal DECIMAL(14,2) NOT NULL DEFAULT 0.00, "
+                    + "MODIFY COLUMN iva_monto DECIMAL(14,2) NOT NULL DEFAULT 0.00, "
+                    + "MODIFY COLUMN total DECIMAL(14,2) NOT NULL");
+        }
+
+        asegurarCheck(con, "platos", "chk_platos_precio_clasificado",
+                "(precio_clasificado = 0 OR (moneda_base IS NOT NULL AND moneda_base IN ('USD','VES') "
+                        + "AND ((moneda_base = 'USD' AND precio_usd > 0) OR (moneda_base = 'VES' AND precio_ves > 0)) "
+                        + "AND precio_incluye_iva IS NOT NULL AND precio_incluye_iva IN (0,1)))");
+        asegurarCheck(con, "platos", "chk_platos_precio_iva_coherente",
+                "(aplica_iva = 1 OR precio_incluye_iva IS NULL OR precio_incluye_iva = 0)");
+        asegurarCheck(con, "detalle_pedidos", "chk_detalle_precio_iva_coherente",
+                "(aplica_iva = 1 OR precio_incluye_iva IS NULL OR precio_incluye_iva = 0)");
+
+        asegurarForeignKeyDetallePlato(con);
+        asegurarCierreMesaEIndice(con, meta, catalogo);
+        asegurarTablaAuditoriaPrecios(con);
+        asegurarTablaPedidoLiquidaciones(con);
+        asegurarTablaMovimientosSaldo(con);
+        asegurarColumnasPagoYRestriccion(con, meta, catalogo);
+    }
+
+    private static void asegurarCierreMesaEIndice(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
+        boolean requiereActualizar = true;
+        try (PreparedStatement ps = con.prepareStatement("SELECT GENERATION_EXPRESSION FROM information_schema.columns "
+                + "WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name IN ('id_sala_pendiente','num_mesa_pendiente')");
+             ResultSet rs = ps.executeQuery()) {
+            int cantidadCorrecta = 0;
+            while (rs.next()) {
+                String expresion = rs.getString(1);
+                if (expresion != null && expresion.toLowerCase(java.util.Locale.ROOT).contains("cerrada_en")) cantidadCorrecta++;
+            }
+            requiereActualizar = cantidadCorrecta != 2;
+        }
+        if (requiereActualizar) {
+            try (Statement st = con.createStatement()) {
+                if (indiceExiste(meta, catalogo, "pedidos", "uq_pedidos_mesa_pendiente")) {
+                    st.executeUpdate("ALTER TABLE pedidos DROP INDEX uq_pedidos_mesa_pendiente");
+                }
+                if (columnaExiste(meta, catalogo, "pedidos", "id_sala_pendiente")) st.executeUpdate("ALTER TABLE pedidos DROP COLUMN id_sala_pendiente");
+                if (columnaExiste(meta, catalogo, "pedidos", "num_mesa_pendiente")) st.executeUpdate("ALTER TABLE pedidos DROP COLUMN num_mesa_pendiente");
+                st.executeUpdate("ALTER TABLE pedidos ADD COLUMN id_sala_pendiente INT GENERATED ALWAYS AS "
+                        + "(CASE WHEN estado='PENDIENTE' AND cerrada_en IS NULL THEN id_sala ELSE NULL END) STORED");
+                st.executeUpdate("ALTER TABLE pedidos ADD COLUMN num_mesa_pendiente INT GENERATED ALWAYS AS "
+                        + "(CASE WHEN estado='PENDIENTE' AND cerrada_en IS NULL THEN num_mesa ELSE NULL END) STORED");
+            }
+        }
+        asegurarIndiceUnico(con, con.getMetaData(), con.getCatalog(), "pedidos", "uq_pedidos_mesa_pendiente",
+                "(id_sala_pendiente, num_mesa_pendiente)");
+    }
+
+    private static void asegurarForeignKeyDetallePlato(Connection con) throws SQLException {
+        boolean existe = false;
+        try (PreparedStatement ps = con.prepareStatement("SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE "
+                + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='detalle_pedidos' AND COLUMN_NAME='id_plato' "
+                + "AND REFERENCED_TABLE_NAME='platos' AND REFERENCED_COLUMN_NAME='id'");
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) existe = rs.getInt(1) > 0;
+        }
+        if (!existe) {
+            try (Statement st = con.createStatement()) {
+                asegurarIndice(con, con.getMetaData(), con.getCatalog(), "detalle_pedidos", "idx_detalle_pedidos_plato", "(id_plato)");
+                st.executeUpdate("ALTER TABLE detalle_pedidos ADD CONSTRAINT fk_detalle_pedidos_plato "
+                        + "FOREIGN KEY (id_plato) REFERENCES platos(id) ON DELETE SET NULL");
+            }
+        }
+    }
+
+    private static void asegurarTablaAuditoriaPrecios(Connection con) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS auditoria_cambios_precio (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    accion VARCHAR(32) NOT NULL,
+                    producto_id INT NULL,
+                    pedido_id INT NULL,
+                    detalle_pedido_id INT NULL,
+                    moneda_base CHAR(3) NULL,
+                    precio_usd_anterior DECIMAL(14,2) NULL,
+                    precio_usd_nuevo DECIMAL(14,2) NULL,
+                    precio_ves_anterior DECIMAL(14,2) NULL,
+                    precio_ves_nuevo DECIMAL(14,2) NULL,
+                    tasa_anterior DECIMAL(12,4) NULL,
+                    tasa_nueva DECIMAL(12,4) NULL,
+                    total_anterior_ves DECIMAL(14,2) NULL,
+                    total_nuevo_ves DECIMAL(14,2) NULL,
+                    actor VARCHAR(100) NOT NULL,
+                    motivo VARCHAR(500) NULL,
+                    idempotency_key VARCHAR(100) NULL,
+                    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_auditoria_precios_idempotencia (idempotency_key),
+                    KEY idx_auditoria_precios_producto_fecha (producto_id, creado_en),
+                    KEY idx_auditoria_precios_pedido_fecha (pedido_id, creado_en)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+        }
+    }
+
+    private static void asegurarTablaPedidoLiquidaciones(Connection con) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS pedido_liquidaciones (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    id_pedido INT NOT NULL,
+                    version_precio INT NOT NULL,
+                    saldo_restante_ves DECIMAL(14,2) NOT NULL,
+                    aplicado_ves DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+                    aplicado_usd DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+                    tasa_cambio DECIMAL(12,4) NOT NULL,
+                    ajuste_cambio_bs DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+                    diferencia_usd DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+                    version_regla VARCHAR(40) NOT NULL,
+                    actor VARCHAR(100) NOT NULL,
+                    idempotency_key VARCHAR(100) NOT NULL,
+                    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_pedido_liquidacion_version (id_pedido, version_precio),
+                    UNIQUE KEY uq_pedido_liquidacion_idempotencia (idempotency_key),
+                    CONSTRAINT fk_pedido_liquidaciones_pedido FOREIGN KEY (id_pedido)
+                        REFERENCES pedidos(id) ON DELETE RESTRICT
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+        }
+    }
+
+    private static void asegurarTablaMovimientosSaldo(Connection con) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS pedido_saldos_movimientos (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    id_pedido INT NOT NULL,
+                    id_liquidacion BIGINT NULL,
+                    tipo VARCHAR(20) NOT NULL,
+                    moneda CHAR(3) NOT NULL,
+                    monto_origen DECIMAL(14,2) NOT NULL,
+                    equivalente_ves DECIMAL(14,2) NOT NULL,
+                    tasa_cambio DECIMAL(12,4) NOT NULL,
+                    actor VARCHAR(100) NOT NULL,
+                    motivo VARCHAR(500) NOT NULL,
+                    idempotency_key VARCHAR(100) NOT NULL,
+                    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_pedido_saldos_idempotencia (idempotency_key),
+                    KEY idx_pedido_saldos_pedido_fecha (id_pedido, creado_en),
+                    CONSTRAINT chk_pedido_saldos_tipo CHECK (tipo IN ('CREDITO','DEVOLUCION','ANULACION')),
+                    CONSTRAINT fk_pedido_saldos_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos(id) ON DELETE RESTRICT,
+                    CONSTRAINT fk_pedido_saldos_liquidacion FOREIGN KEY (id_liquidacion)
+                        REFERENCES pedido_liquidaciones(id) ON DELETE RESTRICT
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+        }
+    }
+
+    private static void asegurarColumnasPagoYRestriccion(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
+        asegurarColumna(con, meta, catalogo, "pedido_pagos", "monto_recibido", "DECIMAL(14,2) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedido_pagos", "monto_aplicado", "DECIMAL(14,2) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedido_pagos", "cambio_devuelto", "DECIMAL(14,2) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedido_pagos", "es_legado", "TINYINT(1) NOT NULL DEFAULT 1");
+        asegurarColumna(con, meta, catalogo, "pedido_pagos", "id_liquidacion", "BIGINT NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedido_pagos", "idempotency_key", "VARCHAR(100) NULL DEFAULT NULL");
+        asegurarIndiceUnico(con, con.getMetaData(), con.getCatalog(), "pedido_pagos", "uq_pedido_pagos_idempotencia", "(idempotency_key)");
+        asegurarCheck(con, "pedido_pagos", "chk_pedido_pagos_montos",
+                "(es_legado = 1 OR (monto_recibido IS NOT NULL AND monto_aplicado IS NOT NULL "
+                        + "AND cambio_devuelto IS NOT NULL AND monto_recibido = monto_aplicado + cambio_devuelto))");
+        boolean fkCorrecta = false;
+        List<String> fks = new ArrayList<>();
+        try (Statement st = con.createStatement(); ResultSet rs = st.executeQuery("SELECT k.CONSTRAINT_NAME, r.DELETE_RULE "
+                + "FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r "
+                + "ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME "
+                + "WHERE k.TABLE_SCHEMA=DATABASE() AND k.TABLE_NAME='pedido_pagos' AND k.COLUMN_NAME='id_pedido' "
+                + "AND k.REFERENCED_TABLE_NAME='pedidos'")) {
+            while (rs.next()) {
+                if ("RESTRICT".equalsIgnoreCase(rs.getString("DELETE_RULE")) || "NO ACTION".equalsIgnoreCase(rs.getString("DELETE_RULE"))) fkCorrecta = true;
+                else fks.add(rs.getString("CONSTRAINT_NAME"));
+            }
+        }
+        try (Statement st = con.createStatement()) {
+            for (String fk : fks) st.executeUpdate("ALTER TABLE pedido_pagos DROP FOREIGN KEY `" + fk.replace("`", "``") + "`");
+            if (!fkCorrecta) st.executeUpdate("ALTER TABLE pedido_pagos ADD CONSTRAINT fk_pedido_pagos_pedido "
+                    + "FOREIGN KEY (id_pedido) REFERENCES pedidos(id) ON DELETE RESTRICT");
+            if (!foreignKeyExiste(con, "pedido_pagos", "id_liquidacion", "pedido_liquidaciones", "id", "RESTRICT")) {
+                st.executeUpdate("ALTER TABLE pedido_pagos ADD CONSTRAINT fk_pedido_pagos_liquidacion FOREIGN KEY (id_liquidacion) "
+                        + "REFERENCES pedido_liquidaciones(id) ON DELETE RESTRICT");
+            }
+        }
+    }
+
+    private static boolean foreignKeyExiste(Connection con, String tabla, String columna, String tablaReferenciada,
+            String columnaReferenciada, String reglaBorrado) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE k "
+                + "JOIN information_schema.REFERENTIAL_CONSTRAINTS r ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA "
+                + "AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME "
+                + "WHERE k.TABLE_SCHEMA=DATABASE() AND k.TABLE_NAME=? AND k.COLUMN_NAME=? "
+                + "AND k.REFERENCED_TABLE_NAME=? AND k.REFERENCED_COLUMN_NAME=? AND r.DELETE_RULE=?")) {
+            ps.setString(1, tabla); ps.setString(2, columna); ps.setString(3, tablaReferenciada);
+            ps.setString(4, columnaReferenciada); ps.setString(5, reglaBorrado);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next() && rs.getInt(1) > 0; }
         }
     }
 

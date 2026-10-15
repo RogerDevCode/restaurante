@@ -156,6 +156,94 @@ public class MySqlIntegrationIT {
     }
 
     @Test
+    public void preciosDualCurrencyEnforcedAndClosedPendingOrdersReleaseTable() throws SQLException {
+        int platoId;
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO platos (nombre, precio, fecha, activo, aplica_iva) VALUES ('IT-PLATO-MONEDA-BASE', NULL, CURRENT_DATE(), 1, 1)",
+                Statement.RETURN_GENERATED_KEYS)) {
+            assertEquals(1, ps.executeUpdate());
+            try (ResultSet keys = ps.getGeneratedKeys()) { assertTrue(keys.next()); platoId = keys.getInt(1); }
+        }
+
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE platos SET precio_clasificado=1 WHERE id=?")) {
+            ps.setInt(1, platoId);
+            assertThrows(SQLException.class, ps::executeUpdate);
+        }
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE platos SET moneda_base='VES', precio_ves=60.00, precio_usd=1.50, "
+                + "precio_clasificado=1, precio_incluye_iva=1 WHERE id=?")) {
+            ps.setInt(1, platoId);
+            assertEquals(1, ps.executeUpdate());
+        }
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE platos SET aplica_iva=0 WHERE id=?")) {
+            ps.setInt(1, platoId);
+            assertThrows(SQLException.class, ps::executeUpdate);
+        }
+
+        int pedidoCerrado;
+        int pedidoAbierto;
+        try (Connection con = conexion()) {
+            con.setAutoCommit(false);
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO pedidos "
+                    + "(id_sala,num_mesa,tipo_pedido,total,subtotal,iva_monto,estado,usuario,cerrada_en) "
+                    + "VALUES (1,987654,'MESA',60.00,60.00,0.00,'PENDIENTE',?,CURRENT_TIMESTAMP)", Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, USUARIO_PRUEBA); assertEquals(1, ps.executeUpdate());
+                try (ResultSet keys = ps.getGeneratedKeys()) { assertTrue(keys.next()); pedidoCerrado = keys.getInt(1); }
+            }
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO pedidos "
+                    + "(id_sala,num_mesa,tipo_pedido,total,subtotal,iva_monto,estado,usuario) "
+                    + "VALUES (1,987654,'MESA',60.00,60.00,0.00,'PENDIENTE',?)", Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, USUARIO_PRUEBA); assertEquals(1, ps.executeUpdate());
+                try (ResultSet keys = ps.getGeneratedKeys()) { assertTrue(keys.next()); pedidoAbierto = keys.getInt(1); }
+            }
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO detalle_pedidos "
+                    + "(nombre,precio,cantidad,id_pedido,aplica_iva,id_plato,moneda_base,precio_incluye_iva,iva_porcentaje) "
+                    + "VALUES ('IT-PLATO-MONEDA-BASE',60.00,1,?,1,?,'VES',1,16.00)")) {
+                ps.setInt(1, pedidoAbierto); ps.setInt(2, platoId); assertEquals(1, ps.executeUpdate());
+            }
+            con.commit();
+        }
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement("DELETE FROM platos WHERE id=?")) {
+            ps.setInt(1, platoId);
+            assertEquals("Borrar el producto debe conservar el snapshot y dejar la referencia a NULL", 1, ps.executeUpdate());
+        }
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement("SELECT id_plato FROM detalle_pedidos WHERE id_pedido=?")) {
+            ps.setInt(1, pedidoAbierto);
+            try (ResultSet rs = ps.executeQuery()) { assertTrue(rs.next()); assertEquals(0, rs.getInt(1)); assertTrue(rs.wasNull()); }
+        }
+        assertTrue("La mesa cerrada pendiente debe liberar el número para otro pedido abierto", pedidoCerrado > 0 && pedidoAbierto > 0);
+    }
+
+    @Test
+    public void asegurarEsquemaPreservaTotalesYEventosDePagoExistentes() throws SQLException {
+        int idPedido;
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement("INSERT INTO pedidos "
+                + "(tipo_pedido,total,subtotal,iva_monto,subtotal_bs,iva_bs,total_bs,estado,usuario) "
+                + "VALUES ('RAPIDO',77.13,66.49,10.64,2426.89,388.03,2814.92,'FINALIZADO',?)", Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, USUARIO_PRUEBA);
+            assertEquals(1, ps.executeUpdate());
+            try (ResultSet keys = ps.getGeneratedKeys()) { assertTrue(keys.next()); idPedido = keys.getInt(1); }
+        }
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement("INSERT INTO pedido_pagos "
+                + "(id_pedido,metodo_pago,moneda,monto,tasa_cambio,monto_bs,monto_usd) VALUES (?,'EFECTIVO','VES',77.13,36.5000,2814.92,77.13)")) {
+            ps.setInt(1, idPedido); assertEquals(1, ps.executeUpdate());
+        }
+        String antes;
+        try (Connection con = conexion()) {
+            antes = valorEscalar(con, "SELECT CONCAT(total,'|',subtotal,'|',iva_monto,'|',total_bs,'|', "
+                    + "(SELECT monto_bs FROM pedido_pagos WHERE id_pedido=" + idPedido + " LIMIT 1)) FROM pedidos WHERE id=" + idPedido);
+            infraestructura.MigradorEsquemaJdbc.asegurarEsquema(con);
+        }
+        try (Connection con = conexion()) {
+            String despues = valorEscalar(con, "SELECT CONCAT(total,'|',subtotal,'|',iva_monto,'|',total_bs,'|', "
+                    + "(SELECT monto_bs FROM pedido_pagos WHERE id_pedido=" + idPedido + " LIMIT 1)) FROM pedidos WHERE id=" + idPedido);
+            assertEquals("La migración de esquema solo amplía columnas y no revaloriza ventas/pagos", antes, despues);
+        }
+    }
+
+    @Test
     public void barreraEsperaEscrituraActivaYRechazaEscriturasDuranteMantenimiento() throws Exception {
         try (Connection preparar = new ProveedorConexionJdbc().getConnection()) {
             infraestructura.ControlMantenimientoBD.asegurarTablaControl(preparar);
@@ -1003,6 +1091,10 @@ public class MySqlIntegrationIT {
     private static void limpiar(Connection conexion) throws SQLException {
         try (Statement sentencia = conexion.createStatement()) {
             sentencia.executeUpdate("DELETE d FROM detalle_pedidos d INNER JOIN pedidos p ON p.id=d.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
+            sentencia.executeUpdate("DELETE m FROM pedido_saldos_movimientos m INNER JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
+            sentencia.executeUpdate("DELETE pg FROM pedido_pagos pg INNER JOIN pedidos p ON p.id=pg.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
+            sentencia.executeUpdate("DELETE l FROM pedido_liquidaciones l INNER JOIN pedidos p ON p.id=l.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
+            sentencia.executeUpdate("DELETE FROM auditoria_cambios_precio WHERE actor='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE FROM pedidos WHERE usuario='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-SALA-%'");
             sentencia.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-PLATO-%'");

@@ -6,6 +6,9 @@ DELIMITER $$
 DROP PROCEDURE IF EXISTS upgrade_restaurante_schema$$
 CREATE PROCEDURE upgrade_restaurante_schema()
 BEGIN
+    DECLARE v_cierre_generado_correcto INT DEFAULT 0;
+    DECLARE v_fk_pago VARCHAR(64) DEFAULT NULL;
+    DECLARE v_sql TEXT;
     -- 1. Ampliación de columnas en config y usuarios
     ALTER TABLE config MODIFY COLUMN ruc VARCHAR(30) COLLATE utf8_spanish_ci NOT NULL;
     ALTER TABLE config MODIFY COLUMN telefono VARCHAR(30) COLLATE utf8_spanish_ci NOT NULL;
@@ -583,42 +586,8 @@ BEGIN
           CHECK ((aplica_iva IS NULL) OR (aplica_iva IN (0,1)));
     END IF;
 
-    UPDATE detalle_pedidos d LEFT JOIN platos p ON p.nombre_clave = d.nombre_clave
-      SET d.aplica_iva = COALESCE(p.aplica_iva, 0) WHERE d.aplica_iva IS NULL;
-
-    UPDATE detalle_pedidos SET aplica_iva = 0 WHERE aplica_iva IS NULL;
-
-    ALTER TABLE detalle_pedidos MODIFY COLUMN aplica_iva TINYINT(1) NOT NULL DEFAULT 1;
-
-    UPDATE pedidos p LEFT JOIN (
-        SELECT id_pedido, SUM(precio * cantidad) AS subtotal,
-               SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) AS base_imponible
-        FROM detalle_pedidos GROUP BY id_pedido
-    ) d ON d.id_pedido = p.id
-    SET p.subtotal = COALESCE(d.subtotal, p.subtotal),
-        p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2),
-        p.total = COALESCE(d.subtotal, p.subtotal)
-            + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2),
-        p.subtotal_bs = ROUND(COALESCE(d.subtotal, p.subtotal) * p.tasa_cambio, 2),
-        p.iva_bs = ROUND(ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2)
-            * p.tasa_cambio, 2),
-        p.total_bs = ROUND((COALESCE(d.subtotal, p.subtotal)
-            + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2))
-            * p.tasa_cambio, 2)
-    WHERE d.id_pedido IS NOT NULL AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 AND COALESCE(p.tasa_es_estimada, 0) = 0;
-
-    UPDATE pedidos p LEFT JOIN (
-        SELECT id_pedido, SUM(precio * cantidad) AS subtotal,
-               SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) AS base_imponible
-        FROM detalle_pedidos GROUP BY id_pedido
-    ) d ON d.id_pedido = p.id
-    SET p.tasa_cambio = 36.5000,
-        p.tasa_es_estimada = 1,
-        p.subtotal = COALESCE(d.subtotal, p.subtotal),
-        p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2),
-        p.total = COALESCE(d.subtotal, p.subtotal)
-            + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2)
-    WHERE d.id_pedido IS NOT NULL AND (p.tasa_cambio IS NULL OR p.tasa_cambio = 0);
+    -- No se completan campos fiscales heredados desde el catálogo actual y no se
+    -- recalculan total/subtotal/IVA ni equivalentes de pedidos ya registrados.
 
     -- 30. Barrera de control de mantenimiento concurrente
     CREATE TABLE IF NOT EXISTS restaurante_control (
@@ -663,6 +632,186 @@ BEGIN
     ) THEN
         ALTER TABLE pedidos ADD COLUMN tasa_es_estimada TINYINT(1) NOT NULL DEFAULT 0
             COMMENT 'Indica que la tasa_cambio fue asignada por la migración y no es exacta';
+    END IF;
+
+    -- 35. Precio primario explícito, snapshot fiscal y cierre independiente del pago.
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='platos' AND column_name='moneda_base') THEN
+        ALTER TABLE platos ADD COLUMN moneda_base CHAR(3) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='platos' AND column_name='precio_usd') THEN
+        ALTER TABLE platos ADD COLUMN precio_usd DECIMAL(14,2) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='platos' AND column_name='precio_ves') THEN
+        ALTER TABLE platos ADD COLUMN precio_ves DECIMAL(14,2) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='platos' AND column_name='precio_clasificado') THEN
+        ALTER TABLE platos ADD COLUMN precio_clasificado TINYINT(1) NOT NULL DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='platos' AND column_name='precio_incluye_iva') THEN
+        ALTER TABLE platos ADD COLUMN precio_incluye_iva TINYINT(1) NULL DEFAULT NULL;
+    END IF;
+    ALTER TABLE platos MODIFY COLUMN precio DECIMAL(10,2) NULL DEFAULT NULL;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND column_name='id_plato') THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN id_plato INT NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND column_name='moneda_base') THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN moneda_base CHAR(3) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND column_name='precio_incluye_iva') THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN precio_incluye_iva TINYINT(1) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND column_name='iva_porcentaje') THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN iva_porcentaje DECIMAL(5,2) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND column_name='precio_congelado') THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN precio_congelado TINYINT(1) NOT NULL DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND column_name='congelado_motivo') THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN congelado_motivo VARCHAR(500) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND column_name='congelado_por') THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN congelado_por VARCHAR(100) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND column_name='congelado_en') THEN
+        ALTER TABLE detalle_pedidos ADD COLUMN congelado_en DATETIME NULL DEFAULT NULL;
+    END IF;
+    ALTER TABLE detalle_pedidos MODIFY COLUMN precio DECIMAL(14,2) NOT NULL;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedidos' AND column_name='cerrada_en') THEN
+        ALTER TABLE pedidos ADD COLUMN cerrada_en DATETIME NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedidos' AND column_name='version_precio') THEN
+        ALTER TABLE pedidos ADD COLUMN version_precio INT NOT NULL DEFAULT 1;
+    END IF;
+    ALTER TABLE pedidos MODIFY COLUMN subtotal DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+        MODIFY COLUMN iva_monto DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+        MODIFY COLUMN total DECIMAL(14,2) NOT NULL;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_schema=DATABASE() AND table_name='platos' AND constraint_name='chk_platos_precio_clasificado') THEN
+        ALTER TABLE platos ADD CONSTRAINT chk_platos_precio_clasificado CHECK
+          (precio_clasificado=0 OR (moneda_base IS NOT NULL AND moneda_base IN ('USD','VES')
+           AND ((moneda_base='USD' AND precio_usd>0) OR (moneda_base='VES' AND precio_ves>0))
+           AND precio_incluye_iva IS NOT NULL AND precio_incluye_iva IN (0,1)));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_schema=DATABASE() AND table_name='platos' AND constraint_name='chk_platos_precio_iva_coherente') THEN
+        ALTER TABLE platos ADD CONSTRAINT chk_platos_precio_iva_coherente CHECK (aplica_iva=1 OR precio_incluye_iva IS NULL OR precio_incluye_iva=0);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_schema=DATABASE() AND table_name='detalle_pedidos' AND constraint_name='chk_detalle_precio_iva_coherente') THEN
+        ALTER TABLE detalle_pedidos ADD CONSTRAINT chk_detalle_precio_iva_coherente CHECK (aplica_iva=1 OR precio_incluye_iva IS NULL OR precio_incluye_iva=0);
+    END IF;
+
+    -- La identidad del producto es explícita; no se vinculan pedidos heredados por nombre.
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND index_name='idx_detalle_pedidos_plato') THEN
+        ALTER TABLE detalle_pedidos ADD INDEX idx_detalle_pedidos_plato (id_plato);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage WHERE constraint_schema=DATABASE() AND table_name='detalle_pedidos' AND column_name='id_plato' AND referenced_table_name='platos') THEN
+        ALTER TABLE detalle_pedidos ADD CONSTRAINT fk_detalle_pedidos_plato FOREIGN KEY (id_plato) REFERENCES platos(id) ON DELETE SET NULL;
+    END IF;
+
+    -- El cierre libera la mesa física; cerrada_en permanece NULL en toda venta histórica.
+    SELECT COUNT(*) INTO v_cierre_generado_correcto FROM information_schema.columns
+      WHERE table_schema=DATABASE() AND table_name='pedidos'
+        AND column_name IN ('id_sala_pendiente','num_mesa_pendiente') AND LOWER(generation_expression) LIKE '%cerrada_en%';
+    IF v_cierre_generado_correcto <> 2 THEN
+        IF EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='pedidos' AND index_name='uq_pedidos_mesa_pendiente') THEN
+            ALTER TABLE pedidos DROP INDEX uq_pedidos_mesa_pendiente;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedidos' AND column_name='id_sala_pendiente') THEN
+            ALTER TABLE pedidos DROP COLUMN id_sala_pendiente;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedidos' AND column_name='num_mesa_pendiente') THEN
+            ALTER TABLE pedidos DROP COLUMN num_mesa_pendiente;
+        END IF;
+        ALTER TABLE pedidos ADD COLUMN id_sala_pendiente INT GENERATED ALWAYS AS
+          (CASE WHEN estado='PENDIENTE' AND cerrada_en IS NULL THEN id_sala ELSE NULL END) STORED;
+        ALTER TABLE pedidos ADD COLUMN num_mesa_pendiente INT GENERATED ALWAYS AS
+          (CASE WHEN estado='PENDIENTE' AND cerrada_en IS NULL THEN num_mesa ELSE NULL END) STORED;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='pedidos' AND index_name='uq_pedidos_mesa_pendiente') THEN
+        ALTER TABLE pedidos ADD UNIQUE INDEX uq_pedidos_mesa_pendiente (id_sala_pendiente,num_mesa_pendiente);
+    END IF;
+
+    CREATE TABLE IF NOT EXISTS auditoria_cambios_precio (
+        id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, accion VARCHAR(32) NOT NULL,
+        producto_id INT NULL, pedido_id INT NULL, detalle_pedido_id INT NULL, moneda_base CHAR(3) NULL,
+        precio_usd_anterior DECIMAL(14,2) NULL, precio_usd_nuevo DECIMAL(14,2) NULL,
+        precio_ves_anterior DECIMAL(14,2) NULL, precio_ves_nuevo DECIMAL(14,2) NULL,
+        tasa_anterior DECIMAL(12,4) NULL, tasa_nueva DECIMAL(12,4) NULL,
+        total_anterior_ves DECIMAL(14,2) NULL, total_nuevo_ves DECIMAL(14,2) NULL,
+        actor VARCHAR(100) NOT NULL, motivo VARCHAR(500) NULL, idempotency_key VARCHAR(100) NULL,
+        creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_auditoria_precios_idempotencia(idempotency_key),
+        KEY idx_auditoria_precios_producto_fecha(producto_id,creado_en),
+        KEY idx_auditoria_precios_pedido_fecha(pedido_id,creado_en)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    CREATE TABLE IF NOT EXISTS pedido_liquidaciones (
+        id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, id_pedido INT NOT NULL, version_precio INT NOT NULL,
+        saldo_restante_ves DECIMAL(14,2) NOT NULL, aplicado_ves DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+        aplicado_usd DECIMAL(14,2) NOT NULL DEFAULT 0.00, tasa_cambio DECIMAL(12,4) NOT NULL,
+        ajuste_cambio_bs DECIMAL(14,2) NOT NULL DEFAULT 0.00, diferencia_usd DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+        version_regla VARCHAR(40) NOT NULL, actor VARCHAR(100) NOT NULL, idempotency_key VARCHAR(100) NOT NULL,
+        creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_pedido_liquidacion_version(id_pedido,version_precio),
+        UNIQUE KEY uq_pedido_liquidacion_idempotencia(idempotency_key),
+        CONSTRAINT fk_pedido_liquidaciones_pedido FOREIGN KEY(id_pedido) REFERENCES pedidos(id) ON DELETE RESTRICT
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    CREATE TABLE IF NOT EXISTS pedido_saldos_movimientos (
+        id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, id_pedido INT NOT NULL, id_liquidacion BIGINT NULL,
+        tipo VARCHAR(20) NOT NULL, moneda CHAR(3) NOT NULL, monto_origen DECIMAL(14,2) NOT NULL,
+        equivalente_ves DECIMAL(14,2) NOT NULL, tasa_cambio DECIMAL(12,4) NOT NULL,
+        actor VARCHAR(100) NOT NULL, motivo VARCHAR(500) NOT NULL, idempotency_key VARCHAR(100) NOT NULL,
+        creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_pedido_saldos_idempotencia(idempotency_key), KEY idx_pedido_saldos_pedido_fecha(id_pedido,creado_en),
+        CONSTRAINT chk_pedido_saldos_tipo CHECK(tipo IN ('CREDITO','DEVOLUCION','ANULACION')),
+        CONSTRAINT fk_pedido_saldos_pedido FOREIGN KEY(id_pedido) REFERENCES pedidos(id) ON DELETE RESTRICT,
+        CONSTRAINT fk_pedido_saldos_liquidacion FOREIGN KEY(id_liquidacion) REFERENCES pedido_liquidaciones(id) ON DELETE RESTRICT
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    -- Eventos antiguos conservan sus columnas originales; los campos nuevos NULL no reinterpretan el efectivo histórico.
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedido_pagos' AND column_name='monto_recibido') THEN
+        ALTER TABLE pedido_pagos ADD COLUMN monto_recibido DECIMAL(14,2) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedido_pagos' AND column_name='monto_aplicado') THEN
+        ALTER TABLE pedido_pagos ADD COLUMN monto_aplicado DECIMAL(14,2) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedido_pagos' AND column_name='cambio_devuelto') THEN
+        ALTER TABLE pedido_pagos ADD COLUMN cambio_devuelto DECIMAL(14,2) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedido_pagos' AND column_name='es_legado') THEN
+        ALTER TABLE pedido_pagos ADD COLUMN es_legado TINYINT(1) NOT NULL DEFAULT 1;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedido_pagos' AND column_name='id_liquidacion') THEN
+        ALTER TABLE pedido_pagos ADD COLUMN id_liquidacion BIGINT NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedido_pagos' AND column_name='idempotency_key') THEN
+        ALTER TABLE pedido_pagos ADD COLUMN idempotency_key VARCHAR(100) NULL DEFAULT NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='pedido_pagos' AND index_name='uq_pedido_pagos_idempotencia') THEN
+        ALTER TABLE pedido_pagos ADD UNIQUE INDEX uq_pedido_pagos_idempotencia(idempotency_key);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_schema=DATABASE() AND table_name='pedido_pagos' AND constraint_name='chk_pedido_pagos_montos') THEN
+        ALTER TABLE pedido_pagos ADD CONSTRAINT chk_pedido_pagos_montos CHECK
+          (es_legado=1 OR (monto_recibido IS NOT NULL AND monto_aplicado IS NOT NULL AND cambio_devuelto IS NOT NULL AND monto_recibido=monto_aplicado+cambio_devuelto));
+    END IF;
+
+    SELECT CONSTRAINT_NAME INTO v_fk_pago FROM information_schema.KEY_COLUMN_USAGE
+      WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='pedido_pagos' AND COLUMN_NAME='id_pedido'
+        AND REFERENCED_TABLE_NAME='pedidos' LIMIT 1;
+    IF v_fk_pago IS NOT NULL THEN
+        IF EXISTS (SELECT 1 FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE constraint_schema=DATABASE() AND constraint_name=v_fk_pago AND delete_rule='CASCADE') THEN
+            SET @drop_fk_sql=CONCAT('ALTER TABLE pedido_pagos DROP FOREIGN KEY `',REPLACE(v_fk_pago,'`','``'),'`');
+            PREPARE stmt_drop_fk FROM @drop_fk_sql; EXECUTE stmt_drop_fk; DEALLOCATE PREPARE stmt_drop_fk;
+            SET v_fk_pago=NULL;
+        END IF;
+    END IF;
+    IF v_fk_pago IS NULL THEN
+        ALTER TABLE pedido_pagos ADD CONSTRAINT fk_pedido_pagos_pedido FOREIGN KEY(id_pedido) REFERENCES pedidos(id) ON DELETE RESTRICT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage WHERE constraint_schema=DATABASE() AND table_name='pedido_pagos' AND column_name='id_liquidacion' AND referenced_table_name='pedido_liquidaciones') THEN
+        ALTER TABLE pedido_pagos ADD CONSTRAINT fk_pedido_pagos_liquidacion FOREIGN KEY(id_liquidacion) REFERENCES pedido_liquidaciones(id) ON DELETE RESTRICT;
     END IF;
 END$$
 DELIMITER ;

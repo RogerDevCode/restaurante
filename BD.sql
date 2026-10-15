@@ -45,16 +45,6 @@ CREATE TABLE `config` (
 
 
 --
--- Dumping data for table `detalle_pedidos`
---
-
-LOCK TABLES `detalle_pedidos` WRITE;
-/*!40000 ALTER TABLE `detalle_pedidos` DISABLE KEYS */;
-INSERT INTO `detalle_pedidos` (`id`, `nombre`, `precio`, `cantidad`, `comentario`, `id_pedido`, `aplica_iva`) VALUES (1,'CHAUFA',20.00,1,'',1,1),(2,'ARROZ CON POLLO',10.00,5,'ARTO MAYONESA',1,1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',1,1),(4,'ARROZ CON POLLO',10.00,1,'',2,1),(5,'CHAUFA',20.00,1,'',2,1),(6,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',3,1),(7,'CHAUFA',20.00,1,'',3,1),(8,'ARROZ CON POLLO',10.00,2,'',4,1);
-/*!40000 ALTER TABLE `detalle_pedidos` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `pedidos`
 --
 
@@ -67,14 +57,16 @@ CREATE TABLE `pedidos` (
   `num_mesa` int(11) DEFAULT NULL,
   `tipo_pedido` varchar(16) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'MESA',
   `fecha` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `total` decimal(10,2) NOT NULL,
+  `total` decimal(14,2) NOT NULL,
   `estado` enum('PENDIENTE','FINALIZADO','ANULADO') COLLATE utf8_spanish_ci NOT NULL DEFAULT 'PENDIENTE',
   `usuario` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
-  `id_sala_pendiente` int(11) GENERATED ALWAYS AS (CASE WHEN `estado` = 'PENDIENTE' THEN `id_sala` ELSE NULL END) STORED,
-  `num_mesa_pendiente` int(11) GENERATED ALWAYS AS (CASE WHEN `estado` = 'PENDIENTE' THEN `num_mesa` ELSE NULL END) STORED,
-  `subtotal` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `cerrada_en` datetime DEFAULT NULL,
+  `version_precio` int(11) NOT NULL DEFAULT 1,
+  `id_sala_pendiente` int(11) GENERATED ALWAYS AS (CASE WHEN `estado` = 'PENDIENTE' AND `cerrada_en` IS NULL THEN `id_sala` ELSE NULL END) STORED,
+  `num_mesa_pendiente` int(11) GENERATED ALWAYS AS (CASE WHEN `estado` = 'PENDIENTE' AND `cerrada_en` IS NULL THEN `num_mesa` ELSE NULL END) STORED,
+  `subtotal` decimal(14,2) NOT NULL DEFAULT 0.00,
   `iva_porcentaje` decimal(5,2) NOT NULL DEFAULT 0.00,
-  `iva_monto` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `iva_monto` decimal(14,2) NOT NULL DEFAULT 0.00,
   `tasa_cambio` decimal(12,4) DEFAULT NULL,
   `tasa_es_estimada` tinyint(1) NOT NULL DEFAULT 0,
   `subtotal_bs` decimal(14,2) NOT NULL DEFAULT 0.00,
@@ -97,6 +89,72 @@ CREATE TABLE `pedidos` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+CREATE TABLE `pedido_liquidaciones` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `id_pedido` int(11) NOT NULL,
+  `version_precio` int(11) NOT NULL,
+  `saldo_restante_ves` decimal(14,2) NOT NULL,
+  `aplicado_ves` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `aplicado_usd` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `tasa_cambio` decimal(12,4) NOT NULL,
+  `ajuste_cambio_bs` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `diferencia_usd` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `version_regla` varchar(40) COLLATE utf8_spanish_ci NOT NULL,
+  `actor` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
+  `idempotency_key` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pedido_liquidacion_version` (`id_pedido`,`version_precio`),
+  UNIQUE KEY `uq_pedido_liquidacion_idempotencia` (`idempotency_key`),
+  CONSTRAINT `fk_pedido_liquidaciones_pedido` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+CREATE TABLE `pedido_saldos_movimientos` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `id_pedido` int(11) NOT NULL,
+  `id_liquidacion` bigint(20) DEFAULT NULL,
+  `tipo` varchar(20) COLLATE utf8_spanish_ci NOT NULL,
+  `moneda` char(3) COLLATE utf8_spanish_ci NOT NULL,
+  `monto_origen` decimal(14,2) NOT NULL,
+  `equivalente_ves` decimal(14,2) NOT NULL,
+  `tasa_cambio` decimal(12,4) NOT NULL,
+  `actor` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
+  `motivo` varchar(500) COLLATE utf8_spanish_ci NOT NULL,
+  `idempotency_key` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pedido_saldos_idempotencia` (`idempotency_key`),
+  KEY `idx_pedido_saldos_pedido_fecha` (`id_pedido`,`creado_en`),
+  CONSTRAINT `chk_pedido_saldos_tipo` CHECK (`tipo` IN ('CREDITO','DEVOLUCION','ANULACION')),
+  CONSTRAINT `fk_pedido_saldos_pedido` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_pedido_saldos_liquidacion` FOREIGN KEY (`id_liquidacion`) REFERENCES `pedido_liquidaciones` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+CREATE TABLE `auditoria_cambios_precio` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `accion` varchar(32) COLLATE utf8_spanish_ci NOT NULL,
+  `producto_id` int(11) DEFAULT NULL,
+  `pedido_id` int(11) DEFAULT NULL,
+  `detalle_pedido_id` int(11) DEFAULT NULL,
+  `moneda_base` char(3) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `precio_usd_anterior` decimal(14,2) DEFAULT NULL,
+  `precio_usd_nuevo` decimal(14,2) DEFAULT NULL,
+  `precio_ves_anterior` decimal(14,2) DEFAULT NULL,
+  `precio_ves_nuevo` decimal(14,2) DEFAULT NULL,
+  `tasa_anterior` decimal(12,4) DEFAULT NULL,
+  `tasa_nueva` decimal(12,4) DEFAULT NULL,
+  `total_anterior_ves` decimal(14,2) DEFAULT NULL,
+  `total_nuevo_ves` decimal(14,2) DEFAULT NULL,
+  `actor` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
+  `motivo` varchar(500) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `idempotency_key` varchar(100) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_auditoria_precios_idempotencia` (`idempotency_key`),
+  KEY `idx_auditoria_precios_producto_fecha` (`producto_id`,`creado_en`),
+  KEY `idx_auditoria_precios_pedido_fecha` (`pedido_id`,`creado_en`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
 --
 -- Table structure for table `pedido_pagos`
 --
@@ -113,11 +171,20 @@ CREATE TABLE `pedido_pagos` (
   `tasa_cambio` decimal(12,4) NOT NULL,
   `monto_bs` decimal(14,2) NOT NULL,
   `monto_usd` decimal(14,2) NOT NULL,
+  `monto_recibido` decimal(14,2) DEFAULT NULL,
+  `monto_aplicado` decimal(14,2) DEFAULT NULL,
+  `cambio_devuelto` decimal(14,2) DEFAULT NULL,
+  `es_legado` tinyint(1) NOT NULL DEFAULT 1,
+  `id_liquidacion` bigint(20) DEFAULT NULL,
+  `idempotency_key` varchar(100) COLLATE utf8_spanish_ci DEFAULT NULL,
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_pedido_pagos_pedido` (`id_pedido`),
   KEY `idx_pedido_pagos_metodo_fecha` (`metodo_pago`,`creado_en`),
-  CONSTRAINT `fk_pedido_pagos_pedido` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`) ON DELETE CASCADE
+  UNIQUE KEY `uq_pedido_pagos_idempotencia` (`idempotency_key`),
+  CONSTRAINT chk_pedido_pagos_montos CHECK (es_legado = 1 OR (monto_recibido IS NOT NULL AND monto_aplicado IS NOT NULL AND cambio_devuelto IS NOT NULL AND monto_recibido = monto_aplicado + cambio_devuelto)),
+  CONSTRAINT fk_pedido_pagos_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_pedido_pagos_liquidacion FOREIGN KEY (id_liquidacion) REFERENCES pedido_liquidaciones (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -170,14 +237,21 @@ DROP TABLE IF EXISTS `platos`;
 CREATE TABLE `platos` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
-  `precio` decimal(10,2) NOT NULL,
+  `precio` decimal(10,2) DEFAULT NULL,
+  `moneda_base` char(3) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `precio_usd` decimal(14,2) DEFAULT NULL,
+  `precio_ves` decimal(14,2) DEFAULT NULL,
+  `precio_clasificado` tinyint(1) NOT NULL DEFAULT 0,
+  `precio_incluye_iva` tinyint(1) DEFAULT NULL,
   `fecha` date DEFAULT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT 1,
   `desactivado_en` datetime DEFAULT NULL,
   `aplica_iva` tinyint(1) NOT NULL DEFAULT 1,
   `nombre_clave` varchar(200) GENERATED ALWAYS AS (lower(trim(`nombre`))) STORED,
   PRIMARY KEY (`id`),
-  KEY `idx_platos_nombre_clave` (`nombre_clave`)
+  KEY `idx_platos_nombre_clave` (`nombre_clave`),
+  CONSTRAINT chk_platos_precio_clasificado CHECK (precio_clasificado = 0 OR (moneda_base IS NOT NULL AND moneda_base IN ('USD','VES') AND ((moneda_base='USD' AND precio_usd>0) OR (moneda_base='VES' AND precio_ves>0)) AND precio_incluye_iva IS NOT NULL AND precio_incluye_iva IN (0,1))),
+  CONSTRAINT chk_platos_precio_iva_coherente CHECK (aplica_iva = 1 OR precio_incluye_iva IS NULL OR precio_incluye_iva = 0)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -271,7 +345,15 @@ DROP TABLE IF EXISTS `detalle_pedidos`;
 CREATE TABLE `detalle_pedidos` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
-  `precio` decimal(10,2) NOT NULL,
+  `precio` decimal(14,2) NOT NULL,
+  `id_plato` int(11) DEFAULT NULL,
+  `moneda_base` char(3) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `precio_incluye_iva` tinyint(1) DEFAULT NULL,
+  `iva_porcentaje` decimal(5,2) DEFAULT NULL,
+  `precio_congelado` tinyint(1) NOT NULL DEFAULT 0,
+  `congelado_motivo` varchar(500) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `congelado_por` varchar(100) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `congelado_en` datetime DEFAULT NULL,
   `cantidad` int(11) NOT NULL,
   `comentario` text COLLATE utf8_spanish_ci DEFAULT NULL,
   `id_pedido` int(11) NOT NULL,
@@ -281,10 +363,20 @@ CREATE TABLE `detalle_pedidos` (
   KEY `id_pedido` (`id_pedido`),
   KEY `idx_detalle_pedidos_nombre` (`nombre`),
   KEY `idx_detalle_pedidos_nombre_clave` (`nombre_clave`),
+  KEY `idx_detalle_pedidos_plato` (`id_plato`),
   CONSTRAINT `chk_detalle_aplica_iva` CHECK (`aplica_iva` in (0,1)),
-  CONSTRAINT `detalle_pedidos_ibfk_1` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`)
+  CONSTRAINT chk_detalle_precio_iva_coherente CHECK (aplica_iva = 1 OR precio_incluye_iva IS NULL OR precio_incluye_iva = 0),
+  CONSTRAINT `detalle_pedidos_ibfk_1` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`),
+  CONSTRAINT `fk_detalle_pedidos_plato` FOREIGN KEY (`id_plato`) REFERENCES `platos` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+-- Dumping data for table `detalle_pedidos`
+LOCK TABLES `detalle_pedidos` WRITE;
+/*!40000 ALTER TABLE `detalle_pedidos` DISABLE KEYS */;
+INSERT INTO `detalle_pedidos` (`id`, `nombre`, `precio`, `cantidad`, `comentario`, `id_pedido`, `aplica_iva`) VALUES (1,'CHAUFA',20.00,1,'',1,1),(2,'ARROZ CON POLLO',10.00,5,'ARTO MAYONESA',1,1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',1,1),(4,'ARROZ CON POLLO',10.00,1,'',2,1),(5,'CHAUFA',20.00,1,'',2,1),(6,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',3,1),(7,'CHAUFA',20.00,1,'',3,1),(8,'ARROZ CON POLLO',10.00,2,'',4,1);
+/*!40000 ALTER TABLE `detalle_pedidos` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Dumping data for table `usuarios`
