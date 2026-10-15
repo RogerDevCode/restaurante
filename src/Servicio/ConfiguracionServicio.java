@@ -181,4 +181,10 @@ public class ConfiguracionServicio {
         java.time.LocalDate fechaActualizacion = ts.toLocalDateTime().toLocalDate();
         return fechaActualizacion.isBefore(java.time.LocalDate.now());
     }
+
+    public Modelo.ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario) {
+        Modelo.ResultadoActualizacionPrecios res = new Modelo.ActualizacionTasaDao().actualizarTasaYRecalcularPendientes(tasaNueva, usuario);
+        recargar();
+        return res;
+    }
 }

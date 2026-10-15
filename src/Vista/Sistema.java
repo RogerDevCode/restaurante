@@ -3540,7 +3540,15 @@ public final class Sistema extends javax.swing.JFrame {
             }
             candidata.setModoAtencion(modoAtencionActual);
             try {
-                if (lgDao.ModificarDatos(candidata)) {
+                boolean tasaCambio = conf != null && conf.getTasaDolar() != null
+                        && candidata.getTasaDolar() != null
+                        && conf.getTasaDolar().compareTo(candidata.getTasaDolar()) != 0;
+                Modelo.ResultadoActualizacionPrecios resTasa = null;
+                if (tasaCambio) {
+                    resTasa = configServicio.actualizarTasaYRecalcularPendientes(candidata.getTasaDolar(), getNombreUsuarioActual());
+                }
+
+                if (lgDao.ModificarDatos(candidata) || resTasa != null) {
                     conf = candidata;
                     actualizarNombreRestaurante(conf.getNombre());
                     actualizarLogoEIcono(conf.getLogoPath());
@@ -3548,11 +3556,16 @@ public final class Sistema extends javax.swing.JFrame {
                     cambiarModoSalidaGlobal(conf.getModoSalidaTickets());
                     actualizarEstadoTasaUI();
                     actualizarTextoCheckboxIvaPlato();
-                    // Sin notificar(CONFIG): el unico suscriptor seria esta misma vista y su
-                    // recarga async pisaria ediciones posteriores al guardado. Los efectos ya
-                    // se aplicaron arriba de forma sincrona. Se invalida igual por seguridad.
+                    if (resTasa != null) {
+                        RefrescoVistas.notificar(RefrescoVistas.PLATOS);
+                        RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                    }
                     versionCargaConfig++;
-                    mostrarAvisoEnBanda("Configuración guardada");
+                    String aviso = "Configuración guardada";
+                    if (resTasa != null && resTasa.pedidosRecalculados() > 0) {
+                        aviso += " (Recalculados " + resTasa.pedidosRecalculados() + " pedidos abiertos con la nueva tasa).";
+                    }
+                    mostrarAvisoEnBanda(aviso);
                 } else {
                     mostrarAvisoEnBanda("No había cambios en la configuración");
                 }
