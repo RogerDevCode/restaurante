@@ -314,10 +314,10 @@ Esta sección conserva el contexto de negocio y del código para que un agente q
 - `AuditoriaPreciosDao` append-only registra `CAMBIO_TASA`/`CAMBIO_CATALOGO`, tasa anterior/nueva, producto, usuario, fecha, pedidos/líneas y totales antes/después dentro de las transacciones de Tasks 5–6.
 - UI publica revisión de listas solamente al commit; mensajes incluyen cantidad de pedidos cambiados y si existen líneas históricas sin ID.
 
-- [ ] Probar que cada actualización escribe exactamente una auditoría en Task 2/Tasks 5–6, reintentos idempotentes no duplican obligaciones y un rollback no deja auditoría huérfana.
-- [ ] Ejecutar tests dirigidos de migración, concurrencia y actualización de UI; esperado: notificación posterior a commit y recuperación de datos del servidor, no solo cambios locales.
-- [ ] Implementar evento de refresco con IDs de pedidos y productos modificados; cargar datos de nuevo desde DAO y actualizar Swing en EDT. Si otro terminal compite, al abrir/editar/finalizar un pedido recargar versión y tasa actual desde servidor.
-- [ ] Comprobar que las acciones de catálogo/tasa muestran confirmación previa con conteo estimado de pedidos y explicación de que sus importes pendientes cambiarán; si falla, informar que toda la operación fue revertida.
+- [x] Probar que cada actualización escribe exactamente una auditoría en Task 2/Tasks 5–6, reintentos idempotentes no duplican obligaciones y un rollback no deja auditoría huérfana.
+- [x] Ejecutar tests dirigidos de migración, concurrencia y actualización de UI; esperado: notificación posterior a commit y recuperación de datos del servidor, no solo cambios locales.
+- [x] Implementar evento de refresco con IDs de pedidos y productos modificados; cargar datos de nuevo desde DAO y actualizar Swing en EDT. Si otro terminal compite, al abrir/editar/finalizar un pedido recargar versión y tasa actual desde servidor.
+- [x] Comprobar que las acciones de catálogo/tasa muestran confirmación previa con conteo estimado de pedidos y explicación de que sus importes pendientes cambiarán; si falla, informar que toda la operación fue revertida.
 
 ### Task 10: Verificación integral, despliegue y operación segura
 

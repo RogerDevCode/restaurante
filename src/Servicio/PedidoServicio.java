@@ -121,4 +121,9 @@ public final class PedidoServicio {
                     nombreCampo + " debe ser positivo y caber en DECIMAL(10,2).");
         }
     }
+
+    public boolean congelarLinea(int idDetalle, String motivo, String actor, String idempotencyKey) {
+        return repositorio.congelarLinea(idDetalle, motivo, actor, idempotencyKey);
+    }
 }
+

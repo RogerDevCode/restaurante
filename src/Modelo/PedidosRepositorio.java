@@ -94,4 +94,13 @@ public interface PedidosRepositorio {
     default ResumenConciliacionPedido resumenConciliacion(int idPedido) {
         return null;
     }
+
+    /**
+     * Acción de emergencia (P2-C): congela el precio de una línea de pedido abierto cuyo producto
+     * ya no existe en el catálogo para excluirla del recálculo por tasa o catálogo.
+     */
+    default boolean congelarLinea(int idDetalle, String motivo, String actor, String idempotencyKey) {
+        return false;
+    }
 }
+

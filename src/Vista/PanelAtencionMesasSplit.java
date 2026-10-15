@@ -502,6 +502,33 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         cargarMesoneros();
         cargarCatalogoPlatosInicial();
+
+        RefrescoVistas.suscribir(RefrescoVistas.PLATOS, this::refrescarPlatos);
+        RefrescoVistas.suscribir(RefrescoVistas.PEDIDOS, this::refrescarPedidos);
+    }
+
+    public void refrescarPlatos(Object carga) {
+        platosPorId.clear();
+        filtrarCatalogoPlatos(txtBuscarPlato != null ? txtBuscarPlato.getText().trim() : "");
+        if (idPedidoActivo > 0) {
+            cargarDetallesPedidoExistente(idPedidoActivo);
+        }
+    }
+
+    public void refrescarPedidos(Object carga) {
+        if (idPedidoActivo > 0) {
+            if (carga instanceof Modelo.ResultadoActualizacionPrecios res) {
+                if (res.pedidosAfectados() == null || res.pedidosAfectados().isEmpty() || res.pedidosAfectados().contains(idPedidoActivo)) {
+                    cargarDetallesPedidoExistente(idPedidoActivo);
+                }
+            } else if (carga instanceof List<?> lista) {
+                if (lista.contains(idPedidoActivo)) {
+                    cargarDetallesPedidoExistente(idPedidoActivo);
+                }
+            } else {
+                cargarDetallesPedidoExistente(idPedidoActivo);
+            }
+        }
     }
 
     /**

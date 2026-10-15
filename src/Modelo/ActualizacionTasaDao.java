@@ -42,7 +42,23 @@ public class ActualizacionTasaDao {
         this.auditoriaDao = auditoriaDao != null ? auditoriaDao : new AuditoriaPreciosDao();
     }
 
+    public int contarPedidosAbiertos() {
+        String sql = "SELECT COUNT(*) FROM pedidos WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) return rs.getInt(1);
+            return 0;
+        } catch (SQLException ex) {
+            throw new DataAccessException("Error al contar pedidos abiertos: " + ex.getMessage(), ex);
+        }
+    }
+
     public ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario) {
+        return actualizarTasaYRecalcularPendientes(tasaNueva, usuario, null);
+    }
+
+    public ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario, String idempotencyKey) {
         if (tasaNueva == null || tasaNueva.signum() <= 0) {
             throw ErrorAplicacionException.validacion("La tasa de cambio debe ser positiva.");
         }
@@ -52,7 +68,7 @@ public class ActualizacionTasaDao {
         while (true) {
             intentos++;
             try {
-                return ejecutarTransaccion(tasaNormalizada, usuario);
+                return ejecutarTransaccion(tasaNormalizada, usuario, idempotencyKey);
             } catch (SQLException ex) {
                 if (esDeadlock(ex) && intentos < MAX_INTENTOS_DEADLOCK) {
                     LOGGER.log(Level.WARNING, "Deadlock detectado al actualizar tasa; reintentando intento {0}", intentos);
@@ -69,10 +85,24 @@ public class ActualizacionTasaDao {
         }
     }
 
-    private ResultadoActualizacionPrecios ejecutarTransaccion(BigDecimal tasaNueva, String usuario) throws SQLException {
+    private ResultadoActualizacionPrecios ejecutarTransaccion(BigDecimal tasaNueva, String usuario, String idempotencyKey) throws SQLException {
         try (Connection con = conexiones.getConnection()) {
             con.setAutoCommit(false);
             try {
+                if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                    String sqlCheck = "SELECT id FROM auditoria_cambios_precio WHERE idempotency_key = ? OR idempotency_key LIKE ?";
+                    try (PreparedStatement ps = con.prepareStatement(sqlCheck)) {
+                        ps.setString(1, idempotencyKey);
+                        ps.setString(2, idempotencyKey + "-ped-%");
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) {
+                                con.commit();
+                                return new ResultadoActualizacionPrecios(null, 0, BigDecimal.ZERO, BigDecimal.ZERO, List.of(), 0);
+                            }
+                        }
+                    }
+                }
+
                 // 1. Bloquear y leer tasa anterior en config y configuracion_sistema
                 BigDecimal tasaAnterior = null;
                 String sqlLockConfig = "SELECT tasa_dolar FROM config WHERE id = 1 FOR UPDATE";
@@ -227,6 +257,9 @@ public class ActualizacionTasaDao {
                     }
 
                     // Registrar auditoría de tasa para este pedido abierto
+                    String keyDet = idempotencyKey != null
+                            ? (pedidosAfectados.size() == 1 ? idempotencyKey : idempotencyKey + "-ped-" + idPed)
+                            : null;
                     AuditoriaPreciosDao.CambioPrecio cambio = new AuditoriaPreciosDao.CambioPrecio(
                             "CAMBIO_TASA",
                             null,
@@ -243,7 +276,29 @@ public class ActualizacionTasaDao {
                             calc.totalVes(),
                             usuario != null && !usuario.isBlank() ? usuario : "Sistema",
                             "Recálculo de mesa abierta #" + idPed + " por cambio de tasa oficial",
-                            null
+                            keyDet
+                    );
+                    auditoriaDao.insertar(con, cambio);
+                }
+
+                if (pedidosAfectados.isEmpty()) {
+                    AuditoriaPreciosDao.CambioPrecio cambio = new AuditoriaPreciosDao.CambioPrecio(
+                            "CAMBIO_TASA",
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            tasaAnterior,
+                            tasaNueva,
+                            BigDecimal.ZERO.setScale(2),
+                            BigDecimal.ZERO.setScale(2),
+                            usuario != null && !usuario.isBlank() ? usuario : "Sistema",
+                            "Actualización de tasa oficial sin pedidos abiertos pendientes",
+                            idempotencyKey
                     );
                     auditoriaDao.insertar(con, cambio);
                 }

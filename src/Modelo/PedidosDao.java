@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -1596,4 +1597,114 @@ public class PedidosDao implements PedidosRepositorio {
             throw new DataAccessException("No se pudieron purgar los pedidos finalizados.", ex);
         }
     }
+
+    @Override
+    public boolean congelarLinea(int idDetalle, String motivo, String actor, String idempotencyKey) {
+        if (idDetalle <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador del detalle de pedido es inválido.");
+        }
+        if (actor == null || actor.isBlank()) {
+            actor = "Administrador";
+        }
+        if (motivo == null || motivo.isBlank()) {
+            motivo = "Línea excluida de recálculo por producto descontinuado";
+        }
+
+        String sqlCheckIdempotencia = "SELECT id FROM auditoria_cambios_precio WHERE idempotency_key = ?";
+        String sqlSelectDetalle = """
+            SELECT d.id, d.id_pedido, d.id_plato, d.nombre, d.precio, d.moneda_base, d.precio_congelado, p.estado, p.cerrada_en
+            FROM detalle_pedidos d
+            INNER JOIN pedidos p ON p.id = d.id_pedido
+            WHERE d.id = ?
+            FOR UPDATE
+            """;
+        String sqlUpdateDetalle = """
+            UPDATE detalle_pedidos
+            SET precio_congelado = 1, congelado_motivo = ?, congelado_por = ?, congelado_en = NOW()
+            WHERE id = ?
+            """;
+
+        try (Connection con = conexiones.getConnection()) {
+            con.setAutoCommit(false);
+            try {
+                if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                    try (PreparedStatement ps = con.prepareStatement(sqlCheckIdempotencia)) {
+                        ps.setString(1, idempotencyKey);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) {
+                                con.commit();
+                                return true;
+                            }
+                        }
+                    }
+                }
+
+                int idPedido;
+                Integer idPlato;
+                String monedaBase;
+                BigDecimal precio;
+                boolean yaCongelado;
+
+                try (PreparedStatement ps = con.prepareStatement(sqlSelectDetalle)) {
+                    ps.setInt(1, idDetalle);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            throw ErrorAplicacionException.validacion("La línea del pedido no existe.");
+                        }
+                        String estado = rs.getString("estado");
+                        Timestamp cerradaEn = rs.getTimestamp("cerrada_en");
+                        if (!"PENDIENTE".equalsIgnoreCase(estado) || cerradaEn != null) {
+                            throw ErrorAplicacionException.validacion("Solo se pueden congelar líneas de pedidos pendientes abiertos.");
+                        }
+                        idPedido = rs.getInt("id_pedido");
+                        int pl = rs.getInt("id_plato");
+                        idPlato = rs.wasNull() ? null : pl;
+                        monedaBase = rs.getString("moneda_base");
+                        precio = rs.getBigDecimal("precio");
+                        yaCongelado = rs.getInt("precio_congelado") != 0;
+                    }
+                }
+
+                if (!yaCongelado) {
+                    try (PreparedStatement ps = con.prepareStatement(sqlUpdateDetalle)) {
+                        ps.setString(1, motivo);
+                        ps.setString(2, actor);
+                        ps.setInt(3, idDetalle);
+                        if (ps.executeUpdate() != 1) {
+                            throw new SQLException("No se pudo marcar la línea como congelada.");
+                        }
+                    }
+                }
+
+                AuditoriaPreciosDao.CambioPrecio cambio = new AuditoriaPreciosDao.CambioPrecio(
+                        "CONGELAR_LINEA",
+                        idPlato,
+                        idPedido,
+                        idDetalle,
+                        monedaBase != null ? monedaBase : "USD",
+                        precio,
+                        precio,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        actor,
+                        motivo,
+                        idempotencyKey
+                );
+                new AuditoriaPreciosDao().insertar(con, cambio);
+
+                con.commit();
+                return true;
+            } catch (SQLException | RuntimeException ex) {
+                con.rollback();
+                throw ex;
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("Error al congelar la línea del pedido: " + ex.getMessage(), ex);
+        }
+    }
 }
+

@@ -1717,13 +1717,34 @@ public final class Sistema extends javax.swing.JFrame {
     /** Patrón Observer: registra qué vistas se refrescan cuando cambian los datos. */
     private void configurarObservadoresVistas() {
         RefrescoVistas.limpiar();
-        RefrescoVistas.suscribir(RefrescoVistas.PLATOS, this::refrescarMenuPlatos);
+        RefrescoVistas.suscribir(RefrescoVistas.PLATOS, carga -> {
+            refrescarMenuPlatos();
+            if (panelSplitScreen != null) {
+                panelSplitScreen.refrescarPlatos(carga);
+            }
+        });
         RefrescoVistas.suscribir(RefrescoVistas.CATEGORIAS, this::cargarCategorias);
         RefrescoVistas.suscribir(RefrescoVistas.CATEGORIAS, this::refrescarMenuPlatos);
         RefrescoVistas.suscribir(RefrescoVistas.SALAS, this::panelSalas);
         RefrescoVistas.suscribir(RefrescoVistas.MESAS, this::refrescarPanelMesasActual);
-        RefrescoVistas.suscribir(RefrescoVistas.PEDIDOS, this::refrescarPanelMesasActual);
-        RefrescoVistas.suscribir(RefrescoVistas.PEDIDOS, this::ListarPedidos);
+        RefrescoVistas.suscribir(RefrescoVistas.PEDIDOS, carga -> {
+            refrescarPanelMesasActual();
+            ListarPedidos();
+            if (ped != null && ped.getId() > 0 && jTabbedPane1.getSelectedIndex() == 4) {
+                if (carga instanceof Modelo.ResultadoActualizacionPrecios res) {
+                    if (res.pedidosAfectados() == null || res.pedidosAfectados().isEmpty() || res.pedidosAfectados().contains(ped.getId())) {
+                        cargarPedidoEnPantalla(ped.getId(), btnFinalizar.isEnabled());
+                    }
+                } else if (carga instanceof List<?> lista) {
+                    if (lista.contains(ped.getId())) {
+                        cargarPedidoEnPantalla(ped.getId(), btnFinalizar.isEnabled());
+                    }
+                }
+            }
+            if (panelSplitScreen != null) {
+                panelSplitScreen.refrescarPedidos(carga);
+            }
+        });
         RefrescoVistas.suscribir(RefrescoVistas.HISTORIAL, this::ListarPedidos);
         RefrescoVistas.suscribir(RefrescoVistas.USUARIOS, this::ListarUsuarios);
         RefrescoVistas.suscribir(RefrescoVistas.CONFIG, this::ListarConfig);
@@ -3545,7 +3566,27 @@ public final class Sistema extends javax.swing.JFrame {
                         && conf.getTasaDolar().compareTo(candidata.getTasaDolar()) != 0;
                 Modelo.ResultadoActualizacionPrecios resTasa = null;
                 if (tasaCambio) {
-                    resTasa = configServicio.actualizarTasaYRecalcularPendientes(candidata.getTasaDolar(), getNombreUsuarioActual());
+                    int estimados = configServicio.contarPedidosAbiertosAfectadosPorTasa();
+                    int confirmacion = JOptionPane.showConfirmDialog(
+                            this,
+                            "La nueva tasa de cambio (" + candidata.getTasaDolar().toPlainString() + ") recalculará "
+                                    + (estimados > 0 ? "aproximadamente " + estimados + " pedido(s) abierto(s)" : "los pedidos abiertos")
+                                    + " pendientes de cobro.\n¿Desea continuar con la actualización?",
+                            "Confirmar cambio de tasa global",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.WARNING_MESSAGE);
+                    if (confirmacion != JOptionPane.YES_OPTION) {
+                        return;
+                    }
+                    try {
+                        resTasa = configServicio.actualizarTasaYRecalcularPendientes(candidata.getTasaDolar(), getNombreUsuarioActual());
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(this,
+                                "La operación fue completamente revertida. No se aplicaron cambios a la tasa ni a los pedidos:\n"
+                                        + (ex.getMessage() != null ? ex.getMessage() : ex.toString()),
+                                "Error en actualización de tasa", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
                 }
 
                 if (lgDao.ModificarDatos(candidata) || resTasa != null) {
@@ -3557,8 +3598,8 @@ public final class Sistema extends javax.swing.JFrame {
                     actualizarEstadoTasaUI();
                     actualizarTextoCheckboxIvaPlato();
                     if (resTasa != null) {
-                        RefrescoVistas.notificar(RefrescoVistas.PLATOS);
-                        RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                        RefrescoVistas.notificar(RefrescoVistas.PLATOS, resTasa);
+                        RefrescoVistas.notificar(RefrescoVistas.PEDIDOS, resTasa);
                     }
                     versionCargaConfig++;
                     String aviso = "Configuración guardada";
@@ -4529,12 +4570,33 @@ public final class Sistema extends javax.swing.JFrame {
                     pla.setAplicaIva(aplicaIva);
                     pla.setPrecioIncluyeIva(aplicaIva && chkPrecioIncluyeIvaPlato != null && chkPrecioIncluyeIvaPlato.isSelected());
                     BigDecimal tasa = getTasaActual();
-                    Modelo.ResultadoActualizacionPrecios res = platosControlador.modificarProductoYRecalcularPendientes(pla, tasa, getNombreUsuarioActual());
+                    int estimados = platosControlador.contarPedidosAbiertosConPlato(pla.getId());
+                    if (estimados > 0) {
+                        int confirmacion = JOptionPane.showConfirmDialog(
+                                this,
+                                "Modificar este plato recalculará aproximadamente " + estimados + " pedido(s) abierto(s) pendiente(s) de cobro.\n¿Desea continuar?",
+                                "Confirmar modificación de catálogo",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.WARNING_MESSAGE);
+                        if (confirmacion != JOptionPane.YES_OPTION) {
+                            return;
+                        }
+                    }
+                    Modelo.ResultadoActualizacionPrecios res;
+                    try {
+                        res = platosControlador.modificarProductoYRecalcularPendientes(pla, tasa, getNombreUsuarioActual());
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(this,
+                                "La operación fue completamente revertida. No se aplicaron cambios al catálogo ni a los pedidos:\n"
+                                        + (ex.getMessage() != null ? ex.getMessage() : ex.toString()),
+                                "Error al modificar plato", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
                     if (res != null) {
                         ListarPlatos(TablePlatos, "");
                         LimpiarPlatos();
-                        RefrescoVistas.notificar(RefrescoVistas.PLATOS);
-                        RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                        RefrescoVistas.notificar(RefrescoVistas.PLATOS, res);
+                        RefrescoVistas.notificar(RefrescoVistas.PEDIDOS, res);
                         String mensaje = "Plato modificado.";
                         if (res.pedidosRecalculados() > 0) {
                             mensaje += " Recalculados " + res.pedidosRecalculados() + " pedidos abiertos.";

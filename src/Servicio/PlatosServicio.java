@@ -82,6 +82,11 @@ public final class PlatosServicio {
         return repositorio.modificarProductoYRecalcularPendientes(normalizar(plato, tasa), usuario);
     }
 
+    public int contarPedidosAbiertosConPlato(int idPlato) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        return repositorio.contarPedidosAbiertosConPlato(idPlato);
+    }
+
     public boolean desactivar(int id) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         if (id <= 0) {

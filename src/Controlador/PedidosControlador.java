@@ -192,6 +192,11 @@ public final class PedidosControlador {
         return eliminados;
     }
 
+    public boolean congelarLinea(int idDetalle, String motivo, String actor, String idempotencyKey) {
+        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        return servicio.congelarLinea(idDetalle, motivo, actor, idempotencyKey);
+    }
+
     private void exigirPermiso(PoliticaAcceso.Accion accion) {
         if (!politicaAcceso.permite(accion)) {
             throw ErrorAplicacionException.validacion("Tu rol no permite realizar esta acción.");

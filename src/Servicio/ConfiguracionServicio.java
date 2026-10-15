@@ -182,8 +182,16 @@ public class ConfiguracionServicio {
         return fechaActualizacion.isBefore(java.time.LocalDate.now());
     }
 
+    public int contarPedidosAbiertosAfectadosPorTasa() {
+        return new Modelo.ActualizacionTasaDao().contarPedidosAbiertos();
+    }
+
     public Modelo.ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario) {
-        Modelo.ResultadoActualizacionPrecios res = new Modelo.ActualizacionTasaDao().actualizarTasaYRecalcularPendientes(tasaNueva, usuario);
+        return actualizarTasaYRecalcularPendientes(tasaNueva, usuario, null);
+    }
+
+    public Modelo.ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario, String idempotencyKey) {
+        Modelo.ResultadoActualizacionPrecios res = new Modelo.ActualizacionTasaDao().actualizarTasaYRecalcularPendientes(tasaNueva, usuario, idempotencyKey);
         recargar();
         return res;
     }

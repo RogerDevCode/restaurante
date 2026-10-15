@@ -40,7 +40,34 @@ public class PreciosPedidosDao {
         this.auditoriaDao = auditoriaDao != null ? auditoriaDao : new AuditoriaPreciosDao();
     }
 
+    public int contarPedidosAbiertosConPlato(int idPlato) {
+        if (idPlato <= 0) return 0;
+        String sql = """
+            SELECT COUNT(DISTINCT p.id)
+            FROM pedidos p
+            INNER JOIN detalle_pedidos d ON p.id = d.id_pedido
+            WHERE p.estado = 'PENDIENTE'
+              AND p.cerrada_en IS NULL
+              AND d.id_plato = ?
+              AND (d.precio_congelado = 0 OR d.precio_congelado IS NULL)
+            """;
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idPlato);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+                return 0;
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("Error al contar pedidos abiertos para el plato: " + ex.getMessage(), ex);
+        }
+    }
+
     public ResultadoActualizacionPrecios modificarProductoYRecalcularPendientes(Platos plato, String usuario) {
+        return modificarProductoYRecalcularPendientes(plato, usuario, null);
+    }
+
+    public ResultadoActualizacionPrecios modificarProductoYRecalcularPendientes(Platos plato, String usuario, String idempotencyKey) {
         if (plato == null || plato.getId() <= 0) {
             throw ErrorAplicacionException.validacion("El plato a modificar debe tener un ID válido.");
         }
@@ -49,7 +76,7 @@ public class PreciosPedidosDao {
         while (true) {
             intentos++;
             try {
-                return ejecutarTransaccion(plato, usuario);
+                return ejecutarTransaccion(plato, usuario, idempotencyKey);
             } catch (SQLException ex) {
                 if (esDeadlock(ex) && intentos < MAX_INTENTOS_DEADLOCK) {
                     LOGGER.log(Level.WARNING, "Deadlock detectado al actualizar catálogo; reintentando intento {0}", intentos);
@@ -66,10 +93,24 @@ public class PreciosPedidosDao {
         }
     }
 
-    private ResultadoActualizacionPrecios ejecutarTransaccion(Platos plato, String usuario) throws SQLException {
+    private ResultadoActualizacionPrecios ejecutarTransaccion(Platos plato, String usuario, String idempotencyKey) throws SQLException {
         try (Connection con = conexiones.getConnection()) {
             con.setAutoCommit(false);
             try {
+                if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                    String sqlCheck = "SELECT id FROM auditoria_cambios_precio WHERE idempotency_key = ? OR idempotency_key LIKE ?";
+                    try (PreparedStatement ps = con.prepareStatement(sqlCheck)) {
+                        ps.setString(1, idempotencyKey);
+                        ps.setString(2, idempotencyKey + "-ped-%");
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) {
+                                con.commit();
+                                return new ResultadoActualizacionPrecios(plato, 0, BigDecimal.ZERO, BigDecimal.ZERO, List.of(), 0);
+                            }
+                        }
+                    }
+                }
+
                 // 1. Bloquear y verificar el plato actual
                 BigDecimal precioUsdAnt = null;
                 BigDecimal precioVesAnt = null;
@@ -299,6 +340,9 @@ public class PreciosPedidosDao {
                     }
 
                     // Insertar auditoría
+                    String keyDet = idempotencyKey != null
+                            ? (pedidosAfectados.size() == 1 ? idempotencyKey : idempotencyKey + "-ped-" + idPedido)
+                            : null;
                     AuditoriaPreciosDao.CambioPrecio cambio = new AuditoriaPreciosDao.CambioPrecio(
                             "CAMBIO_CATALOGO",
                             plato.getId(),
@@ -315,7 +359,29 @@ public class PreciosPedidosDao {
                             calc.totalVes(),
                             usuario != null && !usuario.isBlank() ? usuario : "Sistema",
                             "Propagación de catálogo a pedido #" + idPedido,
-                            null
+                            keyDet
+                    );
+                    auditoriaDao.insertar(con, cambio);
+                }
+
+                if (pedidosAfectados.isEmpty()) {
+                    AuditoriaPreciosDao.CambioPrecio cambio = new AuditoriaPreciosDao.CambioPrecio(
+                            "CAMBIO_CATALOGO",
+                            plato.getId(),
+                            null,
+                            null,
+                            plato.getMonedaBase(),
+                            precioUsdAnt,
+                            plato.getPrecioUsd(),
+                            precioVesAnt,
+                            plato.getPrecioVes(),
+                            null,
+                            null,
+                            BigDecimal.ZERO.setScale(2),
+                            BigDecimal.ZERO.setScale(2),
+                            usuario != null && !usuario.isBlank() ? usuario : "Sistema",
+                            "Modificación de producto en catálogo",
+                            idempotencyKey
                     );
                     auditoriaDao.insertar(con, cambio);
                 }

@@ -59,4 +59,9 @@ public final class PlatosControlador {
     public Modelo.ResultadoActualizacionPrecios modificarProductoYRecalcularPendientes(Platos plato, java.math.BigDecimal tasa, String usuario) {
         return servicio.modificarProductoYRecalcularPendientes(plato, tasa, usuario);
     }
+
+    public int contarPedidosAbiertosConPlato(int idPlato) {
+        return servicio.contarPedidosAbiertosConPlato(idPlato);
+    }
 }
+

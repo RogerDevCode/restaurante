@@ -35,4 +35,8 @@ public interface PlatosRepositorio {
         modificar(plato);
         return new ResultadoActualizacionPrecios(plato, 0, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO, java.util.List.of(), 0);
     }
+
+    default int contarPedidosAbiertosConPlato(int idPlato) {
+        return 0;
+    }
 }
