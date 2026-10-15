@@ -18,6 +18,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -642,10 +643,13 @@ public class ServicioRespaldoBaseDatos {
     }
 
     private boolean tablaExiste(Connection con, String tabla) throws SQLException {
-        try (ResultSet rs = con.getMetaData().getTables(con.getCatalog(), null, tabla, new String[]{"TABLE"})) {
-            if (rs.next()) return true;
+        try (PreparedStatement ps = con.prepareStatement(
+                "SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1")) {
+            ps.setString(1, tabla);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
         }
-        return false;
     }
 
     private void validarSentenciaRespaldo(String sentenciaConPuntoYComa, ResumenSql resumen) {
