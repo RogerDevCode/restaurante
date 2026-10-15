@@ -148,6 +148,7 @@ public class CierreCaja {
     private BigDecimal tasaCambioReferencia = new BigDecimal("36.5000");
     private int pedidosFinalizados = 0;
     private int pedidosPendientes = 0;
+    private int mesasCerradasPendientesPago = 0;
     private int totalArticulos = 0;
     private BigDecimal ticketPromedioUsd = BigDecimal.ZERO.setScale(2);
     private BigDecimal ticketPromedioBs = BigDecimal.ZERO.setScale(2);
@@ -262,6 +263,14 @@ public class CierreCaja {
 
     public void setPedidosPendientes(int pedidosPendientes) {
         this.pedidosPendientes = pedidosPendientes;
+    }
+
+    public int getMesasCerradasPendientesPago() {
+        return mesasCerradasPendientesPago;
+    }
+
+    public void setMesasCerradasPendientesPago(int mesasCerradasPendientesPago) {
+        this.mesasCerradasPendientesPago = mesasCerradasPendientesPago;
     }
 
     public int getTotalArticulos() {

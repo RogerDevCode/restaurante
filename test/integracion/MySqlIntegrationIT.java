@@ -90,6 +90,7 @@ public class MySqlIntegrationIT {
             String tasaKv = valorEscalar(conexion, "SELECT valor FROM configuracion_sistema WHERE clave='tasa_dolar'");
             sentencia.executeUpdate("UPDATE config SET tasa_dolar=41.1234");
             sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='36.5000' WHERE clave='tasa_dolar'");
+            sentencia.executeUpdate("DELETE FROM schema_migrations");
             // Primera migración y respaldo ocurren antes de instalar el trigger de fallo de estas pruebas.
             infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new ProveedorConexionJdbc());
             assertEquals("El valor personalizado de config prevalece sobre un default KV anterior",

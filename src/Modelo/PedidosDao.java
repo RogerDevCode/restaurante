@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -834,8 +835,9 @@ public class PedidosDao implements PedidosRepositorio {
             try {
                 BigDecimal totalBs;
                 BigDecimal tasa;
+                int versionPrecio;
                 try (PreparedStatement ps = conexion.prepareStatement(
-                        "SELECT total, total_bs, tasa_cambio FROM pedidos WHERE id = ? AND estado = 'PENDIENTE' FOR UPDATE")) {
+                        "SELECT total, total_bs, tasa_cambio, cerrada_en, version_precio FROM pedidos WHERE id = ? AND estado = 'PENDIENTE' FOR UPDATE")) {
                     ps.setInt(1, id_pedido);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (!rs.next()) {
@@ -852,19 +854,29 @@ public class PedidosDao implements PedidosRepositorio {
                         if (totalBs == null) {
                             totalBs = rs.getBigDecimal("total").multiply(tasa).setScale(2, RoundingMode.HALF_UP);
                         }
+                        versionPrecio = rs.getInt("version_precio");
                     }
                 }
 
                 BigDecimal recibidoBs = BigDecimal.ZERO.setScale(2);
                 BigDecimal efectivoBs = BigDecimal.ZERO.setScale(2);
                 BigDecimal efectivoUsd = BigDecimal.ZERO.setScale(2);
+                BigDecimal aplicadoVes = BigDecimal.ZERO.setScale(2);
+                BigDecimal aplicadoUsd = BigDecimal.ZERO.setScale(2);
+
                 for (PagoPedido pago : pagos) {
                     if (pago == null) {
                         throw ErrorAplicacionException.validacion("Complete cada línea del desglose de pago.");
                     }
+                    BigDecimal aplicado = pago.montoAplicado() != null ? pago.montoAplicado() : pago.monto();
                     recibidoBs = recibidoBs.add(pago.equivalenteBs(tasa));
-                    if ("EFECTIVO_BS".equals(pago.metodo())) efectivoBs = efectivoBs.add(pago.monto());
-                    if ("EFECTIVO_USD".equals(pago.metodo())) efectivoUsd = efectivoUsd.add(pago.monto());
+                    if ("VES".equals(pago.moneda())) {
+                        aplicadoVes = aplicadoVes.add(aplicado);
+                        if ("EFECTIVO_BS".equals(pago.metodo())) efectivoBs = efectivoBs.add(aplicado);
+                    } else {
+                        aplicadoUsd = aplicadoUsd.add(aplicado);
+                        if ("EFECTIVO_USD".equals(pago.metodo())) efectivoUsd = efectivoUsd.add(aplicado);
+                    }
                 }
                 String metodoResumen = pagos.size() == 1 ? pagos.getFirst().metodo() : "MIXTO";
                 if (metodoPago != null && !metodoPago.isBlank()
@@ -873,16 +885,31 @@ public class PedidosDao implements PedidosRepositorio {
                     throw ErrorAplicacionException.validacion("El método seleccionado no coincide con el detalle del pago.");
                 }
                 recibidoBs = recibidoBs.setScale(2, RoundingMode.HALF_UP);
-                if (recibidoBs.compareTo(totalBs.setScale(2, RoundingMode.HALF_UP)) != 0) {
-                    throw ErrorAplicacionException.validacion("El desglose debe completar exactamente Bs. "
-                            + totalBs.setScale(2, RoundingMode.HALF_UP).toPlainString()
-                            + "; se registraron Bs. " + recibidoBs.toPlainString() + ".");
+                BigDecimal ajusteCambioBs = totalBs.setScale(2, RoundingMode.HALF_UP).subtract(recibidoBs);
+
+                if (aplicadoUsd.signum() == 0) {
+                    if (ajusteCambioBs.signum() != 0) {
+                        throw ErrorAplicacionException.validacion("El desglose debe completar exactamente Bs. "
+                                + totalBs.setScale(2, RoundingMode.HALF_UP).toPlainString()
+                                + "; se registraron Bs. " + recibidoBs.toPlainString() + ".");
+                    }
+                } else {
+                    // Tolerancia de ajuste cambiario por redondeo FX: medio centavo USD (máx ~ 0.005 * tasa) o 0.05 Bs
+                    BigDecimal maxTolBs = new BigDecimal("0.005").multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    if (maxTolBs.compareTo(new BigDecimal("0.05")) < 0) {
+                        maxTolBs = new BigDecimal("0.05");
+                    }
+                    if (ajusteCambioBs.abs().compareTo(maxTolBs) > 0) {
+                        throw ErrorAplicacionException.validacion("El desglose debe completar exactamente Bs. "
+                                + totalBs.setScale(2, RoundingMode.HALF_UP).toPlainString()
+                                + "; se registraron Bs. " + recibidoBs.toPlainString() + ".");
+                    }
                 }
 
                 String sqlActualizar = """
                     UPDATE pedidos
-                    SET estado = 'FINALIZADO', cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
-                        efectivo_bs = ?, efectivo_usd = ?
+                    SET estado = 'FINALIZADO', fecha = CURRENT_TIMESTAMP, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
+                        efectivo_bs = ?, efectivo_usd = ?, cerrada_en = COALESCE(cerrada_en, CURRENT_TIMESTAMP)
                     WHERE id = ? AND estado = 'PENDIENTE'
                     """;
                 try (PreparedStatement ps = conexion.prepareStatement(sqlActualizar)) {
@@ -901,20 +928,66 @@ public class PedidosDao implements PedidosRepositorio {
                     ErrorAplicacionException.resultadoUnaFila(filas, "finalizar pedido " + id_pedido);
                 }
 
+                long idLiquidacion = 0;
+                try {
+                    String sqlLiq = """
+                        INSERT INTO pedido_liquidaciones
+                            (id_pedido, version_precio, saldo_restante_ves, aplicado_ves, aplicado_usd, tasa_cambio,
+                             ajuste_cambio_bs, diferencia_usd, version_regla, actor, idempotency_key)
+                        VALUES (?, ?, 0.00, ?, ?, ?, ?, 0.00, 'V5_PAGO_CONGELADO', ?, ?)
+                        """;
+                    String idempLiq = "LIQ-" + id_pedido + "-V" + versionPrecio + "-" + System.currentTimeMillis();
+                    try (PreparedStatement psLiq = conexion.prepareStatement(sqlLiq, Statement.RETURN_GENERATED_KEYS)) {
+                        psLiq.setInt(1, id_pedido);
+                        psLiq.setInt(2, versionPrecio);
+                        psLiq.setBigDecimal(3, aplicadoVes);
+                        psLiq.setBigDecimal(4, aplicadoUsd);
+                        psLiq.setBigDecimal(5, tasa);
+                        psLiq.setBigDecimal(6, ajusteCambioBs);
+                        psLiq.setString(7, nom);
+                        psLiq.setString(8, idempLiq);
+                        psLiq.executeUpdate();
+                        try (ResultSet rsLiq = psLiq.getGeneratedKeys()) {
+                            if (rsLiq.next()) {
+                                idLiquidacion = rsLiq.getLong(1);
+                            }
+                        }
+                    }
+                } catch (SQLException exLiq) {
+                    LOGGER.fine("Tabla pedido_liquidaciones no disponible o ya registrada: " + exLiq.getMessage());
+                }
+
                 String sqlPago = """
                     INSERT INTO pedido_pagos
-                        (id_pedido, metodo_pago, moneda, monto, tasa_cambio, monto_bs, monto_usd)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (id_pedido, metodo_pago, moneda, monto, tasa_cambio, monto_bs, monto_usd,
+                         monto_recibido, monto_aplicado, cambio_devuelto, es_legado, id_liquidacion, idempotency_key)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                     """;
                 try (PreparedStatement ps = conexion.prepareStatement(sqlPago)) {
+                    int idx = 0;
                     for (PagoPedido pago : pagos) {
+                        idx++;
+                        BigDecimal montoRec = pago.montoRecibido() != null ? pago.montoRecibido() : pago.monto();
+                        BigDecimal montoApl = pago.montoAplicado() != null ? pago.montoAplicado() : pago.monto();
+                        BigDecimal cambio = pago.cambioDevuelto() != null ? pago.cambioDevuelto() : BigDecimal.ZERO;
+                        String idempPago = "PAGO-" + id_pedido + "-" + idx + "-V" + versionPrecio + "-" + System.currentTimeMillis();
+
                         ps.setInt(1, id_pedido);
                         ps.setString(2, pago.metodo());
                         ps.setString(3, pago.moneda());
-                        ps.setBigDecimal(4, pago.monto());
+                        ps.setBigDecimal(4, montoApl);
                         ps.setBigDecimal(5, tasa);
                         ps.setBigDecimal(6, pago.equivalenteBs(tasa));
                         ps.setBigDecimal(7, pago.equivalenteUsd(tasa));
+                        ps.setBigDecimal(8, montoRec);
+                        ps.setBigDecimal(9, montoApl);
+                        ps.setBigDecimal(10, cambio);
+                        if (idLiquidacion > 0) {
+                            ps.setLong(11, idLiquidacion);
+                        } else {
+                            ps.setNull(11, Types.BIGINT);
+                        }
+                        ps.setString(12, idempPago);
                         ps.addBatch();
                     }
                     ps.executeBatch();
@@ -980,7 +1053,7 @@ public class PedidosDao implements PedidosRepositorio {
 
         String sql = """
             UPDATE pedidos
-            SET estado = ?, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
+            SET estado = ?, fecha = CURRENT_TIMESTAMP, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
                 efectivo_bs = CASE
                     WHEN ? = 'MIXTO' THEN ?
                     WHEN ? IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(total_bs, total * COALESCE(NULLIF(tasa_cambio, 0), 36.5000))
@@ -988,7 +1061,8 @@ public class PedidosDao implements PedidosRepositorio {
                 efectivo_usd = CASE
                     WHEN ? = 'MIXTO' THEN ?
                     WHEN ? = 'EFECTIVO_USD' THEN total
-                    ELSE 0 END
+                    ELSE 0 END,
+                cerrada_en = COALESCE(cerrada_en, CURRENT_TIMESTAMP)
             WHERE id = ? AND estado = 'PENDIENTE'
             """;
         try (Connection conexion = conexiones.getConnection()) {
@@ -1138,6 +1212,27 @@ public class PedidosDao implements PedidosRepositorio {
             boolean autoCommitPrevio = con.getAutoCommit();
             con.setAutoCommit(false);
             try {
+                // Si tiene pagos registrados, impedir anular a menos que tenga movimientos de devolución/crédito registrados
+                try (PreparedStatement psPagos = con.prepareStatement(
+                        "SELECT COUNT(*) FROM pedido_pagos WHERE id_pedido = ?")) {
+                    psPagos.setInt(1, id_pedido);
+                    try (ResultSet rs = psPagos.executeQuery()) {
+                        if (rs.next() && rs.getInt(1) > 0) {
+                            try (PreparedStatement psMov = con.prepareStatement(
+                                    "SELECT COUNT(*) FROM pedido_saldos_movimientos WHERE id_pedido = ? AND tipo IN ('DEVOLUCION','CREDITO','ANULACION')")) {
+                                psMov.setInt(1, id_pedido);
+                                try (ResultSet rsMov = psMov.executeQuery()) {
+                                    int cantMov = rsMov.next() ? rsMov.getInt(1) : 0;
+                                    if (cantMov == 0) {
+                                        throw ErrorAplicacionException.validacion(
+                                                "El pedido #" + id_pedido + " tiene pagos registrados; se requiere conciliación o devolución trazable antes de anular.");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 int filas;
                 try (PreparedStatement psUpdate = con.prepareStatement(sqlUpdate)) {
                     psUpdate.setInt(1, id_pedido);
@@ -1179,6 +1274,146 @@ public class PedidosDao implements PedidosRepositorio {
             }
         } catch (SQLException ex) {
             throw new DataAccessException("Error de conexión al anular el pedido: " + ex.getMessage(), ex);
+        }
+    }
+
+    @Override
+    public boolean cerrarMesa(int idPedido, int versionEsperada) {
+        if (idPedido <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para cerrar la mesa.");
+        }
+        try (Connection con = conexiones.getConnection()) {
+            boolean autoCommitOriginal = con.getAutoCommit();
+            con.setAutoCommit(false);
+            try {
+                int versionActual;
+                java.sql.Timestamp cerradaEn;
+                String estado;
+                try (PreparedStatement ps = con.prepareStatement(
+                        "SELECT id, estado, cerrada_en, version_precio FROM pedidos WHERE id = ? FOR UPDATE")) {
+                    ps.setInt(1, idPedido);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            throw ErrorAplicacionException.validacion("No existe el pedido #" + idPedido + ".");
+                        }
+                        estado = rs.getString("estado");
+                        cerradaEn = rs.getTimestamp("cerrada_en");
+                        versionActual = rs.getInt("version_precio");
+                    }
+                }
+
+                if (!"PENDIENTE".equalsIgnoreCase(estado)) {
+                    throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no está pendiente (estado actual: " + estado + ").");
+                }
+
+                if (cerradaEn != null) {
+                    if (versionEsperada > 0 && versionActual != versionEsperada) {
+                        throw ErrorAplicacionException.validacion("La mesa ya fue cerrada con una cotización distinta (versión " + versionActual + ").");
+                    }
+                    con.rollback();
+                    return true;
+                }
+
+                if (versionEsperada > 0 && versionActual != versionEsperada) {
+                    throw ErrorAplicacionException.validacion("La comanda fue modificada recientemente; recargue antes de cerrar (versión actual: "
+                            + versionActual + ", esperada: " + versionEsperada + ").");
+                }
+
+                try (PreparedStatement ps = con.prepareStatement(
+                        "SELECT COUNT(*) FROM detalle_pedidos WHERE id_pedido = ? AND moneda_base IS NULL")) {
+                    ps.setInt(1, idPedido);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next() && rs.getInt(1) > 0) {
+                            throw ErrorAplicacionException.validacion("La comanda #" + idPedido
+                                    + " contiene productos heredados sin clasificar; asígneles moneda base antes de cerrar.");
+                        }
+                    }
+                }
+
+                try (PreparedStatement ps = con.prepareStatement(
+                        "UPDATE pedidos SET cerrada_en = CURRENT_TIMESTAMP WHERE id = ? AND cerrada_en IS NULL")) {
+                    ps.setInt(1, idPedido);
+                    int filas = ps.executeUpdate();
+                    if (filas == 0) {
+                        con.rollback();
+                        return true;
+                    }
+                }
+
+                con.commit();
+                return true;
+            } catch (Exception ex) {
+                try { con.rollback(); } catch (SQLException rEx) { ex.addSuppressed(rEx); }
+                if (ex instanceof RuntimeException re) throw re;
+                throw new DataAccessException("Error al cerrar la mesa del pedido #" + idPedido, ex);
+            } finally {
+                try { con.setAutoCommit(autoCommitOriginal); } catch (SQLException ignored) {}
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo conectar a la base de datos para cerrar la mesa.", ex);
+        }
+    }
+
+    @Override
+    public ResumenConciliacionPedido resumenConciliacion(int idPedido) {
+        if (idPedido <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido.");
+        }
+        try (Connection con = conexiones.getConnection()) {
+            boolean cerrado = false;
+            int versionPrecio = 1;
+            BigDecimal tasa = BigDecimal.ZERO;
+            BigDecimal totalUsd = BigDecimal.ZERO;
+            BigDecimal totalBs = BigDecimal.ZERO;
+
+            try (PreparedStatement ps = con.prepareStatement(
+                    "SELECT total, total_bs, tasa_cambio, cerrada_en, version_precio FROM pedidos WHERE id = ?")) {
+                ps.setInt(1, idPedido);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        throw ErrorAplicacionException.validacion("No existe el pedido #" + idPedido + ".");
+                    }
+                    totalUsd = rs.getBigDecimal("total");
+                    tasa = rs.getBigDecimal("tasa_cambio");
+                    totalBs = rs.getBigDecimal("total_bs");
+                    if (tasa == null || tasa.signum() <= 0) {
+                        tasa = new BigDecimal("36.5000");
+                    }
+                    if (totalBs == null) {
+                        totalBs = totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    }
+                    cerrado = rs.getTimestamp("cerrada_en") != null;
+                    versionPrecio = rs.getInt("version_precio");
+                }
+            }
+
+            // P2-D: pagado_bs_aplicado usa exclusivamente monto_bs guardado en cada fila histórica
+            BigDecimal pagadoBsAplicado = BigDecimal.ZERO.setScale(2);
+            BigDecimal pagadoUsdAplicado = BigDecimal.ZERO.setScale(2);
+            try (PreparedStatement ps = con.prepareStatement(
+                    "SELECT COALESCE(SUM(COALESCE(monto_aplicado, monto_bs)), 0) AS total_bs, " +
+                    "       COALESCE(SUM(COALESCE(monto_usd, 0)), 0) AS total_usd " +
+                    "FROM pedido_pagos WHERE id_pedido = ?")) {
+                ps.setInt(1, idPedido);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        pagadoBsAplicado = rs.getBigDecimal("total_bs").setScale(2, RoundingMode.HALF_UP);
+                        pagadoUsdAplicado = rs.getBigDecimal("total_usd").setScale(2, RoundingMode.HALF_UP);
+                    }
+                }
+            }
+
+            BigDecimal saldoBs = totalBs.subtract(pagadoBsAplicado).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal excedenteBs = pagadoBsAplicado.subtract(totalBs).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+
+            BigDecimal saldoUsd = tasa.signum() > 0 ? saldoBs.divide(tasa, 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+            BigDecimal excedenteUsd = tasa.signum() > 0 ? excedenteBs.divide(tasa, 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+
+            return new ResumenConciliacionPedido(
+                    idPedido, cerrado, versionPrecio, tasa, totalUsd, totalBs,
+                    pagadoBsAplicado, pagadoUsdAplicado, saldoBs, saldoUsd, excedenteBs, excedenteUsd);
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo obtener el resumen de conciliación del pedido #" + idPedido, ex);
         }
     }
 

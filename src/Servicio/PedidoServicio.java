@@ -29,6 +29,18 @@ public final class PedidoServicio {
         return repositorio.actualizarPedidoCompleto(idPedido, pedido, detalles);
     }
 
+    public boolean cerrarMesa(int idPedido, int versionEsperada) {
+        return repositorio.cerrarMesa(idPedido, versionEsperada);
+    }
+
+    public boolean cerrarMesa(int idPedido) {
+        return repositorio.cerrarMesa(idPedido, 0);
+    }
+
+    public Modelo.ResumenConciliacionPedido resumenConciliacion(int idPedido) {
+        return repositorio.resumenConciliacion(idPedido);
+    }
+
     private void validar(Pedidos pedido, List<DetallePedido> detalles) {
         if (pedido == null) {
             throw ErrorAplicacionException.validacion("El pedido es obligatorio.");

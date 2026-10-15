@@ -120,9 +120,10 @@ public class CierreCajaDao {
                     }
                 }
 
-                // 2. Pedidos pendientes
+                // 2. Pedidos pendientes (abiertos y cerrados pendientes de pago)
                 String sqlPendientes = """
-                    SELECT COUNT(*) AS cant
+                    SELECT COUNT(*) AS cant,
+                           COALESCE(SUM(CASE WHEN cerrada_en IS NOT NULL THEN 1 ELSE 0 END), 0) AS cerradas_pendientes
                     FROM pedidos
                     WHERE estado = 'PENDIENTE'
                       AND (fecha LIKE ? OR DATE(fecha) = ?)
@@ -133,6 +134,7 @@ public class CierreCajaDao {
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             cierre.setPedidosPendientes(rs.getInt("cant"));
+                            cierre.setMesasCerradasPendientesPago(rs.getInt("cerradas_pendientes"));
                         }
                     }
                 }

@@ -73,4 +73,25 @@ public interface PedidosRepositorio {
     default boolean anularPedidoConAuditoria(int idPedido, String motivo, String usuario) {
         return anularPedido(idPedido);
     }
+
+    /**
+     * Cierra el servicio de la mesa congelando su cotización (Task 7).
+     * @param idPedido identificador del pedido
+     * @param versionEsperada versión de cotización esperada (o 0 si no se valida versión previa)
+     * @return true si se cerró o ya estaba cerrada en esa versión (idempotente)
+     */
+    default boolean cerrarMesa(int idPedido, int versionEsperada) {
+        return false;
+    }
+
+    default boolean cerrarMesa(int idPedido) {
+        return cerrarMesa(idPedido, 0);
+    }
+
+    /**
+     * Devuelve el resumen de conciliación financiera de una mesa cerrada o abierta (Task 7).
+     */
+    default ResumenConciliacionPedido resumenConciliacion(int idPedido) {
+        return null;
+    }
 }

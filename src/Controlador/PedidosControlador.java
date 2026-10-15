@@ -160,6 +160,18 @@ public final class PedidosControlador {
         return consultas.finalizarConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago, pagos);
     }
 
+    public boolean cerrarMesa(int idPedido, int versionEsperada) {
+        return consultas.cerrarMesa(idPedido, versionEsperada);
+    }
+
+    public boolean cerrarMesa(int idPedido) {
+        return consultas.cerrarMesa(idPedido, 0);
+    }
+
+    public Modelo.ResumenConciliacionPedido resumenConciliacion(int idPedido) {
+        return consultas.resumenConciliacion(idPedido);
+    }
+
     private static final java.util.logging.Logger LOGGER =
             java.util.logging.Logger.getLogger(PedidosControlador.class.getName());
 

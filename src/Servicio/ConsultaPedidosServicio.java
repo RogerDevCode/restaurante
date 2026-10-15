@@ -99,6 +99,22 @@ public final class ConsultaPedidosServicio {
         return repositorio.actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago, pagos);
     }
 
+    public boolean cerrarMesa(int idPedido, int versionEsperada) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        validarId(idPedido);
+        return repositorio.cerrarMesa(idPedido, versionEsperada);
+    }
+
+    public boolean cerrarMesa(int idPedido) {
+        return cerrarMesa(idPedido, 0);
+    }
+
+    public Modelo.ResumenConciliacionPedido resumenConciliacion(int idPedido) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        validarId(idPedido);
+        return repositorio.resumenConciliacion(idPedido);
+    }
+
     public boolean anular(int idPedido, String motivo, String usuario) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         validarId(idPedido);
