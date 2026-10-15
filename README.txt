@@ -547,3 +547,36 @@ PASO 5: VERIFICACION DE TABLAS E INICIO DEL SISTEMA
   - Clave: admin
 ================================================================================
 
+================================================================================
+MANUAL OPERATIVO DE PRECIOS, MONEDA BASE, IVA Y COBRO DE COMANDAS (2026)
+================================================================================
+1. MONEDA BASE EN CATÁLOGO:
+   - Cada plato define su Moneda Base ('USD' o 'VES'), condición fiscal ('Aplica IVA')
+     y modalidad de precio ('Precio incluye IVA' o 'Precio no incluye IVA').
+   - Los platos en USD mantienen su valor en USD inalterable frente a variaciones de tasa.
+   - Los platos en VES mantienen su valor en VES inalterable; su precio USD varía según la tasa.
+   - En platos gravados con "Precio incluye IVA", el precio ingresado es el precio final al
+     consumidor; la base imponible y el IVA se calculan hacia atrás sin recargos sorpresa.
+   - En platos exentos no se añade IVA en ningún caso.
+
+2. ACTUALIZACIÓN DE TASA OFICIAL Y CATÁLOGO:
+   - Modificar la tasa de cambio o precios del menú recalcula automáticamente y de forma
+     atómica ÚNICAMENTE las mesas abiertas (cerrada_en IS NULL).
+   - Se muestra una confirmación previa indicando la cantidad estimada de comandas abiertas.
+   - Si la actualización falla, la operación completa es revertida automáticamente sin
+     dejar inconsistencias ni registros huérfanos.
+
+3. CIERRE DE SERVICIO Y CONGELACIÓN DE COTIZACIÓN:
+   - Al cerrar la mesa de un cliente, se genera un snapshot financiero y fiscal inmutable
+     (subtotales, IVA, totales en USD y VES a la tasa vigente al momento del cierre).
+   - La mesa pasa a estado "Cerrada, pendiente de pago".
+   - Cambios posteriores en la tasa de cambio global o en los precios del menú NO modifican
+     ni alteran los montos acordados con el cliente para esa comanda.
+
+4. COBRO POSTERIOR Y CONCILIACIÓN:
+   - El cobro se realiza liquidando la cotización congelada al cierre.
+   - Se aceptan pagos en USD, VES o mixtos utilizando exactamente la tasa de cierre.
+   - En pagos mixtos, el efectivo recibido en exceso se desglosa en monto aplicado y cambio devuelto.
+   - El redondeo cambiario se registra en 'ajuste_cambio_bs' sin alterar el documento fiscal.
+   - Las ventas cerradas e históricas jamás se recalculan retrospectivamente.
+================================================================================

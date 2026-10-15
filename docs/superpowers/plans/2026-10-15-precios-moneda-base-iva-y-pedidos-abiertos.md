@@ -325,13 +325,13 @@ Esta sección conserva el contexto de negocio y del código para que un agente q
 - Modify: `README.txt` o documentación operativa de precios/pagos
 - Revisar sin reescritura: `BD.sql`, SQL duplicados, `build.xml`, `src/infraestructura/MigradorEsquemaJdbc.java`
 
-- [ ] Revisar cobertura requisito por requisito: USD base estable con variación VES; VES base estable con variación USD; selector independiente de categoría; IVA incluido hacia atrás; exento sin IVA; cambio de tasa y catálogo recalculan solo mesas abiertas; cierre congela importes hasta cobro; pago posterior usa snapshot de cierre; pagos legados se conservan; efectivo excedente se registra como cambio; históricos congelados; interfaz/ticket/PDF coinciden.
-- [ ] Ejecutar `ant -q compile jar`; esperado: éxito en JDK 21 y jar generado.
-- [ ] Ejecutar tests unitarios focalizados (sin `ant test` completo contra `.env`): cálculo, catálogo, pedidos, pagos, facturación, migración; esperado: todos verdes.
-- [ ] Ejecutar `ant integration-test`; esperado: suite aislada MySQL verde con migración desde BD anterior, repetición idempotente y transacciones concurrentes.
-- [ ] Ejecutar pruebas visuales únicamente mediante `./e2e_virtual.sh [clase]` en Xvfb `:99`, según `AGENTS.md`; esperado: sin uso del cursor/escritorio real. No iniciar/reiniciar `Restaurante.jar` desplegado en horario de servicio.
-- [ ] Revisar `git diff --check`, `cmp -s actualizar_bd.sql db/migrations/actualizar_bd.sql`, que las facturas cerradas no se recalculen, y que la migración jamás modifique montos históricos ni pagos.
-- [ ] Preparar despliegue con copia de seguridad y migración validada en copia/restauración primero; el corte productivo solo se agenda tras aprobación contable del tratamiento de IVA incluido/excedentes y revisión de permisos de acceso a configuración/precios.
+- [x] Revisar cobertura requisito por requisito: USD base estable con variación VES; VES base estable con variación USD; selector independiente de categoría; IVA incluido hacia atrás; exento sin IVA; cambio de tasa y catálogo recalculan solo mesas abiertas; cierre congela importes hasta cobro; pago posterior usa snapshot de cierre; pagos legados se conservan; efectivo excedente se registra como cambio; históricos congelados; interfaz/ticket/PDF coinciden.
+- [x] Ejecutar `ant -q compile jar`; esperado: éxito en JDK 21 y jar generado.
+- [x] Ejecutar tests unitarios focalizados (sin `ant test` completo contra `.env`): cálculo, catálogo, pedidos, pagos, facturación, migración; esperado: todos verdes.
+- [x] Ejecutar `ant integration-test`; esperado: suite aislada MySQL verde con migración desde BD anterior, repetición idempotente y transacciones concurrentes.
+- [x] Ejecutar pruebas visuales únicamente mediante `./e2e_virtual.sh [clase]` en Xvfb `:99`, según `AGENTS.md`; esperado: sin uso del cursor/escritorio real. No iniciar/reiniciar `Restaurante.jar` desplegado en horario de servicio.
+- [x] Revisar `git diff --check`, `cmp -s actualizar_bd.sql db/migrations/actualizar_bd.sql`, que las facturas cerradas no se recalculen, y que la migración jamás modifique montos históricos ni pagos.
+- [x] Preparar despliegue con copia de seguridad y migración validada en copia/restauración primero; el corte productivo solo se agenda tras aprobación contable del tratamiento de IVA incluido/excedentes y revisión de permisos de acceso a configuración/precios.
 
 ## Resultado de la revisión adversarial
 
