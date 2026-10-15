@@ -731,10 +731,20 @@ public class PanelAtencionMesasSplit extends JPanel {
                 try {
                     List<DetallePedido> detalles = get();
                     for (DetallePedido d : detalles) {
+                        int idPlato = (d.getIdPlato() != null && d.getIdPlato() > 0) ? d.getIdPlato() : d.getId();
+                        if (!platosPorId.containsKey(idPlato)) {
+                            Platos platoDummy = new Platos();
+                            platoDummy.setId(idPlato);
+                            platoDummy.setNombre(d.getNombre());
+                            platoDummy.setMonedaBase(d.getMonedaBase() != null ? d.getMonedaBase() : "USD");
+                            platoDummy.setAplicaIva(d.getAplicaIva() == null || d.getAplicaIva());
+                            platoDummy.setPrecioIncluyeIva(Boolean.TRUE.equals(d.getPrecioIncluyeIva()));
+                            platosPorId.put(idPlato, platoDummy);
+                        }
                         BigDecimal precio = d.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
                         BigDecimal sub = precio.multiply(BigDecimal.valueOf(d.getCantidad())).setScale(2, RoundingMode.HALF_UP);
                         modeloCarrito.addRow(new Object[]{
-                                d.getId(),
+                                idPlato,
                                 d.getNombre(),
                                 d.getCantidad(),
                                 String.format(java.util.Locale.US, "%.2f", precio),

@@ -3947,7 +3947,12 @@ public final class Sistema extends javax.swing.JFrame {
         if (tblTemPlatos.getSelectedRow() >= 0) {
             int id = Integer.parseInt(tblTemPlatos.getValueAt(tblTemPlatos.getSelectedRow(), 0).toString());
             String descripcion = tblTemPlatos.getValueAt(tblTemPlatos.getSelectedRow(), 1).toString();
-            BigDecimal precio = importeMonetario(tblTemPlatos.getValueAt(tblTemPlatos.getSelectedRow(), 2));
+            Platos plato = platosPorId.get(id);
+            BigDecimal precio = plato != null
+                    ? ("VES".equalsIgnoreCase(plato.getMonedaBase()) && plato.getPrecioVes() != null
+                            ? plato.getPrecioVes()
+                            : (plato.getPrecioUsd() != null ? plato.getPrecioUsd() : plato.getPrecioDecimal()))
+                    : importeMonetario(tblTemPlatos.getValueAt(tblTemPlatos.getSelectedRow(), 2));
             BigDecimal total = precio;
             item = item + 1;
             tmp = (DefaultTableModel) tableMenu.getModel();
@@ -9309,14 +9314,16 @@ public final class Sistema extends javax.swing.JFrame {
         if (str.contains("(")) {
             str = str.substring(0, str.indexOf('(')).trim();
         }
+        // Limpiar etiqueta de producto no clasificado si existe
+        str = str.replace("[!]", "").trim();
         // Limpiar prefijos de moneda como $, Bs., Bs
         str = str.replace("Bs.", "").replace("Bs", "").replace("$", "").trim();
         // Aceptar coma decimal convirtiéndola a punto
         str = str.replace(',', '.');
         try {
             BigDecimal importe = new BigDecimal(str);
-            if (importe.precision() - importe.scale() > 8) {
-                throw new ArithmeticException("El importe excede DECIMAL(10,2).");
+            if (importe.precision() - importe.scale() > 12) {
+                throw new ArithmeticException("El importe excede DECIMAL(14,2).");
             }
             return importe.setScale(2, RoundingMode.HALF_UP);
         } catch (NumberFormatException | ArithmeticException ex) {
@@ -9423,19 +9430,41 @@ public final class Sistema extends javax.swing.JFrame {
 
         modelo = (DefaultTableModel) tableFinalizar.getModel();
         modelo.setRowCount(0);
+        boolean esClasificado = tasaValida && Listar.stream().allMatch(d -> d.getMonedaBase() != null && d.getAplicaIva() != null && d.getPrecioIncluyeIva() != null);
+        Servicio.CalculoMonetarioPedido.CalculoPedido calcPantalla = esClasificado ? Servicio.CalculoMonetarioPedido.calcularPedido(Listar, tasa) : null;
         Object[] ob = new Object[6];
+
         for (int i = 0; i < Listar.size(); i++) {
-            ob[0] = Listar.get(i).getId();
-            ob[1] = Listar.get(i).getNombre();
-            ob[2] = Listar.get(i).getCantidad();
-            BigDecimal precio = Listar.get(i).getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
-            BigDecimal subtotalPlato = precio.multiply(BigDecimal.valueOf(Listar.get(i).getCantidad())).setScale(2, RoundingMode.HALF_UP);
-            String precioBs = tasaValida
-                    ? "Bs. " + String.format(java.util.Locale.US, "%.2f", precio.multiply(tasa).setScale(2, RoundingMode.HALF_UP))
-                    : "Bs. N/D";
-            ob[3] = "$ " + String.format(java.util.Locale.US, "%.2f", precio) + " (" + precioBs + ")";
-            ob[4] = "$ " + String.format(java.util.Locale.US, "%.2f", subtotalPlato);
-            ob[5] = Listar.get(i).getComentario();
+            DetallePedido det = Listar.get(i);
+            ob[0] = det.getId();
+            ob[1] = det.getNombre();
+            ob[2] = det.getCantidad();
+            BigDecimal precioUsd;
+            BigDecimal subtotalPlatoUsd;
+            String precioBs;
+            if (calcPantalla != null) {
+                Servicio.CalculoMonetarioPedido.CalculoLinea lin = calcPantalla.lineas().get(i);
+                if ("VES".equalsIgnoreCase(lin.monedaBase())) {
+                    BigDecimal unitBs = det.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal unitUsd = lin.totalUsdReferencia().divide(BigDecimal.valueOf(det.getCantidad()), 2, RoundingMode.HALF_UP);
+                    precioUsd = unitUsd;
+                    subtotalPlatoUsd = lin.totalUsdReferencia();
+                    precioBs = "Bs. " + String.format(java.util.Locale.US, "%.2f", unitBs);
+                } else {
+                    precioUsd = det.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    subtotalPlatoUsd = lin.totalUsdReferencia();
+                    precioBs = "Bs. " + String.format(java.util.Locale.US, "%.2f", precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP));
+                }
+            } else {
+                precioUsd = det.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                subtotalPlatoUsd = precioUsd.multiply(BigDecimal.valueOf(det.getCantidad())).setScale(2, RoundingMode.HALF_UP);
+                precioBs = tasaValida
+                        ? "Bs. " + String.format(java.util.Locale.US, "%.2f", precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP))
+                        : "Bs. N/D";
+            }
+            ob[3] = "$ " + String.format(java.util.Locale.US, "%.2f", precioUsd) + " (" + precioBs + ")";
+            ob[4] = "$ " + String.format(java.util.Locale.US, "%.2f", subtotalPlatoUsd);
+            ob[5] = det.getComentario();
             modelo.addRow(ob);
         }
         colorHeader(tableFinalizar);

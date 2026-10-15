@@ -86,6 +86,50 @@ public record CalculoFiscalRecord(
         if (detalles == null || detalles.isEmpty()) {
             throw ErrorAplicacionException.validacion("El pedido debe incluir detalles para calcular sus impuestos.");
         }
+        boolean tieneMoneda = detalles.stream().anyMatch(d -> d != null && d.getMonedaBase() != null && !d.getMonedaBase().isBlank());
+        if (tieneMoneda) {
+            BigDecimal tasaValida = tasaCambio != null && tasaCambio.compareTo(BigDecimal.ZERO) > 0 ? tasaCambio : new BigDecimal("36.5000");
+            BigDecimal ivaValido = ivaPorcentaje != null ? ivaPorcentaje : new BigDecimal("16.00");
+            for (DetallePedido d : detalles) {
+                if (d.getMonedaBase() == null || d.getMonedaBase().isBlank()) {
+                    d.setMonedaBase("USD");
+                }
+                if (d.getPrecioIncluyeIva() == null) {
+                    d.setPrecioIncluyeIva(Boolean.FALSE);
+                }
+                if (d.getIvaPorcentaje() == null) {
+                    d.setIvaPorcentaje(d.getAplicaIva() != null && d.getAplicaIva() ? ivaValido : BigDecimal.ZERO.setScale(2));
+                }
+            }
+            Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasaValida);
+            BigDecimal baseUsd = BigDecimal.ZERO.setScale(2);
+            BigDecimal exUsd = BigDecimal.ZERO.setScale(2);
+            for (Servicio.CalculoMonetarioPedido.CalculoLinea linea : calc.lineas()) {
+                if ("VES".equalsIgnoreCase(linea.monedaBase())) {
+                    baseUsd = baseUsd.add(linea.baseImponibleVes().divide(tasaValida, 8, RoundingMode.HALF_UP));
+                    exUsd = exUsd.add(linea.exentoVes().divide(tasaValida, 8, RoundingMode.HALF_UP));
+                } else {
+                    baseUsd = baseUsd.add(linea.baseImponibleFuente());
+                    exUsd = exUsd.add(linea.exentoFuente());
+                }
+            }
+            baseUsd = baseUsd.setScale(2, RoundingMode.HALF_UP);
+            exUsd = exUsd.setScale(2, RoundingMode.HALF_UP);
+            return new CalculoFiscalRecord(
+                    calc.subtotalUsd(),
+                    ivaValido.setScale(2, RoundingMode.HALF_UP),
+                    calc.ivaUsd(),
+                    calc.totalUsd(),
+                    tasaValida.setScale(4, RoundingMode.HALF_UP),
+                    calc.subtotalVes(),
+                    calc.ivaVes(),
+                    calc.totalVes(),
+                    baseUsd,
+                    exUsd,
+                    calc.baseImponibleVes(),
+                    calc.exentoVes());
+        }
+
         BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
         BigDecimal exento = BigDecimal.ZERO.setScale(2);
         for (DetallePedido detalle : detalles) {

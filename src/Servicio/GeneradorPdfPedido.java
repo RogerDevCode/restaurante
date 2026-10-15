@@ -249,35 +249,54 @@ public final class GeneradorPdfPedido {
         if (detalles == null || detalles.isEmpty()) {
             throw ErrorAplicacionException.validacion("El pedido debe tener detalles para generar el PDF.");
         }
-        BigDecimal totalDetalles = BigDecimal.ZERO.setScale(2);
         for (DetallePedido detalle : detalles) {
             if (detalle == null || detalle.getNombre() == null || detalle.getNombre().trim().isEmpty()
                     || detalle.getCantidad() <= 0 || !importeValido(detalle.getPrecioDecimal())) {
                 throw ErrorAplicacionException.validacion("El pedido contiene un detalle no válido para el PDF.");
             }
-            totalDetalles = totalDetalles.add(detalle.getPrecioDecimal().setScale(2, RoundingMode.UNNECESSARY)
-                    .multiply(BigDecimal.valueOf(detalle.getCantidad())));
         }
-        BigDecimal subtotalEsperado = totalDetalles;
-        boolean fiscalidadCompleta = detalles.stream().allMatch(d -> d.getAplicaIva() != null);
-        BigDecimal baseImponible = fiscalidadCompleta ? calcularBaseImponible(detalles) : subtotalEsperado;
-        BigDecimal ivaEsperado = (pedido.getIvaPorcentaje() != null && pedido.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0)
-                ? baseImponible.multiply(pedido.getIvaPorcentaje()).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO.setScale(2);
 
-        if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.UNNECESSARY).compareTo(subtotalEsperado) != 0) {
-            throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
-        }
-        if (pedido.getIvaMonto() != null && (pedido.getIvaMonto().compareTo(BigDecimal.ZERO) < 0
-                || (fiscalidadCompleta && pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP).compareTo(ivaEsperado) != 0)
-                || (!fiscalidadCompleta && pedido.getIvaMonto().compareTo(ivaEsperado) > 0))) {
-            throw ErrorAplicacionException.validacion("El monto del IVA no coincide con la condición fiscal de los detalles.");
-        }
-        BigDecimal ivaEfectivo = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : ivaEsperado;
-        BigDecimal totalEsperado = subtotalEsperado.add(ivaEfectivo).setScale(2, RoundingMode.HALF_UP);
-        if (!importeValido(pedido.getTotalDecimal())
-                || pedido.getTotalDecimal().setScale(2, RoundingMode.UNNECESSARY).compareTo(totalEsperado) != 0) {
-            throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles y cálculo de IVA.");
+        boolean esLegacy = detalles.stream().anyMatch(d -> d.getAplicaIva() == null || d.getMonedaBase() == null || d.getPrecioIncluyeIva() == null);
+        if (esLegacy) {
+            BigDecimal totalDetalles = BigDecimal.ZERO.setScale(2);
+            for (DetallePedido detalle : detalles) {
+                totalDetalles = totalDetalles.add(detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(detalle.getCantidad())));
+            }
+            BigDecimal subtotalEsperado = totalDetalles;
+            boolean fiscalidadCompleta = detalles.stream().allMatch(d -> d.getAplicaIva() != null);
+            BigDecimal baseImponible = fiscalidadCompleta ? calcularBaseImponible(detalles) : subtotalEsperado;
+            BigDecimal ivaEsperado = (pedido.getIvaPorcentaje() != null && pedido.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0)
+                    ? baseImponible.multiply(pedido.getIvaPorcentaje()).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO.setScale(2);
+
+            if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP).compareTo(subtotalEsperado) != 0) {
+                throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
+            }
+            if (pedido.getIvaMonto() != null && (pedido.getIvaMonto().compareTo(BigDecimal.ZERO) < 0
+                    || (fiscalidadCompleta && pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP).compareTo(ivaEsperado) != 0)
+                    || (!fiscalidadCompleta && pedido.getIvaMonto().compareTo(ivaEsperado) > 0))) {
+                throw ErrorAplicacionException.validacion("El monto del IVA no coincide con la condición fiscal de los detalles.");
+            }
+            BigDecimal ivaEfectivo = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : ivaEsperado;
+            BigDecimal totalEsperado = subtotalEsperado.add(ivaEfectivo).setScale(2, RoundingMode.HALF_UP);
+            if (!importeValido(pedido.getTotalDecimal())
+                    || pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP).compareTo(totalEsperado) != 0) {
+                throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles y cálculo de IVA.");
+            }
+        } else {
+            BigDecimal tasa = obtenerTasa(pedido, configuracion);
+            CalculoMonetarioPedido.CalculoPedido calc = CalculoMonetarioPedido.calcularPedido(detalles, tasa);
+            if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP).compareTo(calc.subtotalUsd()) != 0) {
+                throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
+            }
+            if (pedido.getIvaMonto() != null && pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP).compareTo(calc.ivaUsd()) != 0) {
+                throw ErrorAplicacionException.validacion("El monto del IVA no coincide con la condición fiscal de los detalles.");
+            }
+            if (!importeValido(pedido.getTotalDecimal())
+                    || pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP).compareTo(calc.totalUsd()) != 0) {
+                throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles y cálculo de IVA.");
+            }
         }
     }
 
@@ -306,7 +325,7 @@ public final class GeneradorPdfPedido {
 
     private boolean importeValido(BigDecimal importe) {
         return importe != null && importe.signum() >= 0 && importe.scale() <= 2
-                && importe.precision() - importe.scale() <= 8;
+                && importe.precision() - importe.scale() <= 12;
     }
 
     // =========================================================================
@@ -389,11 +408,35 @@ public final class GeneradorPdfPedido {
             tabla.addCell(celda);
         }
 
-        for (DetallePedido detalle : detalles) {
-            BigDecimal precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
-            BigDecimal subtotalUsd = precioUsd.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal precioBs = precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal subtotalBs = subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        boolean esLegacy = detalles.stream().anyMatch(d -> d == null || d.getAplicaIva() == null || d.getMonedaBase() == null || d.getPrecioIncluyeIva() == null);
+        CalculoMonetarioPedido.CalculoPedido calc = !esLegacy ? CalculoMonetarioPedido.calcularPedido(detalles, tasa) : null;
+
+        for (int i = 0; i < detalles.size(); i++) {
+            DetallePedido detalle = detalles.get(i);
+            BigDecimal precioUsd;
+            BigDecimal subtotalUsd;
+            BigDecimal precioBs;
+            BigDecimal subtotalBs;
+
+            if (esLegacy || calc == null) {
+                precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                subtotalUsd = precioUsd.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
+                precioBs = precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                subtotalBs = subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+            } else {
+                CalculoMonetarioPedido.CalculoLinea linea = calc.lineas().get(i);
+                if ("VES".equalsIgnoreCase(linea.monedaBase())) {
+                    subtotalBs = linea.totalVes();
+                    subtotalUsd = linea.totalUsdReferencia();
+                    precioBs = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    precioUsd = subtotalUsd.divide(BigDecimal.valueOf(detalle.getCantidad()), 2, RoundingMode.HALF_UP);
+                } else {
+                    subtotalUsd = linea.totalUsdReferencia();
+                    subtotalBs = linea.totalVes();
+                    precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    precioBs = precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                }
+            }
 
             PdfPCell cCant = new PdfPCell(new Phrase(String.valueOf(detalle.getCantidad()), cuerpo));
             PdfPCell cPlato = new PdfPCell(new Phrase(detalle.getNombre(), cuerpo));
@@ -421,15 +464,16 @@ public final class GeneradorPdfPedido {
     private void agregarCierreTicket80mm(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles)
             throws DocumentException {
         BigDecimal tasa = obtenerTasa(pedido, configuracion);
-        BigDecimal totalUsd = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
-        BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP) : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        boolean esLegacy = detalles.stream().anyMatch(d -> d == null || d.getAplicaIva() == null || d.getMonedaBase() == null || d.getPrecioIncluyeIva() == null);
+        CalculoMonetarioPedido.CalculoPedido calc = !esLegacy ? CalculoMonetarioPedido.calcularPedido(detalles, tasa) : null;
+
+        BigDecimal totalUsd = pedido.getTotalDecimal() != null ? pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP)
+                : (calc != null ? calc.totalUsd() : BigDecimal.ZERO.setScale(2));
+        BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP)
+                : (calc != null ? calc.totalVes() : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP));
 
         BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
         boolean tieneIva = ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0;
-        BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
-                ? calcularExento(detalles)
-                : BigDecimal.ZERO.setScale(2);
-        boolean tieneExento = exentoUsd.compareTo(BigDecimal.ZERO) > 0;
 
         Font fontSep = new Font(Font.FontFamily.COURIER, 7, Font.NORMAL, BaseColor.DARK_GRAY);
         Paragraph sep = new Paragraph("----------------------------------------------------------------", fontSep);
@@ -437,36 +481,88 @@ public final class GeneradorPdfPedido {
         documento.add(sep);
 
         StringBuilder sb = new StringBuilder();
-        if (tieneIva || tieneExento) {
-            BigDecimal subtotalUsd = pedido.getSubtotal() != null ? pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP) : totalUsd;
-            BigDecimal ivaUsd = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
-            BigDecimal subtotalBs = pedido.getSubtotalBs() != null ? pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP) : subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal ivaBs = pedido.getIvaBs() != null ? pedido.getIvaBs().setScale(2, RoundingMode.HALF_UP) : ivaUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
 
-            sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
-              .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
+        if (esLegacy || calc == null) {
+            BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
+                    ? calcularExento(detalles)
+                    : BigDecimal.ZERO.setScale(2);
+            boolean tieneExento = exentoUsd.compareTo(BigDecimal.ZERO) > 0;
 
-            if (tieneIva) {
-                BigDecimal baseImpUsd = tieneFiscalidadCompleta(detalles)
-                        ? calcularBaseImponible(detalles)
-                        : ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
-                BigDecimal exentoCalculado = tieneFiscalidadCompleta(detalles)
-                        ? exentoUsd : subtotalUsd.subtract(baseImpUsd);
-                if (exentoCalculado.compareTo(BigDecimal.ZERO) > 0) {
-                    BigDecimal baseImpBs = baseImpUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                    BigDecimal exentoBs = exentoCalculado.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                    sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
-                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
-                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoCalculado))
+            if (tieneIva || tieneExento) {
+                BigDecimal subtotalUsd = pedido.getSubtotal() != null ? pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP) : totalUsd;
+                BigDecimal ivaUsd = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+                BigDecimal subtotalBs = pedido.getSubtotalBs() != null ? pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP) : subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal ivaBs = pedido.getIvaBs() != null ? pedido.getIvaBs().setScale(2, RoundingMode.HALF_UP) : ivaUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+
+                sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
+                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
+
+                if (tieneIva) {
+                    BigDecimal baseImpUsd = tieneFiscalidadCompleta(detalles)
+                            ? calcularBaseImponible(detalles)
+                            : ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
+                    BigDecimal exentoCalculado = tieneFiscalidadCompleta(detalles)
+                            ? exentoUsd : subtotalUsd.subtract(baseImpUsd);
+                    if (exentoCalculado.compareTo(BigDecimal.ZERO) > 0) {
+                        BigDecimal baseImpBs = baseImpUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                        BigDecimal exentoBs = exentoCalculado.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                        sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
+                          .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
+                        sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoCalculado))
+                          .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+                    }
+                    sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
+                      .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
+                } else {
+                    BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
                       .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
                 }
-                sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
-                  .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
-                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
-            } else {
-                BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
-                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+            }
+        } else {
+            BigDecimal subtotalUsd = pedido.getSubtotal() != null ? pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP) : calc.subtotalUsd();
+            BigDecimal subtotalBs = pedido.getSubtotalBs() != null ? pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP) : calc.subtotalVes();
+            BigDecimal ivaUsd = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : calc.ivaUsd();
+            BigDecimal ivaBs = pedido.getIvaBs() != null ? pedido.getIvaBs().setScale(2, RoundingMode.HALF_UP) : calc.ivaVes();
+
+            BigDecimal exentoBs = calc.exentoVes();
+            BigDecimal baseImpBs = calc.baseImponibleVes();
+            BigDecimal exentoUsd = BigDecimal.ZERO.setScale(2);
+            BigDecimal baseImpUsd = BigDecimal.ZERO.setScale(2);
+            for (CalculoMonetarioPedido.CalculoLinea linea : calc.lineas()) {
+                if ("VES".equalsIgnoreCase(linea.monedaBase())) {
+                    exentoUsd = exentoUsd.add(linea.exentoVes().divide(tasa, 8, RoundingMode.HALF_UP));
+                    baseImpUsd = baseImpUsd.add(linea.baseImponibleVes().divide(tasa, 8, RoundingMode.HALF_UP));
+                } else {
+                    exentoUsd = exentoUsd.add(linea.exentoFuente());
+                    baseImpUsd = baseImpUsd.add(linea.baseImponibleFuente());
+                }
+            }
+            exentoUsd = exentoUsd.setScale(2, RoundingMode.HALF_UP);
+            baseImpUsd = baseImpUsd.setScale(2, RoundingMode.HALF_UP);
+
+            boolean tieneExento = exentoBs.compareTo(BigDecimal.ZERO) > 0;
+            boolean aplicaIvaEnTotales = tieneIva && ivaBs.compareTo(BigDecimal.ZERO) > 0;
+
+            if (aplicaIvaEnTotales || tieneExento) {
+                sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
+                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
+
+                if (aplicaIvaEnTotales) {
+                    if (tieneExento) {
+                        sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
+                          .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
+                        sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                          .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+                    }
+                    sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
+                      .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
+                } else {
+                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+                }
             }
         }
 
@@ -548,11 +644,36 @@ public final class GeneradorPdfPedido {
             celda.setBackgroundColor(BaseColor.LIGHT_GRAY);
             tabla.addCell(celda);
         }
-        for (DetallePedido detalle : detalles) {
-            BigDecimal precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
-            BigDecimal subtotalUsd = precioUsd.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal precioBs = precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal subtotalBs = subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+
+        boolean esLegacy = detalles.stream().anyMatch(d -> d == null || d.getAplicaIva() == null || d.getMonedaBase() == null || d.getPrecioIncluyeIva() == null);
+        CalculoMonetarioPedido.CalculoPedido calc = !esLegacy ? CalculoMonetarioPedido.calcularPedido(detalles, tasa) : null;
+
+        for (int i = 0; i < detalles.size(); i++) {
+            DetallePedido detalle = detalles.get(i);
+            BigDecimal precioUsd;
+            BigDecimal subtotalUsd;
+            BigDecimal precioBs;
+            BigDecimal subtotalBs;
+
+            if (esLegacy || calc == null) {
+                precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                subtotalUsd = precioUsd.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
+                precioBs = precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                subtotalBs = subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+            } else {
+                CalculoMonetarioPedido.CalculoLinea linea = calc.lineas().get(i);
+                if ("VES".equalsIgnoreCase(linea.monedaBase())) {
+                    subtotalBs = linea.totalVes();
+                    subtotalUsd = linea.totalUsdReferencia();
+                    precioBs = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    precioUsd = subtotalUsd.divide(BigDecimal.valueOf(detalle.getCantidad()), 2, RoundingMode.HALF_UP);
+                } else {
+                    subtotalUsd = linea.totalUsdReferencia();
+                    subtotalBs = linea.totalVes();
+                    precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    precioBs = precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                }
+            }
 
             tabla.addCell(String.valueOf(detalle.getCantidad()));
             tabla.addCell(detalle.getNombre());
@@ -564,47 +685,100 @@ public final class GeneradorPdfPedido {
 
     private void agregarCierre(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles) throws DocumentException {
         BigDecimal tasa = obtenerTasa(pedido, configuracion);
-        BigDecimal totalUsd = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
-        BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP) : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+        boolean esLegacy = detalles.stream().anyMatch(d -> d == null || d.getAplicaIva() == null || d.getMonedaBase() == null || d.getPrecioIncluyeIva() == null);
+        CalculoMonetarioPedido.CalculoPedido calc = !esLegacy ? CalculoMonetarioPedido.calcularPedido(detalles, tasa) : null;
+
+        BigDecimal totalUsd = pedido.getTotalDecimal() != null ? pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP)
+                : (calc != null ? calc.totalUsd() : BigDecimal.ZERO.setScale(2));
+        BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP)
+                : (calc != null ? calc.totalVes() : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP));
 
         BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
         boolean tieneIva = ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0;
-        BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
-                ? calcularExento(detalles)
-                : BigDecimal.ZERO.setScale(2);
-        boolean tieneExento = exentoUsd.compareTo(BigDecimal.ZERO) > 0;
 
         StringBuilder sb = new StringBuilder();
-        if (tieneIva || tieneExento) {
-            BigDecimal subtotalUsd = pedido.getSubtotal() != null ? pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP) : totalUsd;
-            BigDecimal ivaUsd = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
-            BigDecimal subtotalBs = pedido.getSubtotalBs() != null ? pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP) : subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal ivaBs = pedido.getIvaBs() != null ? pedido.getIvaBs().setScale(2, RoundingMode.HALF_UP) : ivaUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
 
-            sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
-              .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
+        if (esLegacy || calc == null) {
+            BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
+                    ? calcularExento(detalles)
+                    : BigDecimal.ZERO.setScale(2);
+            boolean tieneExento = exentoUsd.compareTo(BigDecimal.ZERO) > 0;
 
-            if (tieneIva) {
-                BigDecimal baseImpUsd = tieneFiscalidadCompleta(detalles)
-                        ? calcularBaseImponible(detalles)
-                        : ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
-                BigDecimal exentoCalculado = tieneFiscalidadCompleta(detalles)
-                        ? exentoUsd : subtotalUsd.subtract(baseImpUsd);
-                if (exentoCalculado.compareTo(BigDecimal.ZERO) > 0) {
-                    BigDecimal baseImpBs = baseImpUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                    BigDecimal exentoBs = exentoCalculado.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                    sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
-                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
-                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoCalculado))
+            if (tieneIva || tieneExento) {
+                BigDecimal subtotalUsd = pedido.getSubtotal() != null ? pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP) : totalUsd;
+                BigDecimal ivaUsd = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+                BigDecimal subtotalBs = pedido.getSubtotalBs() != null ? pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP) : subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal ivaBs = pedido.getIvaBs() != null ? pedido.getIvaBs().setScale(2, RoundingMode.HALF_UP) : ivaUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+
+                sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
+                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
+
+                if (tieneIva) {
+                    BigDecimal baseImpUsd = tieneFiscalidadCompleta(detalles)
+                            ? calcularBaseImponible(detalles)
+                            : ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
+                    BigDecimal exentoCalculado = tieneFiscalidadCompleta(detalles)
+                            ? exentoUsd : subtotalUsd.subtract(baseImpUsd);
+                    if (exentoCalculado.compareTo(BigDecimal.ZERO) > 0) {
+                        BigDecimal baseImpBs = baseImpUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                        BigDecimal exentoBs = exentoCalculado.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                        sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
+                          .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
+                        sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoCalculado))
+                          .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+                    }
+                    sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
+                      .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
+                } else {
+                    BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
                       .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
                 }
-                sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
-                  .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
-                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
-            } else {
-                BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
-                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+            }
+        } else {
+            BigDecimal subtotalUsd = pedido.getSubtotal() != null ? pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP) : calc.subtotalUsd();
+            BigDecimal subtotalBs = pedido.getSubtotalBs() != null ? pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP) : calc.subtotalVes();
+            BigDecimal ivaUsd = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : calc.ivaUsd();
+            BigDecimal ivaBs = pedido.getIvaBs() != null ? pedido.getIvaBs().setScale(2, RoundingMode.HALF_UP) : calc.ivaVes();
+
+            BigDecimal exentoBs = calc.exentoVes();
+            BigDecimal baseImpBs = calc.baseImponibleVes();
+            BigDecimal exentoUsd = BigDecimal.ZERO.setScale(2);
+            BigDecimal baseImpUsd = BigDecimal.ZERO.setScale(2);
+            for (CalculoMonetarioPedido.CalculoLinea linea : calc.lineas()) {
+                if ("VES".equalsIgnoreCase(linea.monedaBase())) {
+                    exentoUsd = exentoUsd.add(linea.exentoVes().divide(tasa, 8, RoundingMode.HALF_UP));
+                    baseImpUsd = baseImpUsd.add(linea.baseImponibleVes().divide(tasa, 8, RoundingMode.HALF_UP));
+                } else {
+                    exentoUsd = exentoUsd.add(linea.exentoFuente());
+                    baseImpUsd = baseImpUsd.add(linea.baseImponibleFuente());
+                }
+            }
+            exentoUsd = exentoUsd.setScale(2, RoundingMode.HALF_UP);
+            baseImpUsd = baseImpUsd.setScale(2, RoundingMode.HALF_UP);
+
+            boolean tieneExento = exentoBs.compareTo(BigDecimal.ZERO) > 0;
+            boolean aplicaIvaEnTotales = tieneIva && ivaBs.compareTo(BigDecimal.ZERO) > 0;
+
+            if (aplicaIvaEnTotales || tieneExento) {
+                sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
+                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
+
+                if (aplicaIvaEnTotales) {
+                    if (tieneExento) {
+                        sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
+                          .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
+                        sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                          .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+                    }
+                    sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
+                      .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
+                } else {
+                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                      .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
+                }
             }
         }
 

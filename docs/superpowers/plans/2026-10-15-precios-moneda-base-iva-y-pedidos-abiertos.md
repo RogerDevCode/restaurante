@@ -298,11 +298,11 @@ Esta sección conserva el contexto de negocio y del código para que un agente q
 - Presentación consume exclusivamente `CalculoPedido` y snapshots; no reconvierte precio mediante nombre/categoría ni usa de nuevo la tasa actual para un pedido cerrado.
 - Diseño visual y formato de factura actual se conservan; los cálculos cambian y los valores VES se mantienen exactos. El ajuste de cambio se informa en conciliación/panel de pago, no se añade al documento fiscal.
 
-- [ ] Añadir casos PDF/ticket para USD excluido, VES incluido 60,00 con total 60,00, exento y pedido mixto; esperado: totales e IVA coinciden con DAO, no aparecen recargos a precio incluido.
-- [ ] Ejecutar `ant -q '-Dtest.includes=**/GeneradorPdfPedidoTest.java' test-single` y el test focalizado de ticket; esperado: sin cambio al diseño ya establecido y sin cálculo monetario duplicado.
-- [ ] Reemplazar conversiones directas como `totalUSD × tasa` por el objeto de cálculo guardado en el pedido; eliminar forks de fórmulas duplicadas en panel, ticket y PDF.
-- [ ] Mantener factura emitida/historial en formato actual, con importes congelados de cierre; filas históricas con flags IVA NULL usan renderer/valores legacy almacenados y nunca recalculan desde catálogo actual. Cambios fiscales futuros requieren nueva venta/ajuste aprobado, no reimpresión retroactiva con catálogo actual.
-- [ ] Ejecutar `./e2e_virtual.sh Vista.E2EVirtual` solo si el agente de implementación confirma fixture seguro y `-De2e.permitir=SI`; esperado: flujo termina sin tocar escritorio real y elimina el pedido que crea. No usar interfaz de producción para verificar.
+- [x] Añadir casos PDF/ticket para USD excluido, VES incluido 60,00 con total 60,00, exento y pedido mixto; esperado: totales e IVA coinciden con DAO, no aparecen recargos a precio incluido.
+- [x] Ejecutar `ant -q '-Dtest.includes=**/GeneradorPdfPedidoTest.java' test-single` y el test focalizado de ticket; esperado: sin cambio al diseño ya establecido y sin cálculo monetario duplicado.
+- [x] Reemplazar conversiones directas como `totalUSD × tasa` por el objeto de cálculo guardado en el pedido; eliminar forks de fórmulas duplicadas en panel, ticket y PDF.
+- [x] Mantener factura emitida/historial en formato actual, con importes congelados de cierre; filas históricas con flags IVA NULL usan renderer/valores legacy almacenados y nunca recalculan desde catálogo actual. Cambios fiscales futuros requieren nueva venta/ajuste aprobado, no reimpresión retroactiva con catálogo actual.
+- [x] Ejecutar `./e2e_virtual.sh Vista.E2EVirtual` solo si el agente de implementación confirma fixture seguro y `-De2e.permitir=SI`; esperado: flujo termina sin tocar escritorio real y elimina el pedido que crea. No usar interfaz de producción para verificar.
 
 ### Task 9: Refrescar pantallas y revisar auditoría transaccional
 
