@@ -514,6 +514,11 @@ public class PlatosDao implements PlatosRepositorio {
         return desactivar(id);
     }
 
+    @Override
+    public ResultadoActualizacionPrecios modificarProductoYRecalcularPendientes(Platos plato, String usuario) {
+        return new PreciosPedidosDao(conexiones).modificarProductoYRecalcularPendientes(plato, usuario);
+    }
+
     /** Compatibilidad temporal con la vista Swing existente. */
     @Deprecated
     public boolean Modificar(Platos plato) {

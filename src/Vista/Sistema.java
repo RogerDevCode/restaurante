@@ -4511,11 +4511,20 @@ public final class Sistema extends javax.swing.JFrame {
                     pla.setAplicaIva(aplicaIva);
                     pla.setPrecioIncluyeIva(aplicaIva && chkPrecioIncluyeIvaPlato != null && chkPrecioIncluyeIvaPlato.isSelected());
                     BigDecimal tasa = getTasaActual();
-                    if (platosControlador.modificar(pla, tasa)) {
+                    Modelo.ResultadoActualizacionPrecios res = platosControlador.modificarProductoYRecalcularPendientes(pla, tasa, getNombreUsuarioActual());
+                    if (res != null) {
                         ListarPlatos(TablePlatos, "");
                         LimpiarPlatos();
                         RefrescoVistas.notificar(RefrescoVistas.PLATOS);
-                        mostrarAvisoEnBanda("Plato modificado");
+                        RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                        String mensaje = "Plato modificado.";
+                        if (res.pedidosRecalculados() > 0) {
+                            mensaje += " Recalculados " + res.pedidosRecalculados() + " pedidos abiertos.";
+                        }
+                        if (res.lineasNoEnlazadasOmitidas() > 0) {
+                            mensaje += " (" + res.lineasNoEnlazadasOmitidas() + " líneas históricas no vinculadas permanecen intactas).";
+                        }
+                        mostrarAvisoEnBanda(mensaje);
                     } else {
                         mostrarAvisoEnBanda("No se aplicaron cambios al plato");
                     }

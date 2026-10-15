@@ -69,6 +69,19 @@ public final class PlatosServicio {
         return repositorio.modificar(normalizar(plato, tasa));
     }
 
+    public Modelo.ResultadoActualizacionPrecios modificarProductoYRecalcularPendientes(Platos plato, String usuario) {
+        return modificarProductoYRecalcularPendientes(plato, null, usuario);
+    }
+
+    public Modelo.ResultadoActualizacionPrecios modificarProductoYRecalcularPendientes(Platos plato, BigDecimal tasa, String usuario) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        validarDatos(plato);
+        if (plato.getId() <= 0) {
+            throw ErrorAplicacionException.validacion("Selecciona un plato válido para modificar.");
+        }
+        return repositorio.modificarProductoYRecalcularPendientes(normalizar(plato, tasa), usuario);
+    }
+
     public boolean desactivar(int id) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         if (id <= 0) {

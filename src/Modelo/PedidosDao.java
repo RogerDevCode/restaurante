@@ -40,7 +40,7 @@ public class PedidosDao implements PedidosRepositorio {
         String sql = """
             SELECT id
             FROM pedidos
-            WHERE num_mesa = ? AND id_sala = ? AND estado = ?
+            WHERE num_mesa = ? AND id_sala = ? AND estado = ? AND cerrada_en IS NULL
             """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
@@ -1277,7 +1277,7 @@ public class PedidosDao implements PedidosRepositorio {
         String sql = """
             SELECT id_sala, COUNT(DISTINCT num_mesa) AS ocupadas
             FROM pedidos
-            WHERE estado = 'PENDIENTE'
+            WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL
             GROUP BY id_sala
             """;
         try (Connection conexion = conexiones.getConnection();
@@ -1299,7 +1299,7 @@ public class PedidosDao implements PedidosRepositorio {
         String sql = """
             SELECT num_mesa, mesonero_nombre
             FROM pedidos
-            WHERE id_sala = ? AND estado = 'PENDIENTE'
+            WHERE id_sala = ? AND estado = 'PENDIENTE' AND cerrada_en IS NULL
             """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {

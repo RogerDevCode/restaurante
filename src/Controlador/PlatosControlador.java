@@ -51,4 +51,12 @@ public final class PlatosControlador {
     public java.util.List<Modelo.Platos> listarInactivos() {
         return servicio.listarInactivos();
     }
+
+    public Modelo.ResultadoActualizacionPrecios modificarProductoYRecalcularPendientes(Platos plato, String usuario) {
+        return servicio.modificarProductoYRecalcularPendientes(plato, usuario);
+    }
+
+    public Modelo.ResultadoActualizacionPrecios modificarProductoYRecalcularPendientes(Platos plato, java.math.BigDecimal tasa, String usuario) {
+        return servicio.modificarProductoYRecalcularPendientes(plato, tasa, usuario);
+    }
 }
