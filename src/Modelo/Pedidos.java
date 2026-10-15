@@ -298,4 +298,23 @@ public class Pedidos {
     public void setMesoneroNombre(String mesoneroNombre) {
         this.mesoneroNombre = mesoneroNombre != null ? mesoneroNombre.trim() : null;
     }
+
+    private java.time.LocalDateTime cerradaEn;
+    private int versionPrecio = 1;
+
+    public java.time.LocalDateTime getCerradaEn() {
+        return cerradaEn;
+    }
+
+    public void setCerradaEn(java.time.LocalDateTime cerradaEn) {
+        this.cerradaEn = cerradaEn;
+    }
+
+    public int getVersionPrecio() {
+        return versionPrecio;
+    }
+
+    public void setVersionPrecio(int versionPrecio) {
+        this.versionPrecio = versionPrecio;
+    }
 }

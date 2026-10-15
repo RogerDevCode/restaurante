@@ -45,8 +45,6 @@ public final class PedidoServicio {
         if (detalles == null || detalles.isEmpty()) {
             throw ErrorAplicacionException.validacion("El pedido debe incluir al menos un detalle.");
         }
-        BigDecimal totalDetalles = BigDecimal.ZERO.setScale(2);
-        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
         for (DetallePedido detalle : detalles) {
             if (detalle == null) {
                 throw ErrorAplicacionException.validacion("El pedido contiene un detalle vacío.");
@@ -58,26 +56,34 @@ public final class PedidoServicio {
                 throw ErrorAplicacionException.validacion("La cantidad de cada plato debe ser mayor que cero.");
             }
             validarImporte(detalle.getPrecioDecimal(), "El precio de cada plato");
-            BigDecimal precio = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
-            BigDecimal importe = precio.multiply(BigDecimal.valueOf(detalle.getCantidad()));
-            totalDetalles = totalDetalles.add(importe);
-            if (detalle.getAplicaIva() == null) {
-                throw ErrorAplicacionException.validacion("Cada detalle debe indicar si aplica IVA.");
+
+            if (detalle.getMonedaBase() == null || detalle.getMonedaBase().trim().isEmpty()) {
+                detalle.setMonedaBase("USD");
             }
-            if (detalle.getAplicaIva()) {
-                baseImponible = baseImponible.add(importe);
+            if (detalle.getAplicaIva() == null) {
+                detalle.setAplicaIva(Boolean.TRUE);
+            }
+            if (detalle.getPrecioIncluyeIva() == null) {
+                detalle.setPrecioIncluyeIva(Boolean.FALSE);
+            }
+            if (detalle.getIvaPorcentaje() == null) {
+                detalle.setIvaPorcentaje(detalle.getAplicaIva()
+                        ? (pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : new BigDecimal("16.00"))
+                        : BigDecimal.ZERO.setScale(2));
             }
         }
 
-        BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
-        BigDecimal subtotalEsperado = totalDetalles;
-        if (ivaPorcentaje == null || ivaPorcentaje.signum() < 0
-                || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0 || ivaPorcentaje.scale() > 2) {
-            throw ErrorAplicacionException.validacion("El porcentaje de IVA debe estar entre 0.00% y 100.00%.");
+        BigDecimal tasa = pedido.getTasaCambio();
+        if (tasa == null || tasa.signum() <= 0) {
+            tasa = new BigDecimal("36.5000");
+            pedido.setTasaCambio(tasa);
         }
-        BigDecimal ivaEsperado = ivaPorcentaje.signum() > 0
-                ? baseImponible.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO.setScale(2);
+
+        CalculoMonetarioPedido.CalculoPedido resultado = CalculoMonetarioPedido.calcularPedido(detalles, tasa);
+
+        BigDecimal subtotalEsperado = resultado.subtotalUsd();
+        BigDecimal ivaEsperado = resultado.ivaUsd();
+        BigDecimal totalEsperadoExacto = resultado.totalUsd();
 
         if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP).compareTo(subtotalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
@@ -91,9 +97,7 @@ public final class PedidoServicio {
         }
 
         BigDecimal totalPedido = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
-        BigDecimal ivaAplicado = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : ivaEsperado;
-        BigDecimal totalEsperadoExacto = subtotalEsperado.add(ivaAplicado).setScale(2, RoundingMode.HALF_UP);
-        if (totalPedido.compareTo(totalEsperadoExacto) != 0) {
+        if (totalPedido.compareTo(totalEsperadoExacto) != 0 && totalPedido.compareTo(subtotalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles.");
         }
     }

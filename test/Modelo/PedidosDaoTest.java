@@ -279,4 +279,25 @@ public class PedidosDaoTest {
         }
     }
 
+    @Test
+    public void validarPedidoPersistibleFueEliminadoYReemplazadoPorCalculoMonetario() {
+        boolean existeMetodoViejo = Arrays.stream(PedidosDao.class.getDeclaredMethods())
+                .anyMatch(m -> m.getName().equals("validarPedidoPersistible"));
+        org.junit.Assert.assertFalse("El método validarPedidoPersistible debe estar completamente eliminado (P1-A)", existeMetodoViejo);
+    }
+
+    @Test
+    public void calculoSnapshotFiscalConPrecioIncluyeIvaNoDuplicaIvaYConservaTotalExacto() {
+        // Precio con IVA incluido de $116.00 a 16% IVA -> Base = $100.00, IVA = $16.00, Total = $116.00
+        DetallePedido detalleInc = new DetallePedido(1, "Combo Familiar", new BigDecimal("116.00"), 1, "", 1);
+        detalleInc.setMonedaBase("USD");
+        detalleInc.setAplicaIva(true);
+        detalleInc.setPrecioIncluyeIva(true);
+        detalleInc.setIvaPorcentaje(new BigDecimal("16.00"));
+
+        var calculo = Servicio.CalculoMonetarioPedido.calcularPedido(List.of(detalleInc), new BigDecimal("40.0000"));
+        assertEquals(new BigDecimal("100.00"), calculo.subtotalUsd());
+        assertEquals(new BigDecimal("16.00"), calculo.ivaUsd());
+        assertEquals(new BigDecimal("116.00"), calculo.totalUsd());
+    }
 }

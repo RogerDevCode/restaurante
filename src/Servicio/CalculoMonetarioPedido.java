@@ -271,5 +271,39 @@ public final class CalculoMonetarioPedido {
         public CalculoPedido {
             lineas = List.copyOf(lineas);
         }
+
+        public BigDecimal totalUsd() {
+            return totalUsdReferencia;
+        }
+
+        public BigDecimal subtotalVes() {
+            return baseImponibleVes.add(exentoVes).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
+        }
+
+        public BigDecimal subtotalUsd() {
+            BigDecimal subtotal = CERO;
+            for (CalculoLinea linea : lineas) {
+                if ("VES".equals(linea.monedaBase())) {
+                    BigDecimal baseUsd = convertirADolaresReferencia(linea.baseImponibleVes().add(linea.exentoVes()), tasa);
+                    subtotal = subtotal.add(baseUsd);
+                } else {
+                    subtotal = subtotal.add(linea.baseImponibleFuente()).add(linea.exentoFuente());
+                }
+            }
+            return subtotal.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
+        }
+
+        public BigDecimal ivaUsd() {
+            BigDecimal iva = CERO;
+            for (CalculoLinea linea : lineas) {
+                if ("VES".equals(linea.monedaBase())) {
+                    BigDecimal ivaUsdLinea = convertirADolaresReferencia(linea.ivaVes(), tasa);
+                    iva = iva.add(ivaUsdLinea);
+                } else {
+                    iva = iva.add(linea.ivaFuente());
+                }
+            }
+            return iva.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
+        }
     }
 }

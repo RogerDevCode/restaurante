@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import Servicio.CalculoMonetarioPedido;
+import Servicio.CalculoMonetarioPedido.CalculoPedido;
 
 public class PedidosDao implements PedidosRepositorio {
     private static final Logger LOGGER = Logger.getLogger(PedidosDao.class.getName());
@@ -58,28 +60,22 @@ public class PedidosDao implements PedidosRepositorio {
 
     @Override
     public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) {
-        validarPedidoPersistible(pedido, detalles);
-        if (detalles == null || detalles.isEmpty()) {
-            throw ErrorAplicacionException.validacion("El pedido debe incluir al menos un detalle.");
-        }
-        for (DetallePedido detalle : detalles) {
-            if (detalle == null) {
-                throw ErrorAplicacionException.validacion("El pedido contiene un detalle vacío.");
-            }
-        }
+        validarEstructuraPedido(pedido, detalles);
 
         String sqlPedido = """
-            INSERT INTO pedidos (id_sala, num_mesa, tipo_pedido, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO pedidos (id_sala, num_mesa, tipo_pedido, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre, version_precio)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             """;
         String sqlDetalle = """
-            INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido, aplica_iva)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido, aplica_iva, id_plato, moneda_base, precio_incluye_iva, iva_porcentaje)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
         try (Connection conexion = conexiones.getConnection()) {
             try {
                 conexion.setAutoCommit(false);
+                calcularYConsolidarSnapshot(conexion, pedido, detalles);
+
                 int idPedido;
                 try (PreparedStatement sentenciaPedido = conexion.prepareStatement(sqlPedido, Statement.RETURN_GENERATED_KEYS)) {
                     boolean pedidoRapido = pedido.esPedidoRapido();
@@ -126,9 +122,25 @@ public class PedidosDao implements PedidosRepositorio {
                         sentenciaDetalle.setBigDecimal(2, importePersistible(
                                 detalle.getPrecioDecimal(), "El precio de cada plato"));
                         sentenciaDetalle.setInt(3, detalle.getCantidad());
-                        sentenciaDetalle.setString(4, detalle.getComentario());
+                        sentenciaDetalle.setString(4, detalle.getComentario() != null ? detalle.getComentario() : "");
                         sentenciaDetalle.setInt(5, idPedido);
-                        sentenciaDetalle.setBoolean(6, detalle.getAplicaIva());
+                        sentenciaDetalle.setBoolean(6, detalle.getAplicaIva() == null || detalle.getAplicaIva());
+                        if (detalle.getIdPlato() != null && detalle.getIdPlato() > 0) {
+                            sentenciaDetalle.setInt(7, detalle.getIdPlato());
+                        } else {
+                            sentenciaDetalle.setNull(7, java.sql.Types.INTEGER);
+                        }
+                        sentenciaDetalle.setString(8, detalle.getMonedaBase() != null ? detalle.getMonedaBase() : "USD");
+                        if (detalle.getPrecioIncluyeIva() != null) {
+                            sentenciaDetalle.setInt(9, detalle.getPrecioIncluyeIva() ? 1 : 0);
+                        } else {
+                            sentenciaDetalle.setNull(9, java.sql.Types.TINYINT);
+                        }
+                        if (detalle.getIvaPorcentaje() != null) {
+                            sentenciaDetalle.setBigDecimal(10, detalle.getIvaPorcentaje());
+                        } else {
+                            sentenciaDetalle.setNull(10, java.sql.Types.DECIMAL);
+                        }
                         if (sentenciaDetalle.executeUpdate() != 1) {
                             throw new SQLException("No se pudo insertar uno de los detalles del pedido.");
                         }
@@ -167,18 +179,24 @@ public class PedidosDao implements PedidosRepositorio {
 
     @Override
     public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos) {
-        validarPedidoPersistible(pedidoModificado, detallesNuevos);
+        validarEstructuraPedido(pedidoModificado, detallesNuevos);
         
         String sqlUpdatePedido = """
             UPDATE pedidos SET subtotal = ?, iva_porcentaje = ?, iva_monto = ?, total = ?, 
-            tasa_cambio = ?, subtotal_bs = ?, iva_bs = ?, total_bs = ?, id_mesonero = ?, mesonero_nombre = ?
-            WHERE id = ? AND estado = 'PENDIENTE'
+            tasa_cambio = ?, subtotal_bs = ?, iva_bs = ?, total_bs = ?, id_mesonero = ?, mesonero_nombre = ?,
+            version_precio = version_precio + 1
+            WHERE id = ? AND estado = 'PENDIENTE' AND cerrada_en IS NULL
             """;
         String sqlDeleteDetalles = "DELETE FROM detalle_pedidos WHERE id_pedido = ?";
-        String sqlInsertDetalle = "INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido, aplica_iva) VALUES (?, ?, ?, ?, ?, ?)";
+        String sqlInsertDetalle = """
+            INSERT INTO detalle_pedidos (nombre, precio, cantidad, comentario, id_pedido, aplica_iva, id_plato, moneda_base, precio_incluye_iva, iva_porcentaje)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
         
         try (Connection conexion = conexiones.getConnection()) {
             conexion.setAutoCommit(false);
+            calcularYConsolidarSnapshot(conexion, pedidoModificado, detallesNuevos);
+
             try (PreparedStatement updatePed = conexion.prepareStatement(sqlUpdatePedido);
                  PreparedStatement delDetalles = conexion.prepareStatement(sqlDeleteDetalles);
                  PreparedStatement insDetalle = conexion.prepareStatement(sqlInsertDetalle)) {
@@ -202,7 +220,7 @@ public class PedidosDao implements PedidosRepositorio {
                 
                 int filasAfectadas = updatePed.executeUpdate();
                 if (filasAfectadas == 0) {
-                    throw new SQLException("El pedido ya no existe o no está PENDIENTE.");
+                    throw new SQLException("El pedido ya no existe, no está PENDIENTE o ya ha sido cerrado.");
                 }
                 
                 delDetalles.setInt(1, idPedido);
@@ -214,7 +232,23 @@ public class PedidosDao implements PedidosRepositorio {
                     insDetalle.setInt(3, det.getCantidad());
                     insDetalle.setString(4, det.getComentario() == null ? "" : det.getComentario());
                     insDetalle.setInt(5, idPedido);
-                    insDetalle.setBoolean(6, det.getAplicaIva());
+                    insDetalle.setBoolean(6, det.getAplicaIva() == null || det.getAplicaIva());
+                    if (det.getIdPlato() != null && det.getIdPlato() > 0) {
+                        insDetalle.setInt(7, det.getIdPlato());
+                    } else {
+                        insDetalle.setNull(7, java.sql.Types.INTEGER);
+                    }
+                    insDetalle.setString(8, det.getMonedaBase() != null ? det.getMonedaBase() : "USD");
+                    if (det.getPrecioIncluyeIva() != null) {
+                        insDetalle.setInt(9, det.getPrecioIncluyeIva() ? 1 : 0);
+                    } else {
+                        insDetalle.setNull(9, java.sql.Types.TINYINT);
+                    }
+                    if (det.getIvaPorcentaje() != null) {
+                        insDetalle.setBigDecimal(10, det.getIvaPorcentaje());
+                    } else {
+                        insDetalle.setNull(10, java.sql.Types.DECIMAL);
+                    }
                     insDetalle.addBatch();
                 }
                 insDetalle.executeBatch();
@@ -375,7 +409,7 @@ public class PedidosDao implements PedidosRepositorio {
         }
     }
 
-    private void validarPedidoPersistible(Pedidos pedido, List<DetallePedido> detalles) {
+    private void validarEstructuraPedido(Pedidos pedido, List<DetallePedido> detalles) {
         if (pedido == null) {
             throw ErrorAplicacionException.validacion("El pedido es obligatorio.");
         }
@@ -388,8 +422,6 @@ public class PedidosDao implements PedidosRepositorio {
         if (detalles == null || detalles.isEmpty()) {
             throw ErrorAplicacionException.validacion("El pedido debe incluir al menos un detalle.");
         }
-        BigDecimal sumaDetalles = BigDecimal.ZERO.setScale(2);
-        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
         for (DetallePedido detalle : detalles) {
             if (detalle == null || detalle.getNombre() == null || detalle.getNombre().trim().isEmpty()
                     || detalle.getCantidad() <= 0
@@ -397,76 +429,135 @@ public class PedidosDao implements PedidosRepositorio {
                 throw ErrorAplicacionException.validacion("Cada detalle debe tener nombre y una cantidad entre 1 y "
                         + DetallePedido.CANTIDAD_MAXIMA_POR_PLATO + ".");
             }
-            BigDecimal precio = importePersistible(detalle.getPrecioDecimal(), "El precio de cada plato");
-            BigDecimal importeDetalle = precio.multiply(BigDecimal.valueOf(detalle.getCantidad()));
-            sumaDetalles = sumaDetalles.add(importeDetalle);
-            if (detalle.getAplicaIva() == null) {
-                throw ErrorAplicacionException.validacion("Cada detalle debe indicar si aplica IVA.");
+            importePersistible(detalle.getPrecioDecimal(), "El precio de cada plato");
+        }
+
+        BigDecimal tasa = (pedido.getTasaCambio() != null && pedido.getTasaCambio().signum() > 0)
+                ? pedido.getTasaCambio() : new BigDecimal("36.5000");
+
+        List<DetallePedido> detallesNormalizados = new ArrayList<>(detalles.size());
+        for (DetallePedido d : detalles) {
+            DetallePedido clon = new DetallePedido();
+            clon.setPrecioDecimal(d.getPrecioDecimal());
+            clon.setCantidad(d.getCantidad());
+            clon.setMonedaBase(d.getMonedaBase() != null && !d.getMonedaBase().isBlank() ? d.getMonedaBase() : "USD");
+            clon.setAplicaIva(d.getAplicaIva() != null ? d.getAplicaIva() : Boolean.TRUE);
+            clon.setPrecioIncluyeIva(d.getPrecioIncluyeIva() != null ? d.getPrecioIncluyeIva() : Boolean.FALSE);
+            clon.setIvaPorcentaje(d.getIvaPorcentaje() != null ? d.getIvaPorcentaje()
+                    : (Boolean.TRUE.equals(clon.getAplicaIva())
+                            ? (pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : new BigDecimal("16.00"))
+                            : BigDecimal.ZERO.setScale(2)));
+            detallesNormalizados.add(clon);
+        }
+
+        CalculoPedido preliminar = CalculoMonetarioPedido.calcularPedido(detallesNormalizados, tasa);
+        BigDecimal subtotalEsperado = preliminar.subtotalUsd();
+        if (pedido.getSubtotal() != null) {
+            BigDecimal subtotalEnviado = pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP);
+            if (subtotalEnviado.compareTo(subtotalEsperado) != 0) {
+                throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
             }
-            if (detalle.getAplicaIva()) {
-                baseImponible = baseImponible.add(importeDetalle);
-            }
         }
 
-        BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
-        BigDecimal subtotalEsperado = sumaDetalles;
-        if (ivaPorcentaje == null || ivaPorcentaje.signum() < 0
-                || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0 || ivaPorcentaje.scale() > 2) {
-            throw ErrorAplicacionException.validacion("El porcentaje de IVA debe estar entre 0.00% y 100.00%.");
-        }
-        BigDecimal ivaEsperado = ivaPorcentaje.signum() > 0
-                ? baseImponible.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO.setScale(2);
-
-        BigDecimal subtotal = importePersistible(pedido.getSubtotal() != null ? pedido.getSubtotal() : subtotalEsperado, "El subtotal del pedido");
-        if (subtotal.compareTo(subtotalEsperado) != 0) {
-            throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
+        BigDecimal totalEnviado = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalEsperado = preliminar.totalUsd();
+        if (totalEnviado.compareTo(totalEsperado) != 0 && totalEnviado.compareTo(subtotalEsperado) != 0) {
+            throw ErrorAplicacionException.validacion("El total del pedido no coincide con el subtotal más IVA ni con sus detalles.");
         }
 
-        BigDecimal ivaMonto = importePersistible(pedido.getIvaMonto() != null ? pedido.getIvaMonto() : ivaEsperado, "El monto del IVA");
-        if (ivaMonto.compareTo(ivaEsperado) != 0) {
-            throw ErrorAplicacionException.validacion("El monto del IVA no coincide con la condición fiscal de los detalles.");
-        }
-
-        BigDecimal totalEsperado = subtotal.add(ivaMonto).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = importePersistible(pedido.getTotalDecimal(), "El total del pedido");
-        if (total.compareTo(totalEsperado) != 0) {
-            throw ErrorAplicacionException.validacion("El total del pedido no coincide con el subtotal más IVA.");
-        }
-
-        BigDecimal tasa = pedido.getTasaCambio();
-        if (tasa == null || tasa.compareTo(BigDecimal.ZERO) <= 0) {
-            tasa = new BigDecimal("36.5000");
-            pedido.setTasaCambio(tasa);
-        }
-
-        BigDecimal subBs = subtotal.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-        if (pedido.getSubtotalBs() == null) {
-            pedido.setSubtotalBs(subBs);
-        } else if (pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP).compareTo(subBs) != 0) {
-            throw ErrorAplicacionException.validacion("El subtotal en Bs no coincide con la tasa de cambio.");
-        }
-
-        BigDecimal ivaBs = ivaMonto.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-        if (pedido.getIvaBs() == null) {
-            pedido.setIvaBs(ivaBs);
-        } else if (pedido.getIvaBs().setScale(2, RoundingMode.HALF_UP).compareTo(ivaBs) != 0) {
-            throw ErrorAplicacionException.validacion("El IVA en Bs no coincide con la tasa de cambio.");
-        }
-
-        BigDecimal totalBs = total.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-        if (pedido.getTotalBs() == null) {
-            pedido.setTotalBs(totalBs);
-        } else if (pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP).compareTo(totalBs) != 0) {
-            throw ErrorAplicacionException.validacion("El total en Bs no coincide con la tasa de cambio.");
-        }
-        if (pedido.getSubtotal() == null) {
-            pedido.setSubtotal(subtotalEsperado);
-        }
-        if (pedido.getIvaMonto() == null) {
-            pedido.setIvaMonto(ivaMonto);
-        }
         validarMesaEnSala(pedido.getId_sala(), pedido.getNum_mesa());
+    }
+
+    private CalculoPedido calcularYConsolidarSnapshot(
+            Connection conexion, Pedidos pedido, List<DetallePedido> detalles) throws SQLException {
+        validarEstructuraPedido(pedido, detalles);
+
+        // Si la conexión está disponible y hay id_plato, fijar datos oficiales desde el catálogo
+        if (conexion != null) {
+            String sqlPlato = """
+                SELECT nombre, moneda_base, precio_usd, precio_ves, aplica_iva, precio_incluye_iva, activo, precio_clasificado
+                FROM platos WHERE id = ?
+                """;
+            try (PreparedStatement psPlato = conexion.prepareStatement(sqlPlato)) {
+                for (DetallePedido det : detalles) {
+                    if (det.getIdPlato() != null && det.getIdPlato() > 0) {
+                        psPlato.setInt(1, det.getIdPlato());
+                        try (ResultSet rs = psPlato.executeQuery()) {
+                            if (!rs.next() || rs.getInt("activo") == 0) {
+                                throw ErrorAplicacionException.validacion(
+                                        "El producto '" + det.getNombre() + "' ya no está disponible en el catálogo.");
+                            }
+                            det.setNombre(rs.getString("nombre"));
+                            String mb = rs.getString("moneda_base");
+                            if (mb == null || mb.isBlank()) mb = "USD";
+                            det.setMonedaBase(mb);
+                            det.setAplicaIva(rs.getInt("aplica_iva") != 0);
+                            int incIva = rs.getInt("precio_incluye_iva");
+                            det.setPrecioIncluyeIva(!rs.wasNull() && incIva != 0);
+                            BigDecimal precioCat = "VES".equalsIgnoreCase(mb) ? rs.getBigDecimal("precio_ves") : rs.getBigDecimal("precio_usd");
+                            if (precioCat != null && precioCat.signum() > 0) {
+                                det.setPrecioDecimal(precioCat);
+                            }
+                        }
+                    } else {
+                        if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) {
+                            det.setMonedaBase("USD");
+                        }
+                        if (det.getAplicaIva() == null) {
+                            det.setAplicaIva(Boolean.TRUE);
+                        }
+                        if (det.getPrecioIncluyeIva() == null) {
+                            det.setPrecioIncluyeIva(Boolean.FALSE);
+                        }
+                    }
+                }
+            } catch (SQLException ex) {
+                if (ex.getErrorCode() != 1054) {
+                    throw ex;
+                }
+            }
+        }
+
+        for (DetallePedido det : detalles) {
+            if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) {
+                det.setMonedaBase("USD");
+            }
+            if (det.getAplicaIva() == null) {
+                det.setAplicaIva(Boolean.TRUE);
+            }
+            if (det.getPrecioIncluyeIva() == null) {
+                det.setPrecioIncluyeIva(Boolean.FALSE);
+            }
+            if (det.getIvaPorcentaje() == null) {
+                det.setIvaPorcentaje(det.getAplicaIva()
+                        ? (pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : new BigDecimal("16.00"))
+                        : BigDecimal.ZERO.setScale(2));
+            }
+        }
+
+        BigDecimal tasa = (pedido.getTasaCambio() != null && pedido.getTasaCambio().signum() > 0)
+                ? pedido.getTasaCambio() : new BigDecimal("36.5000");
+
+        CalculoPedido resultado = CalculoMonetarioPedido.calcularPedido(detalles, tasa);
+
+        if (pedido.getTotalDecimal() != null && pedido.getTotalDecimal().signum() > 0) {
+            BigDecimal totalEnviado = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
+            BigDecimal totalEsperado = resultado.totalUsd();
+            BigDecimal subtotalEsperado = resultado.subtotalUsd();
+            if (totalEnviado.compareTo(totalEsperado) != 0 && totalEnviado.compareTo(subtotalEsperado) != 0) {
+                throw ErrorAplicacionException.validacion("El total del pedido no coincide con el subtotal más IVA ni con sus detalles.");
+            }
+        }
+
+        pedido.setSubtotal(resultado.subtotalUsd());
+        pedido.setIvaMonto(resultado.ivaUsd());
+        pedido.setTotalDecimal(resultado.totalUsd());
+        pedido.setTasaCambio(tasa);
+        pedido.setSubtotalBs(resultado.subtotalVes());
+        pedido.setIvaBs(resultado.ivaVes());
+        pedido.setTotalBs(resultado.totalVes());
+
+        return resultado;
     }
 
     private BigDecimal importePersistible(BigDecimal importe, String campo) {
@@ -485,6 +576,60 @@ public class PedidosDao implements PedidosRepositorio {
         if (id_pedido <= 0) {
             throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido.");
         }
+        List<DetallePedido> lista = new ArrayList<>();
+        String sql = """
+            SELECT d.id, d.nombre, d.precio, d.cantidad, d.comentario, d.id_pedido, d.aplica_iva,
+                   d.id_plato, d.moneda_base, d.precio_incluye_iva, d.iva_porcentaje,
+                   d.precio_congelado, d.congelado_motivo, d.congelado_por, d.congelado_en
+            FROM pedidos p
+            INNER JOIN detalle_pedidos d ON p.id = d.id_pedido
+            WHERE p.id = ?
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setInt(1, id_pedido);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                while (resultados.next()) {
+                    DetallePedido det = new DetallePedido();
+                    det.setId(resultados.getInt("id"));
+                    det.setNombre(resultados.getString("nombre"));
+                    det.setPrecioDecimal(resultados.getBigDecimal("precio"));
+                    det.setCantidad(resultados.getInt("cantidad"));
+                    det.setComentario(resultados.getString("comentario"));
+                    boolean aplicaIva = resultados.getBoolean("aplica_iva");
+                    det.setAplicaIva(resultados.wasNull() ? null : aplicaIva);
+                    
+                    int idPlato = resultados.getInt("id_plato");
+                    det.setIdPlato(resultados.wasNull() ? null : idPlato);
+                    det.setMonedaBase(resultados.getString("moneda_base"));
+                    int incIva = resultados.getInt("precio_incluye_iva");
+                    det.setPrecioIncluyeIva(resultados.wasNull() ? null : (incIva != 0));
+                    det.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
+                    det.setPrecioCongelado(resultados.getInt("precio_congelado") != 0);
+                    det.setCongeladoMotivo(resultados.getString("congelado_motivo"));
+                    det.setCongeladoPor(resultados.getString("congelado_por"));
+                    java.sql.Timestamp tsCong = resultados.getTimestamp("congelado_en");
+                    if (tsCong != null) {
+                        det.setCongeladoEn(tsCong.toLocalDateTime());
+                    }
+                    lista.add(det);
+                }
+            }
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return verPedidoDetalleLegacy(id_pedido);
+            }
+            throw new DataAccessException("No se pudieron consultar los detalles del pedido.", ex);
+        }
+        if (lista.isEmpty()) {
+            throw new ErrorAplicacionException(
+                    "El pedido " + id_pedido + " no tiene detalles asociados.",
+                    new IllegalStateException("Un pedido debe contener al menos un detalle."));
+        }
+        return lista;
+    }
+
+    private List<DetallePedido> verPedidoDetalleLegacy(int id_pedido) {
         List<DetallePedido> lista = new ArrayList<>();
         String sql = """
             SELECT d.id, d.nombre, d.precio, d.cantidad, d.comentario, d.id_pedido, d.aplica_iva
@@ -509,7 +654,7 @@ public class PedidosDao implements PedidosRepositorio {
                 }
             }
         } catch (SQLException ex) {
-            throw new DataAccessException("No se pudieron consultar los detalles del pedido.", ex);
+            throw new DataAccessException("No se pudieron consultar los detalles legacy del pedido.", ex);
         }
         if (lista.isEmpty()) {
             throw new ErrorAplicacionException(
@@ -526,7 +671,7 @@ public class PedidosDao implements PedidosRepositorio {
         Pedidos ped = null;
         String sql = """
             SELECT p.id, p.id_sala, p.num_mesa, p.tipo_pedido, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.tasa_es_estimada, p.usuario, p.estado, COALESCE(s.nombre, 'Pedido rápido') AS nombre_sala,
-                   p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd, p.id_mesonero, p.mesonero_nombre
+                   p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd, p.id_mesonero, p.mesonero_nombre, p.cerrada_en, p.version_precio
             FROM pedidos p
             LEFT JOIN salas s ON p.id_sala = s.id
             WHERE p.id = ?
@@ -567,6 +712,11 @@ public class PedidosDao implements PedidosRepositorio {
                             ped.setIdMesonero(idM);
                         }
                         ped.setMesoneroNombre(resultados.getString("mesonero_nombre"));
+                        java.sql.Timestamp tsCierre = resultados.getTimestamp("cerrada_en");
+                        if (tsCierre != null) {
+                            ped.setCerradaEn(tsCierre.toLocalDateTime());
+                        }
+                        ped.setVersionPrecio(resultados.getInt("version_precio"));
                     } catch (SQLException ignoreCol) {}
                 }
             }

@@ -122,5 +122,41 @@ public class DetallePedido {
     public void setAplicaIva(Boolean aplicaIva) {
         this.aplicaIva = aplicaIva;
     }
-    
+
+    private boolean precioCongelado;
+    private String congeladoMotivo;
+    private String congeladoPor;
+    private java.time.LocalDateTime congeladoEn;
+
+    public boolean isPrecioCongelado() {
+        return precioCongelado;
+    }
+
+    public void setPrecioCongelado(boolean precioCongelado) {
+        this.precioCongelado = precioCongelado;
+    }
+
+    public String getCongeladoMotivo() {
+        return congeladoMotivo;
+    }
+
+    public void setCongeladoMotivo(String congeladoMotivo) {
+        this.congeladoMotivo = congeladoMotivo;
+    }
+
+    public String getCongeladoPor() {
+        return congeladoPor;
+    }
+
+    public void setCongeladoPor(String congeladoPor) {
+        this.congeladoPor = congeladoPor;
+    }
+
+    public java.time.LocalDateTime getCongeladoEn() {
+        return congeladoEn;
+    }
+
+    public void setCongeladoEn(java.time.LocalDateTime congeladoEn) {
+        this.congeladoEn = congeladoEn;
+    }
 }

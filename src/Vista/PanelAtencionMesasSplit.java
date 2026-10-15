@@ -13,6 +13,7 @@ import Servicio.PoliticaAcceso;
 import Modelo.Salas;
 import Servicio.ServicioMesa;
 import Servicio.ServicioMesoneroNombre;
+import Servicio.CalculoMonetarioPedido;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -959,20 +960,40 @@ public class PanelAtencionMesasSplit extends JPanel {
     }
 
     private void recalcularTotales() {
-        BigDecimal totalUsd = BigDecimal.ZERO;
-        for (int i = 0; i < modeloCarrito.getRowCount(); i++) {
-            BigDecimal sub = new BigDecimal(modeloCarrito.getValueAt(i, 4).toString());
-            totalUsd = totalUsd.add(sub);
+        if (modeloCarrito.getRowCount() == 0) {
+            lblTotalUsd.setText("Total: $ 0.00");
+            lblTotalBs.setText("(Bs. 0.00)");
+            btnCobrar.setEnabled(idPedidoActivo > 0);
+            return;
         }
 
-        lblTotalUsd.setText("Total: $ " + String.format(java.util.Locale.US, "%.2f", totalUsd));
         BigDecimal tasa = sistema.getTasaActual();
-        if (tasa != null && tasa.signum() > 0) {
-            BigDecimal totalBs = totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-            lblTotalBs.setText("(Bs. " + String.format(java.util.Locale.US, "%.2f", totalBs) + ")");
-        } else {
-            lblTotalBs.setText("(Bs. N/D)");
+        if (tasa == null || tasa.signum() <= 0) tasa = new BigDecimal("36.5000");
+        BigDecimal ivaPorcentaje = new BigDecimal("16.00");
+
+        List<DetallePedido> detalles = new ArrayList<>();
+        for (int i = 0; i < modeloCarrito.getRowCount(); i++) {
+            int idPlato = (int) modeloCarrito.getValueAt(i, 0);
+            int cant = (int) modeloCarrito.getValueAt(i, 2);
+            BigDecimal precio = new BigDecimal(modeloCarrito.getValueAt(i, 3).toString());
+            Platos plato = platosPorId.get(idPlato);
+            String mb = plato != null && plato.getMonedaBase() != null ? plato.getMonedaBase() : "USD";
+            boolean gravado = plato == null || plato.isAplicaIva();
+            boolean incIva = plato != null && Boolean.TRUE.equals(plato.getPrecioIncluyeIva());
+
+            DetallePedido det = new DetallePedido();
+            det.setPrecioDecimal(precio);
+            det.setCantidad(cant);
+            det.setMonedaBase(mb);
+            det.setAplicaIva(gravado);
+            det.setPrecioIncluyeIva(incIva);
+            det.setIvaPorcentaje(ivaPorcentaje);
+            detalles.add(det);
         }
+
+        CalculoMonetarioPedido.CalculoPedido calc = CalculoMonetarioPedido.calcularPedido(detalles, tasa);
+        lblTotalUsd.setText("Total: $ " + String.format(java.util.Locale.US, "%.2f", calc.totalUsd()));
+        lblTotalBs.setText("(Bs. " + String.format(java.util.Locale.US, "%.2f", calc.totalVes()) + ")");
 
         btnCobrar.setEnabled(idPedidoActivo > 0 || modeloCarrito.getRowCount() > 0);
     }
@@ -991,8 +1012,6 @@ public class PanelAtencionMesasSplit extends JPanel {
         if (tasa == null || tasa.signum() <= 0) tasa = new BigDecimal("36.5000");
         BigDecimal ivaPorcentaje = new BigDecimal("16.00");
 
-        BigDecimal baseImponible = BigDecimal.ZERO;
-        BigDecimal exento = BigDecimal.ZERO;
         List<DetallePedido> detalles = new ArrayList<>();
 
         for (int i = 0; i < modeloCarrito.getRowCount(); i++) {
@@ -1000,33 +1019,42 @@ public class PanelAtencionMesasSplit extends JPanel {
             String nombre = modeloCarrito.getValueAt(i, 1).toString();
             int cant = (int) modeloCarrito.getValueAt(i, 2);
             BigDecimal precio = new BigDecimal(modeloCarrito.getValueAt(i, 3).toString());
-            BigDecimal sub = new BigDecimal(modeloCarrito.getValueAt(i, 4).toString());
             String comentario = modeloCarrito.getValueAt(i, 5) != null ? modeloCarrito.getValueAt(i, 5).toString() : "";
 
             DetallePedido det = new DetallePedido();
+            det.setIdPlato(idPlato > 0 ? idPlato : null);
             det.setNombre(nombre);
             det.setCantidad(cant);
             det.setPrecioDecimal(precio);
             det.setComentario(comentario);
-            detalles.add(det);
 
-            baseImponible = baseImponible.add(sub); // Simplificado por defecto base imponible
+            Platos plato = platosPorId.get(idPlato);
+            String mb = plato != null && plato.getMonedaBase() != null ? plato.getMonedaBase() : "USD";
+            boolean gravado = plato == null || plato.isAplicaIva();
+            boolean incIva = plato != null && Boolean.TRUE.equals(plato.getPrecioIncluyeIva());
+
+            det.setMonedaBase(mb);
+            det.setAplicaIva(gravado);
+            det.setPrecioIncluyeIva(incIva);
+            det.setIvaPorcentaje(ivaPorcentaje);
+
+            detalles.add(det);
         }
+
+        CalculoMonetarioPedido.CalculoPedido calc = CalculoMonetarioPedido.calcularPedido(detalles, tasa);
 
         Pedidos p = new Pedidos();
         p.setId_sala(idSalaSeleccionada);
         p.setNum_mesa(numMesaSeleccionada);
         p.setTipoPedido("MESA");
-        p.setSubtotal(baseImponible);
+        p.setSubtotal(calc.subtotalUsd());
         p.setIvaPorcentaje(ivaPorcentaje);
-        BigDecimal ivaMonto = baseImponible.multiply(ivaPorcentaje).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-        p.setIvaMonto(ivaMonto);
-        BigDecimal totalUsd = baseImponible.add(ivaMonto);
-        p.setTotalDecimal(totalUsd);
+        p.setIvaMonto(calc.ivaUsd());
+        p.setTotalDecimal(calc.totalUsd());
         p.setTasaCambio(tasa);
-        p.setSubtotalBs(baseImponible.multiply(tasa).setScale(2, RoundingMode.HALF_UP));
-        p.setIvaBs(ivaMonto.multiply(tasa).setScale(2, RoundingMode.HALF_UP));
-        p.setTotalBs(totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP));
+        p.setSubtotalBs(calc.subtotalVes());
+        p.setIvaBs(calc.ivaVes());
+        p.setTotalBs(calc.totalVes());
         p.setUsuario(sistema.getNombreUsuarioActual());
 
         if (cbMesonero.getSelectedItem() instanceof Mesonero m) {
