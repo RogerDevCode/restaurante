@@ -8,6 +8,11 @@ public class Platos {
     private int id;
     private String nombre;
     private BigDecimal precio = BigDecimal.ZERO.setScale(2);
+    // Campos monetarios explícitos para el modelo dual; null conserva el estado heredado sin clasificar.
+    private String monedaBase;
+    private BigDecimal precioUsd;
+    private BigDecimal precioVes;
+    private Boolean precioIncluyeIva;
     private String fecha;
     private boolean activo = true;
     private LocalDateTime desactivadoEn;
@@ -58,6 +63,38 @@ public class Platos {
             throw ErrorAplicacionException.validacion("El precio del plato es obligatorio.");
         }
         this.precio = (precio.scale() <= 2) ? precio.setScale(2, RoundingMode.HALF_UP) : precio;
+    }
+
+    public String getMonedaBase() {
+        return monedaBase;
+    }
+
+    public void setMonedaBase(String monedaBase) {
+        this.monedaBase = monedaBase;
+    }
+
+    public BigDecimal getPrecioUsd() {
+        return precioUsd;
+    }
+
+    public void setPrecioUsd(BigDecimal precioUsd) {
+        this.precioUsd = precioUsd;
+    }
+
+    public BigDecimal getPrecioVes() {
+        return precioVes;
+    }
+
+    public void setPrecioVes(BigDecimal precioVes) {
+        this.precioVes = precioVes;
+    }
+
+    public Boolean getPrecioIncluyeIva() {
+        return precioIncluyeIva;
+    }
+
+    public void setPrecioIncluyeIva(Boolean precioIncluyeIva) {
+        this.precioIncluyeIva = precioIncluyeIva;
     }
 
     public String getFecha() {

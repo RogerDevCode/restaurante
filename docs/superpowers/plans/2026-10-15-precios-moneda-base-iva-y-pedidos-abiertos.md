@@ -114,15 +114,15 @@ Esta sección conserva el contexto de negocio y del código para que un agente q
 **Interfaces:**
 - `CalculoMonetarioPedido.calcularLinea(BigDecimal precioBase, int cantidad, String monedaBase, boolean aplicaIva, Boolean precioIncluyeIva, BigDecimal ivaPorcentaje, BigDecimal tasa): CalculoLinea`; si `precioIncluyeIva == null`, no calcula y devuelve error de clasificación pendiente.
 - `CalculoMonetarioPedido.calcularPedido(List<DetallePedido> detalles, BigDecimal tasa): CalculoPedido`
-- Producir records inmutables con base, IVA, total de liquidación VES, USD referencial y ajuste de cambio; ninguna UI ni DAO vuelve a implementar fórmulas.
+- Producir records inmutables `CalculoLinea` y `CalculoPedido`: por línea incluir base/exento/IVA/total en moneda fuente y base/exento/IVA/total VES, total USD referencial y ajuste; por pedido agregar totales VES, suma de las referencias USD de línea, tasa, ajuste y una copia inmutable de las líneas calculadas. El precio fuente es autoritativo; el USD convertido desde VES no sustituye el importe VES.
 - `Platos` proveerá `getMonedaBase()/setMonedaBase()`, precios explícitos USD/VES y `Boolean precioIncluyeIva` nullable durante clasificación.
 - `DetallePedido` proveerá `idPlato`, moneda base, `Boolean precioIncluyeIva`, porcentaje IVA snapshot nullable y su precio fuente.
 
-- [ ] Añadir pruebas que fijen los casos: 60,00 VES con IVA 16% incluido → base 51,72 VES, IVA 8,28 VES, total 60,00; USD 10,00 gravado con IVA 16% excluido → base 10,00 USD, IVA 1,60 USD, USD 11,60 referencial; exento → IVA 0; 3 × 60,00 VES → total VES 180,00 exacto; 60,03 VES / tasa 40 → referencia USD 1,50 y residuo de liquidación 0,03 VES.
-- [ ] Añadir pruebas de tasa cero/negativa, moneda desconocida, null, cantidades inválidas, máximo de escala y redondeos de división; cada entrada inválida debe producir error de validación, no `ArithmeticException` filtrada.
-- [ ] Ejecutar `ant -q compile` y el test dirigido `ant -q '-Dtest.includes=**/CalculoMonetarioPedidoTest.java' test-single`. Esperado: los casos nuevos pasan y las pruebas anteriores no pierden compilación.
-- [ ] Implementar la clase pura con `BigDecimal`, `RoundingMode.HALF_UP`, escala intermedia 8 y resultados en escala 2; usar exactamente los campos declarados arriba y rechazar tasas no positivas.
-- [ ] Repetir las pruebas dirigidas y confirmar que total VES respeta monto contractual, total USD es referencia redondeada y cualquier residuo de cobro USD aparece como ajuste explícito; corregir solo divergencias cubiertas por tests.
+- [x] Añadir pruebas que fijen los casos: 60,00 VES con IVA 16% incluido → base 51,72 VES, IVA 8,28 VES, total 60,00; USD 10,00 gravado con IVA 16% excluido → base 10,00 USD, IVA 1,60 USD, USD 11,60 referencial; exento → IVA 0; 3 × 60,00 VES → total VES 180,00 exacto; 60,03 VES / tasa 40 → referencia USD 1,50 y residuo de liquidación 0,03 VES. Para cantidades mayores a 1, extender primero precio × cantidad y desglosar IVA una sola vez por línea.
+- [x] Añadir pruebas de tasa cero/negativa, moneda desconocida, null, cantidades inválidas, máximo de escala y redondeos de división; cada entrada inválida produce error de validación, no `ArithmeticException` filtrada.
+- [x] Ejecutar `ant -q compile` y el test dirigido `ant -q -Djavac.includes=Servicio/CalculoMonetarioPedidoTest.java -Dtest.includes=Servicio/CalculoMonetarioPedidoTest.java test-single`. El target NetBeans requiere ambos parámetros; solo `test.includes` falla antes de ejecutar pruebas.
+- [x] Implementar la clase pura con `BigDecimal`, `RoundingMode.HALF_UP`, escala intermedia 8 y resultados en escala 2; extender `precio × cantidad` primero y desglosar IVA una sola vez por línea; validar montos contra precisión `DECIMAL(14,2)`, tasas contra `DECIMAL(12,4)`, rechazar tasas no positivas y no inferir moneda/fiscalidad ausente.
+- [x] Repetir las pruebas dirigidas y confirmar total VES contractual, USD referencial redondeado y residuo explícito. También pasan `PlatosTest` y `DetallePedidoTest` dirigidos.
 
 ### Task 2: Ampliar esquema y migración sin reescribir ventas históricas
 

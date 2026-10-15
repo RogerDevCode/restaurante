@@ -12,6 +12,11 @@ public class DetallePedido {
     private int cantidad;
     private String comentario;
     private int id_pedido;
+    // Nullable para líneas históricas sin enlace recuperable al catálogo.
+    private Integer idPlato;
+    private String monedaBase;
+    private Boolean precioIncluyeIva;
+    private BigDecimal ivaPorcentaje;
     // NULL identifica detalles históricos cuyo tratamiento fiscal no quedó registrado.
     private Boolean aplicaIva = Boolean.TRUE;
 
@@ -76,6 +81,38 @@ public class DetallePedido {
 
     public void setId_pedido(int id_pedido) {
         this.id_pedido = id_pedido;
+    }
+
+    public Integer getIdPlato() {
+        return idPlato;
+    }
+
+    public void setIdPlato(Integer idPlato) {
+        this.idPlato = idPlato;
+    }
+
+    public String getMonedaBase() {
+        return monedaBase;
+    }
+
+    public void setMonedaBase(String monedaBase) {
+        this.monedaBase = monedaBase;
+    }
+
+    public Boolean getPrecioIncluyeIva() {
+        return precioIncluyeIva;
+    }
+
+    public void setPrecioIncluyeIva(Boolean precioIncluyeIva) {
+        this.precioIncluyeIva = precioIncluyeIva;
+    }
+
+    public BigDecimal getIvaPorcentaje() {
+        return ivaPorcentaje;
+    }
+
+    public void setIvaPorcentaje(BigDecimal ivaPorcentaje) {
+        this.ivaPorcentaje = ivaPorcentaje;
     }
 
     public Boolean getAplicaIva() {
