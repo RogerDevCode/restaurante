@@ -202,6 +202,9 @@ public final class Sistema extends javax.swing.JFrame {
     private final Map<Integer, Platos> platosPorId = new java.util.concurrent.ConcurrentHashMap<>();
     private boolean salaActualEsBarra = false;
     private javax.swing.JCheckBox chkAplicaIvaPlato;
+    private javax.swing.JComboBox<String> cbMonedaBasePlato;
+    private javax.swing.JLabel lblPrecioReferenciaPlato;
+    private javax.swing.JCheckBox chkPrecioIncluyeIvaPlato;
     private javax.swing.JComboBox<String> cbTipoSala;
 
     private Controlador.CategoriaControlador categoriaControlador;
@@ -4466,11 +4469,16 @@ public final class Sistema extends javax.swing.JFrame {
             return;
         }
         try {
-            pla.setNombre(txtNombrePlato.getText());
-            pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText()));
+            pla.setNombre(txtNombrePlato.getText().trim());
+            pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText().trim()));
             pla.setFecha(fechaActual());
-            pla.setAplicaIva(chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected());
-            if (platosControlador.registrar(pla)) {
+            String moneda = cbMonedaBasePlato != null ? String.valueOf(cbMonedaBasePlato.getSelectedItem()) : "USD";
+            pla.setMonedaBase(moneda);
+            boolean aplicaIva = chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected();
+            pla.setAplicaIva(aplicaIva);
+            pla.setPrecioIncluyeIva(aplicaIva && chkPrecioIncluyeIvaPlato != null && chkPrecioIncluyeIvaPlato.isSelected());
+            BigDecimal tasa = getTasaActual();
+            if (platosControlador.registrar(pla, tasa)) {
                 ListarPlatos(TablePlatos, "");
                 LimpiarPlatos();
                 RefrescoVistas.notificar(RefrescoVistas.PLATOS);
@@ -4497,8 +4505,13 @@ public final class Sistema extends javax.swing.JFrame {
                     pla.setNombre(txtNombrePlato.getText().trim());
                     pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText().trim()));
                     pla.setId(Integer.parseInt(txtIdPlato.getText().trim()));
-                    pla.setAplicaIva(chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected());
-                    if (platosControlador.modificar(pla)) {
+                    String moneda = cbMonedaBasePlato != null ? String.valueOf(cbMonedaBasePlato.getSelectedItem()) : "USD";
+                    pla.setMonedaBase(moneda);
+                    boolean aplicaIva = chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected();
+                    pla.setAplicaIva(aplicaIva);
+                    pla.setPrecioIncluyeIva(aplicaIva && chkPrecioIncluyeIvaPlato != null && chkPrecioIncluyeIvaPlato.isSelected());
+                    BigDecimal tasa = getTasaActual();
+                    if (platosControlador.modificar(pla, tasa)) {
                         ListarPlatos(TablePlatos, "");
                         LimpiarPlatos();
                         RefrescoVistas.notificar(RefrescoVistas.PLATOS);
@@ -4549,18 +4562,49 @@ public final class Sistema extends javax.swing.JFrame {
         }
         txtIdPlato.setText(TablePlatos.getValueAt(fila, 0).toString());
         txtNombrePlato.setText(TablePlatos.getValueAt(fila, 1).toString());
-        txtPrecioPlato.setText(TablePlatos.getValueAt(fila, 2).toString());
         try {
             int idPlato = Integer.parseInt(TablePlatos.getValueAt(fila, 0).toString());
-            boolean aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
-            if (TablePlatos.getColumnCount() > 3 && TablePlatos.getValueAt(fila, 3) != null) {
-                String val = TablePlatos.getValueAt(fila, 3).toString().toLowerCase(java.util.Locale.ROOT);
-                aplicaIva = !val.contains("exento") && !val.contains("no");
+            Platos platoSel = platosPorId.get(idPlato);
+            if (platoSel != null) {
+                String mb = platoSel.getMonedaBase() != null ? platoSel.getMonedaBase().toUpperCase() : "USD";
+                if (cbMonedaBasePlato != null) {
+                    cbMonedaBasePlato.setSelectedItem(mb);
+                }
+                BigDecimal precioPrimario = "VES".equals(mb) && platoSel.getPrecioVes() != null
+                        ? platoSel.getPrecioVes()
+                        : (platoSel.getPrecioUsd() != null ? platoSel.getPrecioUsd() : platoSel.getPrecioDecimal());
+                if (precioPrimario != null) {
+                    txtPrecioPlato.setText(precioPrimario.setScale(2, RoundingMode.HALF_UP).toPlainString());
+                } else {
+                    txtPrecioPlato.setText(TablePlatos.getValueAt(fila, 2).toString().replaceAll("[^0-9.]", "").trim());
+                }
+                if (chkAplicaIvaPlato != null) {
+                    chkAplicaIvaPlato.setSelected(platoSel.isAplicaIva());
+                }
+                if (chkPrecioIncluyeIvaPlato != null) {
+                    chkPrecioIncluyeIvaPlato.setEnabled(platoSel.isAplicaIva());
+                    chkPrecioIncluyeIvaPlato.setSelected(platoSel.isAplicaIva() && Boolean.TRUE.equals(platoSel.getPrecioIncluyeIva()));
+                }
+                actualizarPrecioReferenciaPlato();
+            } else {
+                txtPrecioPlato.setText(TablePlatos.getValueAt(fila, 2).toString().replaceAll("[^0-9.]", "").trim());
+                boolean aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
+                if (TablePlatos.getColumnCount() > 3 && TablePlatos.getValueAt(fila, 3) != null) {
+                    String val = TablePlatos.getValueAt(fila, 3).toString().toLowerCase(java.util.Locale.ROOT);
+                    aplicaIva = !val.contains("exento") && !val.contains("no");
+                }
+                if (chkAplicaIvaPlato != null) {
+                    chkAplicaIvaPlato.setSelected(aplicaIva);
+                }
+                if (chkPrecioIncluyeIvaPlato != null) {
+                    chkPrecioIncluyeIvaPlato.setEnabled(aplicaIva);
+                    chkPrecioIncluyeIvaPlato.setSelected(false);
+                }
+                actualizarPrecioReferenciaPlato();
             }
-            if (chkAplicaIvaPlato != null) {
-                chkAplicaIvaPlato.setSelected(aplicaIva);
-            }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            txtPrecioPlato.setText(TablePlatos.getValueAt(fila, 2).toString().replaceAll("[^0-9.]", "").trim());
+        }
     }//GEN-LAST:event_TablePlatosMouseClicked
 
 
@@ -7551,9 +7595,64 @@ public final class Sistema extends javax.swing.JFrame {
         txtIdPlato.setText("");
         txtNombrePlato.setText("");
         txtPrecioPlato.setText("");
+        if (cbMonedaBasePlato != null) {
+            cbMonedaBasePlato.setSelectedItem("USD");
+        }
         if (chkAplicaIvaPlato != null) {
             chkAplicaIvaPlato.setSelected(true);
         }
+        if (chkPrecioIncluyeIvaPlato != null) {
+            chkPrecioIncluyeIvaPlato.setSelected(false);
+            chkPrecioIncluyeIvaPlato.setEnabled(true);
+        }
+        if (lblPrecioReferenciaPlato != null) {
+            lblPrecioReferenciaPlato.setText("Ref: ---");
+        }
+    }
+
+    public void actualizarPrecioReferenciaPlato() {
+        if (lblPrecioReferenciaPlato == null || txtPrecioPlato == null || cbMonedaBasePlato == null) {
+            return;
+        }
+        String texto = txtPrecioPlato.getText().trim();
+        if (texto.isEmpty()) {
+            lblPrecioReferenciaPlato.setText("Ref: ---");
+            return;
+        }
+        try {
+            BigDecimal precio = importeMonetario(texto);
+            BigDecimal tasa = getTasaActual();
+            if (tasa == null || tasa.signum() <= 0) {
+                lblPrecioReferenciaPlato.setText("Ref: (sin tasa)");
+                return;
+            }
+            String moneda = String.valueOf(cbMonedaBasePlato.getSelectedItem());
+            if ("VES".equalsIgnoreCase(moneda)) {
+                BigDecimal refUsd = precio.divide(tasa, 2, RoundingMode.HALF_UP);
+                lblPrecioReferenciaPlato.setText("Ref: $ " + String.format(java.util.Locale.US, "%.2f", refUsd));
+            } else {
+                BigDecimal refVes = precio.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                lblPrecioReferenciaPlato.setText("Ref: Bs. " + String.format(java.util.Locale.US, "%.2f", refVes));
+            }
+        } catch (Exception ex) {
+            lblPrecioReferenciaPlato.setText("Ref: ---");
+        }
+    }
+
+    public javax.swing.JComboBox<String> getCbMonedaBasePlato() {
+        return cbMonedaBasePlato;
+    }
+
+    public javax.swing.JCheckBox getChkPrecioIncluyeIvaPlato() {
+        return chkPrecioIncluyeIvaPlato;
+    }
+
+    public javax.swing.JLabel getLblPrecioReferenciaPlato() {
+        return lblPrecioReferenciaPlato;
+    }
+
+    public javax.swing.JCheckBox getChkAplicaIvaPlato() {
+        return chkAplicaIvaPlato;
     }
 
     private void panelSalas() {
@@ -7676,16 +7775,67 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void initIvaPlatosYBarraSalas() {
-        // 1. Checkbox Aplica IVA en formulario de Platos (Tab 2)
+        // 1. Selector moneda, referencia convertida y checkboxes IVA en formulario de Platos (Tab 2)
         if (jPanel11 != null) {
+            javax.swing.JLabel lblMoneda = new javax.swing.JLabel("Moneda:");
+            lblMoneda.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+            jPanel11.add(lblMoneda, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 145, 60, 25));
+
+            cbMonedaBasePlato = new javax.swing.JComboBox<>(new String[]{"USD", "VES"});
+            cbMonedaBasePlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+            cbMonedaBasePlato.setBackground(java.awt.Color.WHITE);
+            cbMonedaBasePlato.setToolTipText("Moneda principal fijada para este producto");
+            cbMonedaBasePlato.addActionListener(e -> actualizarPrecioReferenciaPlato());
+            jPanel11.add(cbMonedaBasePlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 140, 75, 25));
+
+            lblPrecioReferenciaPlato = new javax.swing.JLabel("Ref: ---");
+            lblPrecioReferenciaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.ITALIC, 11));
+            lblPrecioReferenciaPlato.setForeground(new java.awt.Color(90, 90, 90));
+            lblPrecioReferenciaPlato.setToolTipText("Precio convertido referencialmente con la tasa activa del sistema");
+            jPanel11.add(lblPrecioReferenciaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(180, 140, 105, 25));
+
             chkAplicaIvaPlato = new javax.swing.JCheckBox(textoCheckboxIvaPlato(), true);
-            chkAplicaIvaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+            chkAplicaIvaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
             chkAplicaIvaPlato.setBackground(new java.awt.Color(204, 204, 204));
             chkAplicaIvaPlato.setOpaque(false);
             chkAplicaIvaPlato.setFocusable(false);
             chkAplicaIvaPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
             chkAplicaIvaPlato.setToolTipText("Marcar si el plato genera IVA o desmarcar si está exento");
-            jPanel11.add(chkAplicaIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 220, 170, 25));
+            jPanel11.add(chkAplicaIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 215, 140, 25));
+
+            chkPrecioIncluyeIvaPlato = new javax.swing.JCheckBox("Incluye IVA", false);
+            chkPrecioIncluyeIvaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+            chkPrecioIncluyeIvaPlato.setBackground(new java.awt.Color(204, 204, 204));
+            chkPrecioIncluyeIvaPlato.setOpaque(false);
+            chkPrecioIncluyeIvaPlato.setFocusable(false);
+            chkPrecioIncluyeIvaPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            chkPrecioIncluyeIvaPlato.setToolTipText("Indica si el precio ingresado ya incluye el porcentaje de IVA");
+            jPanel11.add(chkPrecioIncluyeIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(155, 215, 125, 25));
+
+            chkAplicaIvaPlato.addActionListener(e -> {
+                boolean gravado = chkAplicaIvaPlato.isSelected();
+                chkPrecioIncluyeIvaPlato.setEnabled(gravado);
+                if (!gravado) {
+                    chkPrecioIncluyeIvaPlato.setSelected(false);
+                }
+            });
+
+            if (txtPrecioPlato != null) {
+                txtPrecioPlato.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                    @Override
+                    public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                        actualizarPrecioReferenciaPlato();
+                    }
+                    @Override
+                    public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                        actualizarPrecioReferenciaPlato();
+                    }
+                    @Override
+                    public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                        actualizarPrecioReferenciaPlato();
+                    }
+                });
+            }
         }
 
         // 2. Combo Tipo de Sala en formulario de Salas (Tab 8)
@@ -8505,15 +8655,21 @@ public final class Sistema extends javax.swing.JFrame {
             platosPorId.put(p.getId(), p);
             ob[0] = p.getId();
             ob[1] = p.getNombre();
-            BigDecimal precioUsd = p.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
-            String precioStr = String.format(java.util.Locale.US, "%.2f", precioUsd);
-            if (tabla == tblTemPlatos) {
-                ob[2] = "$ " + precioStr;
-            } else {
-                ob[2] = precioStr;
-            }
+            String moneda = p.getMonedaBase() != null ? p.getMonedaBase().toUpperCase() : "USD";
+            BigDecimal precioPrimario = "VES".equals(moneda) && p.getPrecioVes() != null
+                    ? p.getPrecioVes()
+                    : (p.getPrecioUsd() != null ? p.getPrecioUsd() : p.getPrecioDecimal());
+            if (precioPrimario == null) precioPrimario = BigDecimal.ZERO;
+            String precioStr = String.format(java.util.Locale.US, "%.2f", precioPrimario.setScale(2, RoundingMode.HALF_UP));
+            String prefijo = "VES".equals(moneda) ? "Bs. " : "$ ";
+            String clasif = !p.isPrecioClasificado() ? " [!]" : "";
+            ob[2] = prefijo + precioStr + clasif;
             if (tieneColumnaIva) {
-                ob[3] = formatearEtiquetaIva(p.isAplicaIva());
+                String ivaLabel = formatearEtiquetaIva(p.isAplicaIva());
+                if (p.isAplicaIva() && Boolean.TRUE.equals(p.getPrecioIncluyeIva())) {
+                    ivaLabel += " (Inc.)";
+                }
+                ob[3] = ivaLabel;
             }
             modelo.addRow(ob);
             if (idSel != null && idSel.equals(String.valueOf(p.getId()))) {

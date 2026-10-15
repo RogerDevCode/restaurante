@@ -29,6 +29,36 @@ public class PlatosDao implements PlatosRepositorio {
     public boolean registrar(Platos pla) {
         validarPlato(pla);
         String sql = """
+            INSERT INTO platos (nombre, precio, fecha, aplica_iva, moneda_base, precio_usd, precio_ves, precio_clasificado, precio_incluye_iva)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, pla.getNombre());
+            sentencia.setBigDecimal(2, precioLegacyPersistible(pla));
+            sentencia.setString(3, pla.getFecha());
+            sentencia.setInt(4, pla.isAplicaIva() ? 1 : 0);
+            sentencia.setString(5, pla.getMonedaBase());
+            sentencia.setBigDecimal(6, pla.getPrecioUsd());
+            sentencia.setBigDecimal(7, pla.getPrecioVes());
+            sentencia.setInt(8, pla.isPrecioClasificado() ? 1 : 0);
+            if (pla.getPrecioIncluyeIva() != null) {
+                sentencia.setInt(9, pla.getPrecioIncluyeIva() ? 1 : 0);
+            } else {
+                sentencia.setNull(9, java.sql.Types.TINYINT);
+            }
+            return ErrorAplicacionException.resultadoUnaFila(
+                    sentencia.executeUpdate(), "registrar plato");
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return registrarV4(pla);
+            }
+            throw new DataAccessException("No se pudo registrar el plato.", ex);
+        }
+    }
+
+    private boolean registrarV4(Platos pla) {
+        String sql = """
             INSERT INTO platos (nombre, precio, fecha, aplica_iva)
             VALUES (?, ?, ?, ?)
             """;
@@ -75,6 +105,7 @@ public class PlatosDao implements PlatosRepositorio {
         String sql = filtrarNombre
             ? """
               SELECT p.id, p.nombre, p.precio, p.fecha, p.aplica_iva,
+                     p.moneda_base, p.precio_usd, p.precio_ves, p.precio_clasificado, p.precio_incluye_iva,
                      pc.id_categoria, c.nombre AS categoria_nombre, c.color AS categoria_color,
                      CASE WHEN pf.nombre_clave IS NULL THEN 0 ELSE 1 END AS favorito,
                      r.total AS rango_total
@@ -98,6 +129,7 @@ public class PlatosDao implements PlatosRepositorio {
               """
             : """
               SELECT p.id, p.nombre, p.precio, p.fecha, p.aplica_iva,
+                     p.moneda_base, p.precio_usd, p.precio_ves, p.precio_clasificado, p.precio_incluye_iva,
                      pc.id_categoria, c.nombre AS categoria_nombre, c.color AS categoria_color,
                      CASE WHEN pf.nombre_clave IS NULL THEN 0 ELSE 1 END AS favorito,
                      r.total AS rango_total
@@ -134,7 +166,7 @@ public class PlatosDao implements PlatosRepositorio {
             }
         } catch (SQLException ex) {
             if (ex.getErrorCode() == 1054 || ex.getErrorCode() == 1146) {
-                // Esquema previo a la v4 — consulta sin categorías ni ranking
+                // Esquema previo — consulta legacy
                 return listarPorFechaLegacy(valor, fecha);
             }
             throw new DataAccessException("No se pudieron listar los platos.", ex);
@@ -146,8 +178,32 @@ public class PlatosDao implements PlatosRepositorio {
         Platos plato = new Platos();
         plato.setId(resultados.getInt("id"));
         plato.setNombre(resultados.getString("nombre"));
-        plato.setPrecioDecimal(resultados.getBigDecimal("precio"));
         plato.setAplicaIva(resultados.getInt("aplica_iva") != 0);
+
+        try {
+            plato.setMonedaBase(resultados.getString("moneda_base"));
+            plato.setPrecioUsd(resultados.getBigDecimal("precio_usd"));
+            plato.setPrecioVes(resultados.getBigDecimal("precio_ves"));
+            plato.setPrecioClasificado(resultados.getInt("precio_clasificado") != 0);
+            int incIva = resultados.getInt("precio_incluye_iva");
+            if (!resultados.wasNull()) {
+                plato.setPrecioIncluyeIva(incIva != 0);
+            } else {
+                plato.setPrecioIncluyeIva(null);
+            }
+        } catch (SQLException ignored) {
+            // Esquema v4 sin columnas monetarias
+        }
+
+        BigDecimal precioBd = resultados.getBigDecimal("precio");
+        if ("VES".equalsIgnoreCase(plato.getMonedaBase()) && plato.getPrecioVes() != null) {
+            plato.setPrecioDecimal(plato.getPrecioVes());
+        } else if (plato.getPrecioUsd() != null) {
+            plato.setPrecioDecimal(plato.getPrecioUsd());
+        } else if (precioBd != null) {
+            plato.setPrecioDecimal(precioBd);
+        }
+
         int idCategoria = resultados.getInt("id_categoria");
         if (!resultados.wasNull()) {
             plato.setIdCategoria(idCategoria);
@@ -232,6 +288,57 @@ public class PlatosDao implements PlatosRepositorio {
     public List<Platos> listarInactivos() {
         List<Platos> platos = new ArrayList<>();
         String sql = """
+            SELECT id, nombre, precio, fecha, desactivado_en,
+                   moneda_base, precio_usd, precio_ves, precio_clasificado, precio_incluye_iva
+            FROM platos
+            WHERE activo = 0
+            ORDER BY desactivado_en DESC
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql);
+                ResultSet resultados = sentencia.executeQuery()) {
+            while (resultados.next()) {
+                Platos plato = new Platos();
+                plato.setId(resultados.getInt("id"));
+                plato.setNombre(resultados.getString("nombre"));
+                plato.setFecha(resultados.getString("fecha"));
+                plato.setActivo(false);
+                Timestamp ts = resultados.getTimestamp("desactivado_en");
+                if (ts != null) {
+                    plato.setDesactivadoEn(ts.toLocalDateTime());
+                }
+                try {
+                    plato.setMonedaBase(resultados.getString("moneda_base"));
+                    plato.setPrecioUsd(resultados.getBigDecimal("precio_usd"));
+                    plato.setPrecioVes(resultados.getBigDecimal("precio_ves"));
+                    plato.setPrecioClasificado(resultados.getInt("precio_clasificado") != 0);
+                    int incIva = resultados.getInt("precio_incluye_iva");
+                    if (!resultados.wasNull()) {
+                        plato.setPrecioIncluyeIva(incIva != 0);
+                    }
+                } catch (SQLException ignored) {}
+                BigDecimal precioBd = resultados.getBigDecimal("precio");
+                if ("VES".equalsIgnoreCase(plato.getMonedaBase()) && plato.getPrecioVes() != null) {
+                    plato.setPrecioDecimal(plato.getPrecioVes());
+                } else if (plato.getPrecioUsd() != null) {
+                    plato.setPrecioDecimal(plato.getPrecioUsd());
+                } else if (precioBd != null) {
+                    plato.setPrecioDecimal(precioBd);
+                }
+                platos.add(plato);
+            }
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return listarInactivosLegacy();
+            }
+            throw new DataAccessException("No se pudieron listar los platos inactivos.", ex);
+        }
+        return platos;
+    }
+
+    private List<Platos> listarInactivosLegacy() {
+        List<Platos> platos = new ArrayList<>();
+        String sql = """
             SELECT id, nombre, precio, fecha, desactivado_en
             FROM platos
             WHERE activo = 0
@@ -282,6 +389,37 @@ public class PlatosDao implements PlatosRepositorio {
         validarPlato(pla);
         String sql = """
             UPDATE platos
+            SET nombre = ?, precio = ?, aplica_iva = ?, moneda_base = ?, precio_usd = ?, precio_ves = ?, precio_clasificado = ?, precio_incluye_iva = ?
+            WHERE id = ?
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, pla.getNombre());
+            sentencia.setBigDecimal(2, precioLegacyPersistible(pla));
+            sentencia.setInt(3, pla.isAplicaIva() ? 1 : 0);
+            sentencia.setString(4, pla.getMonedaBase());
+            sentencia.setBigDecimal(5, pla.getPrecioUsd());
+            sentencia.setBigDecimal(6, pla.getPrecioVes());
+            sentencia.setInt(7, pla.isPrecioClasificado() ? 1 : 0);
+            if (pla.getPrecioIncluyeIva() != null) {
+                sentencia.setInt(8, pla.getPrecioIncluyeIva() ? 1 : 0);
+            } else {
+                sentencia.setNull(8, java.sql.Types.TINYINT);
+            }
+            sentencia.setInt(9, pla.getId());
+            return ErrorAplicacionException.resultadoUnaFila(
+                    sentencia.executeUpdate(), "modificar plato " + pla.getId());
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054) {
+                return modificarV4(pla);
+            }
+            throw new DataAccessException("No se pudo modificar el plato.", ex);
+        }
+    }
+
+    private boolean modificarV4(Platos pla) {
+        String sql = """
+            UPDATE platos
             SET nombre = ?, precio = ?, aplica_iva = ?
             WHERE id = ?
             """;
@@ -324,12 +462,29 @@ public class PlatosDao implements PlatosRepositorio {
                 || plato.getFecha() == null || plato.getFecha().trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("El nombre, precio y fecha del plato son obligatorios.");
         }
-        precioPersistible(plato);
+        BigDecimal precio = precioLegacyPersistible(plato);
+        if (precio == null || precio.signum() <= 0 || precio.scale() > 2 || precio.precision() - precio.scale() > 12) {
+            throw ErrorAplicacionException.validacion(
+                    "El precio debe ser positivo y tener como máximo dos decimales.");
+        }
+    }
+
+    private BigDecimal precioLegacyPersistible(Platos pla) {
+        if ("VES".equalsIgnoreCase(pla.getMonedaBase()) && pla.getPrecioVes() != null) {
+            return pla.getPrecioVes().setScale(2, RoundingMode.HALF_UP);
+        }
+        if (pla.getPrecioUsd() != null) {
+            return pla.getPrecioUsd().setScale(2, RoundingMode.HALF_UP);
+        }
+        if (pla.getPrecioDecimal() != null) {
+            return pla.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+        }
+        return null;
     }
 
     private BigDecimal precioPersistible(Platos plato) {
         BigDecimal precio = plato.getPrecioDecimal();
-        if (precio.signum() <= 0 || precio.scale() > 2 || precio.precision() - precio.scale() > 8) {
+        if (precio == null || precio.signum() <= 0 || precio.scale() > 2 || precio.precision() - precio.scale() > 12) {
             throw ErrorAplicacionException.validacion(
                     "El precio debe ser positivo y tener como máximo dos decimales.");
         }

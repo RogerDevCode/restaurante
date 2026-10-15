@@ -301,9 +301,9 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCatalogoPlatos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
         tblCatalogoPlatos.getColumnModel().getColumn(0).setPreferredWidth(45);
         tblCatalogoPlatos.getColumnModel().getColumn(0).setMaxWidth(55);
-        tblCatalogoPlatos.getColumnModel().getColumn(1).setPreferredWidth(350);
-        tblCatalogoPlatos.getColumnModel().getColumn(2).setPreferredWidth(85);
-        tblCatalogoPlatos.getColumnModel().getColumn(2).setMaxWidth(110);
+        tblCatalogoPlatos.getColumnModel().getColumn(1).setPreferredWidth(300);
+        tblCatalogoPlatos.getColumnModel().getColumn(2).setPreferredWidth(140);
+        tblCatalogoPlatos.getColumnModel().getColumn(2).setMaxWidth(220);
 
         tblCatalogoPlatos.addMouseListener(new MouseAdapter() {
             @Override
@@ -773,13 +773,38 @@ public class PanelAtencionMesasSplit extends JPanel {
                     modeloCatalogoPlatos.setRowCount(0);
                     int filaRestaurar = -1;
                     if (platos != null) {
+                        BigDecimal tasa = sistema.getTasaActual();
                         for (Platos p : platos) {
                             platosPorId.put(p.getId(), p);
-                            BigDecimal precio = p.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                            String moneda = p.getMonedaBase() != null ? p.getMonedaBase().toUpperCase() : "USD";
+                            BigDecimal precioPrimario = "VES".equals(moneda) && p.getPrecioVes() != null
+                                    ? p.getPrecioVes()
+                                    : (p.getPrecioUsd() != null ? p.getPrecioUsd() : p.getPrecioDecimal());
+                            if (precioPrimario == null) precioPrimario = BigDecimal.ZERO;
+                            precioPrimario = precioPrimario.setScale(2, RoundingMode.HALF_UP);
+
+                            String displayPrecio;
+                            if ("VES".equals(moneda)) {
+                                BigDecimal refUsd = (tasa != null && tasa.signum() > 0)
+                                        ? precioPrimario.divide(tasa, 2, RoundingMode.HALF_UP)
+                                        : BigDecimal.ZERO;
+                                displayPrecio = "Bs. " + String.format(java.util.Locale.US, "%.2f", precioPrimario)
+                                        + " ($ " + String.format(java.util.Locale.US, "%.2f", refUsd) + ")";
+                            } else {
+                                BigDecimal refVes = (tasa != null && tasa.signum() > 0)
+                                        ? precioPrimario.multiply(tasa).setScale(2, RoundingMode.HALF_UP)
+                                        : BigDecimal.ZERO;
+                                displayPrecio = "$ " + String.format(java.util.Locale.US, "%.2f", precioPrimario)
+                                        + " (Bs. " + String.format(java.util.Locale.US, "%.2f", refVes) + ")";
+                            }
+                            if (!p.isPrecioClasificado()) {
+                                displayPrecio = "[Sin clasificar] " + displayPrecio;
+                            }
+
                             modeloCatalogoPlatos.addRow(new Object[]{
                                     p.getId(),
                                     p.getNombre(),
-                                    "$ " + String.format(java.util.Locale.US, "%.2f", precio)
+                                    displayPrecio
                             });
                             if (idSel != null && idSel.equals(p.getId())) {
                                 filaRestaurar = modeloCatalogoPlatos.getRowCount() - 1;
@@ -810,14 +835,33 @@ public class PanelAtencionMesasSplit extends JPanel {
         int fila = tblCatalogoPlatos.getSelectedRow();
         if (fila < 0) return;
 
+        int idPlato = (int) tblCatalogoPlatos.getValueAt(fila, 0);
+        Platos platoObj = platosPorId.get(idPlato);
+        if (platoObj != null && !platoObj.isPrecioClasificado()) {
+            sistema.mostrarAvisoEnBanda("El producto '" + platoObj.getNombre() + "' no está clasificado con moneda/IVA.");
+            JOptionPane.showMessageDialog(this,
+                    "El producto '" + platoObj.getNombre() + "' no tiene moneda base ni condición de IVA clasificadas.\n" +
+                    "Debe editarse y guardarse en el catálogo de platos antes de poder agregarse a pedidos.",
+                    "Producto sin clasificar", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         // Feedback visual verde de confirmacion al agregar
         tblCatalogoPlatos.setSelectionBackground(new Color(144, 238, 144));
         new javax.swing.Timer(300, ev -> tblCatalogoPlatos.setSelectionBackground(javax.swing.UIManager.getColor("Table.selectionBackground"))).start();
 
-        int idPlato = (int) tblCatalogoPlatos.getValueAt(fila, 0);
         String nombre = (String) tblCatalogoPlatos.getValueAt(fila, 1);
-        String precioStr = tblCatalogoPlatos.getValueAt(fila, 2).toString().replace("$", "").trim();
-        BigDecimal precio = new BigDecimal(precioStr).setScale(2, RoundingMode.HALF_UP);
+        String moneda = (platoObj != null && platoObj.getMonedaBase() != null) ? platoObj.getMonedaBase().toUpperCase() : "USD";
+        BigDecimal precio;
+        if (platoObj != null) {
+            precio = "VES".equals(moneda) && platoObj.getPrecioVes() != null
+                    ? platoObj.getPrecioVes()
+                    : (platoObj.getPrecioUsd() != null ? platoObj.getPrecioUsd() : platoObj.getPrecioDecimal());
+        } else {
+            precio = BigDecimal.ZERO;
+        }
+        if (precio == null) precio = BigDecimal.ZERO;
+        precio = precio.setScale(2, RoundingMode.HALF_UP);
 
         // Si ya existe en el carrito, sumar 1
         for (int i = 0; i < modeloCarrito.getRowCount(); i++) {

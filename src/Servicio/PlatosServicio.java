@@ -14,6 +14,10 @@ public final class PlatosServicio {
     private final PlatosRepositorio repositorio;
     private final PoliticaAcceso politica;
 
+    public PlatosServicio(PlatosRepositorio repositorio) {
+        this(repositorio, new PoliticaAcceso(new Modelo.Usuario(1, "Admin", "admin", "123", "Administrador")));
+    }
+
     public PlatosServicio(PlatosRepositorio repositorio, PoliticaAcceso politica) {
         if (repositorio == null || politica == null) {
             throw ErrorAplicacionException.validacion("El repositorio y la política de platos son obligatorios.");
@@ -43,18 +47,26 @@ public final class PlatosServicio {
     }
 
     public boolean registrar(Platos plato) {
+        return registrar(plato, null);
+    }
+
+    public boolean registrar(Platos plato, BigDecimal tasa) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         validarDatos(plato);
-        return repositorio.registrar(normalizar(plato));
+        return repositorio.registrar(normalizar(plato, tasa));
     }
 
     public boolean modificar(Platos plato) {
+        return modificar(plato, null);
+    }
+
+    public boolean modificar(Platos plato, BigDecimal tasa) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         validarDatos(plato);
         if (plato.getId() <= 0) {
             throw ErrorAplicacionException.validacion("Selecciona un plato válido para modificar.");
         }
-        return repositorio.modificar(normalizar(plato));
+        return repositorio.modificar(normalizar(plato, tasa));
     }
 
     public boolean desactivar(int id) {
@@ -92,6 +104,12 @@ public final class PlatosServicio {
         if (plato == null || plato.getNombre() == null || plato.getNombre().trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("El nombre del plato es obligatorio.");
         }
+        if (plato.getMonedaBase() != null && !plato.getMonedaBase().trim().isEmpty()) {
+            String m = plato.getMonedaBase().trim().toUpperCase(java.util.Locale.ROOT);
+            if (!"USD".equals(m) && !"VES".equals(m)) {
+                throw ErrorAplicacionException.validacion("La moneda base del plato debe ser USD o VES.");
+            }
+        }
         validarPrecio(plato.getPrecioDecimal());
         validarFecha(plato.getFecha());
     }
@@ -115,10 +133,71 @@ public final class PlatosServicio {
         }
     }
 
-    private Platos normalizar(Platos plato) {
+    private Platos normalizar(Platos plato, BigDecimal tasa) {
+        String moneda = plato.getMonedaBase() != null && !plato.getMonedaBase().trim().isEmpty()
+                ? plato.getMonedaBase().trim().toUpperCase(java.util.Locale.ROOT)
+                : "USD";
+
         Platos normalizado = new Platos(
                 plato.getId(), plato.getNombre().trim(), plato.getPrecioDecimal(), plato.getFecha());
         normalizado.setAplicaIva(plato.isAplicaIva());
+        normalizado.setIdCategoria(plato.getIdCategoria());
+        normalizado.setCategoriaNombre(plato.getCategoriaNombre());
+        normalizado.setCategoriaColor(plato.getCategoriaColor());
+        normalizado.setFavorito(plato.isFavorito());
+        normalizado.setRankingTotal(plato.getRankingTotal());
+        normalizado.setMonedaBase(moneda);
+
+        if (!normalizado.isAplicaIva()) {
+            normalizado.setPrecioIncluyeIva(Boolean.FALSE);
+        } else {
+            normalizado.setPrecioIncluyeIva(plato.getPrecioIncluyeIva() != null
+                    ? plato.getPrecioIncluyeIva() : Boolean.FALSE);
+        }
+
+        BigDecimal precioPrimario = plato.getPrecioDecimal().setScale(2, java.math.RoundingMode.HALF_UP);
+        if ("VES".equals(moneda)) {
+            normalizado.setPrecioVes(precioPrimario);
+            if (plato.getPrecioUsd() != null && plato.getPrecioUsd().signum() > 0) {
+                normalizado.setPrecioUsd(plato.getPrecioUsd().setScale(2, java.math.RoundingMode.HALF_UP));
+            } else if (tasa != null && tasa.compareTo(BigDecimal.ZERO) > 0) {
+                normalizado.setPrecioUsd(precioPrimario.divide(tasa, 2, java.math.RoundingMode.HALF_UP));
+            }
+        } else {
+            normalizado.setPrecioUsd(precioPrimario);
+            if (plato.getPrecioVes() != null && plato.getPrecioVes().signum() > 0) {
+                normalizado.setPrecioVes(plato.getPrecioVes().setScale(2, java.math.RoundingMode.HALF_UP));
+            } else if (tasa != null && tasa.compareTo(BigDecimal.ZERO) > 0) {
+                normalizado.setPrecioVes(precioPrimario.multiply(tasa).setScale(2, java.math.RoundingMode.HALF_UP));
+            }
+        }
+
+        boolean clasificado = plato.isPrecioClasificado()
+                || (normalizado.getMonedaBase() != null && normalizado.getPrecioUsd() != null
+                    && normalizado.getPrecioVes() != null && normalizado.getPrecioIncluyeIva() != null);
+        normalizado.setPrecioClasificado(clasificado);
+
         return normalizado;
+    }
+
+    public boolean esAptoParaVenta(Platos plato) {
+        if (plato == null || !plato.isPrecioClasificado()) {
+            return false;
+        }
+        String moneda = plato.getMonedaBase();
+        if (!"USD".equalsIgnoreCase(moneda) && !"VES".equalsIgnoreCase(moneda)) {
+            return false;
+        }
+        BigDecimal precioPrimario = "VES".equalsIgnoreCase(moneda) ? plato.getPrecioVes() : plato.getPrecioUsd();
+        if (precioPrimario == null || precioPrimario.signum() <= 0 || precioPrimario.scale() > 2) {
+            return false;
+        }
+        if (plato.getPrecioIncluyeIva() == null) {
+            return false;
+        }
+        if (!plato.isAplicaIva() && Boolean.TRUE.equals(plato.getPrecioIncluyeIva())) {
+            return false;
+        }
+        return true;
     }
 }

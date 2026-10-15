@@ -116,6 +116,90 @@ public class PlatosServicioTest {
         assertEquals("Zumo", resultado.get(4).getNombre());
     }
 
+    @Test
+    public void cambiarCategoriaNoAlteraMoneda() {
+        FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
+        PlatosServicio servicio = new PlatosServicio(repositorio, politica("Administrador"));
+
+        Platos plato = plato(1, "Bebida Malta", "60.00");
+        plato.setMonedaBase("VES");
+        plato.setIdCategoria(1);
+        plato.setCategoriaNombre("Bebidas");
+        servicio.modificar(plato, new BigDecimal("40.0000"));
+
+        Platos normalizado1 = repositorio.recibido.get();
+        assertEquals("VES", normalizado1.getMonedaBase());
+
+        // Cambiar categoría a 'Comida' no debe inferir ni mutar la moneda
+        plato.setIdCategoria(2);
+        plato.setCategoriaNombre("Comida");
+        servicio.modificar(plato, new BigDecimal("40.0000"));
+
+        Platos normalizado2 = repositorio.recibido.get();
+        assertEquals("VES", normalizado2.getMonedaBase());
+        assertEquals(2, normalizado2.getIdCategoria());
+    }
+
+    @Test
+    public void apagarAplicaIvaFuerzaPrecioIncluyeIvaFalse() {
+        FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
+        PlatosServicio servicio = new PlatosServicio(repositorio, politica("Administrador"));
+
+        Platos plato = plato(2, "Refresco Exento", "80.00");
+        plato.setMonedaBase("VES");
+        plato.setAplicaIva(false);
+        plato.setPrecioIncluyeIva(true); // Intento de marcar IVA incluido en exento
+
+        servicio.registrar(plato, new BigDecimal("40.0000"));
+
+        Platos normalizado = repositorio.recibido.get();
+        assertFalse(normalizado.isAplicaIva());
+        assertEquals(Boolean.FALSE, normalizado.getPrecioIncluyeIva());
+    }
+
+    @Test
+    public void conversionDualConTasaCalculaAmbasMonedasYMarcaClasificado() {
+        FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
+        PlatosServicio servicio = new PlatosServicio(repositorio, politica("Administrador"));
+
+        // Producto base USD
+        Platos platoUsd = plato(10, "Hamburguesa", "10.00");
+        platoUsd.setMonedaBase("USD");
+        platoUsd.setAplicaIva(true);
+        platoUsd.setPrecioIncluyeIva(false);
+        servicio.registrar(platoUsd, new BigDecimal("40.0000"));
+
+        Platos resUsd = repositorio.recibido.get();
+        assertEquals("USD", resUsd.getMonedaBase());
+        assertEquals(new BigDecimal("10.00"), resUsd.getPrecioUsd());
+        assertEquals(new BigDecimal("400.00"), resUsd.getPrecioVes());
+        assertTrue(resUsd.isPrecioClasificado());
+
+        // Producto base VES
+        Platos platoVes = plato(11, "Cerveza Polar", "60.00");
+        platoVes.setMonedaBase("VES");
+        platoVes.setAplicaIva(true);
+        platoVes.setPrecioIncluyeIva(true);
+        servicio.registrar(platoVes, new BigDecimal("40.0000"));
+
+        Platos resVes = repositorio.recibido.get();
+        assertEquals("VES", resVes.getMonedaBase());
+        assertEquals(new BigDecimal("60.00"), resVes.getPrecioVes());
+        assertEquals(new BigDecimal("1.50"), resVes.getPrecioUsd());
+        assertTrue(resVes.isPrecioClasificado());
+    }
+
+    @Test
+    public void rechazaMonedaInvalida() {
+        FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
+        PlatosServicio servicio = new PlatosServicio(repositorio, politica("Administrador"));
+
+        Platos plato = plato(1, "Plato Raro", "10.00");
+        plato.setMonedaBase("EUR");
+
+        assertThrows(ErrorAplicacionException.class, () -> servicio.registrar(plato));
+    }
+
     private PoliticaAcceso politica(String rol) {
         Usuario usuario = new Usuario();
         usuario.setRol(rol);

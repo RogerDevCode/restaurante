@@ -212,6 +212,130 @@ public class PlatosDaoTest {
         assertTrue(sqlCapturado.get().contains("activo = 1"));
     }
 
+    @Test
+    public void registrarEjecutaInsertConColumnasMonetariasDuales() throws Exception {
+        java.util.concurrent.atomic.AtomicReference<String> sqlCapturado = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.Map<Integer, Object> parametros = new java.util.HashMap<>();
+
+        java.lang.reflect.InvocationHandler psHandler = (proxy, method, args) -> {
+            if (method.getName().startsWith("set") && args != null && args.length >= 2) {
+                parametros.put((Integer) args[0], args[1]);
+                return null;
+            }
+            if ("executeUpdate".equals(method.getName())) {
+                return 1;
+            }
+            return null;
+        };
+        java.sql.PreparedStatement psMock = (java.sql.PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{java.sql.PreparedStatement.class},
+                psHandler);
+
+        java.lang.reflect.InvocationHandler connHandler = (proxy, method, args) -> {
+            if ("prepareStatement".equals(method.getName()) && args != null && args.length > 0) {
+                sqlCapturado.set((String) args[0]);
+                return psMock;
+            }
+            return null;
+        };
+        Connection connMock = (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{Connection.class},
+                connHandler);
+
+        PlatosDao dao = new PlatosDao(new ProveedorConexionJdbc() {
+            @Override public Connection getConnection() { return connMock; }
+        });
+
+        Platos plato = new Platos();
+        plato.setNombre("Pabellon Criollo");
+        plato.setFecha("2026-10-05");
+        plato.setMonedaBase("VES");
+        plato.setPrecioVes(new BigDecimal("120.00"));
+        plato.setPrecioUsd(new BigDecimal("3.00"));
+        plato.setAplicaIva(true);
+        plato.setPrecioIncluyeIva(true);
+        plato.setPrecioClasificado(true);
+
+        boolean ok = dao.registrar(plato);
+        assertTrue(ok);
+        assertNotNull(sqlCapturado.get());
+        assertTrue("SQL debe incluir moneda_base", sqlCapturado.get().contains("moneda_base"));
+        assertTrue("SQL debe incluir precio_usd", sqlCapturado.get().contains("precio_usd"));
+        assertTrue("SQL debe incluir precio_ves", sqlCapturado.get().contains("precio_ves"));
+        assertTrue("SQL debe incluir precio_clasificado", sqlCapturado.get().contains("precio_clasificado"));
+        assertTrue("SQL debe incluir precio_incluye_iva", sqlCapturado.get().contains("precio_incluye_iva"));
+
+        assertEquals("VES", parametros.get(5));
+        assertEquals(new BigDecimal("3.00"), parametros.get(6));
+        assertEquals(new BigDecimal("120.00"), parametros.get(7));
+        assertEquals(1, parametros.get(8)); // clasificado
+        assertEquals(1, parametros.get(9)); // incluye IVA
+    }
+
+    @Test
+    public void modificarEjecutaUpdateConColumnasMonetariasDuales() throws Exception {
+        java.util.concurrent.atomic.AtomicReference<String> sqlCapturado = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.Map<Integer, Object> parametros = new java.util.HashMap<>();
+
+        java.lang.reflect.InvocationHandler psHandler = (proxy, method, args) -> {
+            if (method.getName().startsWith("set") && args != null && args.length >= 2) {
+                parametros.put((Integer) args[0], args[1]);
+                return null;
+            }
+            if ("executeUpdate".equals(method.getName())) {
+                return 1;
+            }
+            return null;
+        };
+        java.sql.PreparedStatement psMock = (java.sql.PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{java.sql.PreparedStatement.class},
+                psHandler);
+
+        java.lang.reflect.InvocationHandler connHandler = (proxy, method, args) -> {
+            if ("prepareStatement".equals(method.getName()) && args != null && args.length > 0) {
+                sqlCapturado.set((String) args[0]);
+                return psMock;
+            }
+            return null;
+        };
+        Connection connMock = (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{Connection.class},
+                connHandler);
+
+        PlatosDao dao = new PlatosDao(new ProveedorConexionJdbc() {
+            @Override public Connection getConnection() { return connMock; }
+        });
+
+        Platos plato = new Platos();
+        plato.setId(15);
+        plato.setNombre("Hamburguesa Doble");
+        plato.setFecha("2026-10-05");
+        plato.setMonedaBase("USD");
+        plato.setPrecioUsd(new BigDecimal("8.50"));
+        plato.setPrecioVes(new BigDecimal("340.00"));
+        plato.setAplicaIva(false);
+        plato.setPrecioIncluyeIva(false);
+        plato.setPrecioClasificado(true);
+
+        boolean ok = dao.modificar(plato);
+        assertTrue(ok);
+        assertNotNull(sqlCapturado.get());
+        assertTrue("SQL debe incluir moneda_base", sqlCapturado.get().contains("moneda_base = ?"));
+        assertTrue("SQL debe incluir precio_usd", sqlCapturado.get().contains("precio_usd = ?"));
+        assertTrue("SQL debe incluir precio_ves", sqlCapturado.get().contains("precio_ves = ?"));
+
+        assertEquals("USD", parametros.get(4));
+        assertEquals(new BigDecimal("8.50"), parametros.get(5));
+        assertEquals(new BigDecimal("340.00"), parametros.get(6));
+        assertEquals(1, parametros.get(7)); // clasificado
+        assertEquals(0, parametros.get(8)); // incluye IVA false
+        assertEquals(15, parametros.get(9)); // id
+    }
+
     private static final class CapturadorLogs extends Handler {
         private final List<LogRecord> registros = new ArrayList<>();
 

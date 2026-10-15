@@ -24,8 +24,16 @@ public final class PlatosControlador {
         return servicio.registrar(plato);
     }
 
+    public boolean registrar(Platos plato, java.math.BigDecimal tasa) {
+        return servicio.registrar(plato, tasa);
+    }
+
     public boolean modificar(Platos plato) {
         return servicio.modificar(plato);
+    }
+
+    public boolean modificar(Platos plato, java.math.BigDecimal tasa) {
+        return servicio.modificar(plato, tasa);
     }
 
     public boolean eliminar(int id) {

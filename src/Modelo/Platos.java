@@ -13,6 +13,7 @@ public class Platos {
     private BigDecimal precioUsd;
     private BigDecimal precioVes;
     private Boolean precioIncluyeIva;
+    private boolean precioClasificado = false;
     private String fecha;
     private boolean activo = true;
     private LocalDateTime desactivadoEn;
@@ -95,6 +96,14 @@ public class Platos {
 
     public void setPrecioIncluyeIva(Boolean precioIncluyeIva) {
         this.precioIncluyeIva = precioIncluyeIva;
+    }
+
+    public boolean isPrecioClasificado() {
+        return precioClasificado;
+    }
+
+    public void setPrecioClasificado(boolean precioClasificado) {
+        this.precioClasificado = precioClasificado;
     }
 
     public String getFecha() {
