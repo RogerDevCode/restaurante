@@ -73,12 +73,19 @@ public class PedidoIvaIntegracionFlujoTest {
         gravado.setNombre("Plato gravado");
         gravado.setCantidad(1);
         gravado.setPrecioDecimal(new BigDecimal("10.00"));
+        gravado.setMonedaBase("USD");
         gravado.setAplicaIva(true);
+        gravado.setPrecioIncluyeIva(false);
+        gravado.setIvaPorcentaje(new BigDecimal("16.00"));
+
         DetallePedido exento = new DetallePedido();
         exento.setNombre("Plato exento");
         exento.setCantidad(1);
         exento.setPrecioDecimal(new BigDecimal("5.00"));
+        exento.setMonedaBase("USD");
         exento.setAplicaIva(false);
+        exento.setPrecioIncluyeIva(false);
+        exento.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
         List<DetallePedido> detalles = List.of(gravado, exento);
 
         CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(
@@ -177,5 +184,33 @@ public class PedidoIvaIntegracionFlujoTest {
 
         assertEquals("10", usdSinDec.toPlainString());
         assertEquals("385", bsSinDec.toPlainString());
+    }
+
+    @Test
+    public void rechazaDetallesSinClasificarMonedaOPrecios() {
+        DetallePedido sinMoneda = new DetallePedido();
+        sinMoneda.setNombre("Sin clasificar");
+        sinMoneda.setCantidad(1);
+        sinMoneda.setPrecioDecimal(new BigDecimal("10.00"));
+        sinMoneda.setAplicaIva(true);
+        assertThrows(ErrorAplicacionException.class, () ->
+                CalculoFiscalRecord.calcular(List.of(sinMoneda), new BigDecimal("16.00"), new BigDecimal("36.5000")));
+    }
+
+    @Test
+    public void calculaPrecioConIvaIncluidoSinSumarIvaAdicional() {
+        DetallePedido inc = new DetallePedido();
+        inc.setNombre("Pollo con IVA Inc");
+        inc.setCantidad(1);
+        inc.setPrecioDecimal(new BigDecimal("116.00"));
+        inc.setMonedaBase("USD");
+        inc.setAplicaIva(true);
+        inc.setPrecioIncluyeIva(true);
+        inc.setIvaPorcentaje(new BigDecimal("16.00"));
+
+        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(List.of(inc), new BigDecimal("16.00"), new BigDecimal("40.0000"));
+        assertEquals(new BigDecimal("100.00"), fiscal.subtotalUsd());
+        assertEquals(new BigDecimal("16.00"), fiscal.ivaUsd());
+        assertEquals(new BigDecimal("116.00"), fiscal.totalUsd());
     }
 }

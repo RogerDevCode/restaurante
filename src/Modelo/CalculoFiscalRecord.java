@@ -86,66 +86,56 @@ public record CalculoFiscalRecord(
         if (detalles == null || detalles.isEmpty()) {
             throw ErrorAplicacionException.validacion("El pedido debe incluir detalles para calcular sus impuestos.");
         }
-        boolean tieneMoneda = detalles.stream().anyMatch(d -> d != null && d.getMonedaBase() != null && !d.getMonedaBase().isBlank());
-        if (tieneMoneda) {
-            BigDecimal tasaValida = tasaCambio != null && tasaCambio.compareTo(BigDecimal.ZERO) > 0 ? tasaCambio : new BigDecimal("36.5000");
-            BigDecimal ivaValido = ivaPorcentaje != null ? ivaPorcentaje : new BigDecimal("16.00");
-            for (DetallePedido d : detalles) {
-                if (d.getMonedaBase() == null || d.getMonedaBase().isBlank()) {
-                    d.setMonedaBase("USD");
-                }
-                if (d.getPrecioIncluyeIva() == null) {
-                    d.setPrecioIncluyeIva(Boolean.FALSE);
-                }
-                if (d.getIvaPorcentaje() == null) {
-                    d.setIvaPorcentaje(d.getAplicaIva() != null && d.getAplicaIva() ? ivaValido : BigDecimal.ZERO.setScale(2));
-                }
+        for (DetallePedido d : detalles) {
+            if (d == null) {
+                throw ErrorAplicacionException.validacion("El detalle no puede ser nulo.");
             }
-            Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasaValida);
-            BigDecimal baseUsd = BigDecimal.ZERO.setScale(2);
-            BigDecimal exUsd = BigDecimal.ZERO.setScale(2);
-            for (Servicio.CalculoMonetarioPedido.CalculoLinea linea : calc.lineas()) {
-                if ("VES".equalsIgnoreCase(linea.monedaBase())) {
-                    baseUsd = baseUsd.add(linea.baseImponibleVes().divide(tasaValida, 8, RoundingMode.HALF_UP));
-                    exUsd = exUsd.add(linea.exentoVes().divide(tasaValida, 8, RoundingMode.HALF_UP));
-                } else {
-                    baseUsd = baseUsd.add(linea.baseImponibleFuente());
-                    exUsd = exUsd.add(linea.exentoFuente());
-                }
+            if (d.getMonedaBase() == null || d.getMonedaBase().isBlank()) {
+                throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' no tiene moneda base asignada (requiere clasificación).");
             }
-            baseUsd = baseUsd.setScale(2, RoundingMode.HALF_UP);
-            exUsd = exUsd.setScale(2, RoundingMode.HALF_UP);
-            return new CalculoFiscalRecord(
-                    calc.subtotalUsd(),
-                    ivaValido.setScale(2, RoundingMode.HALF_UP),
-                    calc.ivaUsd(),
-                    calc.totalUsd(),
-                    tasaValida.setScale(4, RoundingMode.HALF_UP),
-                    calc.subtotalVes(),
-                    calc.ivaVes(),
-                    calc.totalVes(),
-                    baseUsd,
-                    exUsd,
-                    calc.baseImponibleVes(),
-                    calc.exentoVes());
+            if (d.getAplicaIva() == null) {
+                throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' no tiene condición fiscal de IVA definida.");
+            }
+            if (d.getPrecioIncluyeIva() == null) {
+                throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' no tiene clasificada la condición de IVA incluido.");
+            }
+            if (d.getIvaPorcentaje() == null) {
+                throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' no tiene tasa de IVA asignada.");
+            }
         }
+        if (tasaCambio == null || tasaCambio.compareTo(BigDecimal.ZERO) <= 0) {
+            throw ErrorAplicacionException.validacion("La tasa de cambio debe ser positiva.");
+        }
+        BigDecimal tasaValida = tasaCambio.setScale(4, RoundingMode.HALF_UP);
+        BigDecimal ivaValido = ivaPorcentaje != null ? ivaPorcentaje.setScale(2, RoundingMode.HALF_UP) : new BigDecimal("16.00");
 
-        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
-        BigDecimal exento = BigDecimal.ZERO.setScale(2);
-        for (DetallePedido detalle : detalles) {
-            if (detalle == null || detalle.getAplicaIva() == null || detalle.getCantidad() <= 0
-                    || detalle.getPrecioDecimal() == null || detalle.getPrecioDecimal().signum() < 0) {
-                throw ErrorAplicacionException.validacion("Cada detalle debe incluir una condición fiscal válida.");
-            }
-            BigDecimal importe = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(detalle.getCantidad()));
-            if (detalle.getAplicaIva()) {
-                baseImponible = baseImponible.add(importe);
+        Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasaValida);
+        BigDecimal baseUsd = BigDecimal.ZERO.setScale(2);
+        BigDecimal exUsd = BigDecimal.ZERO.setScale(2);
+        for (Servicio.CalculoMonetarioPedido.CalculoLinea linea : calc.lineas()) {
+            if ("VES".equalsIgnoreCase(linea.monedaBase())) {
+                baseUsd = baseUsd.add(linea.baseImponibleVes().divide(tasaValida, 8, RoundingMode.HALF_UP));
+                exUsd = exUsd.add(linea.exentoVes().divide(tasaValida, 8, RoundingMode.HALF_UP));
             } else {
-                exento = exento.add(importe);
+                baseUsd = baseUsd.add(linea.baseImponibleFuente());
+                exUsd = exUsd.add(linea.exentoFuente());
             }
         }
-        return calcular(baseImponible, exento, ivaPorcentaje, tasaCambio);
+        baseUsd = baseUsd.setScale(2, RoundingMode.HALF_UP);
+        exUsd = exUsd.setScale(2, RoundingMode.HALF_UP);
+        return new CalculoFiscalRecord(
+                calc.subtotalUsd(),
+                ivaValido,
+                calc.ivaUsd(),
+                calc.totalUsd(),
+                tasaValida,
+                calc.subtotalVes(),
+                calc.ivaVes(),
+                calc.totalVes(),
+                baseUsd,
+                exUsd,
+                calc.baseImponibleVes(),
+                calc.exentoVes());
     }
 
     /**

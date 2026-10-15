@@ -435,10 +435,14 @@ public class PedidosDao implements PedidosRepositorio {
         }
 
         BigDecimal tasa = (pedido.getTasaCambio() != null && pedido.getTasaCambio().signum() > 0)
-                ? pedido.getTasaCambio() : new BigDecimal("36.5000");
+                ? pedido.getTasaCambio().setScale(4, RoundingMode.HALF_UP) : new BigDecimal("36.5000");
 
+        BigDecimal ivaPedido = pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP) : new BigDecimal("16.00");
         List<DetallePedido> detallesNormalizados = new ArrayList<>(detalles.size());
         for (DetallePedido d : detalles) {
+            if (d == null) {
+                throw ErrorAplicacionException.validacion("El pedido contiene un detalle nulo.");
+            }
             DetallePedido clon = new DetallePedido();
             clon.setPrecioDecimal(d.getPrecioDecimal());
             clon.setCantidad(d.getCantidad());
@@ -446,9 +450,7 @@ public class PedidosDao implements PedidosRepositorio {
             clon.setAplicaIva(d.getAplicaIva() != null ? d.getAplicaIva() : Boolean.TRUE);
             clon.setPrecioIncluyeIva(d.getPrecioIncluyeIva() != null ? d.getPrecioIncluyeIva() : Boolean.FALSE);
             clon.setIvaPorcentaje(d.getIvaPorcentaje() != null ? d.getIvaPorcentaje()
-                    : (Boolean.TRUE.equals(clon.getAplicaIva())
-                            ? (pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : new BigDecimal("16.00"))
-                            : BigDecimal.ZERO.setScale(2)));
+                    : (Boolean.TRUE.equals(clon.getAplicaIva()) ? ivaPedido : BigDecimal.ZERO.setScale(2)));
             detallesNormalizados.add(clon);
         }
 
@@ -489,13 +491,24 @@ public class PedidosDao implements PedidosRepositorio {
                                 throw ErrorAplicacionException.validacion(
                                         "El producto '" + det.getNombre() + "' ya no está disponible en el catálogo.");
                             }
+                            if (rs.getInt("precio_clasificado") == 0) {
+                                throw ErrorAplicacionException.validacion(
+                                        "El producto '" + det.getNombre() + "' no tiene sus precios clasificados en el catálogo.");
+                            }
                             det.setNombre(rs.getString("nombre"));
                             String mb = rs.getString("moneda_base");
-                            if (mb == null || mb.isBlank()) mb = "USD";
+                            if (mb == null || mb.isBlank()) {
+                                throw ErrorAplicacionException.validacion(
+                                        "El producto '" + det.getNombre() + "' no tiene moneda base asignada.");
+                            }
                             det.setMonedaBase(mb);
                             det.setAplicaIva(rs.getInt("aplica_iva") != 0);
                             int incIva = rs.getInt("precio_incluye_iva");
-                            det.setPrecioIncluyeIva(!rs.wasNull() && incIva != 0);
+                            if (rs.wasNull()) {
+                                throw ErrorAplicacionException.validacion(
+                                        "El producto '" + det.getNombre() + "' no tiene clasificada la condición de IVA incluido.");
+                            }
+                            det.setPrecioIncluyeIva(incIva != 0);
                             BigDecimal precioCat = "VES".equalsIgnoreCase(mb) ? rs.getBigDecimal("precio_ves") : rs.getBigDecimal("precio_usd");
                             if (precioCat != null && precioCat.signum() > 0) {
                                 det.setPrecioDecimal(precioCat);
@@ -503,13 +516,16 @@ public class PedidosDao implements PedidosRepositorio {
                         }
                     } else {
                         if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) {
-                            det.setMonedaBase("USD");
+                            throw ErrorAplicacionException.validacion(
+                                    "El producto '" + det.getNombre() + "' no tiene moneda base asignada (requiere clasificación).");
                         }
                         if (det.getAplicaIva() == null) {
-                            det.setAplicaIva(Boolean.TRUE);
+                            throw ErrorAplicacionException.validacion(
+                                    "El producto '" + det.getNombre() + "' no tiene condición fiscal de IVA definida.");
                         }
                         if (det.getPrecioIncluyeIva() == null) {
-                            det.setPrecioIncluyeIva(Boolean.FALSE);
+                            throw ErrorAplicacionException.validacion(
+                                    "El producto '" + det.getNombre() + "' no tiene clasificada la condición de IVA incluido.");
                         }
                     }
                 }
@@ -520,25 +536,29 @@ public class PedidosDao implements PedidosRepositorio {
             }
         }
 
+        BigDecimal ivaPedido = pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP) : new BigDecimal("16.00");
         for (DetallePedido det : detalles) {
             if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) {
-                det.setMonedaBase("USD");
+                throw ErrorAplicacionException.validacion(
+                        "El producto '" + det.getNombre() + "' no tiene moneda base asignada.");
             }
             if (det.getAplicaIva() == null) {
-                det.setAplicaIva(Boolean.TRUE);
+                throw ErrorAplicacionException.validacion(
+                        "El producto '" + det.getNombre() + "' no tiene condición fiscal de IVA definida.");
             }
             if (det.getPrecioIncluyeIva() == null) {
-                det.setPrecioIncluyeIva(Boolean.FALSE);
+                throw ErrorAplicacionException.validacion(
+                        "El producto '" + det.getNombre() + "' no tiene clasificada la condición de IVA incluido.");
             }
             if (det.getIvaPorcentaje() == null) {
-                det.setIvaPorcentaje(det.getAplicaIva()
-                        ? (pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : new BigDecimal("16.00"))
-                        : BigDecimal.ZERO.setScale(2));
+                det.setIvaPorcentaje(det.getAplicaIva() ? ivaPedido : BigDecimal.ZERO.setScale(2));
             }
         }
 
-        BigDecimal tasa = (pedido.getTasaCambio() != null && pedido.getTasaCambio().signum() > 0)
-                ? pedido.getTasaCambio() : new BigDecimal("36.5000");
+        if (pedido.getTasaCambio() == null || pedido.getTasaCambio().signum() <= 0) {
+            throw ErrorAplicacionException.validacion("La tasa de cambio del pedido es obligatoria y debe ser positiva.");
+        }
+        BigDecimal tasa = pedido.getTasaCambio().setScale(4, RoundingMode.HALF_UP);
 
         CalculoPedido resultado = CalculoMonetarioPedido.calcularPedido(detalles, tasa);
 
@@ -930,14 +950,15 @@ public class PedidosDao implements PedidosRepositorio {
                 }
 
                 long idLiquidacion = 0;
+                String idempLiq = "LIQ-" + id_pedido + "-V" + versionPrecio;
                 try {
                     String sqlLiq = """
                         INSERT INTO pedido_liquidaciones
                             (id_pedido, version_precio, saldo_restante_ves, aplicado_ves, aplicado_usd, tasa_cambio,
                              ajuste_cambio_bs, diferencia_usd, version_regla, actor, idempotency_key)
                         VALUES (?, ?, 0.00, ?, ?, ?, ?, 0.00, 'V5_PAGO_CONGELADO', ?, ?)
+                        ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
                         """;
-                    String idempLiq = "LIQ-" + id_pedido + "-V" + versionPrecio + "-" + System.currentTimeMillis();
                     try (PreparedStatement psLiq = conexion.prepareStatement(sqlLiq, Statement.RETURN_GENERATED_KEYS)) {
                         psLiq.setInt(1, id_pedido);
                         psLiq.setInt(2, versionPrecio);
@@ -963,6 +984,7 @@ public class PedidosDao implements PedidosRepositorio {
                         (id_pedido, metodo_pago, moneda, monto, tasa_cambio, monto_bs, monto_usd,
                          monto_recibido, monto_aplicado, cambio_devuelto, es_legado, id_liquidacion, idempotency_key)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                    ON DUPLICATE KEY UPDATE id = id
                     """;
                 try (PreparedStatement ps = conexion.prepareStatement(sqlPago)) {
                     int idx = 0;
@@ -971,7 +993,7 @@ public class PedidosDao implements PedidosRepositorio {
                         BigDecimal montoRec = pago.montoRecibido() != null ? pago.montoRecibido() : pago.monto();
                         BigDecimal montoApl = pago.montoAplicado() != null ? pago.montoAplicado() : pago.monto();
                         BigDecimal cambio = pago.cambioDevuelto() != null ? pago.cambioDevuelto() : BigDecimal.ZERO;
-                        String idempPago = "PAGO-" + id_pedido + "-" + idx + "-V" + versionPrecio + "-" + System.currentTimeMillis();
+                        String idempPago = "PAGO-" + id_pedido + "-" + idx + "-V" + versionPrecio + "-" + pago.metodo() + "-" + montoApl.stripTrailingZeros().toPlainString();
 
                         ps.setInt(1, id_pedido);
                         ps.setString(2, pago.metodo());
@@ -1283,76 +1305,219 @@ public class PedidosDao implements PedidosRepositorio {
         if (idPedido <= 0) {
             throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para cerrar la mesa.");
         }
-        try (Connection con = conexiones.getConnection()) {
-            boolean autoCommitOriginal = con.getAutoCommit();
-            con.setAutoCommit(false);
-            try {
-                int versionActual;
-                java.sql.Timestamp cerradaEn;
-                String estado;
-                try (PreparedStatement ps = con.prepareStatement(
-                        "SELECT id, estado, cerrada_en, version_precio FROM pedidos WHERE id = ? FOR UPDATE")) {
-                    ps.setInt(1, idPedido);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (!rs.next()) {
-                            throw ErrorAplicacionException.validacion("No existe el pedido #" + idPedido + ".");
-                        }
-                        estado = rs.getString("estado");
-                        cerradaEn = rs.getTimestamp("cerrada_en");
-                        versionActual = rs.getInt("version_precio");
-                    }
-                }
-
-                if (!"PENDIENTE".equalsIgnoreCase(estado)) {
-                    throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no está pendiente (estado actual: " + estado + ").");
-                }
-
-                if (cerradaEn != null) {
-                    if (versionEsperada > 0 && versionActual != versionEsperada) {
-                        throw ErrorAplicacionException.validacion("La mesa ya fue cerrada con una cotización distinta (versión " + versionActual + ").");
-                    }
-                    con.rollback();
-                    return true;
-                }
-
-                if (versionEsperada > 0 && versionActual != versionEsperada) {
-                    throw ErrorAplicacionException.validacion("La comanda fue modificada recientemente; recargue antes de cerrar (versión actual: "
-                            + versionActual + ", esperada: " + versionEsperada + ").");
-                }
-
-                try (PreparedStatement ps = con.prepareStatement(
-                        "SELECT COUNT(*) FROM detalle_pedidos WHERE id_pedido = ? AND moneda_base IS NULL")) {
-                    ps.setInt(1, idPedido);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next() && rs.getInt(1) > 0) {
-                            throw ErrorAplicacionException.validacion("La comanda #" + idPedido
-                                    + " contiene productos heredados sin clasificar; asígneles moneda base antes de cerrar.");
+        int maxReintentos = 2;
+        for (int intento = 1; intento <= maxReintentos; intento++) {
+            try (Connection con = conexiones.getConnection()) {
+                boolean autoCommitOriginal = con.getAutoCommit();
+                con.setAutoCommit(false);
+                try {
+                    // 1. Bloquear configuración (tasa e IVA) en orden global config -> pedidos -> detalle -> platos
+                    BigDecimal tasaActual = null;
+                    BigDecimal ivaPorcentaje = null;
+                    try (PreparedStatement psConf = con.prepareStatement(
+                            "SELECT tasa_dolar, iva_porcentaje FROM config WHERE id = 1 FOR UPDATE")) {
+                        try (ResultSet rsConf = psConf.executeQuery()) {
+                            if (rsConf.next()) {
+                                tasaActual = rsConf.getBigDecimal("tasa_dolar");
+                                ivaPorcentaje = rsConf.getBigDecimal("iva_porcentaje");
+                            }
                         }
                     }
-                }
+                    if (tasaActual == null || tasaActual.signum() <= 0) {
+                        throw ErrorAplicacionException.validacion("La tasa de cambio configurada en el sistema es inválida o no ha sido establecida.");
+                    }
+                    BigDecimal tasaNormalizada = tasaActual.setScale(4, RoundingMode.HALF_UP);
+                    BigDecimal ivaNormalizado = (ivaPorcentaje != null && ivaPorcentaje.signum() >= 0)
+                            ? ivaPorcentaje.setScale(2, RoundingMode.HALF_UP)
+                            : new BigDecimal("16.00");
 
-                try (PreparedStatement ps = con.prepareStatement(
-                        "UPDATE pedidos SET cerrada_en = CURRENT_TIMESTAMP WHERE id = ? AND cerrada_en IS NULL")) {
-                    ps.setInt(1, idPedido);
-                    int filas = ps.executeUpdate();
-                    if (filas == 0) {
+                    // 2. Bloquear pedido
+                    int versionActual;
+                    java.sql.Timestamp cerradaEn;
+                    String estado;
+                    try (PreparedStatement ps = con.prepareStatement(
+                            "SELECT id, estado, cerrada_en, version_precio FROM pedidos WHERE id = ? FOR UPDATE")) {
+                        ps.setInt(1, idPedido);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (!rs.next()) {
+                                throw ErrorAplicacionException.validacion("No existe el pedido #" + idPedido + ".");
+                            }
+                            estado = rs.getString("estado");
+                            cerradaEn = rs.getTimestamp("cerrada_en");
+                            versionActual = rs.getInt("version_precio");
+                        }
+                    }
+
+                    if (!"PENDIENTE".equalsIgnoreCase(estado)) {
+                        throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no está pendiente (estado actual: " + estado + ").");
+                    }
+
+                    if (cerradaEn != null) {
+                        if (versionEsperada > 0 && versionActual != versionEsperada && versionActual != versionEsperada + 1) {
+                            throw ErrorAplicacionException.validacion("La mesa ya fue cerrada con una cotización distinta (versión " + versionActual + ").");
+                        }
                         con.rollback();
                         return true;
                     }
-                }
 
-                con.commit();
-                return true;
-            } catch (Exception ex) {
-                try { con.rollback(); } catch (SQLException rEx) { ex.addSuppressed(rEx); }
-                if (ex instanceof RuntimeException re) throw re;
-                throw new DataAccessException("Error al cerrar la mesa del pedido #" + idPedido, ex);
-            } finally {
-                try { con.setAutoCommit(autoCommitOriginal); } catch (SQLException ignored) {}
+                    if (versionEsperada > 0 && versionActual != versionEsperada) {
+                        throw ErrorAplicacionException.validacion("La comanda fue modificada recientemente; recargue antes de cerrar (versión actual: "
+                                + versionActual + ", esperada: " + versionEsperada + ").");
+                    }
+
+                    // 3. Bloquear líneas del pedido
+                    List<DetallePedido> detalles = new ArrayList<>();
+                    try (PreparedStatement psDet = con.prepareStatement(
+                            "SELECT id, id_plato, nombre, cantidad, precio, moneda_base, aplica_iva, precio_incluye_iva, " +
+                            "iva_porcentaje, precio_congelado FROM detalle_pedidos WHERE id_pedido = ? ORDER BY id ASC FOR UPDATE")) {
+                        psDet.setInt(1, idPedido);
+                        try (ResultSet rsDet = psDet.executeQuery()) {
+                            while (rsDet.next()) {
+                                DetallePedido d = new DetallePedido();
+                                d.setId(rsDet.getInt("id"));
+                                int idP = rsDet.getInt("id_plato");
+                                d.setIdPlato(rsDet.wasNull() ? null : idP);
+                                d.setNombre(rsDet.getString("nombre"));
+                                d.setCantidad(rsDet.getInt("cantidad"));
+                                d.setPrecioDecimal(rsDet.getBigDecimal("precio"));
+                                d.setMonedaBase(rsDet.getString("moneda_base"));
+                                boolean aplica = rsDet.getBoolean("aplica_iva");
+                                d.setAplicaIva(rsDet.wasNull() ? null : aplica);
+                                int inc = rsDet.getInt("precio_incluye_iva");
+                                d.setPrecioIncluyeIva(rsDet.wasNull() ? null : (inc != 0));
+                                d.setIvaPorcentaje(rsDet.getBigDecimal("iva_porcentaje"));
+                                d.setPrecioCongelado(rsDet.getInt("precio_congelado") != 0);
+                                detalles.add(d);
+                            }
+                        }
+                    }
+
+                    if (detalles.isEmpty()) {
+                        throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no tiene detalles asociados.");
+                    }
+
+                    // 4. Bloquear y releer platos del catálogo para las líneas no congeladas
+                    for (DetallePedido d : detalles) {
+                        if (d.getMonedaBase() == null || d.getMonedaBase().isBlank()) {
+                            throw ErrorAplicacionException.validacion("La comanda #" + idPedido
+                                    + " contiene productos heredados sin clasificar; asígneles moneda base antes de cerrar.");
+                        }
+                        if (d.getAplicaIva() == null) {
+                            throw ErrorAplicacionException.validacion("La comanda #" + idPedido
+                                    + " contiene productos sin condición de IVA definida antes de cerrar.");
+                        }
+                        if (d.getPrecioIncluyeIva() == null) {
+                            throw ErrorAplicacionException.validacion("La comanda #" + idPedido
+                                    + " contiene productos sin condición de precio con IVA incluido definida antes de cerrar.");
+                        }
+
+                        if (!d.isPrecioCongelado() && d.getIdPlato() != null && d.getIdPlato() > 0) {
+                            try (PreparedStatement psPla = con.prepareStatement(
+                                    "SELECT nombre, moneda_base, precio_usd, precio_ves, aplica_iva, precio_incluye_iva, activo, precio_clasificado " +
+                                    "FROM platos WHERE id = ? FOR UPDATE")) {
+                                psPla.setInt(1, d.getIdPlato());
+                                try (ResultSet rsPla = psPla.executeQuery()) {
+                                    if (!rsPla.next() || rsPla.getInt("activo") == 0) {
+                                        throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' ya no está activo en el catálogo.");
+                                    }
+                                    if (rsPla.getInt("precio_clasificado") == 0) {
+                                        throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' no tiene sus precios clasificados en el catálogo.");
+                                    }
+                                    String mb = rsPla.getString("moneda_base");
+                                    d.setMonedaBase(mb);
+                                    d.setAplicaIva(rsPla.getInt("aplica_iva") != 0);
+                                    int incIva = rsPla.getInt("precio_incluye_iva");
+                                    d.setPrecioIncluyeIva(!rsPla.wasNull() && incIva != 0);
+                                    BigDecimal precioCat = "VES".equalsIgnoreCase(mb) ? rsPla.getBigDecimal("precio_ves") : rsPla.getBigDecimal("precio_usd");
+                                    if (precioCat != null && precioCat.signum() > 0) {
+                                        d.setPrecioDecimal(precioCat);
+                                    }
+                                }
+                            }
+                        }
+                        d.setIvaPorcentaje(Boolean.TRUE.equals(d.getAplicaIva()) ? ivaNormalizado : BigDecimal.ZERO.setScale(2));
+                    }
+
+                    // 5. Cálculo exacto sin inferencias mediante CalculoMonetarioPedido
+                    CalculoPedido calculo = CalculoMonetarioPedido.calcularPedido(detalles, tasaNormalizada);
+
+                    // 6. Actualizar y congelar líneas de detalle
+                    String sqlUpdDetalle = """
+                        UPDATE detalle_pedidos
+                        SET precio = ?, moneda_base = ?, aplica_iva = ?, precio_incluye_iva = ?, iva_porcentaje = ?,
+                            precio_congelado = 1, congelado_en = CURRENT_TIMESTAMP, congelado_motivo = 'CIERRE_MESA'
+                        WHERE id = ?
+                        """;
+                    try (PreparedStatement psUpdDet = con.prepareStatement(sqlUpdDetalle)) {
+                        for (DetallePedido d : detalles) {
+                            psUpdDet.setBigDecimal(1, d.getPrecioDecimal());
+                            psUpdDet.setString(2, d.getMonedaBase());
+                            psUpdDet.setBoolean(3, Boolean.TRUE.equals(d.getAplicaIva()));
+                            psUpdDet.setBoolean(4, Boolean.TRUE.equals(d.getPrecioIncluyeIva()));
+                            psUpdDet.setBigDecimal(5, d.getIvaPorcentaje());
+                            psUpdDet.setInt(6, d.getId());
+                            psUpdDet.addBatch();
+                        }
+                        psUpdDet.executeBatch();
+                    }
+
+                    // 7. Actualizar cabecera del pedido e incrementar version_precio + 1 y marcar cerrada_en
+                    String sqlUpdPedido = """
+                        UPDATE pedidos
+                        SET subtotal = ?, iva_porcentaje = ?, iva_monto = ?, total = ?,
+                            tasa_cambio = ?, subtotal_bs = ?, iva_bs = ?, total_bs = ?,
+                            version_precio = version_precio + 1, cerrada_en = CURRENT_TIMESTAMP
+                        WHERE id = ? AND cerrada_en IS NULL
+                        """;
+                    try (PreparedStatement psUpdPed = con.prepareStatement(sqlUpdPedido)) {
+                        psUpdPed.setBigDecimal(1, calculo.subtotalUsd());
+                        psUpdPed.setBigDecimal(2, ivaNormalizado);
+                        psUpdPed.setBigDecimal(3, calculo.ivaUsd());
+                        psUpdPed.setBigDecimal(4, calculo.totalUsd());
+                        psUpdPed.setBigDecimal(5, tasaNormalizada);
+                        psUpdPed.setBigDecimal(6, calculo.subtotalVes());
+                        psUpdPed.setBigDecimal(7, calculo.ivaVes());
+                        psUpdPed.setBigDecimal(8, calculo.totalVes());
+                        psUpdPed.setInt(9, idPedido);
+                        int filas = psUpdPed.executeUpdate();
+                        if (filas == 0) {
+                            con.rollback();
+                            return true;
+                        }
+                    }
+
+                    con.commit();
+                    return true;
+                } catch (SQLException exSql) {
+                    try { con.rollback(); } catch (SQLException rEx) { exSql.addSuppressed(rEx); }
+                    if (esDeadlock(exSql) && intento < maxReintentos) {
+                        try { Thread.sleep(50L * intento); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                        continue;
+                    }
+                    throw exSql;
+                } catch (Exception ex) {
+                    try { con.rollback(); } catch (SQLException rEx) { ex.addSuppressed(rEx); }
+                    if (ex instanceof RuntimeException re) throw re;
+                    throw new DataAccessException("Error al cerrar la mesa del pedido #" + idPedido, ex);
+                } finally {
+                    try { con.setAutoCommit(autoCommitOriginal); } catch (SQLException ignored) {}
+                }
+            } catch (SQLException ex) {
+                throw new DataAccessException("No se pudo conectar a la base de datos para cerrar la mesa.", ex);
             }
-        } catch (SQLException ex) {
-            throw new DataAccessException("No se pudo conectar a la base de datos para cerrar la mesa.", ex);
         }
+        return false;
+    }
+
+    private static boolean esDeadlock(SQLException ex) {
+        if ("40001".equals(ex.getSQLState()) || ex.getErrorCode() == 1213) {
+            return true;
+        }
+        Throwable causa = ex.getCause();
+        if (causa instanceof SQLException subEx) {
+            return esDeadlock(subEx);
+        }
+        return false;
     }
 
     @Override
@@ -1378,17 +1543,17 @@ public class PedidosDao implements PedidosRepositorio {
                     tasa = rs.getBigDecimal("tasa_cambio");
                     totalBs = rs.getBigDecimal("total_bs");
                     if (tasa == null || tasa.signum() <= 0) {
-                        tasa = new BigDecimal("36.5000");
+                        throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no tiene tasa de cambio registrada.");
                     }
                     if (totalBs == null) {
-                        totalBs = totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                        throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no tiene total en bolívares registrado.");
                     }
                     cerrado = rs.getTimestamp("cerrada_en") != null;
                     versionPrecio = rs.getInt("version_precio");
                 }
             }
 
-            // P2-D: pagado_bs_aplicado usa exclusivamente monto_bs guardado en cada fila histórica
+            // P2-D: Suma de montos aplicados persistidos (COALESCE con monto_bs para compatibilidad con pagos legados)
             BigDecimal pagadoBsAplicado = BigDecimal.ZERO.setScale(2);
             BigDecimal pagadoUsdAplicado = BigDecimal.ZERO.setScale(2);
             try (PreparedStatement ps = con.prepareStatement(
@@ -1407,8 +1572,8 @@ public class PedidosDao implements PedidosRepositorio {
             BigDecimal saldoBs = totalBs.subtract(pagadoBsAplicado).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
             BigDecimal excedenteBs = pagadoBsAplicado.subtract(totalBs).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
 
-            BigDecimal saldoUsd = tasa.signum() > 0 ? saldoBs.divide(tasa, 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-            BigDecimal excedenteUsd = tasa.signum() > 0 ? excedenteBs.divide(tasa, 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+            BigDecimal saldoUsd = totalUsd.subtract(pagadoUsdAplicado).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal excedenteUsd = pagadoUsdAplicado.subtract(totalUsd).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
 
             return new ResumenConciliacionPedido(
                     idPedido, cerrado, versionPrecio, tasa, totalUsd, totalBs,

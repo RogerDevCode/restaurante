@@ -20,6 +20,10 @@ public final class PlatosControlador {
         return servicio.listarPorFecha(nombre, fecha);
     }
 
+    public List<Platos> listarPlatosParaVenta(String nombre, String fecha) {
+        return servicio.listarPlatosParaVenta(nombre, fecha);
+    }
+
     public boolean registrar(Platos plato) {
         return servicio.registrar(plato);
     }

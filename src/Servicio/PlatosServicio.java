@@ -46,6 +46,26 @@ public final class PlatosServicio {
         return ordenada;
     }
 
+    public List<Platos> listarPlatosParaVenta(String nombre, String fecha) {
+        exigir(PoliticaAcceso.Accion.CONSULTAR_PLATOS);
+        if (nombre == null) {
+            throw ErrorAplicacionException.validacion("El filtro del menú es obligatorio.");
+        }
+        validarFecha(fecha);
+        List<Platos> lista = repositorio.listarPlatosParaVenta(nombre.trim(), fecha);
+        if (lista == null || lista.isEmpty()) {
+            return lista != null ? lista : java.util.Collections.emptyList();
+        }
+        List<Platos> ordenada = new java.util.ArrayList<>(lista);
+        ordenada.sort(java.util.Comparator
+                .comparing(Platos::isFavorito, java.util.Comparator.reverseOrder())
+                .thenComparing(p -> p.getRankingTotal() != null ? p.getRankingTotal() : BigDecimal.ZERO, java.util.Comparator.reverseOrder())
+                .thenComparing(Platos::getCategoriaNombre, java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                .thenComparing(p -> p.getNombre() != null ? p.getNombre() : "", String.CASE_INSENSITIVE_ORDER)
+        );
+        return ordenada;
+    }
+
     public boolean registrar(Platos plato) {
         return registrar(plato, null);
     }

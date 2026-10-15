@@ -660,6 +660,7 @@ public class MySqlIntegrationIT {
         DetallePedido detalle = detallesValidos().get(0);
         detalle.setComentario("__FALLAR_DETALLE_IT__");
         Pedidos pedido = pedido(idSala, mesa);
+        pedido.setSubtotal(new BigDecimal("20.00"));
         pedido.setTotalDecimal(new BigDecimal("20.00"));
 
         DataAccessException error = org.junit.Assert.assertThrows(DataAccessException.class,
@@ -1030,12 +1031,21 @@ public class MySqlIntegrationIT {
         Platos plato = new Platos();
         plato.setNombre("IT-PLATO-DASH-" + UUID.randomUUID());
         plato.setPrecioDecimal(new BigDecimal("25.00"));
+        plato.setPrecioUsd(new BigDecimal("25.00"));
+        plato.setMonedaBase("USD");
+        plato.setAplicaIva(true);
+        plato.setPrecioIncluyeIva(false);
+        plato.setPrecioClasificado(true);
         plato.setFecha(LocalDate.now().toString());
         assertTrue(platosDao.Registrar(plato));
         int idPlato = idPlatoPorNombre(plato.getNombre());
 
         DetallePedido detalle = new DetallePedido(0, plato.getNombre(), new BigDecimal("25.00"), 2, "", 0);
-        detalle.setId(idPlato);
+        detalle.setIdPlato(idPlato);
+        detalle.setMonedaBase("USD");
+        detalle.setAplicaIva(true);
+        detalle.setPrecioIncluyeIva(false);
+        detalle.setIvaPorcentaje(new BigDecimal("16.00"));
 
         Pedidos ped = new Pedidos();
         ped.setId_sala(idSala);
@@ -1222,14 +1232,27 @@ public class MySqlIntegrationIT {
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(idSala);
         pedido.setNum_mesa(mesa);
+        pedido.setSubtotal(new BigDecimal("35.50"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+        pedido.setIvaMonto(BigDecimal.ZERO.setScale(2));
         pedido.setTotalDecimal(new BigDecimal("35.50"));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
         pedido.setUsuario(USUARIO_PRUEBA);
         return pedido;
     }
 
     private List<DetallePedido> detallesValidos() {
         DetallePedido primero = new DetallePedido(0, "IT-PLATO-A", new BigDecimal("20.00"), 1, "", 0);
+        primero.setMonedaBase("USD");
+        primero.setAplicaIva(false);
+        primero.setPrecioIncluyeIva(false);
+        primero.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+
         DetallePedido segundo = new DetallePedido(0, "IT-PLATO-B", new BigDecimal("15.50"), 1, "", 0);
+        segundo.setMonedaBase("USD");
+        segundo.setAplicaIva(false);
+        segundo.setPrecioIncluyeIva(false);
+        segundo.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
         return Arrays.asList(primero, segundo);
     }
 

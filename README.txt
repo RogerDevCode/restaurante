@@ -558,6 +558,8 @@ MANUAL OPERATIVO DE PRECIOS, MONEDA BASE, IVA Y COBRO DE COMANDAS (2026)
    - En platos gravados con "Precio incluye IVA", el precio ingresado es el precio final al
      consumidor; la base imponible y el IVA se calculan hacia atrás sin recargos sorpresa.
    - En platos exentos no se añade IVA en ningún caso.
+   - La columna 'platos.precio' se mantiene sincronizada como alias de la moneda primaria
+     para garantizar compatibilidad transparente con consultas o integraciones legacy.
 
 2. ACTUALIZACIÓN DE TASA OFICIAL Y CATÁLOGO:
    - Modificar la tasa de cambio o precios del menú recalcula automáticamente y de forma

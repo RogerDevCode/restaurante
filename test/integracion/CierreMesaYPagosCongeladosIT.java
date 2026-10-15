@@ -176,7 +176,7 @@ public class CierreMesaYPagosCongeladosIT {
         assertEquals("Total USD debe seguir congelado", new BigDecimal("10.00"), pedCerrado.getTotalDecimal());
         assertEquals("Total Bs debe seguir congelado a 450.00", new BigDecimal("450.00"), pedCerrado.getTotalBs());
         assertEquals("Tasa de cambio debe seguir congelada a 45.0000", new BigDecimal("45.0000"), pedCerrado.getTasaCambio());
-        assertEquals("Versión debe ser 2", 2, pedCerrado.getVersionPrecio());
+        assertEquals("Versión debe ser 3 tras el cierre", 3, pedCerrado.getVersionPrecio());
         assertNotNull("cerrada_en no debe ser nulo", pedCerrado.getCerradaEn());
 
         // 5. Cobrar mesa cerrada: usa exactamente la tasa congelada (45.0000) y Bs. 450.00
@@ -193,6 +193,7 @@ public class CierreMesaYPagosCongeladosIT {
     public void testPagoMixtoConAjusteCambiarioFxExacto() throws Exception {
         int idSala = crearSalaPrueba(1);
         BigDecimal tasaCierre = new BigDecimal("40.0000");
+        tasaDao.actualizarTasaYRecalcularPendientes(tasaCierre, USUARIO_PRUEBA);
 
         // Creamos un plato VES con importe impar 100.03 VES
         Platos platoVes = crearPlato("VES-IMPAR", new BigDecimal("2.50"), new BigDecimal("100.03"), "VES", false, false);
@@ -334,6 +335,7 @@ public class CierreMesaYPagosCongeladosIT {
     public void testResumenConciliacionReglaP2D() throws Exception {
         int idSala = crearSalaPrueba(1);
         BigDecimal tasaOriginal = new BigDecimal("40.0000");
+        tasaDao.actualizarTasaYRecalcularPendientes(tasaOriginal, USUARIO_PRUEBA);
 
         Platos plato = crearPlato("USD-CONCIL", new BigDecimal("50.00"), new BigDecimal("2000.00"), "USD", false, false);
 
@@ -442,5 +444,106 @@ public class CierreMesaYPagosCongeladosIT {
 
         Pedidos pedAnulado = pedidosDao.verPedido(idPedido);
         assertEquals("ANULADO", pedAnulado.getEstado());
+    }
+
+    @Test
+    public void testReintentoPagoNoDuplicaCobroNiRegistros() throws Exception {
+        int idSala = crearSalaPrueba(1);
+        BigDecimal tasa = new BigDecimal("40.0000");
+        tasaDao.actualizarTasaYRecalcularPendientes(tasa, USUARIO_PRUEBA);
+
+        Platos plato = crearPlato("USD-REINTENTO", new BigDecimal("10.00"), new BigDecimal("400.00"), "USD", false, false);
+
+        Pedidos p = new Pedidos();
+        p.setId_sala(idSala);
+        p.setNum_mesa(1);
+        p.setUsuario(USUARIO_PRUEBA);
+        p.setTasaCambio(tasa);
+        p.setIvaPorcentaje(BigDecimal.ZERO);
+        p.setSubtotal(new BigDecimal("10.00"));
+        p.setIvaMonto(BigDecimal.ZERO);
+        p.setTotalDecimal(new BigDecimal("10.00"));
+
+        DetallePedido d = new DetallePedido();
+        d.setIdPlato(plato.getId());
+        d.setNombre(plato.getNombre());
+        d.setPrecioDecimal(new BigDecimal("10.00"));
+        d.setCantidad(1);
+        d.setMonedaBase("USD");
+        d.setAplicaIva(false);
+        d.setPrecioIncluyeIva(false);
+        d.setIvaPorcentaje(BigDecimal.ZERO);
+
+        int idPedido = pedidosDao.registrarPedidoCompleto(p, List.of(d));
+        assertTrue(pedidosDao.cerrarMesa(idPedido, 1));
+
+        List<PagoPedido> pagos = List.of(new PagoPedido("TARJETA", "VES", new BigDecimal("400.00")));
+
+        // Primer cobro
+        assertTrue(pedidosDao.actualizarEstadoConCliente(idPedido, "Cliente Fiel", "V-11111111", "TARJETA", pagos));
+
+        // Reintento idéntico (simula doble submit o reintento de red)
+        assertTrue(pedidosDao.actualizarEstadoConCliente(idPedido, "Cliente Fiel", "V-11111111", "TARJETA", pagos));
+
+        // Verificar que en la base de datos existe exactamente 1 liquidación y exactamente 1 fila de pago
+        try (Connection con = conexion()) {
+            try (PreparedStatement psLiq = con.prepareStatement(
+                    "SELECT COUNT(*) FROM pedido_liquidaciones WHERE id_pedido = ?")) {
+                psLiq.setInt(1, idPedido);
+                try (ResultSet rs = psLiq.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals("Debe existir exactamente 1 liquidación", 1, rs.getInt(1));
+                }
+            }
+            try (PreparedStatement psPag = con.prepareStatement(
+                    "SELECT COUNT(*) FROM pedido_pagos WHERE id_pedido = ?")) {
+                psPag.setInt(1, idPedido);
+                try (ResultSet rs = psPag.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals("Debe existir exactamente 1 registro de pago", 1, rs.getInt(1));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testCerrarMesaFallaSiTienePlatoSinClasificar() throws Exception {
+        int idSala = crearSalaPrueba(1);
+        BigDecimal tasa = new BigDecimal("40.0000");
+
+        Platos plato = crearPlato("USD-CLASIF", new BigDecimal("10.00"), new BigDecimal("400.00"), "USD", false, false);
+
+        Pedidos p = new Pedidos();
+        p.setId_sala(idSala);
+        p.setNum_mesa(1);
+        p.setUsuario(USUARIO_PRUEBA);
+        p.setTasaCambio(tasa);
+        p.setIvaPorcentaje(BigDecimal.ZERO);
+        p.setSubtotal(new BigDecimal("10.00"));
+        p.setIvaMonto(BigDecimal.ZERO);
+        p.setTotalDecimal(new BigDecimal("10.00"));
+
+        DetallePedido d = new DetallePedido();
+        d.setIdPlato(plato.getId());
+        d.setNombre(plato.getNombre());
+        d.setPrecioDecimal(new BigDecimal("10.00"));
+        d.setCantidad(1);
+        d.setMonedaBase("USD");
+        d.setAplicaIva(false);
+        d.setPrecioIncluyeIva(false);
+        d.setIvaPorcentaje(BigDecimal.ZERO);
+
+        int idPedido = pedidosDao.registrarPedidoCompleto(p, List.of(d));
+
+        // Simular que una línea histórica quedó sin clasificar (moneda_base = NULL)
+        try (Connection con = conexion();
+             PreparedStatement ps = con.prepareStatement("UPDATE detalle_pedidos SET moneda_base = NULL WHERE id_pedido = ?")) {
+            ps.setInt(1, idPedido);
+            assertEquals(1, ps.executeUpdate());
+        }
+
+        ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
+                () -> pedidosDao.cerrarMesa(idPedido, 1));
+        assertTrue(ex.getMessage().contains("sin clasificar"));
     }
 }

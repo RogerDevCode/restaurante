@@ -796,7 +796,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             @Override
             protected List<Platos> doInBackground() {
                 String hoy = java.time.LocalDate.now().toString();
-                List<Platos> platos = platosControlador.listarPorFecha(filtro, hoy);
+                List<Platos> platos = platosControlador.listarPlatosParaVenta(filtro, hoy);
                 return platos != null ? platos : java.util.Collections.emptyList();
             }
 

@@ -17,7 +17,14 @@ final class ListaPlatosSwingWorker extends SwingWorker<List<Platos>, Void> {
     private final Consumer<List<Platos>> alCompletar;
     private final Consumer<Throwable> alFallar;
 
+    private final boolean soloVenta;
+
     ListaPlatosSwingWorker(PlatosControlador controlador, String filtro, String fecha,
+            Consumer<List<Platos>> alCompletar, Consumer<Throwable> alFallar) {
+        this(controlador, filtro, fecha, false, alCompletar, alFallar);
+    }
+
+    ListaPlatosSwingWorker(PlatosControlador controlador, String filtro, String fecha, boolean soloVenta,
             Consumer<List<Platos>> alCompletar, Consumer<Throwable> alFallar) {
         if (controlador == null || filtro == null || fecha == null
                 || alCompletar == null || alFallar == null) {
@@ -26,13 +33,14 @@ final class ListaPlatosSwingWorker extends SwingWorker<List<Platos>, Void> {
         this.controlador = controlador;
         this.filtro = filtro;
         this.fecha = fecha;
+        this.soloVenta = soloVenta;
         this.alCompletar = alCompletar;
         this.alFallar = alFallar;
     }
 
     @Override
     protected List<Platos> doInBackground() {
-        return controlador.listarPorFecha(filtro, fecha);
+        return soloVenta ? controlador.listarPlatosParaVenta(filtro, fecha) : controlador.listarPorFecha(filtro, fecha);
     }
 
     @Override

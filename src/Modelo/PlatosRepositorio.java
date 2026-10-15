@@ -8,6 +8,11 @@ public interface PlatosRepositorio {
 
     List<Platos> listarPorFecha(String nombre, String fecha);
 
+    /** Lista únicamente los platos clasificados y activos listos para la venta (POS/atención). */
+    default List<Platos> listarPlatosParaVenta(String nombre, String fecha) {
+        return listarPorFecha(nombre, fecha);
+    }
+
     /** Soft delete: marca el plato como inactivo sin eliminarlo físicamente. */
     default boolean desactivar(int id) {
         return eliminar(id);

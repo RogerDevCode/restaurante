@@ -8714,7 +8714,7 @@ public final class Sistema extends javax.swing.JFrame {
         boolean menuPedido = tabla == tblTemPlatos;
         long version = menuPedido ? ++versionMenuPlatos : ++versionCatalogoPlatos;
         String fecha = fechaActual();
-        new ListaPlatosSwingWorker(platosControlador, filtro, fecha,
+        new ListaPlatosSwingWorker(platosControlador, filtro, fecha, menuPedido,
                 platos -> {
                     long actual = menuPedido ? versionMenuPlatos : versionCatalogoPlatos;
                     if (actual == version) {
@@ -9270,23 +9270,30 @@ public final class Sistema extends javax.swing.JFrame {
     private int registrarPedidoCompleto() {
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
-        BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
-        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
+        BigDecimal tasa = (conf != null && conf.getTasaDolar() != null && conf.getTasaDolar().signum() > 0)
+                ? conf.getTasaDolar().setScale(4, RoundingMode.HALF_UP)
+                : null;
+        if (tasa == null) {
+            throw ErrorAplicacionException.validacion("La tasa de cambio configurada en el sistema es inválida o no ha sido establecida.");
+        }
+        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null)
+                ? conf.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP)
+                : new BigDecimal("16.00");
         List<DetallePedido> detalles = construirDetallesDesdeCarrito();
-        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(detalles, ivaPorcentaje, tasa);
+        Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasa);
 
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(id_sala);
         pedido.setNum_mesa(num_mesa);
         pedido.setTipoPedido(modoPedidoRapido ? "RAPIDO" : "MESA");
-        pedido.setSubtotal(fiscal.subtotalUsd());
-        pedido.setIvaPorcentaje(fiscal.ivaPorcentaje());
-        pedido.setIvaMonto(fiscal.ivaUsd());
-        pedido.setTotalDecimal(fiscal.totalUsd());
-        pedido.setTasaCambio(fiscal.tasaCambio());
-        pedido.setSubtotalBs(fiscal.subtotalBs());
-        pedido.setIvaBs(fiscal.ivaBs());
-        pedido.setTotalBs(fiscal.totalBs());
+        pedido.setSubtotal(calc.subtotalUsd());
+        pedido.setIvaPorcentaje(ivaPorcentaje);
+        pedido.setIvaMonto(calc.ivaUsd());
+        pedido.setTotalDecimal(calc.totalUsd());
+        pedido.setTasaCambio(tasa);
+        pedido.setSubtotalBs(calc.subtotalVes());
+        pedido.setIvaBs(calc.ivaVes());
+        pedido.setTotalBs(calc.totalVes());
         pedido.setUsuario(LabelVendedor.getText());
         if (cbMesoneroPedido != null && cbMesoneroPedido.getSelectedItem() instanceof Mesonero m) {
             pedido.setIdMesonero(m.getId());
@@ -9300,23 +9307,30 @@ public final class Sistema extends javax.swing.JFrame {
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
-        BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");
-        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
+        BigDecimal tasa = (conf != null && conf.getTasaDolar() != null && conf.getTasaDolar().signum() > 0)
+                ? conf.getTasaDolar().setScale(4, RoundingMode.HALF_UP)
+                : null;
+        if (tasa == null) {
+            throw ErrorAplicacionException.validacion("La tasa de cambio configurada en el sistema es inválida o no ha sido establecida.");
+        }
+        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null)
+                ? conf.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP)
+                : new BigDecimal("16.00");
 
         List<DetallePedido> detalles = construirDetallesDesdeCarrito();
-        CalculoFiscalRecord fiscal = CalculoFiscalRecord.calcular(detalles, ivaPorcentaje, tasa);
+        Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasa);
 
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(id_sala);
         pedido.setNum_mesa(num_mesa);
-        pedido.setSubtotal(fiscal.subtotalUsd());
-        pedido.setIvaPorcentaje(fiscal.ivaPorcentaje());
-        pedido.setIvaMonto(fiscal.ivaUsd());
-        pedido.setTotalDecimal(fiscal.totalUsd());
-        pedido.setTasaCambio(fiscal.tasaCambio());
-        pedido.setSubtotalBs(fiscal.subtotalBs());
-        pedido.setIvaBs(fiscal.ivaBs());
-        pedido.setTotalBs(fiscal.totalBs());
+        pedido.setSubtotal(calc.subtotalUsd());
+        pedido.setIvaPorcentaje(ivaPorcentaje);
+        pedido.setIvaMonto(calc.ivaUsd());
+        pedido.setTotalDecimal(calc.totalUsd());
+        pedido.setTasaCambio(tasa);
+        pedido.setSubtotalBs(calc.subtotalVes());
+        pedido.setIvaBs(calc.ivaVes());
+        pedido.setTotalBs(calc.totalVes());
         pedido.setUsuario(LabelVendedor.getText());
         if (cbMesoneroPedido != null && cbMesoneroPedido.getSelectedItem() instanceof Mesonero m) {
             pedido.setIdMesonero(m.getId());
@@ -9327,6 +9341,9 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private List<DetallePedido> construirDetallesDesdeCarrito() {
+        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null)
+                ? conf.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP)
+                : new BigDecimal("16.00");
         List<DetallePedido> detalles = new ArrayList<>();
         for (int i = 0; i < tableMenu.getRowCount(); i++) {
             DetallePedido detalle = new DetallePedido();
@@ -9335,7 +9352,38 @@ public final class Sistema extends javax.swing.JFrame {
             detalle.setPrecioDecimal(importeMonetario(tableMenu.getValueAt(i, 3)));
             Object comentario = tableMenu.getValueAt(i, 5);
             detalle.setComentario(comentario == null ? "" : comentario.toString());
-            detalle.setAplicaIva(aplicaIvaEnFila(i));
+
+            Object idObj = tableMenu.getValueAt(i, 0);
+            Integer idPlato = null;
+            if (idObj != null && !idObj.toString().isBlank()) {
+                try {
+                    idPlato = Integer.parseInt(idObj.toString().trim());
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            detalle.setIdPlato(idPlato);
+
+            Platos plato = idPlato != null ? platosPorId.get(idPlato) : null;
+            if (plato == null) {
+                for (Platos p : platosPorId.values()) {
+                    if (p != null && p.getNombre() != null && p.getNombre().equalsIgnoreCase(detalle.getNombre())) {
+                        plato = p;
+                        detalle.setIdPlato(p.getId());
+                        break;
+                    }
+                }
+            }
+
+            if (plato != null) {
+                detalle.setMonedaBase(plato.getMonedaBase());
+                detalle.setAplicaIva(plato.isAplicaIva());
+                detalle.setPrecioIncluyeIva(plato.getPrecioIncluyeIva());
+                detalle.setIvaPorcentaje(plato.isAplicaIva() ? ivaPorcentaje : BigDecimal.ZERO.setScale(2));
+            } else {
+                boolean aplica = aplicaIvaEnFila(i);
+                detalle.setAplicaIva(aplica);
+                detalle.setIvaPorcentaje(aplica ? ivaPorcentaje : BigDecimal.ZERO.setScale(2));
+            }
             detalles.add(detalle);
         }
         return detalles;

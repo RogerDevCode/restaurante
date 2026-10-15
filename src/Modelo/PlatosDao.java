@@ -174,6 +174,84 @@ public class PlatosDao implements PlatosRepositorio {
         return platos;
     }
 
+    @Override
+    public List<Platos> listarPlatosParaVenta(String valor, String fecha) {
+        if (fecha == null || fecha.trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("La fecha del menú es obligatoria.");
+        }
+        List<Platos> platos = new ArrayList<>();
+        boolean filtrarNombre = valor != null && !valor.trim().isEmpty();
+        String sql = filtrarNombre
+            ? """
+              SELECT p.id, p.nombre, p.precio, p.fecha, p.aplica_iva,
+                     p.moneda_base, p.precio_usd, p.precio_ves, p.precio_clasificado, p.precio_incluye_iva,
+                     pc.id_categoria, c.nombre AS categoria_nombre, c.color AS categoria_color,
+                     CASE WHEN pf.nombre_clave IS NULL THEN 0 ELSE 1 END AS favorito,
+                     r.total AS rango_total
+              FROM platos p
+              LEFT JOIN plato_categoria pc ON pc.nombre_clave = p.nombre_clave
+              LEFT JOIN categorias c ON c.id = pc.id_categoria
+              LEFT JOIN plato_favorito pf ON pf.nombre_clave = p.nombre_clave
+              LEFT JOIN (
+                  SELECT d.nombre_clave, SUM(d.cantidad) AS total
+                  FROM detalle_pedidos d
+                  JOIN pedidos o ON d.id_pedido = o.id
+                  WHERE o.estado = 'FINALIZADO'
+                    AND o.fecha >= CURDATE() - INTERVAL 7 DAY
+                    AND o.fecha < CURDATE()
+                  GROUP BY d.nombre_clave
+                  ORDER BY total DESC
+                  LIMIT 10
+              ) r ON r.nombre_clave = p.nombre_clave
+              WHERE p.fecha = ? AND p.activo = 1 AND p.precio_clasificado = 1 AND (p.nombre LIKE ? OR c.nombre LIKE ?)
+              ORDER BY favorito DESC, COALESCE(r.total, 0) DESC, c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
+              """
+            : """
+              SELECT p.id, p.nombre, p.precio, p.fecha, p.aplica_iva,
+                     p.moneda_base, p.precio_usd, p.precio_ves, p.precio_clasificado, p.precio_incluye_iva,
+                     pc.id_categoria, c.nombre AS categoria_nombre, c.color AS categoria_color,
+                     CASE WHEN pf.nombre_clave IS NULL THEN 0 ELSE 1 END AS favorito,
+                     r.total AS rango_total
+              FROM platos p
+              LEFT JOIN plato_categoria pc ON pc.nombre_clave = p.nombre_clave
+              LEFT JOIN categorias c ON c.id = pc.id_categoria
+              LEFT JOIN plato_favorito pf ON pf.nombre_clave = p.nombre_clave
+              LEFT JOIN (
+                  SELECT d.nombre_clave, SUM(d.cantidad) AS total
+                  FROM detalle_pedidos d
+                  JOIN pedidos o ON d.id_pedido = o.id
+                  WHERE o.estado = 'FINALIZADO'
+                    AND o.fecha >= CURDATE() - INTERVAL 7 DAY
+                    AND o.fecha < CURDATE()
+                  GROUP BY d.nombre_clave
+                  ORDER BY total DESC
+                  LIMIT 10
+              ) r ON r.nombre_clave = p.nombre_clave
+              WHERE p.fecha = ? AND p.activo = 1 AND p.precio_clasificado = 1
+              ORDER BY favorito DESC, COALESCE(r.total, 0) DESC, c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
+              """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, fecha);
+            if (filtrarNombre) {
+                String filtro = "%" + valor.trim() + "%";
+                sentencia.setString(2, filtro);
+                sentencia.setString(3, filtro);
+            }
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                while (resultados.next()) {
+                    platos.add(mapearPlatoConEnriquecimiento(resultados));
+                }
+            }
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1054 || ex.getErrorCode() == 1146) {
+                return listarPorFechaLegacy(valor, fecha);
+            }
+            throw new DataAccessException("No se pudieron listar los platos para la venta.", ex);
+        }
+        return platos;
+    }
+
     private Platos mapearPlatoConEnriquecimiento(ResultSet resultados) throws SQLException {
         Platos plato = new Platos();
         plato.setId(resultados.getInt("id"));
