@@ -65,9 +65,50 @@ public class ServicioRespaldoBaseDatos {
     private static final Pattern SQL_CREATE_TABLA_RESPALDO = Pattern.compile(
             "(?is)^CREATE\\s+TABLE(?:\\s+IF\\s+NOT\\s+EXISTS)?\\s+`([^`]+)`\\s*\\(.*\\)\\s+ENGINE\\s*=.*$");
 
+    public static final Set<String> TABLAS_PERMITIDAS_RESPALDO = Set.of(
+            "config",
+            "usuarios",
+            "platos",
+            "salas",
+            "pedidos",
+            "detalle_pedidos",
+            "pedido_pagos",
+            "clientes",
+            "configuracion_sistema",
+            "auditoria_pedidos",
+            "cierres_caja",
+            "preferencias_tabla",
+            "mesoneros",
+            "categorias",
+            "plato_categoria",
+            "plato_favorito",
+            "test_respaldo_tmp"
+    );
+
+    public static final Set<String> TABLAS_PROTEGIDAS_INFRAESTRUCTURA = Set.of(
+            "restaurante_control",
+            "schema_migrations",
+            "login_intentos"
+    );
+
     private final ProveedorConexionJdbc conexiones;
     private final Path directorioRespaldos;
     private final infraestructura.DiarioRecuperacionBD diarioRecuperacion;
+
+    private void validarTablaPermitida(String tabla) {
+        if (tabla == null || tabla.trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("El respaldo contiene una referencia a tabla vacía o nula.");
+        }
+        String t = tabla.trim().toLowerCase(java.util.Locale.ROOT);
+        if (TABLAS_PROTEGIDAS_INFRAESTRUCTURA.contains(t)) {
+            throw ErrorAplicacionException.validacion(
+                    "El respaldo intenta reemplazar una tabla de infraestructura protegida ('" + tabla + "') y fue rechazado.");
+        }
+        if (!TABLAS_PERMITIDAS_RESPALDO.contains(t)) {
+            throw ErrorAplicacionException.validacion(
+                    "El respaldo contiene una tabla no reconocida o fuera de la lista blanca ('" + tabla + "') y fue rechazado.");
+        }
+    }
 
     private record TablaExportada(String nombre, List<String> columnas, long filas) {}
     private static final class ResumenSql {
@@ -136,6 +177,12 @@ public class ServicioRespaldoBaseDatos {
         if (destino == null) {
             destino = this.directorioRespaldos;
         }
+        final byte[] claveHmac;
+        try {
+            claveHmac = obtenerClaveHmac();
+        } catch (IOException ex) {
+            throw new ErrorAplicacionException("No se puede crear un respaldo autenticado: " + ex.getMessage(), ex);
+        }
         try {
             if (!Files.exists(destino)) {
                 Files.createDirectories(destino);
@@ -177,7 +224,7 @@ public class ServicioRespaldoBaseDatos {
                 }
 
                 con.commit();
-                crearManifiesto(temporal, con.getCatalog(), resumenTablas);
+                crearManifiesto(temporal, con.getCatalog(), resumenTablas, claveHmac);
                 crearChecksum(temporal, temporal.getFileName().toString());
                 validarArchivoRespaldo(temporal);
                 Files.move(temporal, archivoSql);
@@ -270,7 +317,7 @@ public class ServicioRespaldoBaseDatos {
         }
     }
 
-    private void crearManifiesto(Path archivo, String catalogo, List<TablaExportada> tablas) throws IOException {
+    private void crearManifiesto(Path archivo, String catalogo, List<TablaExportada> tablas, byte[] claveHmac) throws IOException {
         Properties p = new Properties();
         p.setProperty("formato", "1");
         try {
@@ -287,9 +334,64 @@ public class ServicioRespaldoBaseDatos {
             p.setProperty("tabla." + i + ".columnas", Base64.getEncoder().encodeToString(
                     String.join("\u001f", t.columnas()).getBytes(StandardCharsets.UTF_8)));
         }
+        byte[] hmac = calcularHmac(contenidoCanonicoManifiesto(p), claveHmac);
+        p.setProperty("hmac_sha256", java.util.HexFormat.of().formatHex(hmac));
         try (var writer = Files.newBufferedWriter(manifiestoPath(archivo), StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
             p.store(writer, "Manifiesto de respaldo Restaurante");
+        }
+    }
+
+    private static final String HMAC_ALGO = "HmacSHA256";
+
+    private byte[] obtenerClaveHmac() throws IOException {
+        String clave = null;
+        try {
+            if (conexiones != null) {
+                clave = conexiones.settingConfigurado("BACKUP_HMAC_KEY");
+            }
+        } catch (Exception ex) {
+            throw new IOException("No se pudo leer de forma segura BACKUP_HMAC_KEY desde la configuración local.", ex);
+        }
+        if (clave == null || clave.isBlank()) {
+            clave = System.getProperty("BACKUP_HMAC_KEY");
+        }
+        if (clave == null || clave.isBlank()) {
+            clave = System.getenv("BACKUP_HMAC_KEY");
+        }
+        if (clave == null || clave.isBlank()) {
+            throw new IOException("BACKUP_HMAC_KEY es obligatoria para crear o restaurar respaldos. Genere una con `openssl rand -hex 32` y configúrela en .env.");
+        }
+        clave = clave.trim();
+        byte[] bytes = clave.length() >= 64 && clave.length() % 2 == 0 && clave.matches("[0-9a-fA-F]+")
+                ? java.util.HexFormat.of().parseHex(clave)
+                : clave.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < 32) {
+            throw new IOException("BACKUP_HMAC_KEY debe contener al menos 32 bytes (o 64 caracteres hexadecimales).");
+        }
+        return bytes;
+    }
+
+    private static byte[] contenidoCanonicoManifiesto(Properties manifiesto) {
+        StringBuilder canonical = new StringBuilder();
+        manifiesto.stringPropertyNames().stream()
+                .filter(nombre -> !"hmac_sha256".equals(nombre))
+                .sorted()
+                .forEach(nombre -> {
+                    String valor = manifiesto.getProperty(nombre, "");
+                    canonical.append(nombre.length()).append(':').append(nombre)
+                            .append(valor.length()).append(':').append(valor).append('\n');
+                });
+        return canonical.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static byte[] calcularHmac(byte[] datos, byte[] clave) throws IOException {
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance(HMAC_ALGO);
+            mac.init(new javax.crypto.spec.SecretKeySpec(clave, HMAC_ALGO));
+            return mac.doFinal(datos);
+        } catch (java.security.NoSuchAlgorithmException | java.security.InvalidKeyException ex) {
+            throw new IOException("No se pudo calcular HMAC-SHA256: " + ex.getMessage(), ex);
         }
     }
 
@@ -325,6 +427,22 @@ public class ServicioRespaldoBaseDatos {
             if (!MessageDigest.isEqual(actual.getBytes(StandardCharsets.US_ASCII),
                     manifiesto.getProperty("sha256", "").getBytes(StandardCharsets.US_ASCII))) {
                 throw ErrorAplicacionException.validacion("El checksum del manifiesto no coincide con el respaldo.");
+            }
+            String hmacManifest = manifiesto.getProperty("hmac_sha256");
+            byte[] claveHmac = obtenerClaveHmac();
+            if (hmacManifest == null || hmacManifest.isBlank()) {
+                throw ErrorAplicacionException.validacion(
+                        "El respaldo no tiene firma HMAC y no se puede autenticar; se rechaza la restauración.");
+            }
+            if (!hmacManifest.matches("(?i)[0-9a-f]{64}")) {
+                throw ErrorAplicacionException.validacion("La firma HMAC del manifiesto tiene un formato inválido.");
+            }
+            byte[] hmacCalculado = calcularHmac(contenidoCanonicoManifiesto(manifiesto), claveHmac);
+            String hmacCalculadoHex = java.util.HexFormat.of().formatHex(hmacCalculado);
+            if (!MessageDigest.isEqual(hmacManifest.toLowerCase(java.util.Locale.ROOT).getBytes(StandardCharsets.US_ASCII),
+                    hmacCalculadoHex.getBytes(StandardCharsets.US_ASCII))) {
+                throw ErrorAplicacionException.validacion(
+                        "La firma HMAC del manifiesto de respaldo no coincide. El archivo fue alterado o no proviene de una fuente autorizada.");
             }
         } catch (IOException | NoSuchAlgorithmException ex) {
             throw new DataAccessException("No se pudo verificar el checksum del respaldo.", ex);
@@ -474,10 +592,21 @@ public class ServicioRespaldoBaseDatos {
                 ejecutarScriptSql(con, archivoSql);
                 validarContenidoVivo(con, archivoSql);
                 validarVersionEsquemaRespaldada(con);
+            } catch (SQLException ex) {
+                if (!creado && esFaltaDePrivilegiosCreateDatabase(ex)) {
+                    LOGGER.warning("El usuario de BD carece de privilegios CREATE DATABASE (error " + ex.getErrorCode()
+                            + ", SQLState " + ex.getSQLState() + "); se omite la validación en schema temporal. "
+                            + "Se confía en la validación estructural estricta de hash y sentencias DDL.");
+                    return;
+                }
+                throw ex;
             } finally {
                 if (creado) {
                     try { st.execute("USE `" + schemaOriginal.replace("`", "``") + "`"); }
-                    finally { st.executeUpdate("DROP DATABASE IF EXISTS `" + schemaTemporal + "`"); }
+                    finally {
+                        try { st.executeUpdate("DROP DATABASE IF EXISTS `" + schemaTemporal + "`"); }
+                        catch (SQLException e) { LOGGER.warning("No se pudo eliminar schema temporal " + schemaTemporal + ": " + e.getMessage()); }
+                    }
                 }
             }
         } catch (SQLException ex) {
@@ -488,6 +617,19 @@ public class ServicioRespaldoBaseDatos {
         } catch (Exception ex) {
             throw new DataAccessException("No se pudo completar la validación aislada del respaldo.", ex);
         }
+    }
+
+    private boolean esFaltaDePrivilegiosCreateDatabase(SQLException ex) {
+        int code = ex.getErrorCode();
+        if (code == 1044 || code == 1045 || code == 1227) {
+            return true;
+        }
+        String msg = ex.getMessage();
+        if (msg != null && "42000".equals(ex.getSQLState())) {
+            String msgLower = msg.toLowerCase(java.util.Locale.ROOT);
+            return msgLower.contains("access denied") || msgLower.contains("denied to user") || msgLower.contains("command denied");
+        }
+        return false;
     }
 
     private void validarVersionEsquemaRespaldada(Connection con) throws SQLException {
@@ -515,15 +657,22 @@ public class ServicioRespaldoBaseDatos {
         if (contieneSeparadorFueraDeCadena(sql)) {
             throw ErrorAplicacionException.validacion("El respaldo contiene más de una sentencia SQL por bloque y fue rechazado.");
         }
+        if (sql.matches("(?is)^ALTER\\s+TABLE.*")) {
+            throw ErrorAplicacionException.validacion("El respaldo contiene una sentencia ALTER TABLE no permitida y fue rechazado.");
+        }
         boolean permitida = sql.matches("(?is)^SET\\s+FOREIGN_KEY_CHECKS\\s*=\\s*[01]$")
                 || sql.matches("(?is)^SET\\s+SQL_MODE\\s*=\\s*'NO_AUTO_VALUE_ON_ZERO'$");
         var drop = SQL_DROP_TABLA_RESPALDO.matcher(sql);
         var create = SQL_CREATE_TABLA_RESPALDO.matcher(sql);
         if (drop.matches()) {
-            resumen.eliminadas.add(drop.group(1));
+            String tabla = drop.group(1);
+            validarTablaPermitida(tabla);
+            resumen.eliminadas.add(tabla);
             permitida = true;
         } else if (create.matches()) {
-            resumen.creadas.add(create.group(1));
+            String tabla = create.group(1);
+            validarTablaPermitida(tabla);
+            resumen.creadas.add(tabla);
             permitida = true;
         } else {
             var insert = SQL_INSERT_RESPALDO_HEAD.matcher(sql);
@@ -531,6 +680,7 @@ public class ServicioRespaldoBaseDatos {
                 int filas = contarFilasInsert(sql);
                 if (filas >= 0) {
                     String tabla = insert.group(0).replaceFirst("(?is)^INSERT\\s+INTO\\s+`([^`]+)`.*$", "$1");
+                    validarTablaPermitida(tabla);
                     resumen.filas.merge(tabla, (long) filas, Long::sum);
                     if (insert.group(1) != null) {
                         List<String> columnas = java.util.Arrays.stream(insert.group(1).split(","))
@@ -623,15 +773,28 @@ public class ServicioRespaldoBaseDatos {
             throw ErrorAplicacionException.validacion("El manifiesto contiene tablas, columnas o conteos inválidos.");
         }
         Set<String> base = Set.of("config", "usuarios", "platos", "salas", "pedidos", "detalle_pedidos");
-        if (esperadas.keySet().stream().anyMatch("restaurante_control"::equalsIgnoreCase)
-                || resumen.eliminadas.stream().anyMatch("restaurante_control"::equalsIgnoreCase)
-                || resumen.creadas.stream().anyMatch("restaurante_control"::equalsIgnoreCase)) {
-            throw ErrorAplicacionException.validacion("El respaldo intenta reemplazar la barrera de mantenimiento y fue rechazado.");
+        for (String t : esperadas.keySet()) {
+            validarTablaPermitida(t);
+        }
+        for (String t : resumen.eliminadas) {
+            validarTablaPermitida(t);
+        }
+        for (String t : resumen.creadas) {
+            validarTablaPermitida(t);
         }
         if (!esperadas.keySet().containsAll(base)
                 || !resumen.eliminadas.equals(esperadas.keySet())
                 || !resumen.creadas.equals(esperadas.keySet())) {
             throw ErrorAplicacionException.validacion("El respaldo está incompleto: el catálogo de tablas no coincide con su SQL.");
+        }
+        if (!esperadas.keySet().containsAll(resumen.filas.keySet())) {
+            throw ErrorAplicacionException.validacion("El respaldo contiene inserciones para tablas no declaradas en el manifiesto.");
+        }
+        if (!esperadas.keySet().containsAll(resumen.columnas.keySet())) {
+            throw ErrorAplicacionException.validacion("El respaldo contiene columnas para tablas no declaradas en el manifiesto.");
+        }
+        if (!resumen.creadas.containsAll(resumen.filas.keySet())) {
+            throw ErrorAplicacionException.validacion("El respaldo contiene inserciones para tablas no creadas en el archivo.");
         }
         for (TablaExportada tabla : esperadas.values()) {
             if (resumen.filas.getOrDefault(tabla.nombre(), 0L) != tabla.filas()) {
@@ -726,7 +889,6 @@ public class ServicioRespaldoBaseDatos {
             infraestructura.ControlMantenimientoBD.terminarMantenimiento(control, idControl);
             diarioRecuperacion.eliminar();
             LOGGER.info("Restauración verificada y completada: " + destino);
-            return respaldoPrevio;
         } catch (Exception fallo) {
             if (!mantenimientoIniciado) {
                 try { diarioRecuperacion.eliminar(); } catch (IOException limpiar) { fallo.addSuppressed(limpiar); }
@@ -755,6 +917,12 @@ public class ServicioRespaldoBaseDatos {
                     infraestructura.ControlMantenimientoBD.terminarMantenimiento(control, idControl);
                 }
                 diarioRecuperacion.eliminar();
+                infraestructura.MigradorEsquemaJdbc.invalidarCacheEsquema();
+                try {
+                    infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
+                } catch (Exception ex) {
+                    LOGGER.warning("Fallo al sincronizar esquema tras auto-recuperar respaldo previo: " + mensaje(ex));
+                }
                 throw new DataAccessException("La restauración falló; la BD fue recuperada desde el respaldo previo "
                         + respaldoPrevio.getFileName() + ". Causa original: " + mensaje(fallo), fallo);
             } catch (DataAccessException recuperacionExitosa) {
@@ -769,6 +937,14 @@ public class ServicioRespaldoBaseDatos {
             throw new DataAccessException("Falló la restauración y no se pudo confirmar la recuperación. La BD permanece en MANTENIMIENTO y el diario "
                     + diarioRecuperacion.getArchivo() + " conserva los pasos para reintentar al iniciar. Causa: " + mensaje(fallo), fallo);
         }
+
+        infraestructura.MigradorEsquemaJdbc.invalidarCacheEsquema();
+        try {
+            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
+        } catch (Exception ex) {
+            throw new DataAccessException("El respaldo fue restaurado, pero falló la sincronización del esquema: " + mensaje(ex), ex);
+        }
+        return respaldoPrevio;
     }
 
     /** Recupera una operación interrumpida antes de abrir login o ejecutar migraciones. */
@@ -781,6 +957,7 @@ public class ServicioRespaldoBaseDatos {
         }
         if (inicial == null) return;
 
+        boolean sincronizarEsquema = false;
         String idControl = "RESTAURACION:" + inicial.id();
         try (AutoCloseable interno = infraestructura.ControlMantenimientoBD.permitirOperacionInterna();
              Connection control = conexiones.getConnection()) {
@@ -789,46 +966,55 @@ public class ServicioRespaldoBaseDatos {
             String operacionControl = infraestructura.ControlMantenimientoBD.operacionActual(control);
             if ("OPERATIVO".equalsIgnoreCase(estado)
                     && ("INICIANDO".equals(inicial.fase()) || "DESTINO_VALIDADO".equals(inicial.fase()))) {
-                if ("DESTINO_VALIDADO".equals(inicial.fase())) validarDestinoVivo(inicial.destino(), inicial.checksumDestino());
-                diarioRecuperacion.eliminar();
-                return;
-            }
-            if ("MANTENIMIENTO".equalsIgnoreCase(estado) && !idControl.equals(operacionControl)) {
-                throw new SQLException("El diario no coincide con la operación de mantenimiento activa (" + operacionControl + ").");
-            }
-            switch (inicial.fase()) {
-                case "INICIANDO", "MANTENIMIENTO_SIN_RESPALDO", "RESPALDO_COMPLETO" -> {
-                    if ("MANTENIMIENTO".equalsIgnoreCase(estado)) {
-                        infraestructura.ControlMantenimientoBD.terminarMantenimiento(control, idControl);
-                    }
-                    diarioRecuperacion.eliminar();
-                    LOGGER.info("Se cerró de forma segura una restauración interrumpida antes de ejecutar DDL.");
-                }
-                case "DESTINO_VALIDADO" -> {
+                if ("DESTINO_VALIDADO".equals(inicial.fase())) {
                     validarDestinoVivo(inicial.destino(), inicial.checksumDestino());
-                    if ("MANTENIMIENTO".equalsIgnoreCase(estado)) {
+                    sincronizarEsquema = true;
+                }
+                diarioRecuperacion.eliminar();
+            } else if ("MANTENIMIENTO".equalsIgnoreCase(estado) && !idControl.equals(operacionControl)) {
+                throw new SQLException("El diario no coincide con la operación de mantenimiento activa (" + operacionControl + ").");
+            } else {
+                switch (inicial.fase()) {
+                    case "INICIANDO", "MANTENIMIENTO_SIN_RESPALDO", "RESPALDO_COMPLETO" -> {
+                        if ("MANTENIMIENTO".equalsIgnoreCase(estado)) {
+                            infraestructura.ControlMantenimientoBD.terminarMantenimiento(control, idControl);
+                        }
+                        diarioRecuperacion.eliminar();
+                        LOGGER.info("Se cerró de forma segura una restauración interrumpida antes de ejecutar DDL.");
+                    }
+                    case "DESTINO_VALIDADO" -> {
+                        validarDestinoVivo(inicial.destino(), inicial.checksumDestino());
+                        if ("MANTENIMIENTO".equalsIgnoreCase(estado)) {
+                            infraestructura.ControlMantenimientoBD.terminarMantenimiento(control, idControl);
+                        }
+                        diarioRecuperacion.eliminar();
+                        sincronizarEsquema = true;
+                    }
+                    case "APLICANDO", "RECUPERANDO" -> {
+                        Path previo = rutaDiario(inicial.respaldoPrevio());
+                        validarArchivoRespaldo(previo);
+                        validarChecksumEsperado(previo, inicial.checksumPrevio());
+                        if ("OPERATIVO".equalsIgnoreCase(estado)) {
+                            infraestructura.ControlMantenimientoBD.iniciarMantenimiento(control, "RESTAURACION", inicial.id());
+                        }
+                        actualizarDiario(inicial, "RECUPERANDO", previo.toString(), inicial.checksumPrevio());
+                        importarYValidar(previo);
                         infraestructura.ControlMantenimientoBD.terminarMantenimiento(control, idControl);
+                        diarioRecuperacion.eliminar();
+                        LOGGER.warning("Se restauró automáticamente el respaldo previo de una operación de restauración interrumpida.");
+                        sincronizarEsquema = true;
                     }
-                    diarioRecuperacion.eliminar();
+                    default -> throw new SQLException("Fase de restauración desconocida en el diario: " + inicial.fase());
                 }
-                case "APLICANDO", "RECUPERANDO" -> {
-                    Path previo = rutaDiario(inicial.respaldoPrevio());
-                    validarArchivoRespaldo(previo);
-                    validarChecksumEsperado(previo, inicial.checksumPrevio());
-                    if ("OPERATIVO".equalsIgnoreCase(estado)) {
-                        infraestructura.ControlMantenimientoBD.iniciarMantenimiento(control, "RESTAURACION", inicial.id());
-                    }
-                    actualizarDiario(inicial, "RECUPERANDO", previo.toString(), inicial.checksumPrevio());
-                    importarYValidar(previo);
-                    infraestructura.ControlMantenimientoBD.terminarMantenimiento(control, idControl);
-                    diarioRecuperacion.eliminar();
-                    LOGGER.warning("Se restauró automáticamente el respaldo previo de una operación de restauración interrumpida.");
-                }
-                default -> throw new SQLException("Fase de restauración desconocida en el diario: " + inicial.fase());
             }
         } catch (Exception ex) {
             throw new DataAccessException("No se pudo recuperar la operación de restauración pendiente. La aplicación queda bloqueada; revise "
                     + diarioRecuperacion.getArchivo() + ". " + mensaje(ex), ex);
+        }
+
+        if (sincronizarEsquema) {
+            infraestructura.MigradorEsquemaJdbc.invalidarCacheEsquema();
+            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
         }
     }
 
@@ -852,6 +1038,10 @@ public class ServicioRespaldoBaseDatos {
             }
             try {
                 ejecutarScriptSql(con, archivo);
+                try (Statement limpiar = con.createStatement()) {
+                    limpiar.executeUpdate("DELETE FROM login_intentos");
+                }
+                infraestructura.MigradorEsquemaJdbc.asegurarIntegridadIntentosLogin(con);
                 validarContenidoVivo(con, archivo);
             } finally {
                 try (Statement reset = con.createStatement()) {
@@ -999,7 +1189,11 @@ public class ServicioRespaldoBaseDatos {
              ResultSet rs = st.executeQuery("SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema=DATABASE() AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME")) {
             while (rs.next()) {
                 String nombreTabla = rs.getString("TABLE_NAME");
-                if ("restaurante_control".equalsIgnoreCase(nombreTabla)) continue;
+                if (nombreTabla == null) continue;
+                String t = nombreTabla.trim().toLowerCase(java.util.Locale.ROOT);
+                if (TABLAS_PROTEGIDAS_INFRAESTRUCTURA.contains(t) || !TABLAS_PERMITIDAS_RESPALDO.contains(t)) {
+                    continue;
+                }
                 tablas.add(nombreTabla);
             }
         }

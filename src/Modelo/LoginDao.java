@@ -52,39 +52,119 @@ public class LoginDao implements AutenticacionRepositorio {
         if (correo == null || correo.trim().isEmpty() || clave == null || clave.isEmpty()) {
             throw ErrorAplicacionException.validacion("El correo y la contraseña son obligatorios.");
         }
-        Usuario usuario = null;
-        String contrasenaGuardada = null;
         String sql = """
             SELECT id, nombre, correo, pass, rol
             FROM usuarios
-            WHERE correo = ? OR nombre = ?
+            WHERE (correo = ? OR nombre = ?)
+              AND (activo = 1 OR activo IS NULL)
             ORDER BY id ASC
-            LIMIT 1
+            LIMIT 1 FOR UPDATE
             """;
-        try (Connection conexion = conexiones.getConnection();
-                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            String identificador = correo.trim();
-            sentencia.setString(1, identificador);
-            sentencia.setString(2, identificador);
-            try (ResultSet resultados = sentencia.executeQuery()) {
-                if (resultados.next()) {
-                    usuario = new Usuario();
-                    usuario.setId(resultados.getInt("id"));
-                    usuario.setNombre(resultados.getString("nombre"));
-                    usuario.setCorreo(resultados.getString("correo"));
-                    usuario.setRol(resultados.getString("rol"));
-                    contrasenaGuardada = resultados.getString("pass");
+        try (Connection conexion = conexiones.getConnection()) {
+            boolean autoCommitPrevio = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
+            try {
+                Usuario usuario = null;
+                String contrasenaGuardada = null;
+                try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+                    String identificador = correo.trim();
+                    sentencia.setString(1, identificador);
+                    sentencia.setString(2, identificador);
+                    try (ResultSet resultados = sentencia.executeQuery()) {
+                        if (resultados.next()) {
+                            usuario = new Usuario();
+                            usuario.setId(resultados.getInt("id"));
+                            usuario.setNombre(resultados.getString("nombre"));
+                            usuario.setCorreo(resultados.getString("correo"));
+                            usuario.setRol(resultados.getString("rol"));
+                            contrasenaGuardada = resultados.getString("pass");
+                        }
+                    }
                 }
+                if (usuario == null || !rolReconocido(usuario.getRol())) {
+                    conexion.commit();
+                    ErrorAplicacionException.registrarAdvertencia("Intento de inicio de sesión rechazado.");
+                    return Optional.empty();
+                }
+
+                long ahora = obtenerAhoraServidorMs(conexion);
+                EstadoIntentosLogin estado = leerEstadoIntentos(conexion, usuario.getId(), true);
+                if (estado.bloqueadoHastaMs() > ahora) {
+                    conexion.commit();
+                    return Optional.empty();
+                }
+                if (estado.bloqueadoHastaMs() > 0) {
+                    borrarEstadoIntentos(conexion, usuario.getId());
+                    estado = new EstadoIntentosLogin(0, 0);
+                }
+
+                boolean claveValida = verificarOCrearHash(conexion, usuario.getId(), clave, contrasenaGuardada);
+                if (!claveValida) {
+                    int fallos = estado.intentos() + 1;
+                    long bloqueoHasta = fallos >= MAX_INTENTOS_LOGIN
+                            ? ahora + DURACION_BLOQUEO_LOGIN_MS : 0;
+                    guardarEstadoIntentos(conexion, usuario.getId(), fallos, bloqueoHasta);
+                    conexion.commit();
+                    ErrorAplicacionException.registrarAdvertencia("Intento de inicio de sesión rechazado.");
+                    return Optional.empty();
+                }
+                borrarEstadoIntentos(conexion, usuario.getId());
+                conexion.commit();
+                return Optional.of(usuario);
+            } catch (SQLException | RuntimeException ex) {
+                try { conexion.rollback(); } catch (SQLException rollback) { ex.addSuppressed(rollback); }
+                throw ex;
+            } finally {
+                try { conexion.setAutoCommit(autoCommitPrevio); } catch (SQLException ignored) { }
             }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo validar el usuario.", ex);
         }
-        if (usuario == null || !rolReconocido(usuario.getRol())
-                || !verificarOCrearHash(usuario.getId(), clave, contrasenaGuardada)) {
-            ErrorAplicacionException.registrarAdvertencia("Intento de inicio de sesión rechazado.");
-            return Optional.empty();
+    }
+
+    private static final int MAX_INTENTOS_LOGIN = 5;
+    private static final long DURACION_BLOQUEO_LOGIN_MS = 30_000L;
+    private record EstadoIntentosLogin(int intentos, long bloqueadoHastaMs) { }
+
+    private long obtenerAhoraServidorMs(Connection conexion) throws SQLException {
+        try (PreparedStatement ps = conexion.prepareStatement(
+                "SELECT CAST(FLOOR(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3)) * 1000) AS UNSIGNED)");
+             ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) throw new SQLException("La BD no devolvió su hora actual.");
+            return rs.getLong(1);
         }
-        return Optional.of(usuario);
+    }
+
+    private EstadoIntentosLogin leerEstadoIntentos(Connection conexion, int usuarioId, boolean bloquearFila) throws SQLException {
+        String sql = "SELECT intentos, bloqueado_hasta_ms FROM login_intentos WHERE usuario_id = ?"
+                + (bloquearFila ? " FOR UPDATE" : "");
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, usuarioId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? new EstadoIntentosLogin(rs.getInt(1), rs.getLong(2))
+                        : new EstadoIntentosLogin(0, 0);
+            }
+        }
+    }
+
+    private void guardarEstadoIntentos(Connection conexion, int usuarioId, int intentos, long bloqueoHasta) throws SQLException {
+        try (PreparedStatement ps = conexion.prepareStatement("""
+                INSERT INTO login_intentos (usuario_id, intentos, bloqueado_hasta_ms)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE intentos = VALUES(intentos), bloqueado_hasta_ms = VALUES(bloqueado_hasta_ms)
+                """)) {
+            ps.setInt(1, usuarioId);
+            ps.setInt(2, intentos);
+            ps.setLong(3, bloqueoHasta);
+            ps.executeUpdate();
+        }
+    }
+
+    private void borrarEstadoIntentos(Connection conexion, int usuarioId) throws SQLException {
+        try (PreparedStatement ps = conexion.prepareStatement("DELETE FROM login_intentos WHERE usuario_id = ?")) {
+            ps.setInt(1, usuarioId);
+            ps.executeUpdate();
+        }
     }
 
     public Usuario log(String correo, String pass) {
@@ -116,56 +196,37 @@ public class LoginDao implements AutenticacionRepositorio {
         }
     }
 
-    private boolean verificarOCrearHash(int id, String clave, String guardada) {
+    private boolean verificarOCrearHash(Connection conexion, int id, String clave, String guardada) throws SQLException {
         if (guardada == null) {
             return false;
         }
         char[] contrasena = clave.toCharArray();
-        if (passwordHasher.esHash(guardada)) {
-            return passwordHasher.verificar(contrasena, guardada);
-        }
-        if (!compararEnTiempoConstante(clave, guardada)) {
-            return false;
-        }
-        String hashNuevo = passwordHasher.hash(contrasena);
-        String sql = """
-            UPDATE usuarios
-            SET pass = ?
-            WHERE id = ? AND BINARY pass = BINARY ?
-            """;
-        try (Connection conexion = conexiones.getConnection();
-                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, hashNuevo);
-            sentencia.setInt(2, id);
-            sentencia.setString(3, guardada);
-            if (sentencia.executeUpdate() == 1) {
-                return true;
+        try {
+            if (passwordHasher.esHash(guardada)) {
+                return passwordHasher.verificar(contrasena, guardada);
             }
-        } catch (SQLException ex) {
-            throw new DataAccessException("No se pudo actualizar de forma segura la contraseña.", ex);
+            if (!compararEnTiempoConstante(clave, guardada)) {
+                return false;
+            }
+            String hashNuevo = passwordHasher.hash(contrasena);
+            String sql = """
+                UPDATE usuarios
+                SET pass = ?
+                WHERE id = ? AND BINARY pass = BINARY ?
+                """;
+            try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+                sentencia.setString(1, hashNuevo);
+                sentencia.setInt(2, id);
+                sentencia.setString(3, guardada);
+                return sentencia.executeUpdate() == 1;
+            }
+        } finally {
+            Arrays.fill(contrasena, '\0');
         }
-        return verificarHashActual(id, contrasena);
     }
 
     private boolean rolReconocido(String rol) {
         return "Administrador".equals(rol) || "Asistente".equals(rol);
-    }
-
-    private boolean verificarHashActual(int id, char[] contrasena) {
-        String sql = """
-            SELECT pass
-            FROM usuarios
-            WHERE id = ?
-            """;
-        try (Connection conexion = conexiones.getConnection();
-                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setInt(1, id);
-            try (ResultSet resultados = sentencia.executeQuery()) {
-                return resultados.next() && passwordHasher.verificar(contrasena, resultados.getString("pass"));
-            }
-        } catch (SQLException ex) {
-            throw new DataAccessException("No se pudo confirmar la migración segura de la contraseña.", ex);
-        }
     }
 
     private boolean compararEnTiempoConstante(String primera, String segunda) {
@@ -179,13 +240,59 @@ public class LoginDao implements AutenticacionRepositorio {
         }
     }
 
+    public static final int LONGITUD_MINIMA_CONTRASENA = 4;
+
+    public static int contarLongitudSinEspacios(char[] chars) {
+        if (chars == null) return 0;
+        int count = 0;
+        for (char c : chars) {
+            if (!Character.isWhitespace(c)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static boolean esBlanco(char[] chars) {
+        if (chars == null || chars.length == 0) return true;
+        for (char c : chars) {
+            if (!Character.isWhitespace(c)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static void validarLongitudContrasena(char[] password) {
+        if (password == null || password.length == 0 || esBlanco(password)) {
+            throw ErrorAplicacionException.validacion("La contraseña es obligatoria.");
+        }
+        if (contarLongitudSinEspacios(password) < LONGITUD_MINIMA_CONTRASENA) {
+            throw ErrorAplicacionException.validacion(
+                    "La contraseña debe tener al menos " + LONGITUD_MINIMA_CONTRASENA + " caracteres.");
+        }
+    }
+
+    public static void validarLongitudContrasena(String password) {
+        if (password == null) {
+            validarLongitudContrasena((char[]) null);
+            return;
+        }
+        char[] chars = password.toCharArray();
+        try {
+            validarLongitudContrasena(chars);
+        } finally {
+            java.util.Arrays.fill(chars, '\0');
+        }
+    }
+
     private void validarRegistro(Usuario reg) {
         if (reg == null || reg.getNombre() == null || reg.getNombre().trim().isEmpty()
                 || reg.getCorreo() == null || reg.getCorreo().trim().isEmpty()
-                || reg.getPassword() == null || reg.getPassword().isEmpty()
                 || reg.getRol() == null || reg.getRol().trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("Todos los datos del usuario son obligatorios.");
         }
+        validarLongitudContrasena(reg.getPassword());
         if (!"Administrador".equals(reg.getRol()) && !"Asistente".equals(reg.getRol())) {
             throw ErrorAplicacionException.validacion("El rol del usuario no es válido.");
         }
@@ -209,24 +316,219 @@ public class LoginDao implements AutenticacionRepositorio {
     public List<Usuario> ListarUsuarios() {
         List<Usuario> usuarios = new ArrayList<>();
         String sql = """
+            SELECT id, nombre, correo, pass, rol, activo
+            FROM usuarios
+            ORDER BY id ASC
+            """;
+        try (Connection conexion = conexiones.getConnection()) {
+            try (PreparedStatement sentencia = conexion.prepareStatement(sql);
+                 ResultSet resultados = sentencia.executeQuery()) {
+                while (resultados.next()) {
+                    Usuario usuario = new Usuario();
+                    usuario.setId(resultados.getInt("id"));
+                    usuario.setNombre(resultados.getString("nombre"));
+                    usuario.setCorreo(resultados.getString("correo"));
+                    usuario.setRol(resultados.getString("rol"));
+                    try {
+                        Object act = resultados.getObject("activo");
+                        usuario.setActivo(act == null || ((Number) act).intValue() == 1);
+                    } catch (SQLException ignored) {
+                        usuario.setActivo(true);
+                    }
+                    usuarios.add(usuario);
+                }
+            } catch (SQLException ex) {
+                if (ex.getErrorCode() == 1054) {
+                    return listarUsuariosSinColumnaActivo(conexion);
+                }
+                throw ex;
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron listar los usuarios.", ex);
+        }
+        return usuarios;
+    }
+
+    private List<Usuario> listarUsuariosSinColumnaActivo(Connection conexion) throws SQLException {
+        List<Usuario> usuarios = new ArrayList<>();
+        String sql = """
             SELECT id, nombre, correo, pass, rol
             FROM usuarios
+            ORDER BY id ASC
             """;
-        try (Connection conexion = conexiones.getConnection();
-                PreparedStatement sentencia = conexion.prepareStatement(sql);
-                ResultSet resultados = sentencia.executeQuery()) {
+        try (PreparedStatement sentencia = conexion.prepareStatement(sql);
+             ResultSet resultados = sentencia.executeQuery()) {
             while (resultados.next()) {
                 Usuario usuario = new Usuario();
                 usuario.setId(resultados.getInt("id"));
                 usuario.setNombre(resultados.getString("nombre"));
                 usuario.setCorreo(resultados.getString("correo"));
                 usuario.setRol(resultados.getString("rol"));
+                usuario.setActivo(true);
                 usuarios.add(usuario);
             }
-        } catch (SQLException ex) {
-            throw new DataAccessException("No se pudieron listar los usuarios.", ex);
         }
         return usuarios;
+    }
+
+    public boolean cambiarContrasena(int idUsuario, char[] nuevaClave) {
+        if (idUsuario <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador de usuario no es válido.");
+        }
+        validarLongitudContrasena(nuevaClave);
+        String nuevoHash = passwordHasher.hash(nuevaClave);
+        String sql = "UPDATE usuarios SET pass = ? WHERE id = ?";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement st = con.prepareStatement(sql)) {
+            st.setString(1, nuevoHash);
+            st.setInt(2, idUsuario);
+            return st.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo cambiar la contraseña del usuario.", ex);
+        }
+    }
+
+    public boolean cambiarContrasena(int idUsuario, String nuevaClave) {
+        if (nuevaClave == null) {
+            return cambiarContrasena(idUsuario, (char[]) null);
+        }
+        char[] chars = nuevaClave.toCharArray();
+        try {
+            return cambiarContrasena(idUsuario, chars);
+        } finally {
+            java.util.Arrays.fill(chars, '\0');
+        }
+    }
+
+    private static final Object LOCK_MUTACION_ADMIN = new Object();
+
+    public static boolean esAdministradorPrimario(String correo, String nombre) {
+        return (correo != null && "admin".equalsIgnoreCase(correo.trim()))
+                || (nombre != null && "admin".equalsIgnoreCase(nombre.trim()));
+    }
+
+    public boolean desactivarUsuario(int idUsuario) {
+        if (idUsuario <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador de usuario no es válido.");
+        }
+        return ejecutarMutacionUsuarioProtegida(idUsuario, "desactivar");
+    }
+
+    public boolean reactivarUsuario(int idUsuario) {
+        if (idUsuario <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador de usuario no es válido.");
+        }
+        String sql = "UPDATE usuarios SET activo = 1 WHERE id = ?";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement st = con.prepareStatement(sql)) {
+            st.setInt(1, idUsuario);
+            return st.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo reactivar el usuario.", ex);
+        }
+    }
+
+    public boolean eliminarUsuario(int idUsuario) {
+        if (idUsuario <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador de usuario no es válido.");
+        }
+        return ejecutarMutacionUsuarioProtegida(idUsuario, "eliminar");
+    }
+
+    public boolean esUsuarioActivo(int idUsuario) {
+        if (idUsuario <= 0) return false;
+        String sql = "SELECT activo FROM usuarios WHERE id = ?";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement st = con.prepareStatement(sql)) {
+            st.setInt(1, idUsuario);
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    Object act = rs.getObject("activo");
+                    if (act == null) return true;
+                    if (act instanceof Boolean b) return b;
+                    if (act instanceof Number n) return n.intValue() == 1;
+                    return "1".equals(act.toString()) || "true".equalsIgnoreCase(act.toString());
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo verificar el estado del usuario.", ex);
+        }
+        return false;
+    }
+
+    private boolean ejecutarMutacionUsuarioProtegida(int idUsuario, String accion) {
+        synchronized (LOCK_MUTACION_ADMIN) {
+            String sqlUsuario = "SELECT rol, correo, nombre FROM usuarios WHERE id = ? FOR UPDATE";
+            String sqlOtros = "SELECT COUNT(*) FROM usuarios WHERE LOWER(rol) = 'administrador' AND id <> ? AND (activo = 1 OR activo IS NULL) FOR UPDATE";
+            String sqlMutacion = "desactivar".equalsIgnoreCase(accion)
+                    ? "UPDATE usuarios SET activo = 0 WHERE id = ?"
+                    : "DELETE FROM usuarios WHERE id = ?";
+
+            try (Connection con = conexiones.getConnection()) {
+                boolean autoCommitPrevio = con.getAutoCommit();
+                con.setAutoCommit(false);
+                try {
+                    String rol = null;
+                    String correo = null;
+                    String nombre = null;
+                    try (PreparedStatement stUsuario = con.prepareStatement(sqlUsuario)) {
+                        stUsuario.setInt(1, idUsuario);
+                        try (ResultSet rs = stUsuario.executeQuery()) {
+                            if (!rs.next()) {
+                                con.rollback();
+                                return false;
+                            }
+                            rol = rs.getString("rol");
+                            correo = rs.getString("correo");
+                            nombre = rs.getString("nombre");
+                        }
+                    }
+
+                    if (esAdministradorPrimario(correo, nombre)) {
+                        con.rollback();
+                        throw ErrorAplicacionException.validacion(
+                                "El usuario 'admin' es el administrador primario y no puede ser "
+                                        + ("eliminar".equalsIgnoreCase(accion) ? "eliminado." : "desactivado."));
+                    }
+
+                    if ("administrador".equalsIgnoreCase(rol)) {
+                        try (PreparedStatement stOtros = con.prepareStatement(sqlOtros)) {
+                            stOtros.setInt(1, idUsuario);
+                            try (ResultSet rsOtros = stOtros.executeQuery()) {
+                                if (rsOtros.next() && rsOtros.getInt(1) == 0) {
+                                    con.rollback();
+                                    throw ErrorAplicacionException.validacion(
+                                            "No se puede " + accion + " al único administrador activo del sistema.");
+                                }
+                            }
+                        }
+                    }
+
+                    int filas;
+                    try (PreparedStatement stMutacion = con.prepareStatement(sqlMutacion)) {
+                        stMutacion.setInt(1, idUsuario);
+                        filas = stMutacion.executeUpdate();
+                    }
+
+                    con.commit();
+                    return filas > 0;
+                } catch (SQLException | RuntimeException ex) {
+                    try {
+                        con.rollback();
+                    } catch (SQLException rb) {
+                        ex.addSuppressed(rb);
+                    }
+                    throw ex;
+                } finally {
+                    try {
+                        con.setAutoCommit(autoCommitPrevio);
+                    } catch (SQLException ignored) {
+                    }
+                }
+            } catch (SQLException ex) {
+                throw new DataAccessException("No se pudo " + accion + " el usuario.", ex);
+            }
+        }
     }
 
     public boolean ModificarDatos(Config conf) {
@@ -296,6 +598,9 @@ public class LoginDao implements AutenticacionRepositorio {
                     pares.put(ConfigClaves.CLIENTE_DEFAULT_DOCUMENTO, conf.getClienteDefaultDocumento());
                 }
                 pares.put(ConfigClaves.MESES_RETENCION_PEDIDOS, String.valueOf(conf.getMesesRetencionPedidos() > 0 ? conf.getMesesRetencionPedidos() : 24));
+                if (conf.getModoAtencion() != null) {
+                    pares.put(ConfigClaves.MODO_ATENCION, conf.getModoAtencion());
+                }
                 configuracionRepo.guardarVarios(conexion, pares);
                 conexion.commit();
                 return true;
@@ -779,9 +1084,29 @@ public class LoginDao implements AutenticacionRepositorio {
                     } catch (Exception ignored) {
                     }
                 }
+                if (ajustes.containsKey(ConfigClaves.MODO_ATENCION)) {
+                    configuracion.setModoAtencion(ajustes.get(ConfigClaves.MODO_ATENCION));
+                }
             }
         } catch (Exception ex) {
             LOGGER.log(Level.FINE, "Aviso aplicando configuración clave-valor: " + ex.getMessage());
         }
     }
+
+    public boolean actualizarModoAtencion(String modo) {
+        if (modo == null || modo.isBlank()) {
+            modo = "OPCION_B";
+        }
+        String modoNormalizado = modo.trim().toUpperCase();
+        try {
+            if (configuracionRepo != null) {
+                configuracionRepo.guardar(ConfigClaves.MODO_ATENCION, modoNormalizado);
+                return true;
+            }
+        } catch (Exception ex) {
+            LOGGER.log(Level.WARNING, "Aviso al guardar modo de atención en clave-valor: " + ex.getMessage());
+        }
+        return false;
+    }
+
 }

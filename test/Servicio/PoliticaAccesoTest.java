@@ -37,6 +37,28 @@ public class PoliticaAccesoTest {
         assertThrows(ErrorAplicacionException.class, () -> new PoliticaAcceso(usuario("Otro")));
     }
 
+    @Test
+    public void sesionInactivaODesactivadaDeniegaTodasLasAcciones() {
+        java.util.concurrent.atomic.AtomicBoolean activa = new java.util.concurrent.atomic.AtomicBoolean(true);
+        PoliticaAcceso politica = new PoliticaAcceso(usuario("Administrador"), activa::get);
+        assertTrue(politica.esAdministrador());
+        assertTrue(politica.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS));
+
+        // Administrador desactiva la cuenta o sesion expira
+        activa.set(false);
+        assertFalse("Al estar inactiva la sesión debe denegar esAdministrador", politica.esAdministrador());
+        for (PoliticaAcceso.Accion accion : PoliticaAcceso.Accion.values()) {
+            assertFalse("Al estar inactiva debe denegar " + accion, politica.permite(accion));
+        }
+
+        // Si usuario.isActivo() es falso de inicio
+        Usuario uInactivo = usuario("Administrador");
+        uInactivo.setActivo(false);
+        PoliticaAcceso politicaInactiva = new PoliticaAcceso(uInactivo);
+        assertFalse(politicaInactiva.esAdministrador());
+        assertFalse(politicaInactiva.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS));
+    }
+
     private Usuario usuario(String rol) {
         Usuario usuario = new Usuario();
         usuario.setRol(rol);

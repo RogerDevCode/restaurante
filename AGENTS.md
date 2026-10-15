@@ -51,3 +51,4 @@
 - No reiniciar la app en horario de servicio sin pedirlo; el jar desplegado se activa al próximo arranque.
 - Los tests unitarios tocan la BD real (vía `.env`); no correr `ant test` tras sembrar datos limpios salvo necesario.
 - `pkill -f "[R]estaurante.jar"` (con corchetes; el patrón plano se auto-matchea).
+- **Esquema de BD vs Clave/Valor**: Antes de agregar una columna a la base de datos (especialmente en `config`), evaluar primero si se puede resolver la necesidad con el modelo clave/valor de configuración (`configuracion_sistema` vía `ConfigClaves` y `ConfiguracionRepositorio`), evitando alteraciones de esquema (DDL) innecesarias.

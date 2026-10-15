@@ -525,7 +525,7 @@ public class PedidosDao implements PedidosRepositorio {
         }
         Pedidos ped = null;
         String sql = """
-            SELECT p.id, p.id_sala, p.num_mesa, p.tipo_pedido, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado, COALESCE(s.nombre, 'Pedido rápido') AS nombre_sala,
+            SELECT p.id, p.id_sala, p.num_mesa, p.tipo_pedido, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto, p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.tasa_es_estimada, p.usuario, p.estado, COALESCE(s.nombre, 'Pedido rápido') AS nombre_sala,
                    p.cliente_nombre, p.cliente_documento, p.metodo_pago, p.efectivo_bs, p.efectivo_usd, p.id_mesonero, p.mesonero_nombre
             FROM pedidos p
             LEFT JOIN salas s ON p.id_sala = s.id
@@ -553,6 +553,9 @@ public class PedidosDao implements PedidosRepositorio {
                     ped.setUsuario(resultados.getString("usuario"));
                     ped.setEstado(resultados.getString("estado"));
                     ped.setTasaCambio(resultados.getBigDecimal("tasa_cambio"));
+                    try {
+                        ped.setTasaEsEstimada(resultados.getInt("tasa_es_estimada") == 1);
+                    } catch (SQLException ignored) {}
                     try {
                         ped.setClienteNombre(resultados.getString("cliente_nombre"));
                         ped.setClienteDocumento(resultados.getString("cliente_documento"));

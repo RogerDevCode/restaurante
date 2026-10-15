@@ -43,22 +43,35 @@ public final class GeneradorPdfPedido {
     private final Path directorioSalida;
     private final boolean estructurarPorPeriodo;
     private final FormatoPapel formatoPapel;
+    private final ResolvedorTasaHistorica resolvedorTasaHistorica;
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(GeneradorPdfPedido.class.getName());
+
+    @FunctionalInterface
+    public interface ResolvedorTasaHistorica {
+        BigDecimal resolver(String fecha, int idPedido);
+    }
 
     public GeneradorPdfPedido(Path directorioSalida) {
-        this(directorioSalida, false, resolverFormatoPorDefecto());
+        this(directorioSalida, false, resolverFormatoPorDefecto(), null);
     }
 
     public GeneradorPdfPedido(Path directorioSalida, boolean estructurarPorPeriodo) {
-        this(directorioSalida, estructurarPorPeriodo, resolverFormatoPorDefecto());
+        this(directorioSalida, estructurarPorPeriodo, resolverFormatoPorDefecto(), null);
     }
 
     public GeneradorPdfPedido(Path directorioSalida, boolean estructurarPorPeriodo, FormatoPapel formatoPapel) {
+        this(directorioSalida, estructurarPorPeriodo, formatoPapel, null);
+    }
+
+    public GeneradorPdfPedido(Path directorioSalida, boolean estructurarPorPeriodo, FormatoPapel formatoPapel,
+            ResolvedorTasaHistorica resolvedorTasaHistorica) {
         if (directorioSalida == null) {
             throw ErrorAplicacionException.validacion("El directorio de salida del PDF es obligatorio.");
         }
         this.directorioSalida = directorioSalida;
         this.estructurarPorPeriodo = estructurarPorPeriodo;
         this.formatoPapel = formatoPapel != null ? formatoPapel : FormatoPapel.TICKET_80MM;
+        this.resolvedorTasaHistorica = resolvedorTasaHistorica;
     }
 
     public static GeneradorPdfPedido conEstructuraMensual(Path directorioBase) {
@@ -173,6 +186,15 @@ public final class GeneradorPdfPedido {
                 }
                 documento.close();
             }
+        } catch (ErrorAplicacionException error) {
+            if (documento.isOpen()) {
+                try {
+                    documento.close();
+                } catch (RuntimeException errorCierre) {
+                    error.addSuppressed(errorCierre);
+                }
+            }
+            throw error;
         } catch (DocumentException | IOException | RuntimeException error) {
             if (documento.isOpen()) {
                 try {
@@ -344,7 +366,7 @@ public final class GeneradorPdfPedido {
 
     private void agregarDetallesTicket80mm(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles)
             throws DocumentException {
-        BigDecimal tasa = obtenerTasa(pedido);
+        BigDecimal tasa = obtenerTasa(pedido, configuracion);
         Font negrita = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, BaseColor.BLACK);
         Font cuerpo = new Font(Font.FontFamily.HELVETICA, 7.0f, Font.NORMAL, BaseColor.BLACK);
 
@@ -398,12 +420,16 @@ public final class GeneradorPdfPedido {
 
     private void agregarCierreTicket80mm(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles)
             throws DocumentException {
-        BigDecimal tasa = obtenerTasa(pedido);
+        BigDecimal tasa = obtenerTasa(pedido, configuracion);
         BigDecimal totalUsd = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP) : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
         boolean tieneIva = ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0;
+        BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
+                ? calcularExento(detalles)
+                : BigDecimal.ZERO.setScale(2);
+        boolean tieneExento = exentoUsd.compareTo(BigDecimal.ZERO) > 0;
 
         Font fontSep = new Font(Font.FontFamily.COURIER, 7, Font.NORMAL, BaseColor.DARK_GRAY);
         Paragraph sep = new Paragraph("----------------------------------------------------------------", fontSep);
@@ -411,7 +437,7 @@ public final class GeneradorPdfPedido {
         documento.add(sep);
 
         StringBuilder sb = new StringBuilder();
-        if (tieneIva) {
+        if (tieneIva || tieneExento) {
             BigDecimal subtotalUsd = pedido.getSubtotal() != null ? pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP) : totalUsd;
             BigDecimal ivaUsd = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
             BigDecimal subtotalBs = pedido.getSubtotalBs() != null ? pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP) : subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
@@ -420,25 +446,28 @@ public final class GeneradorPdfPedido {
             sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
               .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
 
-            if (ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0) {
+            if (tieneIva) {
                 BigDecimal baseImpUsd = tieneFiscalidadCompleta(detalles)
                         ? calcularBaseImponible(detalles)
                         : ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
-                BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
-                        ? calcularExento(detalles) : subtotalUsd.subtract(baseImpUsd);
-                if (exentoUsd.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal exentoCalculado = tieneFiscalidadCompleta(detalles)
+                        ? exentoUsd : subtotalUsd.subtract(baseImpUsd);
+                if (exentoCalculado.compareTo(BigDecimal.ZERO) > 0) {
                     BigDecimal baseImpBs = baseImpUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                    BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal exentoBs = exentoCalculado.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
                     sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
                       .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
-                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoCalculado))
                       .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
                 }
+                sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
+                  .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
+                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
+            } else {
+                BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
             }
-
-            sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
-              .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
-              .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
         }
 
         sb.append("Tasa de Cambio: Bs. ").append(tasa.setScale(4, RoundingMode.HALF_UP).toPlainString()).append(" / $\n")
@@ -501,7 +530,7 @@ public final class GeneradorPdfPedido {
     }
 
     private void agregarDetalles(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles) throws DocumentException {
-        BigDecimal tasa = obtenerTasa(pedido);
+        BigDecimal tasa = obtenerTasa(pedido, configuracion);
         Font negrita = new Font(Font.FontFamily.TIMES_ROMAN, 11, Font.BOLD, BaseColor.BLUE);
         PdfPTable tabla = new PdfPTable(4);
         tabla.setWidthPercentage(100);
@@ -534,15 +563,19 @@ public final class GeneradorPdfPedido {
     }
 
     private void agregarCierre(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles) throws DocumentException {
-        BigDecimal tasa = obtenerTasa(pedido);
+        BigDecimal tasa = obtenerTasa(pedido, configuracion);
         BigDecimal totalUsd = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalBs = pedido.getTotalBs() != null ? pedido.getTotalBs().setScale(2, RoundingMode.HALF_UP) : totalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal ivaPorcentaje = pedido.getIvaPorcentaje();
         boolean tieneIva = ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0;
+        BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
+                ? calcularExento(detalles)
+                : BigDecimal.ZERO.setScale(2);
+        boolean tieneExento = exentoUsd.compareTo(BigDecimal.ZERO) > 0;
 
         StringBuilder sb = new StringBuilder();
-        if (tieneIva) {
+        if (tieneIva || tieneExento) {
             BigDecimal subtotalUsd = pedido.getSubtotal() != null ? pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP) : totalUsd;
             BigDecimal ivaUsd = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
             BigDecimal subtotalBs = pedido.getSubtotalBs() != null ? pedido.getSubtotalBs().setScale(2, RoundingMode.HALF_UP) : subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
@@ -551,29 +584,36 @@ public final class GeneradorPdfPedido {
             sb.append("Subtotal: $").append(String.format(java.util.Locale.US, "%.2f", subtotalUsd))
               .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", subtotalBs)).append(")\n");
 
-            if (ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0) {
+            if (tieneIva) {
                 BigDecimal baseImpUsd = tieneFiscalidadCompleta(detalles)
                         ? calcularBaseImponible(detalles)
                         : ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
-                BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
-                        ? calcularExento(detalles) : subtotalUsd.subtract(baseImpUsd);
-                if (exentoUsd.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal exentoCalculado = tieneFiscalidadCompleta(detalles)
+                        ? exentoUsd : subtotalUsd.subtract(baseImpUsd);
+                if (exentoCalculado.compareTo(BigDecimal.ZERO) > 0) {
                     BigDecimal baseImpBs = baseImpUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                    BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal exentoBs = exentoCalculado.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
                     sb.append("  Base Imponible: $").append(String.format(java.util.Locale.US, "%.2f", baseImpUsd))
                       .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", baseImpBs)).append(")\n");
-                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                    sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoCalculado))
                       .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
                 }
+                sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
+                  .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
+                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
+            } else {
+                BigDecimal exentoBs = exentoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                sb.append("  Monto Exento: $").append(String.format(java.util.Locale.US, "%.2f", exentoUsd))
+                  .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", exentoBs)).append(")\n");
             }
-
-            sb.append("IVA (").append(String.format(java.util.Locale.US, "%.2f", ivaPorcentaje.setScale(2, RoundingMode.HALF_UP))).append("%): $")
-              .append(String.format(java.util.Locale.US, "%.2f", ivaUsd))
-              .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", ivaBs)).append(")\n");
         }
 
-        sb.append("Tasa de Cambio: Bs. ").append(tasa.setScale(4, RoundingMode.HALF_UP).toPlainString()).append(" / $\n")
-          .append("Total USD: $").append(String.format(java.util.Locale.US, "%.2f", totalUsd)).append("\n")
+        if (pedido != null && pedido.isTasaEsEstimada()) {
+            sb.append("Tasa de Cambio (Estimada): Bs. ").append(tasa.setScale(4, RoundingMode.HALF_UP).toPlainString()).append(" / $\n");
+        } else {
+            sb.append("Tasa de Cambio: Bs. ").append(tasa.setScale(4, RoundingMode.HALF_UP).toPlainString()).append(" / $\n");
+        }
+        sb.append("Total USD: $").append(String.format(java.util.Locale.US, "%.2f", totalUsd)).append("\n")
           .append("TOTAL A PAGAR (Bs.): Bs. ").append(String.format(java.util.Locale.US, "%.2f", totalBs));
 
         Font fuenteResumen = new Font(Font.FontFamily.TIMES_ROMAN, 12, Font.BOLD);
@@ -581,6 +621,13 @@ public final class GeneradorPdfPedido {
         resumen.setAlignment(Element.ALIGN_RIGHT);
         documento.add(Chunk.NEWLINE);
         documento.add(resumen);
+
+        if (pedido != null && pedido.isTasaEsEstimada()) {
+            Font fuenteNota = new Font(Font.FontFamily.TIMES_ROMAN, 9, Font.ITALIC);
+            Paragraph notaEstimada = new Paragraph("* NOTA: Tasa de cambio estimada por migración histórica del sistema.", fuenteNota);
+            notaEstimada.setAlignment(Element.ALIGN_CENTER);
+            documento.add(notaEstimada);
+        }
 
         Paragraph firma = new Paragraph("Forma de Pago: " + textoFormaPago(pedido) + "\n\n------------------------------------\nFirma\n");
         firma.setAlignment(Element.ALIGN_CENTER);
@@ -593,12 +640,83 @@ public final class GeneradorPdfPedido {
         documento.add(agradecimiento);
     }
 
-    private BigDecimal obtenerTasa(Pedidos pedido) {
-        if (pedido.getTasaCambio() != null && pedido.getTasaCambio().compareTo(BigDecimal.ZERO) > 0) {
-            return pedido.getTasaCambio();
+    BigDecimal obtenerTasa(Pedidos pedido, Config configuracion) {
+        boolean tasaEstimada = pedido != null && pedido.isTasaEsEstimada();
+
+        // Nivel 1: Tasa guardada explícitamente en el pedido (solo si es real / no estimada)
+        if (!tasaEstimada && pedido != null && pedido.getTasaCambio() != null && pedido.getTasaCambio().compareTo(BigDecimal.ZERO) > 0) {
+            return pedido.getTasaCambio().setScale(4, RoundingMode.HALF_UP);
         }
+
+        // Nivel 2: Inferencia contable interna del pedido
+        if (pedido != null) {
+            // 2.A: Por total Bs / total USD
+            if (pedido.getTotalBs() != null && pedido.getTotalDecimal() != null
+                    && pedido.getTotalDecimal().compareTo(BigDecimal.ZERO) > 0
+                    && pedido.getTotalBs().compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal tasaInferida = pedido.getTotalBs().divide(pedido.getTotalDecimal(), 4, RoundingMode.HALF_UP);
+                if (tasaInferida.compareTo(BigDecimal.ZERO) > 0) {
+                    return tasaInferida;
+                }
+            }
+            // 2.B: Por histórico del IVA: iva_bs / iva_monto
+            if (pedido.getIvaBs() != null && pedido.getIvaMonto() != null
+                    && pedido.getIvaMonto().compareTo(BigDecimal.ZERO) > 0
+                    && pedido.getIvaBs().compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal tasaIva = pedido.getIvaBs().divide(pedido.getIvaMonto(), 4, RoundingMode.HALF_UP);
+                if (tasaIva.compareTo(BigDecimal.ZERO) > 0) {
+                    return tasaIva;
+                }
+            }
+            // 2.C: Por subtotal: subtotal_bs / subtotal
+            if (pedido.getSubtotalBs() != null && pedido.getSubtotal() != null
+                    && pedido.getSubtotal().compareTo(BigDecimal.ZERO) > 0
+                    && pedido.getSubtotalBs().compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal tasaSubtotal = pedido.getSubtotalBs().divide(pedido.getSubtotal(), 4, RoundingMode.HALF_UP);
+                if (tasaSubtotal.compareTo(BigDecimal.ZERO) > 0) {
+                    return tasaSubtotal;
+                }
+            }
+        }
+
+        // Nivel 2.D: Si era tasa estimada por migración y falló inferencia contable directa,
+        // usar la tasa estimada guardada (se advertirá en el cuerpo del documento)
+        if (tasaEstimada && pedido != null && pedido.getTasaCambio() != null && pedido.getTasaCambio().compareTo(BigDecimal.ZERO) > 0) {
+            return pedido.getTasaCambio().setScale(4, RoundingMode.HALF_UP);
+        }
+
+        // Nivel 3: Inferencia a partir de registros con la misma fecha
+        if (pedido != null && pedido.getFecha() != null && !pedido.getFecha().isBlank() && resolvedorTasaHistorica != null) {
+            BigDecimal tasaMismaFecha = resolvedorTasaHistorica.resolver(pedido.getFecha(), pedido.getId());
+            if (tasaMismaFecha != null && tasaMismaFecha.compareTo(BigDecimal.ZERO) > 0) {
+                LOGGER.info("El pedido #" + pedido.getId() + " no poseía tasa ni totales para inferirla; resuelta a partir de registros de su misma fecha ("
+                        + pedido.getFecha() + "): " + tasaMismaFecha);
+                return tasaMismaFecha.setScale(4, RoundingMode.HALF_UP);
+            }
+        }
+
+        // Nivel 4: Si el pedido está PENDIENTE (o en curso/no cerrado), es legítimo usar la tasa configurada actual
+        boolean esHistorico = pedido != null && ("FINALIZADO".equalsIgnoreCase(pedido.getEstado())
+                || "ANULADO".equalsIgnoreCase(pedido.getEstado()));
+
+        if (!esHistorico && configuracion != null && configuracion.getTasaDolar() != null
+                && configuracion.getTasaDolar().compareTo(BigDecimal.ZERO) > 0) {
+            return configuracion.getTasaDolar().setScale(4, RoundingMode.HALF_UP);
+        }
+
+        // Si es un pedido histórico (FINALIZADO/ANULADO) y fallaron las inferencias directas del pedido,
+        // no se permite conjeturar tasas de otros registros ni aplicar la tasa actual para evitar discrepancias fiscales.
+        if (esHistorico) {
+            throw ErrorAplicacionException.validacion(
+                    "No se puede generar la factura del pedido histórico #" + pedido.getId()
+                            + " (" + pedido.getEstado() + ", fecha " + pedido.getFecha() + "): "
+                            + "no posee tasa de cambio registrada ni fue posible inferirla con exactitud a partir de sus montos de IVA o totales en Bs. "
+                            + "Para preservar la integridad contable y fiscal, no se permite conjeturar la tasa a partir de otros pedidos ni aplicar la tasa actual a pedidos cerrados.");
+        }
+
+        // Falla total de resolución
         throw ErrorAplicacionException.validacion(
-                "No se puede generar la factura: el pedido no tiene una tasa de cambio válida guardada en la BD.");
+                "No se puede generar la factura: no hay una tasa de cambio válida guardada en el pedido ni configurada en el sistema.");
     }
 
     private String textoFormaPago(Pedidos pedido) {

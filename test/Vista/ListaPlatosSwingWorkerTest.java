@@ -70,6 +70,32 @@ public class ListaPlatosSwingWorkerTest {
         assertSame(fallo, resultado.get());
     }
 
+    @Test
+    public void noRealizaFallbackDeFechaCuandoListaEstaVaciaOFiltroNoCoincide() throws Exception {
+        java.util.concurrent.atomic.AtomicInteger llamadas = new java.util.concurrent.atomic.AtomicInteger();
+        CountDownLatch completado = new CountDownLatch(1);
+        AtomicReference<List<Platos>> resultado = new AtomicReference<>();
+        PlatosControlador controlador = controlador(new RepositorioFalso() {
+            @Override
+            public List<Platos> listarPorFecha(String nombre, String fecha) {
+                llamadas.incrementAndGet();
+                org.junit.Assert.assertEquals("2026-10-15", fecha);
+                org.junit.Assert.assertEquals("pizza_inexistente", nombre);
+                return Collections.emptyList();
+            }
+        });
+
+        SwingUtilities.invokeAndWait(() -> new ListaPlatosSwingWorker(controlador, "pizza_inexistente", "2026-10-15",
+                lista -> {
+                    resultado.set(lista);
+                    completado.countDown();
+                }, error -> { throw new AssertionError(error); }).execute());
+
+        assertTrue(completado.await(5, TimeUnit.SECONDS));
+        org.junit.Assert.assertEquals(1, llamadas.get());
+        assertTrue(resultado.get().isEmpty());
+    }
+
     private PlatosControlador controlador(PlatosRepositorio repositorio) {
         Usuario usuario = new Usuario();
         usuario.setRol("Administrador");

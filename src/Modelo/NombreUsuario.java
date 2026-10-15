@@ -21,6 +21,10 @@ public final class NombreUsuario {
             throw ErrorAplicacionException.validacion(
                     "El nombre de usuario debe tener entre 3 y 60 caracteres; usa letras, números, espacios, punto, guion o guion bajo y no dejes espacios en los extremos.");
         }
+        if ("admin".equals(normalizado.toLowerCase(Locale.ROOT))) {
+            throw ErrorAplicacionException.validacion(
+                    "El nombre de usuario 'admin' está reservado para la cuenta de acceso predeterminada.");
+        }
         return normalizado;
     }
 

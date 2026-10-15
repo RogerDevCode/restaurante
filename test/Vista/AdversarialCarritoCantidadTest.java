@@ -747,5 +747,10 @@ public class AdversarialCarritoCantidadTest {
         public List<Usuario> ListarUsuarios() {
             return usuariosRetorno;
         }
+
+        @Override
+        public boolean esUsuarioActivo(int idUsuario) {
+            return true;
+        }
     }
 }

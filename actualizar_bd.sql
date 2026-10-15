@@ -45,6 +45,13 @@ BEGIN
 
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'tasa_es_estimada'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN tasa_es_estimada TINYINT(1) NOT NULL DEFAULT 0 AFTER tasa_cambio;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'total_bs'
     ) THEN
         ALTER TABLE pedidos ADD COLUMN total_bs DECIMAL(14,2) NULL DEFAULT NULL AFTER tasa_cambio;
@@ -241,6 +248,62 @@ BEGIN
         descripcion VARCHAR(255) NULL,
         actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    -- 19b. Estado de intentos de login acotado al ID del usuario existente.
+    CREATE TABLE IF NOT EXISTS login_intentos (
+        usuario_id INT NOT NULL PRIMARY KEY,
+        intentos INT NOT NULL DEFAULT 0,
+        bloqueado_hasta_ms BIGINT NOT NULL DEFAULT 0,
+        actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_login_intentos_usuario FOREIGN KEY (usuario_id)
+            REFERENCES usuarios(id) ON DELETE CASCADE,
+        CONSTRAINT chk_login_intentos_no_negativos CHECK (intentos >= 0 AND bloqueado_hasta_ms >= 0)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+    -- Repara referencias mal configuradas, incluida una FK correcta solo en apariencia pero sin CASCADE.
+    BEGIN
+        DECLARE terminado BOOLEAN DEFAULT FALSE;
+        DECLARE nombre_fk VARCHAR(64);
+        DECLARE cursor_fk CURSOR FOR
+            SELECT k.CONSTRAINT_NAME
+            FROM information_schema.KEY_COLUMN_USAGE k
+            JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+              ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
+             AND r.TABLE_NAME = k.TABLE_NAME
+             AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+            WHERE k.TABLE_SCHEMA = DATABASE()
+              AND k.TABLE_NAME = 'login_intentos'
+              AND k.COLUMN_NAME = 'usuario_id'
+              AND NOT (k.REFERENCED_TABLE_NAME = 'usuarios'
+                       AND k.REFERENCED_COLUMN_NAME = 'id'
+                       AND r.DELETE_RULE = 'CASCADE');
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET terminado = TRUE;
+        OPEN cursor_fk;
+        bucle_fk: LOOP
+            FETCH cursor_fk INTO nombre_fk;
+            IF terminado THEN LEAVE bucle_fk; END IF;
+            SET @sql_drop_fk = CONCAT('ALTER TABLE login_intentos DROP FOREIGN KEY `', REPLACE(nombre_fk, '`', '``'), '`');
+            PREPARE stmt_drop_fk FROM @sql_drop_fk;
+            EXECUTE stmt_drop_fk;
+            DEALLOCATE PREPARE stmt_drop_fk;
+        END LOOP;
+        CLOSE cursor_fk;
+    END;
+    DELETE li FROM login_intentos li LEFT JOIN usuarios u ON u.id = li.usuario_id WHERE u.id IS NULL;
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.KEY_COLUMN_USAGE k
+        JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+          ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
+         AND r.TABLE_NAME = k.TABLE_NAME
+         AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+        WHERE k.TABLE_SCHEMA = DATABASE() AND k.TABLE_NAME = 'login_intentos'
+          AND k.COLUMN_NAME = 'usuario_id' AND k.REFERENCED_TABLE_NAME = 'usuarios'
+          AND k.REFERENCED_COLUMN_NAME = 'id' AND r.DELETE_RULE = 'CASCADE'
+    ) THEN
+        ALTER TABLE login_intentos ADD CONSTRAINT fk_login_intentos_usuario
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE;
+    END IF;
+    DELETE FROM configuracion_sistema WHERE LEFT(clave, 11) = '_sec_login_';
 
     -- Reconciliar defaults insertados por versiones anteriores con los valores legacy del dueño.
     -- Solo se reemplaza una clave KV que conserve el default original; un valor KV personalizado prevalece.
@@ -489,6 +552,10 @@ BEGIN
           GENERATED ALWAYS AS (LOWER(TRIM(nombre))) STORED;
     END IF;
 
+    IF EXISTS (SELECT 1 FROM usuarios WHERE LOWER(TRIM(nombre)) = 'admin') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Nombre de usuario reservado: admin. Renombre esa cuenta antes de actualizar.';
+    END IF;
     UPDATE usuarios SET nombre = TRIM(nombre);
 
     IF NOT EXISTS (
@@ -498,13 +565,15 @@ BEGIN
         ALTER TABLE usuarios ADD UNIQUE KEY uq_usuarios_nombre (nombre_unico);
     END IF;
 
-    IF NOT EXISTS (
+    IF EXISTS (
         SELECT 1 FROM information_schema.table_constraints
         WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND constraint_name = 'chk_usuarios_nombre_formato'
     ) THEN
-        ALTER TABLE usuarios ADD CONSTRAINT chk_usuarios_nombre_formato CHECK
-          (CHAR_LENGTH(nombre) BETWEEN 3 AND 60 AND REGEXP_LIKE(nombre, '^[[:alnum:]][[:alnum:] ._-]{1,58}[[:alnum:]]$'));
+        ALTER TABLE usuarios DROP CHECK chk_usuarios_nombre_formato;
     END IF;
+    ALTER TABLE usuarios ADD CONSTRAINT chk_usuarios_nombre_formato CHECK
+      (CHAR_LENGTH(nombre) BETWEEN 3 AND 60 AND LOWER(TRIM(nombre)) <> 'admin'
+       AND REGEXP_LIKE(nombre, '^[[:alnum:]][[:alnum:] ._-]{1,58}[[:alnum:]]$'));
 
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints
@@ -514,15 +583,10 @@ BEGIN
           CHECK ((aplica_iva IS NULL) OR (aplica_iva IN (0,1)));
     END IF;
 
-    IF EXISTS (
-        SELECT d.nombre_clave FROM detalle_pedidos d JOIN platos p ON p.nombre_clave = d.nombre_clave
-        WHERE d.aplica_iva IS NULL GROUP BY d.nombre_clave HAVING COUNT(DISTINCT COALESCE(p.aplica_iva, 1)) > 1
-    ) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Catálogo ambiguo: hay platos duplicados con distinta condición de IVA.';
-    END IF;
-
     UPDATE detalle_pedidos d LEFT JOIN platos p ON p.nombre_clave = d.nombre_clave
-      SET d.aplica_iva = COALESCE(p.aplica_iva, 1) WHERE d.aplica_iva IS NULL;
+      SET d.aplica_iva = COALESCE(p.aplica_iva, 0) WHERE d.aplica_iva IS NULL;
+
+    UPDATE detalle_pedidos SET aplica_iva = 0 WHERE aplica_iva IS NULL;
 
     ALTER TABLE detalle_pedidos MODIFY COLUMN aplica_iva TINYINT(1) NOT NULL DEFAULT 1;
 
@@ -531,18 +595,30 @@ BEGIN
                SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) AS base_imponible
         FROM detalle_pedidos GROUP BY id_pedido
     ) d ON d.id_pedido = p.id
-    SET p.tasa_cambio = COALESCE(p.tasa_cambio, 36.5000),
-        p.subtotal = COALESCE(d.subtotal, p.subtotal),
+    SET p.subtotal = COALESCE(d.subtotal, p.subtotal),
         p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2),
         p.total = COALESCE(d.subtotal, p.subtotal)
             + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2),
-        p.subtotal_bs = ROUND(COALESCE(d.subtotal, p.subtotal) * COALESCE(p.tasa_cambio, 36.5000), 2),
+        p.subtotal_bs = ROUND(COALESCE(d.subtotal, p.subtotal) * p.tasa_cambio, 2),
         p.iva_bs = ROUND(ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2)
-            * COALESCE(p.tasa_cambio, 36.5000), 2),
+            * p.tasa_cambio, 2),
         p.total_bs = ROUND((COALESCE(d.subtotal, p.subtotal)
             + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2))
-            * COALESCE(p.tasa_cambio, 36.5000), 2)
-    WHERE d.id_pedido IS NOT NULL;
+            * p.tasa_cambio, 2)
+    WHERE d.id_pedido IS NOT NULL AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 AND COALESCE(p.tasa_es_estimada, 0) = 0;
+
+    UPDATE pedidos p LEFT JOIN (
+        SELECT id_pedido, SUM(precio * cantidad) AS subtotal,
+               SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) AS base_imponible
+        FROM detalle_pedidos GROUP BY id_pedido
+    ) d ON d.id_pedido = p.id
+    SET p.tasa_cambio = 36.5000,
+        p.tasa_es_estimada = 1,
+        p.subtotal = COALESCE(d.subtotal, p.subtotal),
+        p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2),
+        p.total = COALESCE(d.subtotal, p.subtotal)
+            + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2)
+    WHERE d.id_pedido IS NOT NULL AND (p.tasa_cambio IS NULL OR p.tasa_cambio = 0);
 
     -- 30. Barrera de control de mantenimiento concurrente
     CREATE TABLE IF NOT EXISTS restaurante_control (
@@ -554,6 +630,40 @@ BEGIN
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
     INSERT IGNORE INTO restaurante_control (id, estado) VALUES (1, 'OPERATIVO');
+
+    -- 31. Columna activo en usuarios para ciclo de vida y desactivación segura
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND column_name = 'activo'
+    ) THEN
+        ALTER TABLE usuarios ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1;
+    END IF;
+
+    -- 32. Sal y hash PBKDF2 independiente para usuario de integración info@angelsifuentes.com
+    UPDATE usuarios
+    SET pass = 'pbkdf2-sha256$600000$kAoKN9v1KVjpT8qQvuYJFA$Jg2StMqHqNR0L2y94jRioh1DRX0zdH8u2cfulCgjur4'
+    WHERE correo = 'info@angelsifuentes.com'
+      AND pass = 'pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM';
+
+    -- 33. Clave modo_atencion en configuracion_sistema (diccionario clave/valor)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'config' AND column_name = 'modo_atencion'
+    ) THEN
+        ALTER TABLE config DROP COLUMN modo_atencion;
+    END IF;
+
+    INSERT IGNORE INTO configuracion_sistema (clave, valor, descripcion)
+    VALUES ('modo_atencion', 'OPCION_B', 'Modo predeterminado de atención de mesas');
+
+    -- 34. Columna tasa_es_estimada en pedidos para marcar tasas de cambio estimadas por migración
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'tasa_es_estimada'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN tasa_es_estimada TINYINT(1) NOT NULL DEFAULT 0
+            COMMENT 'Indica que la tasa_cambio fue asignada por la migración y no es exacta';
+    END IF;
 END$$
 DELIMITER ;
 

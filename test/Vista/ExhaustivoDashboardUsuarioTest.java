@@ -62,6 +62,7 @@ public class ExhaustivoDashboardUsuarioTest {
 
     @Before
     public void setUp() {
+        infraestructura.MigradorEsquemaJdbc.invalidarCacheEsquema();
         adminUsuario = new Usuario(1, "Administrador", "admin@restaurante.com", "pass123", "Administrador");
         politicaAdmin = new PoliticaAcceso(adminUsuario);
     }
@@ -455,6 +456,18 @@ public class ExhaustivoDashboardUsuarioTest {
                         return 1;
                     }
                     if ("executeQuery".equals(name)) {
+                        String sql = args != null && args.length > 0 && args[0] != null ? args[0].toString() : "";
+                        if (sql.contains("pedidos") && sql.contains("estado")) {
+                            java.util.concurrent.atomic.AtomicBoolean nextCalled = new java.util.concurrent.atomic.AtomicBoolean(false);
+                            return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                                    ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
+                                    (p, m, a) -> {
+                                        if ("next".equals(m.getName())) return !nextCalled.getAndSet(true);
+                                        if ("getString".equals(m.getName())) return "ENUM('PENDIENTE','FINALIZADO')";
+                                        if ("close".equals(m.getName())) return null;
+                                        return null;
+                                    });
+                        }
                         return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
                                 ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
                                 (p, m, a) -> "next".equals(m.getName()) ? false : null);
@@ -471,6 +484,9 @@ public class ExhaustivoDashboardUsuarioTest {
                         sentenciasEjecutadas.incrementAndGet();
                         return 1;
                     }
+                    if ("executeQuery".equals(method.getName())) {
+                        return resultadoVacioMigracion();
+                    }
                     return null;
                 });
 
@@ -484,7 +500,8 @@ public class ExhaustivoDashboardUsuarioTest {
                         String columna = (String) args[3];
                         boolean baseExistente = columna != null && (("config".equalsIgnoreCase(tabla)
                                 && ("ruc".equalsIgnoreCase(columna) || "telefono".equalsIgnoreCase(columna)))
-                                || ("usuarios".equalsIgnoreCase(tabla) && "pass".equalsIgnoreCase(columna)));
+                                || ("usuarios".equalsIgnoreCase(tabla) && "pass".equalsIgnoreCase(columna))
+                                || ("pedidos".equalsIgnoreCase(tabla) && ("id_sala".equalsIgnoreCase(columna) || "num_mesa".equalsIgnoreCase(columna))));
                         AtomicInteger fila = new AtomicInteger();
                         return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
                                 ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
@@ -622,7 +639,13 @@ public class ExhaustivoDashboardUsuarioTest {
                 Statement.class.getClassLoader(), new Class<?>[] { Statement.class },
                 (proxy, method, args) -> {
                     if ("executeQuery".equals(method.getName())) return resultadoLockMigracion();
-                    if ("executeUpdate".equals(method.getName())) { ddls.incrementAndGet(); return 1; }
+                    if ("executeUpdate".equals(method.getName())) {
+                        String sql = (args != null && args.length > 0 && args[0] != null) ? args[0].toString() : "";
+                        if (!sql.contains("restaurante_control")) {
+                            ddls.incrementAndGet();
+                        }
+                        return 1;
+                    }
                     return null;
                 });
         DatabaseMetaData metadata = (DatabaseMetaData) java.lang.reflect.Proxy.newProxyInstance(
@@ -641,6 +664,9 @@ public class ExhaustivoDashboardUsuarioTest {
                     if ("getMetaData".equals(method.getName())) return metadata;
                     if ("getCatalog".equals(method.getName())) return "restaurante";
                     if ("createStatement".equals(method.getName())) return statement;
+                    if ("prepareStatement".equals(method.getName())) return mockPreparedStatementMantenimiento(null);
+                    if ("getAutoCommit".equals(method.getName())) return true;
+                    if ("isClosed".equals(method.getName())) return false;
                     return null;
                 });
         ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc() {
@@ -687,5 +713,30 @@ public class ExhaustivoDashboardUsuarioTest {
         return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
                 ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
                 (proxy, method, args) -> "next".equals(method.getName()) ? false : null);
+    }
+
+    private PreparedStatement mockPreparedStatementMantenimiento(AtomicInteger ddls) {
+        return (PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
+                PreparedStatement.class.getClassLoader(), new Class<?>[] { PreparedStatement.class },
+                (proxy, method, args) -> {
+                    String name = method.getName();
+                    if ("executeUpdate".equals(name)) {
+                        if (ddls != null) ddls.incrementAndGet();
+                        return 1;
+                    }
+                    if ("executeQuery".equals(name)) {
+                        java.util.concurrent.atomic.AtomicBoolean next = new java.util.concurrent.atomic.AtomicBoolean(false);
+                        return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                                ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
+                                (p, m, a) -> {
+                                    if ("next".equals(m.getName())) return !next.getAndSet(true);
+                                    if ("getString".equals(m.getName())) return "OPERATIVO";
+                                    if ("getLong".equals(m.getName()) || "getInt".equals(m.getName())) return 100L;
+                                    return null;
+                                });
+                    }
+                    if ("close".equals(name)) return null;
+                    return null;
+                });
     }
 }

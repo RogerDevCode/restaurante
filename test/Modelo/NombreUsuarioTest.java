@@ -21,4 +21,5 @@ public class NombreUsuarioTest {
         assertEquals("Ana", NombreUsuario.normalizar(" Ana "));
         assertThrows(ErrorAplicacionException.class, () -> NombreUsuario.normalizar("Ana@local"));
     }
+
 }

@@ -6,6 +6,7 @@ import infraestructura.ProveedorConexionJdbc;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.Assume;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -22,6 +23,8 @@ public class ServicioRespaldoBaseDatosTest {
 
     @Before
     public void setUp() throws IOException {
+        Assume.assumeTrue("Respaldos/restauraciones JDBC requieren opt-in, BD restaurante_test y puerto Compose 3307",
+                infraestructura.ProteccionEntornoBaseDatos.permiteEscriturasDestructivas());
         tempDir = Files.createTempDirectory("test_respaldos_");
         servicio = new ServicioRespaldoBaseDatos(new ProveedorConexionJdbc(), tempDir);
     }
@@ -153,23 +156,7 @@ public class ServicioRespaldoBaseDatosTest {
 
     @Test
     public void restaurarRespaldoEjecutaScriptSqlValidoYCreaCopiaPrevia() throws IOException {
-        Path scriptPrueba = tempDir.resolve("prueba_restore.sql");
-        String sql = """
-            -- ========================================================
-            -- RESPALDO DE BASE DE DATOS - RESTAURANTE 2026
-            -- RESTAURANTE_2026_BACKUP_SQL
-            -- ========================================================
-            SET FOREIGN_KEY_CHECKS = 0;
-            DROP TABLE IF EXISTS `test_respaldo_tmp`;
-            CREATE TABLE `test_respaldo_tmp` (
-                id INT PRIMARY KEY,
-                valor VARCHAR(50)
-            ) ENGINE=InnoDB;
-            INSERT INTO `test_respaldo_tmp` VALUES (1, 'Dato Test');
-            SET FOREIGN_KEY_CHECKS = 1;
-            -- FIN DEL RESPALDO RESTAURANTE 2026
-            """;
-        Files.writeString(scriptPrueba, sql);
+        Path scriptPrueba = servicio.crearRespaldo(tempDir);
 
         Path preCopia = servicio.restaurarRespaldo(scriptPrueba);
         assertNotNull("Debe crearse un respaldo de seguridad previo antes de restaurar", preCopia);
@@ -210,5 +197,218 @@ public class ServicioRespaldoBaseDatosTest {
 
         assertThrows("Las sentencias fuera del formato del respaldo se rechazan antes de restaurar",
                 ErrorAplicacionException.class, () -> servicio.restaurarRespaldo(scriptConError));
+    }
+
+    @Test
+    public void restaurarRespaldoInvalidaCacheYVuelveASincronizarEsquema() throws IOException {
+        infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new ProveedorConexionJdbc());
+        assertTrue("El esquema debe estar sincronizado inicialmente",
+                infraestructura.MigradorEsquemaJdbc.esEsquemaSincronizado());
+
+        Path scriptPrueba = servicio.crearRespaldo(tempDir);
+        Path preCopia = servicio.restaurarRespaldo(scriptPrueba);
+
+        assertNotNull("Debe generarse un respaldo previo de seguridad", preCopia);
+        assertTrue("El esquema debe quedar sincronizado y validado tras la restauración",
+                infraestructura.MigradorEsquemaJdbc.esEsquemaSincronizado());
+    }
+
+    @Test
+    public void restaurarRespaldoAntiguoAplicaMigracionesPendientesYActualizaEsquema() throws Exception {
+        int versionActual = infraestructura.MigradorEsquemaJdbc.versionEsquemaActual();
+        ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc();
+        infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(proveedor);
+        assertTrue(infraestructura.MigradorEsquemaJdbc.esEsquemaSincronizado());
+
+        try (java.sql.Connection con = proveedor.getConnection();
+             java.sql.Statement st = con.createStatement()) {
+            st.executeUpdate("DELETE FROM schema_migrations WHERE version = " + versionActual);
+        }
+
+        try {
+            Path respaldoAntiguo = servicio.crearRespaldo(tempDir);
+            Path preCopia = servicio.restaurarRespaldo(respaldoAntiguo);
+            assertNotNull(preCopia);
+
+            assertTrue("El esquema debe quedar sincronizado tras restaurar el respaldo antiguo",
+                    infraestructura.MigradorEsquemaJdbc.esEsquemaSincronizado());
+
+            try (java.sql.Connection con = proveedor.getConnection();
+                 java.sql.Statement st = con.createStatement();
+                 java.sql.ResultSet rs = st.executeQuery("SELECT estado FROM schema_migrations WHERE version = " + versionActual)) {
+                assertTrue("La versión actual debe haber sido migrada y registrada", rs.next());
+                assertEquals("APLICADA", rs.getString("estado"));
+            }
+        } finally {
+            infraestructura.MigradorEsquemaJdbc.invalidarCacheEsquema();
+            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(proveedor);
+        }
+    }
+
+    @Test
+    public void validacionTemporalNoOmiteErroresSqlGenericos() throws IOException {
+        Path script = servicio.crearRespaldo(tempDir);
+        ProveedorConexionJdbc proveedorFalso = new ProveedorConexionJdbc() {
+            @Override
+            public java.sql.Connection getConnection() throws java.sql.SQLException {
+                java.sql.Connection real = super.getConnection();
+                return (java.sql.Connection) java.lang.reflect.Proxy.newProxyInstance(
+                        getClass().getClassLoader(),
+                        new Class<?>[]{java.sql.Connection.class},
+                        (proxy, method, args) -> {
+                            if ("createStatement".equals(method.getName())) {
+                                java.sql.Statement realSt = real.createStatement();
+                                return (java.sql.Statement) java.lang.reflect.Proxy.newProxyInstance(
+                                        getClass().getClassLoader(),
+                                        new Class<?>[]{java.sql.Statement.class},
+                                        (pSt, mSt, aSt) -> {
+                                            if ("executeUpdate".equals(mSt.getName()) && aSt != null && aSt.length > 0 && String.valueOf(aSt[0]).startsWith("CREATE DATABASE")) {
+                                                throw new java.sql.SQLException("You have an error in your SQL syntax", "42000", 1064);
+                                            }
+                                            return mSt.invoke(realSt, aSt);
+                                        }
+                                );
+                            }
+                            return method.invoke(real, args);
+                        }
+                );
+            }
+        };
+
+        ServicioRespaldoBaseDatos servicioConFalso = new ServicioRespaldoBaseDatos(proveedorFalso, tempDir);
+        assertThrows("Errores genéricos de SQLState 42000 como sintaxis no deben omitirse",
+                DataAccessException.class, () -> servicioConFalso.validarRestaurableEnEsquemaTemporal(script));
+    }
+
+    private void empaquetarRespaldoFabricado(Path archivoSql, List<String> nombresTablas) throws Exception {
+        Path manifestPath = archivoSql.resolveSibling(archivoSql.getFileName() + ".manifest");
+        Path checksumPath = archivoSql.resolveSibling(archivoSql.getFileName() + ".sha256");
+
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        byte[] bytesSql = Files.readAllBytes(archivoSql);
+        String shaSql = java.util.HexFormat.of().formatHex(md.digest(bytesSql));
+
+        java.util.Properties p = new java.util.Properties();
+        p.setProperty("formato", "1");
+        p.setProperty("sha256", shaSql);
+        p.setProperty("catalogo", java.util.Base64.getEncoder().encodeToString("restaurante".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        p.setProperty("tablas.cantidad", Integer.toString(nombresTablas.size()));
+        for (int i = 0; i < nombresTablas.size(); i++) {
+            p.setProperty("tabla." + i + ".nombre", nombresTablas.get(i));
+            p.setProperty("tabla." + i + ".filas", "0");
+            p.setProperty("tabla." + i + ".columnas", "");
+        }
+        try (var writer = Files.newBufferedWriter(manifestPath, java.nio.charset.StandardCharsets.UTF_8)) {
+            p.store(writer, "Manifiesto fabricado");
+        }
+
+        byte[] bytesManifest = Files.readAllBytes(manifestPath);
+        md.reset();
+        String shaManifest = java.util.HexFormat.of().formatHex(md.digest(bytesManifest));
+
+        String contenidoChecksum = "archivo=" + archivoSql.getFileName() + System.lineSeparator()
+                + "sql=" + shaSql + System.lineSeparator()
+                + "manifest=" + shaManifest + System.lineSeparator();
+        Files.writeString(checksumPath, contenidoChecksum, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @Test
+    public void rechazaRespaldoConTablaArbitrariaFueraDeListaBlanca() throws Exception {
+        Path script = tempDir.resolve("tabla_arbitraria.sql");
+        String sql = """
+            -- ========================================================
+            -- RESPALDO DE BASE DE DATOS - RESTAURANTE 2026
+            -- RESTAURANTE_2026_BACKUP_SQL
+            -- ========================================================
+            SET FOREIGN_KEY_CHECKS = 0;
+            DROP TABLE IF EXISTS `tabla_arbitraria_externa`;
+            CREATE TABLE `tabla_arbitraria_externa` (id INT PRIMARY KEY) ENGINE=InnoDB;
+            SET FOREIGN_KEY_CHECKS = 1;
+            -- FIN DEL RESPALDO RESTAURANTE 2026
+            """;
+        Files.writeString(script, sql);
+        empaquetarRespaldoFabricado(script, List.of("tabla_arbitraria_externa"));
+
+        ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
+                () -> servicio.validarArchivoRespaldo(script));
+        assertTrue("Debe rechazar tablas fuera de la lista blanca: " + ex.getMessage(),
+                ex.getMessage().contains("fuera de la lista blanca"));
+    }
+
+    @Test
+    public void rechazaRespaldoQueIntenteReemplazarSchemaMigrations() throws Exception {
+        Path script = tempDir.resolve("reemplazar_migrations.sql");
+        String sql = """
+            -- ========================================================
+            -- RESPALDO DE BASE DE DATOS - RESTAURANTE 2026
+            -- RESTAURANTE_2026_BACKUP_SQL
+            -- ========================================================
+            SET FOREIGN_KEY_CHECKS = 0;
+            DROP TABLE IF EXISTS `schema_migrations`;
+            CREATE TABLE `schema_migrations` (id INT PRIMARY KEY) ENGINE=InnoDB;
+            SET FOREIGN_KEY_CHECKS = 1;
+            -- FIN DEL RESPALDO RESTAURANTE 2026
+            """;
+        Files.writeString(script, sql);
+        empaquetarRespaldoFabricado(script, List.of("schema_migrations"));
+
+        ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
+                () -> servicio.validarArchivoRespaldo(script));
+        assertTrue("Debe rechazar reemplazo de tabla de infraestructura schema_migrations: " + ex.getMessage(),
+                ex.getMessage().contains("infraestructura protegida"));
+    }
+
+    @Test
+    public void rechazaRespaldoQueIntenteReemplazarRestauranteControl() throws Exception {
+        Path script = tempDir.resolve("reemplazar_control.sql");
+        String sql = """
+            -- ========================================================
+            -- RESPALDO DE BASE DE DATOS - RESTAURANTE 2026
+            -- RESTAURANTE_2026_BACKUP_SQL
+            -- ========================================================
+            SET FOREIGN_KEY_CHECKS = 0;
+            DROP TABLE IF EXISTS `restaurante_control`;
+            CREATE TABLE `restaurante_control` (id INT PRIMARY KEY) ENGINE=InnoDB;
+            SET FOREIGN_KEY_CHECKS = 1;
+            -- FIN DEL RESPALDO RESTAURANTE 2026
+            """;
+        Files.writeString(script, sql);
+        empaquetarRespaldoFabricado(script, List.of("restaurante_control"));
+
+        ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
+                () -> servicio.validarArchivoRespaldo(script));
+        assertTrue("Debe rechazar reemplazo de tabla de infraestructura restaurante_control: " + ex.getMessage(),
+                ex.getMessage().contains("infraestructura protegida"));
+    }
+
+    @Test
+    public void rechazaRespaldoConInsertEnTablaNoDeclaradaEnManifiesto() throws Exception {
+        Path script = tempDir.resolve("insert_no_declarado.sql");
+        List<String> baseTablas = List.of("config", "usuarios", "platos", "salas", "pedidos", "detalle_pedidos");
+        StringBuilder sb = new StringBuilder();
+        sb.append("""
+            -- ========================================================
+            -- RESPALDO DE BASE DE DATOS - RESTAURANTE 2026
+            -- RESTAURANTE_2026_BACKUP_SQL
+            -- ========================================================
+            SET FOREIGN_KEY_CHECKS = 0;
+            """);
+        for (String t : baseTablas) {
+            sb.append("DROP TABLE IF EXISTS `").append(t).append("`;\n");
+            sb.append("CREATE TABLE `").append(t).append("` (id INT PRIMARY KEY) ENGINE=InnoDB;\n");
+        }
+        // Inyección: INSERT en tabla permitida 'mesoneros' que NO está en el manifiesto ni en DDL
+        sb.append("INSERT INTO `mesoneros` (`id`, `nombre_completo`) VALUES (99, 'Infiltrado');\n");
+        sb.append("""
+            SET FOREIGN_KEY_CHECKS = 1;
+            -- FIN DEL RESPALDO RESTAURANTE 2026
+            """);
+        Files.writeString(script, sb.toString());
+        empaquetarRespaldoFabricado(script, baseTablas);
+
+        ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
+                () -> servicio.validarArchivoRespaldo(script));
+        assertTrue("Debe rechazar inserción en tabla no declarada en manifiesto: " + ex.getMessage(),
+                ex.getMessage().contains("no declaradas en el manifiesto") || ex.getMessage().contains("no creadas en el archivo"));
     }
 }

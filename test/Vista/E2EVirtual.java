@@ -138,7 +138,14 @@ public class E2EVirtual {
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         robot = new Robot();
         robot.setAutoDelay(40);
-        Usuario admin = new Usuario(1, "Administrador", "admin", "admin", "Administrador");
+        Usuario admin = new Usuario(2, "Administrador", "admin", "admin", "Administrador");
+        try (java.sql.Connection c = new ProveedorConexionJdbc().getConnection();
+             java.sql.PreparedStatement st = c.prepareStatement("SELECT id FROM usuarios WHERE correo='admin' OR rol='Administrador' ORDER BY id ASC LIMIT 1");
+             java.sql.ResultSet rs = st.executeQuery()) {
+            if (rs.next()) {
+                admin.setId(rs.getInt(1));
+            }
+        }
         PoliticaAcceso politica = new PoliticaAcceso(admin);
         PedidosDao pedidosDao = new PedidosDao();
         LoginDao empresaDao = new LoginDao();

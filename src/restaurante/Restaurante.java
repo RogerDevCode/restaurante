@@ -30,7 +30,15 @@ public class Restaurante {
     private static java.net.ServerSocket socketInstanciaUnica;
     private static boolean verificarInstanciaUnica() {
         try {
-            socketInstanciaUnica = new java.net.ServerSocket(49200);
+            socketInstanciaUnica = new java.net.ServerSocket(49200, 1, java.net.InetAddress.getByName("127.0.0.1"));
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    if (socketInstanciaUnica != null && !socketInstanciaUnica.isClosed()) {
+                        socketInstanciaUnica.close();
+                    }
+                } catch (Exception ignored) {
+                }
+            }, "shutdown-socket-instancia"));
             return true;
         } catch (Exception e) {
             return false;
@@ -84,10 +92,24 @@ public class Restaurante {
                         .log(java.util.logging.Level.FINE, "Aviso en respaldo automático inicial: " + ex.getMessage());
             }
         });
+        lanzarLogin();
+    }
+
+    public static void lanzarLogin() {
         LoginControlador controlador = new LoginControlador(
                 new AutenticacionServicio(new LoginDao()));
         Function<Usuario, Sistema> crearSistema = usuario -> {
-            PoliticaAcceso politica = new PoliticaAcceso(usuario);
+            LoginDao loginDao = new LoginDao();
+            PoliticaAcceso politica = new PoliticaAcceso(usuario, () -> {
+                if (usuario == null || usuario.getId() <= 0) return true;
+                try {
+                    return loginDao.esUsuarioActivo(usuario.getId());
+                } catch (Exception ex) {
+                    java.util.logging.Logger.getLogger(Restaurante.class.getName())
+                            .warning("No se pudo verificar el estado activo del usuario #" + usuario.getId() + " en la BD; acceso denegado por seguridad: " + ex.getMessage());
+                    return false;
+                }
+            });
             PedidosDao pedidosDao = new PedidosDao();
             LoginDao empresaDao = new LoginDao();
             PedidoPdfServicio pdfServicio = new PedidoPdfServicio(
@@ -117,5 +139,4 @@ public class Restaurante {
             iniciar.setVisible(true);
         });
     }
-    
 }

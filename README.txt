@@ -143,13 +143,27 @@ METODO 4: ABRIR DESDE NETBEANS / INTELLIJ / ECLIPSE
 --------------------------------------------------------------------------------
 El sistema incluye una cuenta semilla con permisos de Administrador:
 
-- Correo / Usuario: info@angelsifuentes.com
+- Usuario / correo: admin (cuenta semilla; algunos instaladores conservan el correo info@angelsifuentes.com)
 - Contrasena: admin
 - Rol: Administrador
+
+* Se puede iniciar sesión con el nombre de usuario único o con el correo registrado.
+  Los nombres de usuario no distinguen mayúsculas y deben ser únicos; el alias
+  `admin` está reservado para la cuenta de acceso predeterminada.
 
 * Nota de Seguridad: Al iniciar sesion por primera vez, el sistema migra
   automaticamente la contrasena legacy al algoritmo criptografico seguro
   PBKDF2 con HMAC-SHA256 y salt aleatorio de 16 bytes.
+* La autenticacion bloquea por 30 segundos la cuenta tras 5 intentos fallidos;
+  el contador se comparte entre el nombre de usuario y el correo asociados y se
+  mide con el reloj de la base de datos.
+  La validacion del estado activo se aplica tambien a Administradores y deniega
+  el acceso si la base de datos no puede confirmar la cuenta.
+
+* Antes de actualizar el esquema y antes de crear o restaurar respaldos, configura
+  `BACKUP_HMAC_KEY` en `.env` usando `openssl rand -hex 32`. Conserva la clave y distribuye el mismo valor
+  solo a los equipos autorizados: sin ella se rechazan respaldos y los antiguos
+  sin firma HMAC no se pueden restaurar.
 
 Desde el panel "Usuarios", el Administrador puede registrar nuevos usuarios con:
 - Rol Administrador: Acceso total a gestion de platos, salas, ventas, configuracion y usuarios.
@@ -504,6 +518,9 @@ PASO 4: CONFIGURAR EL ARCHIVO `.env` EN LA RAIZ DEL PROYECTO
       MYSQL_DATABASE=restaurante
       MYSQL_USER=restaurante_app
       MYSQL_PASSWORD=TuClaveSegura2026
+
+      # Obligatorio: agrega BACKUP_HMAC_KEY=<salida de openssl rand -hex 32>.
+      # Usa el mismo secreto en cada equipo autorizado y consérvalo para restauraciones.
 
       # Si usas XAMPP con root sin clave:
       # MYSQL_USER=root

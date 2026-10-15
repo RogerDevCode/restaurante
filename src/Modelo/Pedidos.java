@@ -17,6 +17,7 @@ public class Pedidos {
     private String estado;
     private String tipoPedido = "MESA";
     private BigDecimal tasaCambio;
+    private boolean tasaEsEstimada;
     private BigDecimal subtotalBs;
     private BigDecimal ivaBs;
     private BigDecimal totalBs;
@@ -162,6 +163,14 @@ public class Pedidos {
 
     public void setTasaCambio(BigDecimal tasaCambio) {
         this.tasaCambio = tasaCambio;
+    }
+
+    public boolean isTasaEsEstimada() {
+        return tasaEsEstimada;
+    }
+
+    public void setTasaEsEstimada(boolean tasaEsEstimada) {
+        this.tasaEsEstimada = tasaEsEstimada;
     }
 
     public BigDecimal getSubtotalBs() {

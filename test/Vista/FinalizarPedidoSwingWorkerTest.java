@@ -120,7 +120,11 @@ public class FinalizarPedidoSwingWorkerTest {
 
         assertTrue(completado.await(5, TimeUnit.SECONDS));
         assertTrue(errorRecibido.get() instanceof Modelo.ErrorAplicacionException);
-        assertSame(fallo, errorRecibido.get().getCause());
+        Throwable causa = errorRecibido.get().getCause();
+        while (causa != null && causa != fallo && causa.getCause() != null) {
+            causa = causa.getCause();
+        }
+        assertSame(fallo, causa);
         assertTrue(confirmadoRecibido.get());
     }
 

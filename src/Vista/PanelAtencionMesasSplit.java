@@ -693,6 +693,12 @@ public class PanelAtencionMesasSplit extends JPanel {
         }
 
         if (idPedidoExistente > 0) {
+            if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+                JOptionPane.showMessageDialog(this,
+                        "Este espacio tiene un pedido pendiente (#" + idPedidoExistente + "). Solicita a un administrador que lo gestione.",
+                        "Pedido pendiente", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             // Mesa ocupada: Cargar su pedido pendiente en el carrito
             lblCabeceraMesa.setText("MESA: " + codigoMesa + " (" + nombreSalaSeleccionada + ") — OCUPADA [Pedido #" + idPedidoExistente + "]");
             lblCabeceraMesa.setForeground(new Color(180, 40, 40));
@@ -753,19 +759,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             protected List<Platos> doInBackground() {
                 String hoy = java.time.LocalDate.now().toString();
                 List<Platos> platos = platosControlador.listarPorFecha(filtro, hoy);
-                if ((platos == null || platos.isEmpty()) && (filtro == null || filtro.isBlank())) {
-                    try (java.sql.Connection c = new Modelo.Conexion().getConnection();
-                         java.sql.PreparedStatement ps = c.prepareStatement("SELECT MAX(fecha) FROM platos WHERE activo = 1");
-                         java.sql.ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            String fechaMax = rs.getString(1);
-                            if (fechaMax != null && !fechaMax.isBlank() && !fechaMax.equals(hoy)) {
-                                platos = platosControlador.listarPorFecha(filtro, fechaMax);
-                            }
-                        }
-                    } catch (Exception ignored) {}
-                }
-                return platos;
+                return platos != null ? platos : java.util.Collections.emptyList();
             }
 
             @Override
@@ -998,6 +992,12 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         try {
             if (idPedidoActivo > 0) {
+                if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+                    JOptionPane.showMessageDialog(this,
+                            "Tu rol no permite modificar pedidos existentes.",
+                            "Acceso Denegado", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
                 pedidosControlador.actualizarPedidoCompleto(idPedidoActivo, p, detalles);
                 sistema.mostrarAvisoEnBanda("Pedido actualizado para " + codigoMesaSeleccionada);
             } else {

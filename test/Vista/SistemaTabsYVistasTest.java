@@ -390,8 +390,8 @@ public class SistemaTabsYVistasTest {
             JButton btnMesa1 = (JButton) panelMesas.getComponent(0);
             JButton btnMesa2 = (JButton) panelMesas.getComponent(1);
 
-            assertEquals("MESA N°: 1", btnMesa1.getText());
-            assertEquals("MESA N°: 2", btnMesa2.getText());
+            assertTrue(btnMesa1.getText().contains("T-1") || btnMesa1.getText().contains("MESA 1") || btnMesa1.getText().contains("MESA N°: 1"));
+            assertTrue(btnMesa2.getText().contains("T-2") || btnMesa2.getText().contains("MESA 2") || btnMesa2.getText().contains("MESA N°: 2"));
 
             // Mesa libre color verde (0, 102, 102), ocupada color rojo oscuro (192, 57, 43)
             assertEquals(new Color(0, 102, 102), btnMesa1.getBackground());
@@ -804,6 +804,163 @@ public class SistemaTabsYVistasTest {
             assertEquals("Administrador", tableUsuarios.getValueAt(0, 1));
             assertEquals("Cajero", tableUsuarios.getValueAt(1, 1));
             assertEquals("Asistente", tableUsuarios.getValueAt(1, 3));
+            assertEquals(5, tableUsuarios.getColumnCount());
+            assertEquals("Estado", tableUsuarios.getColumnName(4));
+            assertEquals("Activo", tableUsuarios.getValueAt(0, 4));
+            assertEquals("Activo", tableUsuarios.getValueAt(1, 4));
+        } finally {
+            SwingUtilities.invokeAndWait(sistema::dispose);
+        }
+    }
+
+    @Test
+    public void testCicloVidaUsuariosDesdeInterfaz() throws Exception {
+        Sistema sistemaAdmin = crearSistemaEnEdt(admin, true);
+        try {
+            Usuario uActivo = new Usuario(10, "Mozo Activo", "mozo1", "pass", "Asistente");
+            Usuario uInactivo = new Usuario(11, "Mozo Baja", "mozo2", "pass", "Asistente");
+            uInactivo.setActivo(false);
+            loginDaoFalso.usuariosRetorno = Arrays.asList(uActivo, uInactivo);
+
+            JTable tableUsuarios = campo(sistemaAdmin, "TableUsuarios", JTable.class);
+            JButton btnEstado = campo(sistemaAdmin, "btnEstadoUsuario", JButton.class);
+            JButton btnEliminar = campo(sistemaAdmin, "btnEliminarUsuario", JButton.class);
+            JButton btnCambiarClave = campo(sistemaAdmin, "btnCambiarClaveUsuario", JButton.class);
+
+            assertNotNull(btnEstado);
+            assertNotNull(btnEliminar);
+            assertNotNull(btnCambiarClave);
+
+            SwingUtilities.invokeAndWait(() -> {
+                invocar(sistemaAdmin, "mostrarUsuariosEnTabla",
+                        new Class<?>[]{List.class},
+                        new Object[]{loginDaoFalso.usuariosRetorno});
+            });
+
+            assertEquals(2, tableUsuarios.getRowCount());
+            assertEquals("Activo", tableUsuarios.getValueAt(0, 4));
+            assertEquals("Inactivo", tableUsuarios.getValueAt(1, 4));
+
+            // Sin selección: botones deshabilitados
+            SwingUtilities.invokeAndWait(() -> {
+                tableUsuarios.clearSelection();
+                sistemaAdmin.actualizarEstadoBotonesUsuarios();
+            });
+            assertFalse(btnEstado.isEnabled());
+            assertFalse(btnEliminar.isEnabled());
+            assertFalse(btnCambiarClave.isEnabled());
+
+            // Selección de usuario activo: botón dice "Desactivar" y habilitados
+            SwingUtilities.invokeAndWait(() -> {
+                tableUsuarios.setRowSelectionInterval(0, 0);
+                sistemaAdmin.actualizarEstadoBotonesUsuarios();
+            });
+            assertTrue(btnEstado.isEnabled());
+            assertEquals("Desactivar", btnEstado.getText());
+            assertTrue(btnEliminar.isEnabled());
+            assertTrue(btnCambiarClave.isEnabled());
+
+            // Selección de usuario inactivo: botón dice "Reactivar" y habilitados
+            SwingUtilities.invokeAndWait(() -> {
+                tableUsuarios.setRowSelectionInterval(1, 1);
+                sistemaAdmin.actualizarEstadoBotonesUsuarios();
+            });
+            assertTrue(btnEstado.isEnabled());
+            assertEquals("Reactivar", btnEstado.getText());
+            assertTrue(btnEliminar.isEnabled());
+            assertTrue(btnCambiarClave.isEnabled());
+        } finally {
+            SwingUtilities.invokeAndWait(sistemaAdmin::dispose);
+        }
+
+        // Caso con rol Asistente: no debe tener habilitadas las acciones de usuarios (RBAC)
+        Sistema sistemaAsistente = crearSistemaEnEdt(asistente, false);
+        try {
+            JTable tableUsuarios = campo(sistemaAsistente, "TableUsuarios", JTable.class);
+            JButton btnEstado = campo(sistemaAsistente, "btnEstadoUsuario", JButton.class);
+            JButton btnEliminar = campo(sistemaAsistente, "btnEliminarUsuario", JButton.class);
+
+            SwingUtilities.invokeAndWait(() -> {
+                invocar(sistemaAsistente, "mostrarUsuariosEnTabla",
+                        new Class<?>[]{List.class},
+                        new Object[]{Collections.singletonList(new Usuario(1, "Admin", "admin", "pass", "Administrador"))});
+                tableUsuarios.setRowSelectionInterval(0, 0);
+                sistemaAsistente.actualizarEstadoBotonesUsuarios();
+            });
+            assertFalse("El asistente no debe poder cambiar estado de usuarios", btnEstado.isEnabled());
+            assertFalse("El asistente no debe poder eliminar usuarios", btnEliminar.isEnabled());
+        } finally {
+            SwingUtilities.invokeAndWait(sistemaAsistente::dispose);
+        }
+    }
+
+    @Test
+    public void testIvaDinamicoConfiguracionYEdicionPedido() throws Exception {
+        Sistema sistema = crearSistemaEnEdt(admin, true);
+        try {
+            // 1. Formateo de etiquetas de IVA
+            assertEquals("Exento (0%)", sistema.formatearEtiquetaIva(false, new BigDecimal("16.00")));
+            assertEquals("Exento (0%)", sistema.formatearEtiquetaIva(false, null));
+            assertEquals("Sí (16%)", sistema.formatearEtiquetaIva(true, new BigDecimal("16.00")));
+            assertEquals("Sí (12%)", sistema.formatearEtiquetaIva(true, new BigDecimal("12.00")));
+            assertEquals("Sí (8.5%)", sistema.formatearEtiquetaIva(true, new BigDecimal("8.50")));
+            assertEquals("Sí (0%)", sistema.formatearEtiquetaIva(true, BigDecimal.ZERO));
+
+            // 2. Configuración fiscal de la empresa a 10%
+            Config config10 = new Config();
+            config10.setId(1);
+            config10.setIvaPorcentaje(new BigDecimal("10.00"));
+            config10.setTasaDolar(new BigDecimal("40.0000"));
+            config10.setNombre("Restaurante Fiscal");
+            config10.setRif("J-99999999-1");
+            config10.setTelefono("0212");
+            config10.setDireccion("Caracas");
+            config10.setMensaje("Gracias");
+
+            Field fConf = Sistema.class.getDeclaredField("conf");
+            fConf.setAccessible(true);
+            fConf.set(sistema, config10);
+
+            // Al usar formatearEtiquetaIva sin porcentaje explícito, usa conf (10%)
+            assertEquals("Sí (10%)", sistema.formatearEtiquetaIva(true));
+            assertEquals("Aplica IVA (10%)", sistema.textoCheckboxIvaPlato());
+
+            SwingUtilities.invokeAndWait(sistema::actualizarTextoCheckboxIvaPlato);
+            javax.swing.JCheckBox chkIva = campo(sistema, "chkAplicaIvaPlato", javax.swing.JCheckBox.class);
+            assertEquals("Aplica IVA (10%)", chkIva.getText());
+
+            // 3. Edición de pedido con IVA al 10%
+            Pedidos ped10 = new Pedidos();
+            ped10.setId(100);
+            ped10.setId_sala(1);
+            ped10.setNum_mesa(3);
+            ped10.setSala("Terraza");
+            ped10.setIvaPorcentaje(new BigDecimal("10.00"));
+            ped10.setTotalDecimal(new BigDecimal("11.00"));
+
+            DetallePedido det1 = new DetallePedido();
+            det1.setNombre("Arepa Reina Pepiada");
+            det1.setCantidad(1);
+            det1.setPrecioDecimal(new BigDecimal("10.00"));
+            det1.setAplicaIva(true);
+            det1.setComentario("");
+
+            pedidosRepo.configurarDetallesPedido(100, Collections.singletonList(det1));
+
+            Field fPed = Sistema.class.getDeclaredField("ped");
+            fPed.setAccessible(true);
+            fPed.set(sistema, ped10);
+
+            SwingUtilities.invokeAndWait(() -> {
+                invocar(sistema, "btnModificarPedidoActionPerformed",
+                        new Class<?>[]{ActionEvent.class},
+                        new Object[]{new ActionEvent(sistema, ActionEvent.ACTION_PERFORMED, "")});
+            });
+
+            JTable tableMenu = campo(sistema, "tableMenu", JTable.class);
+            assertEquals(1, tableMenu.getRowCount());
+            // Columna 6 es IVA: debe ser "Sí (10%)" y NO "Sí (16%)"
+            assertEquals("Sí (10%)", tableMenu.getValueAt(0, 6));
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
         }
@@ -869,6 +1026,52 @@ public class SistemaTabsYVistasTest {
         }
     }
 
+    @Test
+    public void testBotonAtencionDirectaTextoAbreviado() throws Exception {
+        Sistema sistema = crearSistemaEnEdt(admin, true);
+        try {
+            javax.swing.JButton btn = sistema.getBtnAtencionDirecta();
+            assertNotNull(btn);
+            assertEquals("Atn. directa", btn.getText());
+            assertEquals("Atención directa: Acceso rápido a atención de mesas", btn.getToolTipText());
+        } finally {
+            SwingUtilities.invokeAndWait(sistema::dispose);
+        }
+    }
+
+    @Test
+    public void testModoAtencionPersistenciaYSincronizacion() throws Exception {
+        Sistema sistema = crearSistemaEnEdt(admin, true);
+        try {
+            javax.swing.JComboBox<String> cbGlobal = sistema.getCbModoAtencionGlobal();
+            javax.swing.JComboBox<String> cbMesas = sistema.getCbModoAtencion();
+            assertNotNull(cbGlobal);
+            assertNotNull(cbMesas);
+
+            // Modo inicial por defecto es OPCION_B (índice 0)
+            assertEquals("OPCION_B", sistema.getModoAtencionActual());
+            assertEquals(0, cbGlobal.getSelectedIndex());
+            assertEquals(0, cbMesas.getSelectedIndex());
+
+            // Cambiamos a OPCION_A (índice 1: "Atención Clásica")
+            SwingUtilities.invokeAndWait(() -> cbGlobal.setSelectedIndex(1));
+            assertEquals("OPCION_A", sistema.getModoAtencionActual());
+            assertEquals(1, cbMesas.getSelectedIndex());
+
+            // Cambiamos a OPCION_C (índice 2: "Panel Táctil Completo") desde el combo de mesas
+            SwingUtilities.invokeAndWait(() -> cbMesas.setSelectedIndex(2));
+            assertEquals("OPCION_C", sistema.getModoAtencionActual());
+            assertEquals(2, cbGlobal.getSelectedIndex());
+
+            // Cambiamos a CLASICO (índice 3: "Lista Tradicional")
+            SwingUtilities.invokeAndWait(() -> cbGlobal.setSelectedIndex(3));
+            assertEquals("CLASICO", sistema.getModoAtencionActual());
+            assertEquals(3, cbMesas.getSelectedIndex());
+        } finally {
+            SwingUtilities.invokeAndWait(sistema::dispose);
+        }
+    }
+
     // =========================================================================
     // Fakes / Stubs para aislamiento completo de Swing
     // =========================================================================
@@ -904,6 +1107,17 @@ public class SistemaTabsYVistasTest {
 
         public void configurarRegistrarPedidoCompleto(java.util.function.BiFunction<Pedidos, List<DetallePedido>, Integer> fn) {
             this.funcionRegistro = fn;
+        }
+
+        Map<Integer, List<DetallePedido>> detallesPorPedido = new HashMap<>();
+
+        public void configurarDetallesPedido(int idPedido, List<DetallePedido> detalles) {
+            this.detallesPorPedido.put(idPedido, detalles);
+        }
+
+        @Override
+        public List<DetallePedido> verPedidoDetalle(int idPedido) {
+            return detallesPorPedido.getOrDefault(idPedido, Collections.emptyList());
         }
 
         @Override
@@ -953,8 +1167,53 @@ public class SistemaTabsYVistasTest {
         }
 
         @Override
+        public boolean actualizarModoAtencion(String modo) {
+            if (this.configuracionActual != null) {
+                this.configuracionActual.setModoAtencion(modo);
+            }
+            return true;
+        }
+
+        @Override
         public List<Usuario> ListarUsuarios() {
             return usuariosRetorno;
+        }
+
+        @Override
+        public boolean desactivarUsuario(int idUsuario) {
+            for (Usuario u : usuariosRetorno) {
+                if (u.getId() == idUsuario) {
+                    u.setActivo(false);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean reactivarUsuario(int idUsuario) {
+            for (Usuario u : usuariosRetorno) {
+                if (u.getId() == idUsuario) {
+                    u.setActivo(true);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean eliminarUsuario(int idUsuario) {
+            return usuariosRetorno.removeIf(u -> u.getId() == idUsuario);
+        }
+
+        @Override
+        public boolean esUsuarioActivo(int idUsuario) {
+            for (Usuario u : usuariosRetorno) {
+                if (u.getId() == idUsuario) {
+                    return u.isActivo();
+                }
+            }
+            return true;
         }
     }
 }

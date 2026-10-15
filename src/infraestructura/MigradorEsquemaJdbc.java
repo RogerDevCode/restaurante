@@ -11,6 +11,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.logging.Level;
@@ -25,7 +27,7 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 8;
+    private static final int VERSION_ESQUEMA = 10;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
@@ -38,9 +40,11 @@ public final class MigradorEsquemaJdbc {
     private static final String CHECKSUM_MIGRACION_V6 = calcularChecksum(DEFINICION_MIGRACION_V6);
     private static final String DEFINICION_MIGRACION_V7 = "v7:pedidos_rapidos_sin_mesa";
     private static final String CHECKSUM_MIGRACION_V7 = calcularChecksum(DEFINICION_MIGRACION_V7);
-    private static final String DEFINICION_MIGRACION_V8 = "v8:detalle_aplica_iva,usuarios_nombre_unico,recargar_fiscalidad_historica";
-    private static final String CHECKSUM_MIGRACION = calcularChecksum(DEFINICION_MIGRACION_V8);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v8";
+    private static final String DEFINICION_MIGRACION_V9 = "v9:login_intentos_por_usuario_con_bloqueo_dao";
+    private static final String CHECKSUM_MIGRACION_V9 = calcularChecksum(DEFINICION_MIGRACION_V9);
+    private static final String DEFINICION_MIGRACION_V10 = "v10:reserva_alias_admin_repara_fk_login_cascade";
+    private static final String CHECKSUM_MIGRACION_V10 = calcularChecksum(DEFINICION_MIGRACION_V10);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v10";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
@@ -50,10 +54,23 @@ public final class MigradorEsquemaJdbc {
         Path crear(ProveedorConexionJdbc proveedor) throws Exception;
     }
 
+    private static volatile boolean esquemaSincronizado = false;
+
+    public static void invalidarCacheEsquema() {
+        esquemaSincronizado = false;
+    }
+
+    public static boolean esEsquemaSincronizado() {
+        return esquemaSincronizado;
+    }
+
     private MigradorEsquemaJdbc() {
     }
 
     public static synchronized void migrarSiEsNecesario(ProveedorConexionJdbc proveedor) {
+        if (esquemaSincronizado) {
+            return;
+        }
         migrarSiEsNecesario(proveedor, proveedorActual ->
                 new ServicioRespaldoBaseDatos(proveedorActual).crearRespaldoPreMigracion());
     }
@@ -107,6 +124,7 @@ public final class MigradorEsquemaJdbc {
                 liberarBloqueo(con);
             }
             LOGGER.info("Esquema de base de datos verificado y sincronizado correctamente.");
+            esquemaSincronizado = true;
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "No se pudo verificar o sincronizar el esquema de la BD: " + ex.getMessage(), ex);
             throw new DataAccessException("No se pudo verificar o sincronizar el esquema de la base de datos.", ex);
@@ -164,7 +182,7 @@ public final class MigradorEsquemaJdbc {
             if (!rs.next()) return false;
             String checksum = rs.getString("checksum");
             String estado = rs.getString("estado");
-            if (!CHECKSUM_MIGRACION.equals(checksum)) {
+            if (!CHECKSUM_MIGRACION_V10.equals(checksum)) {
                 throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
             }
             return "APLICADA".equalsIgnoreCase(estado);
@@ -201,7 +219,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION + "','EN_CURSO','asegurar_esquema') "
+                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V10 + "','EN_CURSO','asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -216,7 +234,7 @@ public final class MigradorEsquemaJdbc {
         DatabaseMetaData meta = con.getMetaData();
         String catalogo = con.getCatalog();
         for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja", "mesoneros",
-                "categorias", "plato_categoria", "plato_favorito", "preferencias_tabla", "pedido_pagos")) {
+                "categorias", "plato_categoria", "plato_favorito", "preferencias_tabla", "pedido_pagos", "login_intentos")) {
             if (!tablaExiste(con, tabla)) throw new SQLException("Postcondición no cumplida: falta tabla " + tabla);
         }
         for (String[] par : new String[][] {
@@ -232,7 +250,10 @@ public final class MigradorEsquemaJdbc {
                 {"platos", "nombre_clave"},
                 {"detalle_pedidos", "nombre_clave"},
                 {"detalle_pedidos", "aplica_iva"},
-                {"usuarios", "nombre_unico"}
+                {"usuarios", "nombre_unico"},
+                {"login_intentos", "usuario_id"},
+                {"login_intentos", "intentos"},
+                {"login_intentos", "bloqueado_hasta_ms"}
         }) {
             if (!columnaExiste(meta, catalogo, par[0], par[1])) {
                 throw new SQLException("Postcondición no cumplida: falta columna " + par[0] + "." + par[1]);
@@ -240,6 +261,25 @@ public final class MigradorEsquemaJdbc {
         }
         if (!indiceExiste(meta, catalogo, "usuarios", "uq_usuarios_nombre")) {
             throw new SQLException("Postcondición no cumplida: falta el índice único de nombre de usuario.");
+        }
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("""
+                     SELECT COUNT(*)
+                     FROM information_schema.KEY_COLUMN_USAGE k
+                     JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+                       ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
+                      AND r.TABLE_NAME = k.TABLE_NAME
+                      AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+                     WHERE k.TABLE_SCHEMA = DATABASE()
+                       AND k.TABLE_NAME = 'login_intentos'
+                       AND k.COLUMN_NAME = 'usuario_id'
+                       AND k.REFERENCED_TABLE_NAME = 'usuarios'
+                       AND k.REFERENCED_COLUMN_NAME = 'id'
+                       AND r.DELETE_RULE = 'CASCADE'
+                     """)) {
+            if (!rs.next() || rs.getInt(1) != 1) {
+                throw new SQLException("Postcondición no cumplida: login_intentos no está ligado de forma única a usuarios.id.");
+            }
         }
         if (!checkExiste(con, "detalle_pedidos", "chk_detalle_aplica_iva")
                 || !checkExiste(con, "usuarios", "chk_usuarios_nombre_formato")) {
@@ -316,6 +356,7 @@ public final class MigradorEsquemaJdbc {
         asegurarColumna(con, meta, catalogo, "pedidos", "iva_porcentaje", "DECIMAL(5,2) NOT NULL DEFAULT 16.00");
         asegurarColumna(con, meta, catalogo, "pedidos", "iva_monto", "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
         asegurarColumna(con, meta, catalogo, "pedidos", "tasa_cambio", "DECIMAL(12,4) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "tasa_es_estimada", "TINYINT(1) NOT NULL DEFAULT 0");
         asegurarColumna(con, meta, catalogo, "pedidos", "cliente_nombre", "VARCHAR(150) NOT NULL DEFAULT 'Consumidor Final'");
         asegurarColumna(con, meta, catalogo, "pedidos", "cliente_documento", "VARCHAR(30) NOT NULL DEFAULT 'V-00000000'");
         asegurarColumna(con, meta, catalogo, "pedidos", "metodo_pago", "VARCHAR(30) NOT NULL DEFAULT 'EFECTIVO'");
@@ -343,7 +384,14 @@ public final class MigradorEsquemaJdbc {
         asegurarColumna(con, meta, catalogo, "config", "imprimir_logo_ticket", "TINYINT(1) NOT NULL DEFAULT 1");
         asegurarColumna(con, meta, catalogo, "config", "impresora_tickets", "VARCHAR(150) NOT NULL DEFAULT 'DEFAULT'");
         asegurarColumna(con, meta, catalogo, "config", "modo_salida_tickets", "VARCHAR(50) NOT NULL DEFAULT 'TERMICA_DIRECTA'");
+        if (columnaExiste(meta, catalogo, "config", "modo_atencion")) {
+            try (Statement st = con.createStatement()) {
+                st.executeUpdate("ALTER TABLE config DROP COLUMN modo_atencion");
+                LOGGER.info("Columna config.modo_atencion eliminada; se gestiona en configuracion_sistema.");
+            }
+        }
         asegurarLongitudColumna(con, meta, catalogo, "usuarios", "pass", 255);
+        asegurarColumna(con, meta, catalogo, "usuarios", "activo", "TINYINT(1) NOT NULL DEFAULT 1");
 
         // 4. Columnas en platos
         asegurarColumna(con, meta, catalogo, "platos", "activo", "TINYINT(1) NOT NULL DEFAULT 1");
@@ -363,6 +411,12 @@ public final class MigradorEsquemaJdbc {
 
         // 6. Asegurar tabla clave-valor de configuración del sistema
         asegurarTablaConfiguracionSistema(con, meta, catalogo);
+
+        // Los intentos fallidos se guardan por ID de usuario, nunca por un texto arbitrario del formulario.
+        asegurarTablaIntentosLogin(con);
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("DELETE FROM configuracion_sistema WHERE LEFT(clave, 11) = '_sec_login_'");
+        }
 
         // 7. Asegurar tabla de auditoría de pedidos (anulaciones y reimpresiones)
         asegurarTablaAuditoriaPedidos(con, meta, catalogo);
@@ -423,6 +477,63 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
                 """);
         }
+    }
+
+    private static void asegurarTablaIntentosLogin(Connection con) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS login_intentos (
+                    usuario_id INT NOT NULL PRIMARY KEY,
+                    intentos INT NOT NULL DEFAULT 0,
+                    bloqueado_hasta_ms BIGINT NOT NULL DEFAULT 0,
+                    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_login_intentos_usuario FOREIGN KEY (usuario_id)
+                        REFERENCES usuarios(id) ON DELETE CASCADE,
+                    CONSTRAINT chk_login_intentos_no_negativos CHECK (intentos >= 0 AND bloqueado_hasta_ms >= 0)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+        }
+        boolean claveForaneaCascadeExiste = false;
+        List<String> clavesForaneasAEliminar = new ArrayList<>();
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("""
+                     SELECT k.CONSTRAINT_NAME, k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME, r.DELETE_RULE
+                     FROM information_schema.KEY_COLUMN_USAGE k
+                     JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+                       ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
+                      AND r.TABLE_NAME = k.TABLE_NAME
+                      AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+                     WHERE k.TABLE_SCHEMA = DATABASE()
+                       AND k.TABLE_NAME = 'login_intentos'
+                       AND k.COLUMN_NAME = 'usuario_id'
+                     """)) {
+            while (rs.next()) {
+                boolean correcta = "usuarios".equalsIgnoreCase(rs.getString("REFERENCED_TABLE_NAME"))
+                        && "id".equalsIgnoreCase(rs.getString("REFERENCED_COLUMN_NAME"))
+                        && "CASCADE".equalsIgnoreCase(rs.getString("DELETE_RULE"));
+                if (correcta) claveForaneaCascadeExiste = true;
+                else clavesForaneasAEliminar.add(rs.getString("CONSTRAINT_NAME"));
+            }
+        }
+        if (!claveForaneaCascadeExiste || !clavesForaneasAEliminar.isEmpty()) {
+            try (Statement st = con.createStatement()) {
+                st.executeUpdate("DELETE li FROM login_intentos li LEFT JOIN usuarios u ON u.id = li.usuario_id WHERE u.id IS NULL");
+                for (String nombre : clavesForaneasAEliminar) {
+                    st.executeUpdate("ALTER TABLE login_intentos DROP FOREIGN KEY `"
+                            + nombre.replace("`", "``") + "`");
+                }
+                if (!claveForaneaCascadeExiste) {
+                    st.executeUpdate("ALTER TABLE login_intentos ADD CONSTRAINT fk_login_intentos_usuario "
+                            + "FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE");
+                }
+            }
+        }
+    }
+
+    /** Repara la relación que puede perderse al reemplazar usuarios durante una restauración. */
+    public static void asegurarIntegridadIntentosLogin(Connection con) throws SQLException {
+        if (con == null) throw new IllegalArgumentException("La conexión es obligatoria.");
+        asegurarTablaIntentosLogin(con);
     }
 
     private static void asegurarColumna(Connection con, DatabaseMetaData meta, String catalogo,
@@ -490,7 +601,7 @@ public final class MigradorEsquemaJdbc {
                     nombres.add(new Object[]{rs.getInt("id"), Modelo.NombreUsuario.normalizar(rs.getString("nombre"))});
                 } catch (Modelo.ErrorAplicacionException ex) {
                     throw new SQLException("No se puede migrar usuarios: el nombre del usuario con ID "
-                            + rs.getInt("id") + " no cumple el formato requerido. Corríjalo y vuelva a iniciar.", ex);
+                            + rs.getInt("id") + " no cumple el formato o usa un nombre reservado. Corríjalo y vuelva a iniciar.", ex);
                 }
             }
         }
@@ -504,9 +615,31 @@ public final class MigradorEsquemaJdbc {
         }
         asegurarColumna(con, meta, catalogo, "usuarios", "nombre_unico",
                 "VARCHAR(200) GENERATED ALWAYS AS (LOWER(TRIM(nombre))) STORED");
+        // Pre-validar duplicados antes de crear índice único para dar mensaje accionable
+        try (PreparedStatement ps = con.prepareStatement(
+                "SELECT LOWER(TRIM(nombre)) AS nombre_norm, COUNT(*) AS cnt, GROUP_CONCAT(id ORDER BY id SEPARATOR ', ') AS ids "
+                + "FROM usuarios GROUP BY LOWER(TRIM(nombre)) HAVING cnt > 1")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                java.util.List<String> conflictos = new java.util.ArrayList<>();
+                while (rs.next()) {
+                    conflictos.add("'" + rs.getString("nombre_norm") + "' (IDs: " + rs.getString("ids") + ")");
+                }
+                if (!conflictos.isEmpty()) {
+                    throw new SQLException(
+                        "No se puede crear índice único de nombres en 'usuarios': existen nombres duplicados (insensibles a mayúsculas). "
+                        + "Corrija manualmente estos registros antes de iniciar: "
+                        + String.join("; ", conflictos));
+                }
+            }
+        }
         asegurarIndiceUnico(con, meta, catalogo, "usuarios", "uq_usuarios_nombre", "(nombre_unico)");
+        if (checkExiste(con, "usuarios", "chk_usuarios_nombre_formato")) {
+            try (Statement st = con.createStatement()) {
+                st.executeUpdate("ALTER TABLE usuarios DROP CHECK chk_usuarios_nombre_formato");
+            }
+        }
         asegurarCheck(con, "usuarios", "chk_usuarios_nombre_formato",
-                "(CHAR_LENGTH(nombre) BETWEEN 3 AND 60 AND nombre REGEXP "
+                "(CHAR_LENGTH(nombre) BETWEEN 3 AND 60 AND LOWER(TRIM(nombre)) <> 'admin' AND nombre REGEXP "
                         + "'^[[:alnum:]][[:alnum:] ._-]{1,58}[[:alnum:]]$')");
     }
 
@@ -529,30 +662,36 @@ public final class MigradorEsquemaJdbc {
         }
     }
 
-    private static void recalcularFiscalidadHistorica(Connection con) throws SQLException {
+    static void recalcularFiscalidadHistorica(Connection con) throws SQLException {
         try (Statement st = con.createStatement()) {
-            try (ResultSet rs = st.executeQuery("SELECT d.nombre_clave FROM detalle_pedidos d JOIN platos p "
-                    + "ON p.nombre_clave = d.nombre_clave WHERE d.aplica_iva IS NULL "
-                    + "GROUP BY d.nombre_clave HAVING COUNT(DISTINCT COALESCE(p.aplica_iva, 1)) > 1 LIMIT 1")) {
-                if (rs.next()) {
-                    throw new SQLException("No se puede recalcular la fiscalidad: el catálogo tiene nombres duplicados "
-                            + "con condiciones de IVA distintas para '" + rs.getString(1) + "'. Corrija el catálogo y reintente.");
-                }
-            }
             st.executeUpdate("UPDATE detalle_pedidos d LEFT JOIN platos p ON p.nombre_clave = d.nombre_clave "
-                    + "SET d.aplica_iva = COALESCE(p.aplica_iva, 1) WHERE d.aplica_iva IS NULL");
+                    + "SET d.aplica_iva = COALESCE(p.aplica_iva, 0) WHERE d.aplica_iva IS NULL");
+            st.executeUpdate("UPDATE detalle_pedidos SET aplica_iva = 0 WHERE aplica_iva IS NULL");
+
+            // Recalcular pedidos con tasa propia (no estimada)
             st.executeUpdate("UPDATE pedidos p LEFT JOIN (SELECT id_pedido, "
                     + "SUM(precio * cantidad) subtotal, "
                     + "SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) base_imponible "
                     + "FROM detalle_pedidos GROUP BY id_pedido) d ON d.id_pedido = p.id "
-                    + "SET p.tasa_cambio = COALESCE(p.tasa_cambio, 36.5000), "
-                    + "p.subtotal = COALESCE(d.subtotal, p.subtotal), "
+                    + "SET p.subtotal = COALESCE(d.subtotal, p.subtotal), "
                     + "p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2), "
                     + "p.total = COALESCE(d.subtotal, p.subtotal) + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2), "
-                    + "p.subtotal_bs = ROUND(COALESCE(d.subtotal, p.subtotal) * COALESCE(p.tasa_cambio, 36.5000), 2), "
-                    + "p.iva_bs = ROUND(ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2) * COALESCE(p.tasa_cambio, 36.5000), 2), "
-                    + "p.total_bs = ROUND((COALESCE(d.subtotal, p.subtotal) + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2)) * COALESCE(p.tasa_cambio, 36.5000), 2) "
-                    + "WHERE d.id_pedido IS NOT NULL");
+                    + "p.subtotal_bs = ROUND(COALESCE(d.subtotal, p.subtotal) * p.tasa_cambio, 2), "
+                    + "p.iva_bs = ROUND(ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2) * p.tasa_cambio, 2), "
+                    + "p.total_bs = ROUND((COALESCE(d.subtotal, p.subtotal) + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2)) * p.tasa_cambio, 2) "
+                    + "WHERE d.id_pedido IS NOT NULL AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 AND COALESCE(p.tasa_es_estimada, 0) = 0");
+
+            // Pedidos sin tasa: marcar tasa_es_estimada = 1 y asignar 36.5000, PRESERVANDO montos en Bs existentes
+            st.executeUpdate("UPDATE pedidos p LEFT JOIN (SELECT id_pedido, "
+                    + "SUM(precio * cantidad) subtotal, "
+                    + "SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) base_imponible "
+                    + "FROM detalle_pedidos GROUP BY id_pedido) d ON d.id_pedido = p.id "
+                    + "SET p.tasa_cambio = 36.5000, "
+                    + "p.tasa_es_estimada = 1, "
+                    + "p.subtotal = COALESCE(d.subtotal, p.subtotal), "
+                    + "p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2), "
+                    + "p.total = COALESCE(d.subtotal, p.subtotal) + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2) "
+                    + "WHERE d.id_pedido IS NOT NULL AND (p.tasa_cambio IS NULL OR p.tasa_cambio = 0)");
         }
     }
 
@@ -651,11 +790,16 @@ public final class MigradorEsquemaJdbc {
                     ('imprimir_logo_ticket', 'true'),
                     ('cliente_predeterminado_nombre', 'Consumidor Final'),
                     ('cliente_predeterminado_documento', 'V-00000000'),
-                    ('meses_retencion_pedidos', '24')
+                    ('meses_retencion_pedidos', '24'),
+                    ('modo_atencion', 'OPCION_B')
                     """;
                 try (Statement stDef = con.createStatement()) {
                     stDef.executeUpdate(insertDefaults);
                 }
+            }
+            try (Statement stModo = con.createStatement()) {
+                stModo.executeUpdate("INSERT IGNORE INTO configuracion_sistema (clave, valor, descripcion) "
+                        + "VALUES ('modo_atencion', 'OPCION_B', 'Modo predeterminado de atención de mesas')");
             }
         }
     }

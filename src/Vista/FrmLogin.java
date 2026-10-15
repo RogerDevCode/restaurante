@@ -57,7 +57,6 @@ public class FrmLogin extends javax.swing.JFrame {
         this.crearSistema = crearSistema;
         initComponents();
         construirInterfazLogin();
-        cargarUsuariosEnCombo();
         this.setLocationRelativeTo(null);
         barra.setVisible(false);
         ImageIcon img = new ImageIcon(getClass().getResource("/Img/logo.png"));
@@ -201,10 +200,17 @@ public class FrmLogin extends javax.swing.JFrame {
         ayuda.setForeground(SECUNDARIO);
         ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        configurarEtiqueta(jLabel3, "Usuario");
+        configurarEtiqueta(jLabel3, "Usuario o Correo");
         configurarEtiqueta(jLabel4, "Contraseña");
-        configurarCombo(cbUsuario);
+        configurarCampo(txtIdentificador);
         configurarCampo(txtPass);
+        JPanel panelPass = ControlVisibilidadPassword.crearPanelPassword(txtPass, Color.WHITE);
+        panelPass.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panelPass.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        panelPass.setPreferredSize(new Dimension(390, 46));
+        panelPass.setBorder(BorderFactory.createLineBorder(new Color(218, 221, 215)));
+        txtPass.setBorder(BorderFactory.createEmptyBorder(10, 13, 10, 5));
+        txtIdentificador.addActionListener(e -> txtPass.requestFocusInWindow());
         txtPass.addActionListener(e -> {
             if (btnIniciar.isEnabled()) {
                 btnIniciar.doClick();
@@ -252,11 +258,11 @@ public class FrmLogin extends javax.swing.JFrame {
         formulario.add(Box.createVerticalStrut(34));
         formulario.add(jLabel3);
         formulario.add(Box.createVerticalStrut(9));
-        formulario.add(cbUsuario);
+        formulario.add(txtIdentificador);
         formulario.add(Box.createVerticalStrut(22));
         formulario.add(jLabel4);
         formulario.add(Box.createVerticalStrut(9));
-        formulario.add(txtPass);
+        formulario.add(panelPass);
         formulario.add(Box.createVerticalStrut(30));
         formulario.add(filaBotones);
         formulario.add(Box.createVerticalStrut(14));
@@ -276,51 +282,6 @@ public class FrmLogin extends javax.swing.JFrame {
         etiqueta.setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 
-    private void configurarCombo(javax.swing.JComboBox<Usuario> combo) {
-        combo.setEditable(true);
-        combo.setFont(new Font("SansSerif", Font.PLAIN, 15));
-        combo.setForeground(TEXTO);
-        combo.setBackground(Color.WHITE);
-        combo.setAlignmentX(Component.LEFT_ALIGNMENT);
-        combo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
-        combo.setPreferredSize(new Dimension(390, 46));
-        combo.setRenderer(new javax.swing.DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(javax.swing.JList<?> list, Object value,
-                    int index, boolean seleccionado, boolean conFoco) {
-                super.getListCellRendererComponent(list, value, index, seleccionado, conFoco);
-                if (value instanceof Usuario u) {
-                    setText(u.getNombre() + " (" + u.getCorreo() + ")");
-                }
-                return this;
-            }
-        });
-        combo.setEditor(new javax.swing.plaf.basic.BasicComboBoxEditor() {
-            private String texto(Usuario u) {
-                return u.getNombre() + " (" + u.getCorreo() + ")";
-            }
-            @Override
-            public void setItem(Object objeto) {
-                editor.setText(objeto instanceof Usuario u ? texto(u) : (objeto == null ? "" : objeto.toString()));
-            }
-            @Override
-            public Object getItem() {
-                String t = editor.getText();
-                for (int i = 0; i < combo.getItemCount(); i++) {
-                    Usuario u = combo.getItemAt(i);
-                    if (u != null && texto(u).equals(t)) {
-                        return u;
-                    }
-                }
-                return t;
-            }
-        });
-        javax.swing.JTextField editor = (javax.swing.JTextField) combo.getEditor().getEditorComponent();
-        editor.setFont(new Font("SansSerif", Font.PLAIN, 15));
-        editor.setForeground(TEXTO);
-        editor.setCaretColor(VERDE_BOTON);
-    }
-
     private void configurarCampo(javax.swing.JTextField campo) {
         campo.setHorizontalAlignment(javax.swing.JTextField.LEFT);
         campo.setFont(new Font("SansSerif", Font.PLAIN, 15));
@@ -334,6 +295,7 @@ public class FrmLogin extends javax.swing.JFrame {
         campo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
         campo.setPreferredSize(new Dimension(390, 46));
     }
+
     public class BarraProgreso implements ActionListener {
 
         @Override
@@ -350,55 +312,14 @@ public class FrmLogin extends javax.swing.JFrame {
             }
         }
     }
-    private void cargarUsuariosEnCombo() {
-        try {
-            llenarComboUsuarios(new Modelo.LoginDao().ListarUsuarios());
-        } catch (RuntimeException ex) {
-            // Sin BD el combo queda editable para ingreso manual del correo.
-        }
-    }
-
-    void llenarComboUsuarios(java.util.List<Usuario> usuarios) {
-        Object actual = cbUsuario.getSelectedItem();
-        cbUsuario.removeAllItems();
-        java.util.List<Usuario> ordenada = usuarios == null
-                ? java.util.List.of()
-                : new java.util.ArrayList<>(usuarios);
-        ordenada.sort(java.util.Comparator.comparing(
-                (Usuario u) -> u.getNombre() == null ? "" : u.getNombre(),
-                String.CASE_INSENSITIVE_ORDER));
-        Usuario admin = null;
-        for (Usuario u : ordenada) {
-            if (u == null) {
-                continue;
-            }
-            cbUsuario.addItem(u);
-            if (admin == null && "admin".equalsIgnoreCase(u.getCorreo())) {
-                admin = u;
-            }
-        }
-        if (admin != null) {
-            cbUsuario.setSelectedItem(admin);
-        } else if (actual instanceof Usuario || actual instanceof String) {
-            cbUsuario.setSelectedItem(actual);
-        } else if (cbUsuario.getItemCount() > 0) {
-            cbUsuario.setSelectedIndex(0);
-        }
-    }
 
     public void validar(){
-        Object sel = cbUsuario.getSelectedItem();
-        String correo = "";
-        if (sel instanceof Usuario u) {
-            correo = u.getCorreo() == null ? "" : u.getCorreo().trim();
-        } else if (sel != null) {
-            correo = sel.toString().trim();
-        }
+        String correo = txtIdentificador != null ? txtIdentificador.getText().trim() : "";
         char[] claveCapturada = txtPass.getPassword();
         String pass = new String(claveCapturada);
         java.util.Arrays.fill(claveCapturada, '\0');
         if (correo.isEmpty() || pass.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Ingresa el correo y la contraseña.",
+            JOptionPane.showMessageDialog(this, "Ingresa el usuario o correo y la contraseña.",
                     "Datos requeridos", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -410,11 +331,13 @@ public class FrmLogin extends javax.swing.JFrame {
     private void autenticacionCompletada(Optional<Usuario> resultado) {
         if (!resultado.isPresent()) {
             cambiarEstadoFormulario(true);
-            JOptionPane.showMessageDialog(this, "Correo o contraseña incorrectos.",
+            JOptionPane.showMessageDialog(this,
+                    "Usuario o contraseña incorrectos, o la cuenta está temporalmente bloqueada.",
                     "Acceso denegado", JOptionPane.WARNING_MESSAGE);
             return;
         }
         usuarioAutenticado = resultado.get();
+        txtPass.setText("");
         barra.setVisible(true);
         contador = -1;
         barra.setValue(0);
@@ -441,7 +364,9 @@ public class FrmLogin extends javax.swing.JFrame {
 
     private void cambiarEstadoFormulario(boolean habilitado) {
         btnIniciar.setEnabled(habilitado);
-        cbUsuario.setEnabled(habilitado);
+        if (txtIdentificador != null) {
+            txtIdentificador.setEnabled(habilitado);
+        }
         txtPass.setEnabled(habilitado);
     }
     /**
@@ -456,7 +381,7 @@ public class FrmLogin extends javax.swing.JFrame {
         jPanel2 = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
-        cbUsuario = new javax.swing.JComboBox<>();
+        txtIdentificador = new javax.swing.JTextField();
         txtPass = new javax.swing.JPasswordField();
         btnIniciar = new javax.swing.JButton();
         jButton1 = new javax.swing.JButton();
@@ -553,7 +478,7 @@ public class FrmLogin extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel4;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel4;
-    private javax.swing.JComboBox<Usuario> cbUsuario;
+    private javax.swing.JTextField txtIdentificador;
     private javax.swing.JPasswordField txtPass;
     // End of variables declaration//GEN-END:variables
 }

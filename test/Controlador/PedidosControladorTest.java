@@ -98,6 +98,55 @@ public class PedidosControladorTest {
     }
 
     @Test
+    public void asistenteNoPuedeActualizarPedidoCompleto() {
+        AtomicInteger actualizaciones = new AtomicInteger();
+        PedidosRepositorioFalso repositorio = new PedidosRepositorioFalso() {
+            @Override
+            public boolean actualizarPedidoCompleto(int id, Pedidos p, java.util.List<DetallePedido> d) {
+                actualizaciones.incrementAndGet();
+                return true;
+            }
+        };
+        PedidoServicio servicio = new PedidoServicio(repositorio);
+        PedidoPdfServicio pdf = new PedidoPdfServicio(
+                this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), a -> true);
+        Usuario usuario = new Usuario();
+        usuario.setRol("Asistente");
+        PoliticaAcceso politicaAsistente = new PoliticaAcceso(usuario);
+        PedidosControlador controlador = new PedidosControlador(
+                servicio, pdf, politicaAsistente,
+                new ConsultaPedidosServicio(repositorio, politicaAsistente));
+
+        assertThrows(ErrorAplicacionException.class, () ->
+                controlador.actualizarPedidoCompleto(22, pedido(22), Collections.singletonList(detalle())));
+        assertEquals(0, actualizaciones.get());
+    }
+
+    @Test
+    public void administradorPuedeActualizarPedidoCompleto() {
+        AtomicInteger actualizaciones = new AtomicInteger();
+        PedidosRepositorioFalso repositorio = new PedidosRepositorioFalso() {
+            @Override
+            public boolean actualizarPedidoCompleto(int id, Pedidos p, java.util.List<DetallePedido> d) {
+                actualizaciones.incrementAndGet();
+                return true;
+            }
+        };
+        PedidoServicio servicio = new PedidoServicio(repositorio);
+        PedidoPdfServicio pdf = new PedidoPdfServicio(
+                this::pedido, id -> Collections.singletonList(detalle()), this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()), a -> true);
+        PoliticaAcceso politicaAdmin = politica("Administrador");
+        PedidosControlador controlador = new PedidosControlador(
+                servicio, pdf, politicaAdmin,
+                new ConsultaPedidosServicio(repositorio, politicaAdmin));
+
+        assertTrue(controlador.actualizarPedidoCompleto(22, pedido(22), Collections.singletonList(detalle())));
+        assertEquals(1, actualizaciones.get());
+    }
+
+    @Test
     public void delegaConsultasYFinalizacionAlServicioAutorizado() {
         AtomicInteger operaciones = new AtomicInteger();
         PedidosRepositorioFalso repositorio = new PedidosRepositorioFalso() {
@@ -256,6 +305,7 @@ public class PedidosControladorTest {
     private Pedidos pedido(int id) {
         Pedidos pedido = new Pedidos();
         pedido.setId(id);
+        pedido.setId_sala(1);
         pedido.setNum_mesa(3);
         pedido.setSala("Principal");
         pedido.setUsuario("Operador");

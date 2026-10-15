@@ -24,8 +24,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** Provee conexiones JDBC con pool ligero, timeouts de red y TLS configurable. */
 public class ProveedorConexionJdbc {
 
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(ProveedorConexionJdbc.class.getName());
     private static final ConcurrentHashMap<String, BlockingQueue<Connection>> POOL_DISPONIBLES = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, AtomicInteger> CONEXIONES_ACTIVAS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Integer> NIVELES_AISLAMIENTO_DEFAULT = new ConcurrentHashMap<>();
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(ProveedorConexionJdbc::limpiarPool, "conexion-pool-shutdown"));
@@ -34,32 +36,20 @@ public class ProveedorConexionJdbc {
     public Connection getConnection() throws SQLException {
         Properties localConfig = cargarConfiguracionLocal();
 
-        String database = setting("MYSQL_DATABASE", localConfig);
-        if (database == null || database.trim().isEmpty()) {
-            database = setting("DB_NAME", localConfig);
-        }
+        String database = settingConAlias("MYSQL_DATABASE", "DB_NAME", localConfig);
         if (database == null || database.trim().isEmpty()) {
             database = setting("DB_DATABASE", localConfig);
         }
-        String user = setting("DB_USER", localConfig);
-        if (user == null || user.trim().isEmpty()) {
-            user = setting("MYSQL_USER", localConfig);
-        }
-        String password = setting("DB_PASSWORD", localConfig);
-        if (password == null) {
-            password = setting("MYSQL_PASSWORD", localConfig);
-        }
+        String user = settingConAlias("DB_USER", "MYSQL_USER", localConfig);
+        String password = settingConAlias("DB_PASSWORD", "MYSQL_PASSWORD", localConfig);
         if (password == null) {
             password = setting("DB_PASS", localConfig);
         }
-        String host = setting("MYSQL_HOST", localConfig);
-        if (host == null || host.trim().isEmpty()) {
-            host = setting("DB_HOST", localConfig);
-        }
+        String host = settingConAlias("MYSQL_HOST", "DB_HOST", localConfig);
         if (host == null || host.trim().isEmpty()) {
             host = "127.0.0.1";
         }
-        String port = setting("MYSQL_PORT", localConfig);
+        String port = settingConAlias("MYSQL_PORT", "DB_PORT", localConfig);
         if (port == null || port.trim().isEmpty()) {
             port = "3306";
         }
@@ -72,13 +62,67 @@ public class ProveedorConexionJdbc {
                     "Falta configurar MYSQL_DATABASE (o DB_NAME), MYSQL_USER (o DB_USER) y MYSQL_PASSWORD (o DB_PASSWORD/DB_PASS) en .env o en el entorno");
         }
 
-        String ssl = setting("DB_SSL", localConfig);
-        if (ssl == null || ssl.trim().isEmpty()) {
-            ssl = setting("MYSQL_SSL", localConfig);
+        String hostEfectivo = host;
+        if (url != null && !url.trim().isEmpty()) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)jdbc:mysql://([^:/\\?]+)").matcher(url);
+            if (m.find()) {
+                hostEfectivo = m.group(1);
+            }
         }
-        if (ssl == null || ssl.trim().isEmpty()) {
-            ssl = "false";
+
+        boolean esRemoto = !esHostLocal(hostEfectivo);
+        String sslConfigurado = settingConAlias("DB_SSL", "MYSQL_SSL", localConfig);
+        String sslModeConfigurado = settingConAlias("DB_SSL_MODE", "MYSQL_SSL_MODE", localConfig);
+        String truststore = settingConAlias("DB_SSL_TRUSTSTORE", "MYSQL_SSL_TRUSTSTORE", localConfig);
+        String truststorePassword = settingConAlias("DB_SSL_TRUSTSTORE_PASSWORD", "MYSQL_SSL_TRUSTSTORE_PASSWORD", localConfig);
+        String allowInsecureRemote = settingConAlias("DB_ALLOW_INSECURE_REMOTE", "DB_ALLOW_INSECURE_REMOTE_SSL", localConfig);
+        boolean permitirInseguroRemoto = "true".equalsIgnoreCase(allowInsecureRemote);
+
+        String ssl;
+        String sslMode;
+
+        if (esRemoto) {
+            if (sslConfigurado != null && "false".equalsIgnoreCase(sslConfigurado.trim())) {
+                if (!permitirInseguroRemoto) {
+                    throw new IllegalStateException(
+                        "[SEGURIDAD] Conexión remota a MySQL ('" + hostEfectivo + "') configurada sin cifrado (DB_SSL=false). "
+                        + "Para autorizar explícitamente una conexión insegura en redes internas de confianza, "
+                        + "configure DB_ALLOW_INSECURE_REMOTE=true en el archivo .env.");
+                } else {
+                    LOGGER.warning("[SEGURIDAD] Conexión insegura a host remoto autorizada explícitamente (DB_ALLOW_INSECURE_REMOTE=true) para: " + hostEfectivo);
+                }
+                ssl = "false";
+                sslMode = (sslModeConfigurado != null && !sslModeConfigurado.isBlank())
+                        ? sslModeConfigurado.trim().toUpperCase(java.util.Locale.ROOT) : "DISABLED";
+            } else {
+                ssl = "true";
+                if (sslModeConfigurado != null && !sslModeConfigurado.isBlank()) {
+                    sslMode = sslModeConfigurado.trim().toUpperCase(java.util.Locale.ROOT);
+                } else if (truststore != null && !truststore.isBlank()) {
+                    sslMode = "VERIFY_IDENTITY";
+                } else {
+                    sslMode = "REQUIRED";
+                    LOGGER.warning("Conexión remota a MySQL (" + hostEfectivo
+                            + ") configurada con TLS pero sin verificación de certificado (sslMode=REQUIRED). "
+                            + "Para autenticar la identidad del servidor y mitigar ataques Man-in-the-Middle (MITM), "
+                            + "configure DB_SSL_MODE=VERIFY_IDENTITY y DB_SSL_TRUSTSTORE.");
+                }
+            }
+        } else {
+            // Host local
+            if (sslConfigurado != null && "true".equalsIgnoreCase(sslConfigurado.trim())) {
+                ssl = "true";
+                sslMode = (sslModeConfigurado != null && !sslModeConfigurado.isBlank())
+                        ? sslModeConfigurado.trim().toUpperCase(java.util.Locale.ROOT) : "REQUIRED";
+            } else {
+                ssl = "false";
+                sslMode = (sslModeConfigurado != null && !sslModeConfigurado.isBlank())
+                        ? sslModeConfigurado.trim().toUpperCase(java.util.Locale.ROOT) : "DISABLED";
+            }
         }
+
+        String allowPublicKeyRetrieval = ("VERIFY_IDENTITY".equals(sslMode) || "VERIFY_CA".equals(sslMode))
+                ? "false" : "true";
 
         String connectTimeout = setting("DB_CONNECT_TIMEOUT_MS", localConfig);
         if (connectTimeout == null || connectTimeout.trim().isEmpty()) {
@@ -90,12 +134,56 @@ public class ProveedorConexionJdbc {
         }
 
         if (url == null || url.trim().isEmpty()) {
-            url = "jdbc:mysql://" + host + ":" + port + "/" + database
-                    + "?useSSL=" + ssl.trim()
-                    + "&allowPublicKeyRetrieval=true"
-                    + "&serverTimezone=UTC"
-                    + "&connectTimeout=" + connectTimeout.trim()
-                    + "&socketTimeout=" + socketTimeout.trim();
+            StringBuilder sb = new StringBuilder();
+            sb.append("jdbc:mysql://").append(host).append(":").append(port).append("/").append(database)
+              .append("?useSSL=").append(ssl)
+              .append("&sslMode=").append(sslMode)
+              .append("&allowPublicKeyRetrieval=").append(allowPublicKeyRetrieval);
+            if (truststore != null && !truststore.isBlank()) {
+                String rutaTrust = truststore.trim().startsWith("file:") ? truststore.trim() : "file:" + truststore.trim();
+                sb.append("&trustCertificateKeyStoreUrl=").append(rutaTrust);
+                if (truststorePassword != null && !truststorePassword.isBlank()) {
+                    sb.append("&trustCertificateKeyStorePassword=").append(truststorePassword.trim());
+                }
+            }
+            sb.append("&serverTimezone=UTC")
+              .append("&connectTimeout=").append(connectTimeout.trim())
+              .append("&socketTimeout=").append(socketTimeout.trim());
+            url = sb.toString();
+        } else {
+            // URL explícita (DB_URL)
+            if (esRemoto) {
+                if (url.matches("(?i).*[?&]useSSL=false.*") || url.matches("(?i).*[?&]sslMode=DISABLED.*")) {
+                    if ("true".equalsIgnoreCase(sslConfigurado)) {
+                        url = url.replaceAll("(?i)(useSSL=)false", "$1true");
+                        url = url.replaceAll("(?i)(sslMode=)DISABLED", "$1" + sslMode);
+                        LOGGER.warning("La URL remota configuraba useSSL=false / sslMode=DISABLED, pero DB_SSL=true está activo. Se forzó cifrado TLS.");
+                    } else if (!permitirInseguroRemoto) {
+                        throw new IllegalStateException(
+                            "[SEGURIDAD] La URL remota hacia '" + hostEfectivo + "' contiene useSSL=false o sslMode=DISABLED "
+                            + "sin autorización explícita. Configure DB_ALLOW_INSECURE_REMOTE=true en el archivo .env para permitirlo.");
+                    } else {
+                        LOGGER.warning("[SEGURIDAD] URL remota insegura autorizada explícitamente (DB_ALLOW_INSECURE_REMOTE=true) para: " + hostEfectivo);
+                    }
+                } else if (!url.matches("(?i).*[?&]useSSL=.*")) {
+                    url = url + (url.contains("?") ? "&" : "?") + "useSSL=" + ssl;
+                }
+                if (!url.matches("(?i).*[?&]sslMode=.*")) {
+                    url = url + (url.contains("?") ? "&" : "?") + "sslMode=" + sslMode;
+                }
+                if (truststore != null && !truststore.isBlank() && !url.contains("trustCertificateKeyStoreUrl")) {
+                    String rutaTrust = truststore.trim().startsWith("file:") ? truststore.trim() : "file:" + truststore.trim();
+                    url = url + "&trustCertificateKeyStoreUrl=" + rutaTrust;
+                    if (truststorePassword != null && !truststorePassword.isBlank() && !url.contains("trustCertificateKeyStorePassword")) {
+                        url = url + "&trustCertificateKeyStorePassword=" + truststorePassword.trim();
+                    }
+                }
+            } else {
+                // Host local
+                if (!url.matches("(?i).*[?&]useSSL=.*")) {
+                    url = url + (url.contains("?") ? "&" : "?") + "useSSL=" + ssl;
+                }
+            }
         }
 
         boolean poolHabilitado = !"false".equalsIgnoreCase(setting("DB_POOL_ENABLED", localConfig));
@@ -115,11 +203,13 @@ public class ProveedorConexionJdbc {
         int timeoutVal = parseEntero(setting("DB_POOL_VALIDATION_TIMEOUT_S", localConfig), 1);
         long connectTimeoutMs = parseLong(setting("DB_CONNECT_TIMEOUT_MS", localConfig), 5000L);
 
+        int nivelAislamientoDefault = NIVELES_AISLAMIENTO_DEFAULT.computeIfAbsent(clave, k -> Connection.TRANSACTION_READ_COMMITTED);
+
         while (true) {
             Connection existente = pool.poll();
             if (existente != null) {
                 if (esConexionValida(existente, timeoutVal)) {
-                    return envolverConexion(existente, pool, activas);
+                    return envolverConexion(existente, pool, activas, nivelAislamientoDefault);
                 } else {
                     cerrarSilenciosamente(existente);
                     activas.decrementAndGet();
@@ -133,7 +223,12 @@ public class ProveedorConexionJdbc {
                     if (activas.compareAndSet(actuales, actuales + 1)) {
                         try {
                             Connection nueva = crearConexionFisica(url, user, password, localConfig);
-                            return envolverConexion(nueva, pool, activas);
+                            try {
+                                nivelAislamientoDefault = nueva.getTransactionIsolation();
+                                NIVELES_AISLAMIENTO_DEFAULT.put(clave, nivelAislamientoDefault);
+                            } catch (Exception ignored) {
+                            }
+                            return envolverConexion(nueva, pool, activas, nivelAislamientoDefault);
                         } catch (SQLException | RuntimeException e) {
                             activas.decrementAndGet();
                             throw e;
@@ -147,7 +242,7 @@ public class ProveedorConexionJdbc {
                                     + " ms) para obtener una conexión del pool (máx: " + maxPool + ")");
                         }
                         if (esConexionValida(espera, timeoutVal)) {
-                            return envolverConexion(espera, pool, activas);
+                            return envolverConexion(espera, pool, activas, nivelAislamientoDefault);
                         } else {
                             cerrarSilenciosamente(espera);
                             activas.decrementAndGet();
@@ -180,7 +275,7 @@ public class ProveedorConexionJdbc {
         }
     }
 
-    private Connection envolverConexion(Connection fisica, BlockingQueue<Connection> pool, AtomicInteger activas) {
+    private Connection envolverConexion(Connection fisica, BlockingQueue<Connection> pool, AtomicInteger activas, int nivelAislamientoDefault) {
         InvocationHandler handler = new InvocationHandler() {
             private volatile boolean cerrado = false;
 
@@ -190,7 +285,7 @@ public class ProveedorConexionJdbc {
                 if ("close".equals(methodName)) {
                     if (!cerrado) {
                         cerrado = true;
-                        devolverAlPool(fisica, pool, activas);
+                        devolverAlPool(fisica, pool, activas, nivelAislamientoDefault);
                     }
                     return null;
                 }
@@ -235,7 +330,7 @@ public class ProveedorConexionJdbc {
         );
     }
 
-    private void devolverAlPool(Connection fisica, BlockingQueue<Connection> pool, AtomicInteger activas) {
+    private void devolverAlPool(Connection fisica, BlockingQueue<Connection> pool, AtomicInteger activas, int nivelAislamientoDefault) {
         try {
             if (fisica.isClosed()) {
                 activas.decrementAndGet();
@@ -244,6 +339,18 @@ public class ProveedorConexionJdbc {
             if (!fisica.getAutoCommit()) {
                 fisica.rollback();
                 fisica.setAutoCommit(true);
+            }
+            try {
+                if (fisica.getTransactionIsolation() != nivelAislamientoDefault) {
+                    fisica.setTransactionIsolation(nivelAislamientoDefault);
+                }
+            } catch (Exception ignored) {
+            }
+            try {
+                if (fisica.isReadOnly()) {
+                    fisica.setReadOnly(false);
+                }
+            } catch (Exception ignored) {
             }
             fisica.clearWarnings();
             pool.offer(fisica);
@@ -339,10 +446,25 @@ public class ProveedorConexionJdbc {
         if (value == null || value.trim().isEmpty()) {
             value = System.getenv(name);
         }
-        if (value == null || value.trim().isEmpty()) {
+        if ((value == null || value.trim().isEmpty()) && localConfig != null) {
             value = localConfig.getProperty(name);
         }
         return value;
+    }
+
+    /** Lee una clave con la misma precedencia de entorno que usa la conexión, incluido .env. */
+    public String settingConfigurado(String name) throws SQLException {
+        return setting(name, cargarConfiguracionLocal());
+    }
+
+    private String settingConAlias(String alias1, String alias2, Properties localConfig) {
+        String val = System.getProperty(alias1);
+        if (val == null || val.trim().isEmpty()) val = System.getProperty(alias2);
+        if (val == null || val.trim().isEmpty()) val = System.getenv(alias1);
+        if (val == null || val.trim().isEmpty()) val = System.getenv(alias2);
+        if (val == null || val.trim().isEmpty()) val = localConfig.getProperty(alias1);
+        if (val == null || val.trim().isEmpty()) val = localConfig.getProperty(alias2);
+        return val;
     }
 
     private Properties cargarConfiguracionLocal() throws SQLException {
@@ -367,5 +489,13 @@ public class ProveedorConexionJdbc {
             throw new SQLException("No se pudo leer o interpretar el archivo de configuración local", error);
         }
         return localConfig;
+    }
+
+    public static boolean esHostLocal(String host) {
+        if (host == null || host.isBlank()) {
+            return true;
+        }
+        String h = host.trim().toLowerCase(java.util.Locale.ROOT);
+        return "localhost".equals(h) || "127.0.0.1".equals(h) || "::1".equals(h) || "[::1]".equals(h);
     }
 }

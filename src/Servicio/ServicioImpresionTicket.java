@@ -311,8 +311,7 @@ public final class ServicioImpresionTicket {
 
         // 3. Fallback transparente a visor estándar
         try {
-            abrirVisor(archivoPdf);
-            return true;
+            return abrirVisor(archivoPdf);
         } catch (Exception ex) {
             LOGGER.log(Level.WARNING, "Error abriendo visor como fallback de PDF24: " + ex.getMessage(), ex);
             return false;
@@ -348,6 +347,14 @@ public final class ServicioImpresionTicket {
      * Intenta imprimir el PDF directamente a la cola de impresión de Windows mediante Apache PDFBox.
      * Es 100% silencioso y no depende de visores externos ni asociaciones de shell de Windows.
      */
+    public static boolean esImpresoraVirtual(String nombreImpresora) {
+        if (nombreImpresora == null || nombreImpresora.isBlank() || "DEFAULT".equalsIgnoreCase(nombreImpresora)) {
+            return false;
+        }
+        String lower = nombreImpresora.trim().toLowerCase();
+        return lower.contains("pdf") || lower.contains("xps") || lower.contains("onenote");
+    }
+
     public static boolean imprimirDirectoJavaSpooler(Path archivoPdf, String nombreImpresora) {
         if (archivoPdf == null || !Files.isRegularFile(archivoPdf)) {
             return false;
@@ -360,8 +367,7 @@ public final class ServicioImpresionTicket {
             }
             
             // N5: Evitar que impresoras virtuales bloqueen el hilo con un diálogo "Guardar como..."
-            String lowerName = target.getName().toLowerCase();
-            if (lowerName.contains("pdf") || lowerName.contains("xps") || lowerName.contains("onenote")) {
+            if (esImpresoraVirtual(target.getName())) {
                 LOGGER.warning(() -> "Impresora virtual detectada (" + target.getName() + "). Se aborta Java Spooler para evitar bloqueos del sistema.");
                 return false;
             }
@@ -396,6 +402,12 @@ public final class ServicioImpresionTicket {
                 return true;
             }
 
+            // Abortar invocación a PowerShell si la impresora destino coincide con impresoras virtuales
+            if (esImpresoraVirtual(nombreImpresora)) {
+                LOGGER.warning(() -> "Impresora virtual detectada (" + nombreImpresora + "). Se aborta PowerShell para evitar ventanas huérfanas.");
+                return false;
+            }
+
             // 2. Si no fue posible vía Java Spooler, intentar comando PowerShell con captura estricta de error
             if (nombreImpresora != null && !nombreImpresora.isBlank() && !"DEFAULT".equalsIgnoreCase(nombreImpresora)) {
                 Process proceso = null;
@@ -425,6 +437,12 @@ public final class ServicioImpresionTicket {
             // Se confía en el fallback de PowerShell (Paso 3) que sí permite tracking.
 
             // 4. Fallback PowerShell: imprimir a la predeterminada de Windows con trampa de error
+            String pred = obtenerImpresoraPredeterminada();
+            if (esImpresoraVirtual(pred)) {
+                LOGGER.warning(() -> "Impresora predeterminada virtual detectada (" + pred + "). Se aborta PowerShell para evitar ventanas huérfanas.");
+                return false;
+            }
+
             Process procesoFallback = null;
             try {
                 String cmd = String.format(

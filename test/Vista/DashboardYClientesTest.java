@@ -305,6 +305,11 @@ public class DashboardYClientesTest {
             this.configuracionActual = conf;
             return true;
         }
+
+        @Override
+        public boolean esUsuarioActivo(int idUsuario) {
+            return true;
+        }
     }
 
     private Sistema crearSistemaConDao(Usuario usuario, LoginDao loginDao) throws Exception {

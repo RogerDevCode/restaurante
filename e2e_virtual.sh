@@ -26,6 +26,7 @@ limpiar() {
 trap limpiar EXIT
 limpiar
 echo "== Xvfb $DISP ($GEOM) =="
+mkdir -p /tmp/opencode
 DISPLAY="$DISP" setsid nohup Xvfb "$DISP" -screen 0 "$GEOM" > /tmp/opencode/xvfb-e2e.log 2>&1 < /dev/null &
 for i in $(seq 1 20); do
     DISPLAY="$DISP" xdotool getdisplaygeometry >/dev/null 2>&1 && break

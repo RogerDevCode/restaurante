@@ -17,4 +17,5 @@ public final class ConfigClaves {
     public static final String CLIENTE_DEFAULT_NOMBRE = "cliente_predeterminado_nombre";
     public static final String CLIENTE_DEFAULT_DOCUMENTO = "cliente_predeterminado_documento";
     public static final String MESES_RETENCION_PEDIDOS = "meses_retencion_pedidos";
+    public static final String MODO_ATENCION = "modo_atencion";
 }

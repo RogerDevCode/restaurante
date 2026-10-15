@@ -17,8 +17,13 @@ public final class PoliticaAcceso {
     }
 
     private final String rol;
+    private final java.util.function.BooleanSupplier sesionActivaProveedor;
 
     public PoliticaAcceso(Usuario usuario) {
+        this(usuario, usuario != null ? usuario::isActivo : () -> true);
+    }
+
+    public PoliticaAcceso(Usuario usuario, java.util.function.BooleanSupplier sesionActivaProveedor) {
         if (usuario == null || usuario.getRol() == null || usuario.getRol().trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("Se requiere una sesión con rol válido.");
         }
@@ -26,11 +31,15 @@ public final class PoliticaAcceso {
         if (!"Administrador".equals(rol) && !"Asistente".equals(rol)) {
             throw ErrorAplicacionException.validacion("El rol de la sesión no está reconocido.");
         }
+        this.sesionActivaProveedor = sesionActivaProveedor != null ? sesionActivaProveedor : usuario::isActivo;
     }
 
     public boolean permite(Accion accion) {
         if (accion == null) {
             throw ErrorAplicacionException.validacion("La acción solicitada es obligatoria.");
+        }
+        if (sesionActivaProveedor != null && !sesionActivaProveedor.getAsBoolean()) {
+            return false;
         }
         return switch (rol) {
             case "Administrador" -> true;
@@ -43,6 +52,9 @@ public final class PoliticaAcceso {
     }
 
     public boolean esAdministrador() {
+        if (sesionActivaProveedor != null && !sesionActivaProveedor.getAsBoolean()) {
+            return false;
+        }
         return "Administrador".equals(rol);
     }
 }

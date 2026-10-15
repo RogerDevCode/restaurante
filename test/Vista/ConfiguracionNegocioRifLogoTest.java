@@ -279,6 +279,11 @@ public class ConfiguracionNegocioRifLogoTest {
             this.configuracionActual = conf;
             return true;
         }
+
+        @Override
+        public boolean esUsuarioActivo(int idUsuario) {
+            return true;
+        }
     }
 
     private Sistema crearSistema(Usuario usuario, Config config) throws Exception {

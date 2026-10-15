@@ -213,7 +213,9 @@ public class PedidosDaoTest {
 
 
     @Test
-    public void testActualizarPedidoCompleto_SimulacionUsuario() {
+    public void testActualizarPedidoCompleto_SimulacionUsuario() throws java.io.IOException {
+        org.junit.Assume.assumeTrue("Test con escrituras reales requiere BD restaurante_test local en puerto Compose 3307",
+                infraestructura.ProteccionEntornoBaseDatos.permiteEscriturasDestructivas());
         PedidosDao dao = new PedidosDao();
         // Mesas validas de sala 1 (regla 1..mesas); reintentar si esta ocupada en vivo.
         int idPedido = -1;

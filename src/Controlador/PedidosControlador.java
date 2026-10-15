@@ -47,7 +47,7 @@ public final class PedidosControlador {
     }
 
     public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedido, List<DetallePedido> detalles) {
-        exigirPermiso(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         return servicio.actualizarPedidoCompleto(idPedido, pedido, detalles);
     }
 

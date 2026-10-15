@@ -61,6 +61,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -135,6 +136,8 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JTextField txtCantidadManual;
     private int platoSeleccionadoFilaFoco = -1;
     private int idPedidoEdicion = -1;
+    private int idSalaEdicion = -1;
+    private int numMesaEdicion = -1;
     private String ultimoTextoIngresado = "";
     private boolean isUpdatingUI = false;
     private Servicio.CierreCajaServicio cierreCajaServicio;
@@ -285,7 +288,16 @@ public final class Sistema extends javax.swing.JFrame {
         tableMenu.setRowHeight(25);
         tblTemPlatos.setRowHeight(30);
         tblTemPlatos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        politicaAcceso = new PoliticaAcceso(priv);
+        politicaAcceso = new PoliticaAcceso(priv, () -> {
+            if (priv == null || priv.getId() <= 0) return true;
+            try {
+                return lgDao.esUsuarioActivo(priv.getId());
+            } catch (Exception ex) {
+                java.util.logging.Logger.getLogger(Sistema.class.getName())
+                        .warning("No se pudo verificar el estado activo del usuario #" + priv.getId() + " en la BD; acceso denegado por seguridad: " + ex.getMessage());
+                return false;
+            }
+        });
         this.categoriaControlador = categoriaControlador;
         this.favoritoControlador = favoritoControlador;
         this.cierreCajaServicio = (pedidosControlador != null && pedidosControlador.getCierreServicio() != null)
@@ -832,6 +844,7 @@ public final class Sistema extends javax.swing.JFrame {
         initPanelAtencionSplit();
         initDashboardYClientes();
         initIvaPlatosYBarraSalas();
+        initGestionUsuarios();
 
         if (politicaAcceso.esAdministrador() && panelDashboard != null) {
             int idxDashboard = jTabbedPane1.indexOfComponent(panelDashboard);
@@ -993,17 +1006,40 @@ public final class Sistema extends javax.swing.JFrame {
         comp.setForeground(COLOR_TEXTO_INPUT);
     }
 
-    /** Tabla de usuarios: las 4 columnas con el mismo ancho, repartiendose el 100 % disponible. */
+    /** Tabla de usuarios: 5 columnas repartiendose el ancho disponible con proporciones legibles. */
     private void configurarTablaUsuariosIgualitaria() {
         if (TableUsuarios == null || TableUsuarios.getColumnModel().getColumnCount() == 0) {
             return;
         }
         TableUsuarios.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
-        for (int i = 0; i < TableUsuarios.getColumnModel().getColumnCount(); i++) {
-            // Orden: maximo primero (setPreferredWidth recorta contra el maximo vigente).
-            TableUsuarios.getColumnModel().getColumn(i).setMaxWidth(Integer.MAX_VALUE);
-            TableUsuarios.getColumnModel().getColumn(i).setMinWidth(70);
-            TableUsuarios.getColumnModel().getColumn(i).setPreferredWidth(150);
+        int cols = TableUsuarios.getColumnModel().getColumnCount();
+        if (cols >= 5) {
+            TableUsuarios.getColumnModel().getColumn(0).setMaxWidth(80);
+            TableUsuarios.getColumnModel().getColumn(0).setMinWidth(50);
+            TableUsuarios.getColumnModel().getColumn(0).setPreferredWidth(60);
+
+            TableUsuarios.getColumnModel().getColumn(1).setMaxWidth(Integer.MAX_VALUE);
+            TableUsuarios.getColumnModel().getColumn(1).setMinWidth(90);
+            TableUsuarios.getColumnModel().getColumn(1).setPreferredWidth(140);
+
+            TableUsuarios.getColumnModel().getColumn(2).setMaxWidth(Integer.MAX_VALUE);
+            TableUsuarios.getColumnModel().getColumn(2).setMinWidth(110);
+            TableUsuarios.getColumnModel().getColumn(2).setPreferredWidth(160);
+
+            TableUsuarios.getColumnModel().getColumn(3).setMaxWidth(160);
+            TableUsuarios.getColumnModel().getColumn(3).setMinWidth(90);
+            TableUsuarios.getColumnModel().getColumn(3).setPreferredWidth(110);
+
+            TableUsuarios.getColumnModel().getColumn(4).setMaxWidth(130);
+            TableUsuarios.getColumnModel().getColumn(4).setMinWidth(80);
+            TableUsuarios.getColumnModel().getColumn(4).setPreferredWidth(100);
+        } else {
+            for (int i = 0; i < cols; i++) {
+                // Orden: maximo primero (setPreferredWidth recorta contra el maximo vigente).
+                TableUsuarios.getColumnModel().getColumn(i).setMaxWidth(Integer.MAX_VALUE);
+                TableUsuarios.getColumnModel().getColumn(i).setMinWidth(70);
+                TableUsuarios.getColumnModel().getColumn(i).setPreferredWidth(150);
+            }
         }
     }
 
@@ -1750,6 +1786,28 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private boolean autorizar(PoliticaAcceso.Accion accion) {
+        if (usuarioActual != null && usuarioActual.getId() > 0) {
+            boolean activo;
+            try {
+                activo = lgDao.esUsuarioActivo(usuarioActual.getId());
+            } catch (Exception ex) {
+                java.util.logging.Logger.getLogger(Sistema.class.getName())
+                        .warning("No se pudo verificar el estado activo del usuario #" + usuarioActual.getId() + " en la BD; acceso denegado por seguridad: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this,
+                        "No se pudo verificar el estado de su cuenta con la base de datos por un error de conexión.\nPor seguridad, la acción ha sido denegada.",
+                        "Error de verificación", JOptionPane.WARNING_MESSAGE);
+                return false;
+            }
+            if (!activo) {
+                usuarioActual.setActivo(false);
+                JOptionPane.showMessageDialog(this,
+                        "Tu cuenta ha sido desactivada por un administrador. La sesión ha sido revocada.",
+                        "Acceso revocado", JOptionPane.ERROR_MESSAGE);
+                this.dispose();
+                restaurante.Restaurante.lanzarLogin();
+                return false;
+            }
+        }
         if (politicaAcceso.permite(accion)) {
             return true;
         }
@@ -2026,11 +2084,11 @@ public final class Sistema extends javax.swing.JFrame {
         btnAtencionDirecta.setBackground(java.awt.Color.BLACK);
         btnAtencionDirecta.setForeground(java.awt.Color.WHITE);
         btnAtencionDirecta.setIcon(iconoBarra("/Img/mesa.png"));
-        btnAtencionDirecta.setText("Atención directa");
+        btnAtencionDirecta.setText("Atn. directa");
         btnAtencionDirecta.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         btnAtencionDirecta.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnAtencionDirecta.setFocusable(false);
-        btnAtencionDirecta.setToolTipText("Acceso rápido a atención de mesas");
+        btnAtencionDirecta.setToolTipText("Atención directa: Acceso rápido a atención de mesas");
         btnAtencionDirecta.addActionListener(e -> abrirAtencionDirectaSegunModo());
 
         btnDashboard = new javax.swing.JButton("Dashboard");
@@ -3029,21 +3087,78 @@ public final class Sistema extends javax.swing.JFrame {
 
             },
             new String [] {
-                "Id", "Nombre", "Correo", "Rol"
+                "Id", "Nombre", "Correo", "Rol", "Estado"
             }
-        ));
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        });
         TableUsuarios.setRowHeight(23);
         jScrollPane6.setViewportView(TableUsuarios);
         if (TableUsuarios.getColumnModel().getColumnCount() > 0) {
             TableUsuarios.getColumnModel().getColumn(0).setMinWidth(50);
-            TableUsuarios.getColumnModel().getColumn(0).setPreferredWidth(50);
+            TableUsuarios.getColumnModel().getColumn(0).setPreferredWidth(60);
             TableUsuarios.getColumnModel().getColumn(0).setMaxWidth(80);
-            TableUsuarios.getColumnModel().getColumn(3).setMinWidth(150);
-            TableUsuarios.getColumnModel().getColumn(3).setPreferredWidth(150);
-            TableUsuarios.getColumnModel().getColumn(3).setMaxWidth(200);
+            TableUsuarios.getColumnModel().getColumn(3).setMinWidth(110);
+            TableUsuarios.getColumnModel().getColumn(3).setPreferredWidth(130);
+            TableUsuarios.getColumnModel().getColumn(3).setMaxWidth(160);
+            TableUsuarios.getColumnModel().getColumn(4).setMinWidth(90);
+            TableUsuarios.getColumnModel().getColumn(4).setPreferredWidth(100);
+            TableUsuarios.getColumnModel().getColumn(4).setMaxWidth(120);
         }
 
-        jPanel12.add(jScrollPane6, java.awt.BorderLayout.CENTER);
+        javax.swing.JPanel panelTablaUsuariosConAcciones = new javax.swing.JPanel(new java.awt.BorderLayout(0, 10));
+        panelTablaUsuariosConAcciones.setOpaque(false);
+        panelTablaUsuariosConAcciones.add(jScrollPane6, java.awt.BorderLayout.CENTER);
+
+        javax.swing.JPanel barraAccionesUsuarios = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 5));
+        barraAccionesUsuarios.setOpaque(false);
+
+        btnEstadoUsuario = new javax.swing.JButton("Desactivar");
+        btnEstadoUsuario.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        btnEstadoUsuario.setEnabled(false);
+        btnEstadoUsuario.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnEstadoUsuario.setToolTipText("Desactiva o reactiva la cuenta de usuario seleccionada");
+        btnEstadoUsuario.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                alternarEstadoUsuarioSeleccionado();
+            }
+        });
+
+        btnEliminarUsuario = new javax.swing.JButton("Eliminar");
+        btnEliminarUsuario.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        btnEliminarUsuario.setForeground(java.awt.Color.WHITE);
+        btnEliminarUsuario.setBackground(COLOR_PELIGRO);
+        btnEliminarUsuario.setContentAreaFilled(true);
+        btnEliminarUsuario.setOpaque(true);
+        btnEliminarUsuario.setEnabled(false);
+        btnEliminarUsuario.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnEliminarUsuario.setToolTipText("Elimina permanentemente la cuenta de usuario seleccionada");
+        btnEliminarUsuario.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                eliminarUsuarioSeleccionado();
+            }
+        });
+
+        btnCambiarClaveUsuario = new javax.swing.JButton("Cambiar contraseña");
+        btnCambiarClaveUsuario.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        btnCambiarClaveUsuario.setEnabled(false);
+        btnCambiarClaveUsuario.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnCambiarClaveUsuario.setToolTipText("Cambia la contraseña de la cuenta seleccionada");
+        btnCambiarClaveUsuario.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cambiarContrasenaUsuarioSeleccionado();
+            }
+        });
+
+        barraAccionesUsuarios.add(btnCambiarClaveUsuario);
+        barraAccionesUsuarios.add(btnEstadoUsuario);
+        barraAccionesUsuarios.add(btnEliminarUsuario);
+        panelTablaUsuariosConAcciones.add(barraAccionesUsuarios, java.awt.BorderLayout.SOUTH);
+
+        jPanel12.add(panelTablaUsuariosConAcciones, java.awt.BorderLayout.CENTER);
 
         jPanel15.setBackground(new java.awt.Color(204, 204, 204));
         jPanel15.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
@@ -3067,7 +3182,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         txtPass.setBackground(new java.awt.Color(204, 204, 204));
         txtPass.setBorder(null);
-        jPanel15.add(txtPass, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 200, 300, 30));
+        jPanel15.add(ControlVisibilidadPassword.crearPanelPassword(txtPass, new java.awt.Color(204, 204, 204)), new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 200, 300, 30));
 
         btnIniciar.setBackground(new java.awt.Color(0, 0, 0));
         btnIniciar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
@@ -3420,6 +3535,7 @@ public final class Sistema extends javax.swing.JFrame {
             if (cbModoSalidaConfig != null && cbModoSalidaConfig.getSelectedItem() instanceof Modelo.ModoSalidaTicket m) {
                 candidata.setModoSalidaTickets(m);
             }
+            candidata.setModoAtencion(modoAtencionActual);
             try {
                 if (lgDao.ModificarDatos(candidata)) {
                     conf = candidata;
@@ -3428,6 +3544,7 @@ public final class Sistema extends javax.swing.JFrame {
                     Servicio.ServicioImpresionTicket.setImpresoraGlobal(conf.getImpresoraTickets());
                     cambiarModoSalidaGlobal(conf.getModoSalidaTickets());
                     actualizarEstadoTasaUI();
+                    actualizarTextoCheckboxIvaPlato();
                     // Sin notificar(CONFIG): el unico suscriptor seria esta misma vista y su
                     // recarga async pisaria ediciones posteriores al guardado. Los efectos ya
                     // se aplicaron arriba de forma sincrona. Se invalida igual por seguridad.
@@ -3459,6 +3576,7 @@ public final class Sistema extends javax.swing.JFrame {
         copia.setImprimirLogoTicket(original.isImprimirLogoTicket());
         copia.setImpresoraTickets(original.getImpresoraTickets());
         copia.setModoSalidaTickets(original.getModoSalidaTickets());
+        copia.setModoAtencion(original.getModoAtencion());
         return copia;
     }
 
@@ -3490,12 +3608,15 @@ public final class Sistema extends javax.swing.JFrame {
     }//GEN-LAST:event_btnPdfPedidoActionPerformed
 
     private void btnModificarPedidoActionPerformed(java.awt.event.ActionEvent evt) {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
         if (ped == null || ped.getId() <= 0) {
             mostrarAvisoEnBanda("Selecciona un pedido para modificar");
             return;
         }
         LimpiarTableMenu();
         idPedidoEdicion = ped.getId();
+        idSalaEdicion = ped.getId_sala();
+        numMesaEdicion = ped.getNum_mesa();
         txtTempIdSala.setText(String.valueOf(ped.getId_sala()));
         txtTempNumMesa.setText(String.valueOf(ped.getNum_mesa()));
         
@@ -3540,7 +3661,10 @@ public final class Sistema extends javax.swing.JFrame {
             O[4] = String.format(java.util.Locale.US, "%.2f", subtotal);
             O[5] = det.getComentario();
             if (tieneColumnaIva) {
-                O[6] = aplicaIva ? "Sí (16%)" : "Exento (0%)";
+                BigDecimal ivaRef = (ped != null && ped.getIvaPorcentaje() != null)
+                        ? ped.getIvaPorcentaje()
+                        : ((conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : null);
+                O[6] = formatearEtiquetaIva(aplicaIva, ivaRef);
             }
             tmp.addRow(O);
         }
@@ -3725,11 +3849,18 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void btnIniciarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnIniciarActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_USUARIOS)) return;
-        if (txtNombre.getText().trim().isEmpty() || txtCorreo.getText().trim().isEmpty() || txtPass.getPassword().length == 0) {
-            if (txtNombre.getText().trim().isEmpty()) mostrarAlertaCampo(txtNombre, "El nombre es obligatorio.");
-            else if (txtCorreo.getText().trim().isEmpty()) mostrarAlertaCampo(txtCorreo, "El correo es obligatorio.");
-            else mostrarAlertaCampo(txtPass, "La contraseña es obligatoria.");
-        } else {
+        char[] passChars = txtPass.getPassword();
+        try {
+            if (txtNombre.getText().trim().isEmpty() || txtCorreo.getText().trim().isEmpty() || passChars.length == 0 || LoginDao.esBlanco(passChars)) {
+                if (txtNombre.getText().trim().isEmpty()) mostrarAlertaCampo(txtNombre, "El nombre es obligatorio.");
+                else if (txtCorreo.getText().trim().isEmpty()) mostrarAlertaCampo(txtCorreo, "El correo es obligatorio.");
+                else mostrarAlertaCampo(txtPass, "La contraseña es obligatoria.");
+                return;
+            }
+            if (LoginDao.contarLongitudSinEspacios(passChars) < LoginDao.LONGITUD_MINIMA_CONTRASENA) {
+                mostrarAlertaCampo(txtPass, "La contraseña debe tener al menos " + LoginDao.LONGITUD_MINIMA_CONTRASENA + " caracteres.");
+                return;
+            }
             Usuario lg = new Usuario();
             String correo;
             try {
@@ -3738,7 +3869,7 @@ public final class Sistema extends javax.swing.JFrame {
                 mostrarAlertaCampo(txtCorreo, ex.getMessage());
                 return;
             }
-            String pass = String.valueOf(txtPass.getPassword());
+            String pass = new String(passChars);
             String nom = txtNombre.getText();
             String rol = cbxRol.getSelectedItem().toString();
             lg.setNombre(nom);
@@ -3750,6 +3881,9 @@ public final class Sistema extends javax.swing.JFrame {
                     mostrarAvisoEnBanda("Usuario registrado");
                     ListarUsuarios();
                     RefrescoVistas.notificar(RefrescoVistas.USUARIOS);
+                    txtPass.setText("");
+                    txtNombre.setText("");
+                    txtCorreo.setText("");
                 } else {
                     JOptionPane.showMessageDialog(this, "No se pudo registrar el usuario.", "Error al registrar usuario", JOptionPane.ERROR_MESSAGE);
                 }
@@ -3757,9 +3891,17 @@ public final class Sistema extends javax.swing.JFrame {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Error al registrar usuario", JOptionPane.ERROR_MESSAGE);
             } catch (ErrorAplicacionException ex) {
                 String mensaje = ex.getMessage() != null ? ex.getMessage() : "No se pudo validar el usuario.";
-                mostrarAlertaCampo(mensaje.toLowerCase(java.util.Locale.ROOT).contains("nombre de usuario")
-                        ? txtNombre : txtCorreo, mensaje);
+                String lower = mensaje.toLowerCase(java.util.Locale.ROOT);
+                if (lower.contains("nombre")) {
+                    mostrarAlertaCampo(txtNombre, mensaje);
+                } else if (lower.contains("contraseña") || lower.contains("clave")) {
+                    mostrarAlertaCampo(txtPass, mensaje);
+                } else {
+                    mostrarAlertaCampo(txtCorreo, mensaje);
+                }
             }
+        } finally {
+            java.util.Arrays.fill(passChars, '\0');
         }
     }//GEN-LAST:event_btnIniciarActionPerformed
 
@@ -3834,7 +3976,7 @@ public final class Sistema extends javax.swing.JFrame {
             O[4] = lista.get(5);
             O[5] = "";
             if (tieneColumnaIva) {
-                O[6] = aplicaIva ? "Sí (16%)" : "Exento (0%)";
+                O[6] = formatearEtiquetaIva(aplicaIva);
             }
             tmp.addRow(O);
             tableMenu.setModel(tmp);
@@ -3863,11 +4005,33 @@ public final class Sistema extends javax.swing.JFrame {
             boolean eraEdicion = idPedidoEdicion > 0;
             boolean esPedidoRapido = modoPedidoRapido;
             String numMesa = esPedidoRapido ? "" : (txtTempNumMesa != null ? txtTempNumMesa.getText().trim() : "");
+            String idSalaStr = esPedidoRapido ? "" : (txtTempIdSala != null ? txtTempIdSala.getText().trim() : "");
+
+            if (!eraEdicion && !esPedidoRapido && !numMesa.isEmpty() && !idSalaStr.isEmpty()) {
+                try {
+                    int numMesaInt = Integer.parseInt(numMesa);
+                    int idSalaInt = Integer.parseInt(idSalaStr);
+                    if (numMesaInt > 0 && idSalaInt > 0) {
+                        int pedidoActivo = pedidosControlador.buscarPedidoPendiente(numMesaInt, idSalaInt);
+                        if (pedidoActivo > 0) {
+                            javax.swing.JOptionPane.showMessageDialog(this,
+                                    "La mesa " + numMesa + " ya posee una comanda activa (#" + pedidoActivo + ").\n"
+                                    + "Debes pulsar 'Agregar Productos' para complementarla o finalizarla antes de abrir otra.",
+                                    "Mesa Ocupada", javax.swing.JOptionPane.WARNING_MESSAGE);
+                            return;
+                        }
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
             try {
                 int idPedidoRegistrado = -1;
                 if (eraEdicion) {
                     actualizarPedidoEnEdicion();
                     idPedidoEdicion = -1;
+                    idSalaEdicion = -1;
+                    numMesaEdicion = -1;
                     btnGenerarPedido.setText("Realizar Pedido");
                 } else {
                     idPedidoRegistrado = registrarPedidoCompleto();
@@ -4421,6 +4585,9 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnGenerarPedido;
     private javax.swing.JButton btnGuardarPlato;
     private javax.swing.JButton btnIniciar;
+    public javax.swing.JButton btnCambiarClaveUsuario;
+    public javax.swing.JButton btnEstadoUsuario;
+    public javax.swing.JButton btnEliminarUsuario;
     private javax.swing.JButton btnNuevoPlato;
     private javax.swing.JButton btnNuevoSala;
     private javax.swing.JButton btnPdfPedido;
@@ -4930,6 +5097,8 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void LimpiarTableMenu() {
         idPedidoEdicion = -1;
+        idSalaEdicion = -1;
+        numMesaEdicion = -1;
         if (btnGenerarPedido != null) btnGenerarPedido.setText("Realizar Pedido");
         tmp = (DefaultTableModel) tableMenu.getModel();
         tmp.setRowCount(0);
@@ -4995,6 +5164,7 @@ public final class Sistema extends javax.swing.JFrame {
         }
         if (txtIvaConfig != null) {
             txtIvaConfig.setText(conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje().toPlainString() : "16.00");
+            actualizarTextoCheckboxIvaPlato();
         }
         if (txtRutaLogo != null) {
             txtRutaLogo.setText(conf.getLogoPath() != null ? conf.getLogoPath() : "");
@@ -5019,6 +5189,9 @@ public final class Sistema extends javax.swing.JFrame {
         }
         if (conf.getModoSalidaTickets() != null) {
             cambiarModoSalidaGlobal(conf.getModoSalidaTickets());
+        }
+        if (conf.getModoAtencion() != null) {
+            sincronizarCombosModo(conf.getModoAtencion());
         }
         actualizarNombreRestaurante(conf.getNombre());
         actualizarLogoEIcono(conf.getLogoPath());
@@ -6168,7 +6341,10 @@ public final class Sistema extends javax.swing.JFrame {
         dialogoClave.add(botonesClave, java.awt.BorderLayout.SOUTH);
         java.util.concurrent.atomic.AtomicBoolean claveConfirmada = new java.util.concurrent.atomic.AtomicBoolean();
         confirmarClave.addActionListener(e -> {
-            if (pwd.getPassword().length == 0) {
+            char[] pass = pwd.getPassword();
+            boolean vacio = pass.length == 0 || LoginDao.esBlanco(pass);
+            java.util.Arrays.fill(pass, '\0');
+            if (vacio) {
                 alertaClave.setText("La contraseña es obligatoria.");
                 pwd.setBorder(javax.swing.BorderFactory.createLineBorder(COLOR_PELIGRO, 2));
                 pwd.requestFocusInWindow();
@@ -6177,14 +6353,21 @@ public final class Sistema extends javax.swing.JFrame {
             claveConfirmada.set(true);
             dialogoClave.dispose();
         });
-        cancelarClave.addActionListener(e -> dialogoClave.dispose());
+        cancelarClave.addActionListener(e -> {
+            pwd.setText("");
+            dialogoClave.dispose();
+        });
         dialogoClave.getRootPane().setDefaultButton(confirmarClave);
         dialogoClave.pack();
         dialogoClave.setLocationRelativeTo(this);
         dialogoClave.setVisible(true);
-        if (!claveConfirmada.get()) return;
+        if (!claveConfirmada.get()) {
+            pwd.setText("");
+            return;
+        }
 
         char[] claveChars = pwd.getPassword();
+        pwd.setText("");
         try {
             AutenticacionServicio auth = new AutenticacionServicio(lgDao);
             String correoAdmin = (usuarioActual != null && usuarioActual.getCorreo() != null)
@@ -6970,15 +7153,282 @@ public final class Sistema extends javax.swing.JFrame {
     private void mostrarUsuariosEnTabla(List<Usuario> Listar) {
         modelo = (DefaultTableModel) TableUsuarios.getModel();
         modelo.setRowCount(0);
-        Object[] ob = new Object[4];
+        Object[] ob = new Object[5];
         for (int i = 0; i < Listar.size(); i++) {
-            ob[0] = Listar.get(i).getId();
-            ob[1] = Listar.get(i).getNombre();
-            ob[2] = Listar.get(i).getCorreo();
-            ob[3] = Listar.get(i).getRol();
+            Usuario u = Listar.get(i);
+            ob[0] = u.getId();
+            ob[1] = u.getNombre();
+            ob[2] = u.getCorreo();
+            ob[3] = u.getRol();
+            ob[4] = u.isActivo() ? "Activo" : "Inactivo";
             modelo.addRow(ob);
         }
         colorHeader(TableUsuarios);
+        actualizarEstadoBotonesUsuarios();
+    }
+
+    private void initGestionUsuarios() {
+        if (TableUsuarios == null) return;
+
+        TableUsuarios.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                actualizarEstadoBotonesUsuarios();
+            }
+        });
+
+        if (TableUsuarios.getColumnModel().getColumnCount() >= 5) {
+            TableUsuarios.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
+                @Override
+                public java.awt.Component getTableCellRendererComponent(
+                        JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                    java.awt.Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                    if (!isSelected) {
+                        if ("Inactivo".equalsIgnoreCase(String.valueOf(value))) {
+                            c.setForeground(new java.awt.Color(180, 40, 40));
+                            c.setFont(c.getFont().deriveFont(java.awt.Font.ITALIC | java.awt.Font.BOLD));
+                        } else {
+                            c.setForeground(new java.awt.Color(20, 120, 40));
+                            c.setFont(c.getFont().deriveFont(java.awt.Font.BOLD));
+                        }
+                    }
+                    setHorizontalAlignment(CENTER);
+                    return c;
+                }
+            });
+        }
+
+        javax.swing.JPopupMenu popupUsuarios = new javax.swing.JPopupMenu();
+        javax.swing.JMenuItem itemCambiarClave = new javax.swing.JMenuItem("Cambiar contraseña");
+        itemCambiarClave.addActionListener(e -> cambiarContrasenaUsuarioSeleccionado());
+        javax.swing.JMenuItem itemCambiarEstado = new javax.swing.JMenuItem("Desactivar cuenta");
+        itemCambiarEstado.addActionListener(e -> alternarEstadoUsuarioSeleccionado());
+        javax.swing.JMenuItem itemEliminar = new javax.swing.JMenuItem("Eliminar cuenta");
+        itemEliminar.addActionListener(e -> eliminarUsuarioSeleccionado());
+        popupUsuarios.add(itemCambiarClave);
+        popupUsuarios.add(itemCambiarEstado);
+        popupUsuarios.add(itemEliminar);
+
+        TableUsuarios.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                evaluarPopup(e);
+            }
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent e) {
+                evaluarPopup(e);
+            }
+            private void evaluarPopup(java.awt.event.MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    int r = TableUsuarios.rowAtPoint(e.getPoint());
+                    if (r >= 0 && r < TableUsuarios.getRowCount()) {
+                        TableUsuarios.setRowSelectionInterval(r, r);
+                    } else {
+                        TableUsuarios.clearSelection();
+                    }
+                    actualizarEstadoBotonesUsuarios();
+                    if (TableUsuarios.getSelectedRow() >= 0 && politicaAcceso != null && politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS)) {
+                        int sel = TableUsuarios.getSelectedRow();
+                        Object est = TableUsuarios.getValueAt(sel, 4);
+                        boolean act = est == null || !"Inactivo".equalsIgnoreCase(est.toString());
+                        itemCambiarEstado.setText(act ? "Desactivar cuenta" : "Reactivar cuenta");
+                        popupUsuarios.show(e.getComponent(), e.getX(), e.getY());
+                    }
+                }
+            }
+        });
+    }
+
+    public void actualizarEstadoBotonesUsuarios() {
+        if (btnEstadoUsuario == null || btnEliminarUsuario == null || TableUsuarios == null) {
+            return;
+        }
+        int fila = TableUsuarios.getSelectedRow();
+        boolean hayFila = fila >= 0 && fila < TableUsuarios.getRowCount();
+        boolean puedeGestionar = politicaAcceso != null && politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS);
+        if (btnCambiarClaveUsuario != null) {
+            btnCambiarClaveUsuario.setEnabled(puedeGestionar && hayFila);
+        }
+        if (!puedeGestionar || !hayFila) {
+            btnEstadoUsuario.setEnabled(false);
+            btnEliminarUsuario.setEnabled(false);
+            btnEstadoUsuario.setText("Desactivar");
+            return;
+        }
+        Object estadoObj = TableUsuarios.getValueAt(fila, 4);
+        boolean estaActivo = estadoObj == null || !"Inactivo".equalsIgnoreCase(estadoObj.toString());
+        btnEstadoUsuario.setEnabled(true);
+        btnEstadoUsuario.setText(estaActivo ? "Desactivar" : "Reactivar");
+        btnEliminarUsuario.setEnabled(true);
+    }
+
+    public void cambiarContrasenaUsuarioSeleccionado() {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_USUARIOS)) return;
+        int fila = TableUsuarios.getSelectedRow();
+        if (fila < 0 || fila >= TableUsuarios.getRowCount()) {
+            JOptionPane.showMessageDialog(this, "Selecciona un usuario de la tabla.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int idUsuario = Integer.parseInt(TableUsuarios.getValueAt(fila, 0).toString());
+        String nombre = TableUsuarios.getValueAt(fila, 1).toString();
+
+        JPasswordField pwd = new JPasswordField(20);
+        JPasswordField pwdConfirm = new JPasswordField(20);
+        JPanel panel = new JPanel(new GridLayout(0, 1, 5, 5));
+        panel.add(new JLabel("Nueva contraseña para '" + nombre + "' (mínimo " + LoginDao.LONGITUD_MINIMA_CONTRASENA + " caracteres):"));
+        panel.add(ControlVisibilidadPassword.crearPanelPassword(pwd, null));
+        panel.add(new JLabel("Confirmar contraseña:"));
+        panel.add(ControlVisibilidadPassword.crearPanelPassword(pwdConfirm, null));
+
+        int opt = JOptionPane.showConfirmDialog(this, panel, "Cambiar contraseña de usuario",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (opt != JOptionPane.OK_OPTION) {
+            pwd.setText("");
+            pwdConfirm.setText("");
+            return;
+        }
+
+        char[] pass1 = pwd.getPassword();
+        char[] pass2 = pwdConfirm.getPassword();
+        pwd.setText("");
+        pwdConfirm.setText("");
+
+        try {
+            if (pass1.length == 0 || LoginDao.esBlanco(pass1)) {
+                JOptionPane.showMessageDialog(this, "La contraseña es obligatoria.", "Validación", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            if (LoginDao.contarLongitudSinEspacios(pass1) < LoginDao.LONGITUD_MINIMA_CONTRASENA) {
+                JOptionPane.showMessageDialog(this, "La contraseña debe tener al menos " + LoginDao.LONGITUD_MINIMA_CONTRASENA + " caracteres.", "Validación", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            if (!java.util.Arrays.equals(pass1, pass2)) {
+                JOptionPane.showMessageDialog(this, "Las contraseñas no coinciden.", "Validación", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            try {
+                boolean exito = lgDao.cambiarContrasena(idUsuario, pass1);
+                if (exito) {
+                    mostrarAvisoEnBanda("Contraseña actualizada con éxito para " + nombre);
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo actualizar la contraseña.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (ErrorAplicacionException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Validación de contraseña", JOptionPane.WARNING_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al actualizar contraseña: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } finally {
+            java.util.Arrays.fill(pass1, '\0');
+            java.util.Arrays.fill(pass2, '\0');
+        }
+    }
+
+    public void alternarEstadoUsuarioSeleccionado() {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_USUARIOS)) return;
+        int fila = TableUsuarios.getSelectedRow();
+        if (fila < 0 || fila >= TableUsuarios.getRowCount()) {
+            JOptionPane.showMessageDialog(this, "Selecciona un usuario de la tabla.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int idUsuario = Integer.parseInt(TableUsuarios.getValueAt(fila, 0).toString());
+        String nombre = TableUsuarios.getValueAt(fila, 1).toString();
+        Object estadoObj = TableUsuarios.getValueAt(fila, 4);
+        boolean estaActivo = estadoObj == null || !"Inactivo".equalsIgnoreCase(estadoObj.toString());
+
+        String accion = estaActivo ? "desactivar" : "reactivar";
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "¿Estás seguro de que deseas " + accion + " al usuario '" + nombre + "'?",
+                "Confirmar " + accion,
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            boolean exito = estaActivo ? lgDao.desactivarUsuario(idUsuario) : lgDao.reactivarUsuario(idUsuario);
+            if (exito) {
+                mostrarAvisoEnBanda("Usuario " + (estaActivo ? "desactivado" : "reactivado") + " con éxito");
+                ListarUsuarios();
+                RefrescoVistas.notificar(RefrescoVistas.USUARIOS);
+            } else {
+                JOptionPane.showMessageDialog(this, "No se pudo " + accion + " el usuario.", "Operación no realizada", JOptionPane.WARNING_MESSAGE);
+            }
+        } catch (ErrorAplicacionException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso de seguridad", JOptionPane.WARNING_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al " + accion + " usuario: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void eliminarUsuarioSeleccionado() {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_USUARIOS)) return;
+        int fila = TableUsuarios.getSelectedRow();
+        if (fila < 0 || fila >= TableUsuarios.getRowCount()) {
+            JOptionPane.showMessageDialog(this, "Selecciona un usuario de la tabla.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int idUsuario = Integer.parseInt(TableUsuarios.getValueAt(fila, 0).toString());
+        String nombre = TableUsuarios.getValueAt(fila, 1).toString();
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "¿Estás seguro de que deseas ELIMINAR permanentemente al usuario '" + nombre + "'?\nEsta acción no se puede deshacer.",
+                "Confirmar eliminación de usuario",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            boolean exito = lgDao.eliminarUsuario(idUsuario);
+            if (exito) {
+                mostrarAvisoEnBanda("Usuario eliminado con éxito");
+                ListarUsuarios();
+                RefrescoVistas.notificar(RefrescoVistas.USUARIOS);
+            } else {
+                JOptionPane.showMessageDialog(this, "No se pudo eliminar el usuario.", "Operación no realizada", JOptionPane.WARNING_MESSAGE);
+            }
+        } catch (ErrorAplicacionException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso de seguridad", JOptionPane.WARNING_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al eliminar usuario: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public String formatearEtiquetaIva(boolean aplicaIva, BigDecimal ivaPorcentaje) {
+        if (!aplicaIva) {
+            return "Exento (0%)";
+        }
+        BigDecimal pct = ivaPorcentaje != null ? ivaPorcentaje
+                : (conf != null && conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new BigDecimal("16.00"));
+        String pctStr = (pct.scale() <= 0 || pct.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0)
+                ? String.valueOf(pct.intValue())
+                : pct.stripTrailingZeros().toPlainString();
+        return "Sí (" + pctStr + "%)";
+    }
+
+    public String formatearEtiquetaIva(boolean aplicaIva) {
+        return formatearEtiquetaIva(aplicaIva, null);
+    }
+
+    public String textoCheckboxIvaPlato() {
+        BigDecimal pct = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
+        String pctStr = (pct.scale() <= 0 || pct.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0)
+                ? String.valueOf(pct.intValue())
+                : pct.stripTrailingZeros().toPlainString();
+        return "Aplica IVA (" + pctStr + "%)";
+    }
+
+    public void actualizarTextoCheckboxIvaPlato() {
+        if (chkAplicaIvaPlato != null) {
+            chkAplicaIvaPlato.setText(textoCheckboxIvaPlato());
+        }
     }
 
     private void mostrarErrorCargaUsuarios(Throwable error) {
@@ -7228,7 +7678,7 @@ public final class Sistema extends javax.swing.JFrame {
     private void initIvaPlatosYBarraSalas() {
         // 1. Checkbox Aplica IVA en formulario de Platos (Tab 2)
         if (jPanel11 != null) {
-            chkAplicaIvaPlato = new javax.swing.JCheckBox("Aplica IVA (16%)", true);
+            chkAplicaIvaPlato = new javax.swing.JCheckBox(textoCheckboxIvaPlato(), true);
             chkAplicaIvaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
             chkAplicaIvaPlato.setBackground(new java.awt.Color(204, 204, 204));
             chkAplicaIvaPlato.setOpaque(false);
@@ -7652,19 +8102,27 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void initConmutadorModosAtencion() {
+        int idxInicial = switch (modoAtencionActual != null ? modoAtencionActual : "OPCION_B") {
+            case "OPCION_B" -> 0;
+            case "OPCION_A" -> 1;
+            case "OPCION_C" -> 2;
+            case "CLASICO" -> 3;
+            default -> 0;
+        };
+
         cbModoAtencion = new javax.swing.JComboBox<>(NOMBRES_MODOS_ATENCION);
         cbModoAtencion.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         cbModoAtencion.setBackground(java.awt.Color.WHITE);
         cbModoAtencion.setFocusable(false);
         cbModoAtencion.setToolTipText("Selecciona el modo de atención directa para mesas");
-        cbModoAtencion.setSelectedIndex(0);
+        cbModoAtencion.setSelectedIndex(idxInicial);
 
         cbModoAtencionGlobal = new javax.swing.JComboBox<>(NOMBRES_MODOS_ATENCION);
         cbModoAtencionGlobal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         cbModoAtencionGlobal.setBackground(java.awt.Color.WHITE);
         cbModoAtencionGlobal.setFocusable(false);
         cbModoAtencionGlobal.setToolTipText("Modo de atención activo para mesas");
-        cbModoAtencionGlobal.setSelectedIndex(0);
+        cbModoAtencionGlobal.setSelectedIndex(idxInicial);
 
         cbModoAtencion.addActionListener(e -> {
             if (cambiandoModoProgramaticamente) return;
@@ -7708,10 +8166,24 @@ public final class Sistema extends javax.swing.JFrame {
             if (cbModoAtencionGlobal != null && cbModoAtencionGlobal.getSelectedIndex() != nuevoIndice) {
                 cbModoAtencionGlobal.setSelectedIndex(nuevoIndice);
             }
+            guardarModoAtencionPersistente(modoAtencionActual);
         } finally {
             cambiandoModoProgramaticamente = false;
         }
         abrirAtencionDirectaSegunModo();
+    }
+
+    private void guardarModoAtencionPersistente(String modo) {
+        if (conf != null) {
+            conf.setModoAtencion(modo);
+        }
+        Servicio.ConcurrenciaServicio.ejecutarAsync(
+                () -> lgDao.actualizarModoAtencion(modo),
+                exito -> java.util.logging.Logger.getLogger(Sistema.class.getName())
+                        .log(java.util.logging.Level.FINE, "Modo de atención persistido en configuración: {0}", modo),
+                ex -> java.util.logging.Logger.getLogger(Sistema.class.getName())
+                        .log(java.util.logging.Level.FINE, "Aviso al persistir modo de atención: " + ex.getMessage())
+        );
     }
 
     private void sincronizarCombosModo(String modo) {
@@ -8041,7 +8513,7 @@ public final class Sistema extends javax.swing.JFrame {
                 ob[2] = precioStr;
             }
             if (tieneColumnaIva) {
-                ob[3] = p.isAplicaIva() ? "Sí (16%)" : "Exento (0%)";
+                ob[3] = formatearEtiquetaIva(p.isAplicaIva());
             }
             modelo.addRow(ob);
             if (idSel != null && idSel.equals(String.valueOf(p.getId()))) {
@@ -8580,6 +9052,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void actualizarPedidoEnEdicion() {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
         BigDecimal tasa = (conf != null && conf.getTasaDolar() != null) ? conf.getTasaDolar() : new BigDecimal("36.5000");

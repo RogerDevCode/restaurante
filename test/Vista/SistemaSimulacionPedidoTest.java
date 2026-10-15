@@ -202,6 +202,7 @@ public class SistemaSimulacionPedidoTest {
                 d2.setNombre("Agua Exenta");
                 d2.setPrecioDecimal(new BigDecimal("5.00"));
                 d2.setCantidad(1);
+                d2.setAplicaIva(false);
                 detalles.add(d2);
 
                 // Inject service to bypass actual DB 

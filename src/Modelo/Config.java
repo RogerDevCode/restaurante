@@ -18,6 +18,7 @@ public class Config {
     private boolean imprimirLogoTicket = true;
     private String impresoraTickets = "DEFAULT";
     private ModoSalidaTicket modoSalidaTickets = ModoSalidaTicket.TERMICA_DIRECTA;
+    private String modoAtencion = "OPCION_B";
 
     public Config() {
     }
@@ -228,5 +229,13 @@ public class Config {
 
     public void setModoSalidaTickets(ModoSalidaTicket modoSalidaTickets) {
         this.modoSalidaTickets = modoSalidaTickets != null ? modoSalidaTickets : ModoSalidaTicket.TERMICA_DIRECTA;
+    }
+
+    public String getModoAtencion() {
+        return (modoAtencion == null || modoAtencion.isBlank()) ? "OPCION_B" : modoAtencion.trim().toUpperCase();
+    }
+
+    public void setModoAtencion(String modoAtencion) {
+        this.modoAtencion = (modoAtencion == null || modoAtencion.isBlank()) ? "OPCION_B" : modoAtencion.trim().toUpperCase();
     }
 }

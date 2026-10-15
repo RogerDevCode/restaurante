@@ -7,16 +7,22 @@ public class Usuario {
     private String correo;
     private String password;
     private String rol;
+    private boolean activo = true;
 
     public Usuario() {
     }
 
     public Usuario(int id, String nombre, String correo, String password, String rol) {
+        this(id, nombre, correo, password, rol, true);
+    }
+
+    public Usuario(int id, String nombre, String correo, String password, String rol, boolean activo) {
         this.id = id;
         this.nombre = nombre;
         this.correo = correo;
         this.password = password;
         this.rol = rol;
+        this.activo = activo;
     }
 
     public int getId() {
@@ -57,5 +63,13 @@ public class Usuario {
 
     public void setRol(String rol) {
         this.rol = rol;
+    }
+
+    public boolean isActivo() {
+        return activo;
+    }
+
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }

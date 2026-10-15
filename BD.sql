@@ -42,40 +42,7 @@ CREATE TABLE `config` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `config`
---
 
-LOCK TABLES `config` WRITE;
-/*!40000 ALTER TABLE `config` DISABLE KEYS */;
-INSERT INTO `config` (`id`, `ruc`, `nombre`, `telefono`, `direccion`, `mensaje`, `tasa_dolar`, `iva_porcentaje`, `logo_path`, `cliente_predeterminado_nombre`, `cliente_predeterminado_documento`, `meses_retencion_pedidos`, `imprimir_logo_ticket`, `impresora_tickets`, `modo_salida_tickets`) VALUES (1,'J-12345678-0','Restaurante la Delicia','0414-1234567','Caracas - Venezuela','Gracias por su compra',36.5000,16.00,NULL,'Consumidor Final','V-00000000',24,1,'DEFAULT','TERMICA_DIRECTA');
-/*!40000 ALTER TABLE `config` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `detalle_pedidos`
---
-
-DROP TABLE IF EXISTS `detalle_pedidos`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `detalle_pedidos` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
-  `precio` decimal(10,2) NOT NULL,
-  `cantidad` int(11) NOT NULL,
-  `comentario` text COLLATE utf8_spanish_ci DEFAULT NULL,
-  `id_pedido` int(11) NOT NULL,
-  `aplica_iva` tinyint(1) NOT NULL DEFAULT 1,
-  `nombre_clave` varchar(200) GENERATED ALWAYS AS (lower(trim(`nombre`))) STORED,
-  PRIMARY KEY (`id`),
-  KEY `id_pedido` (`id_pedido`),
-  KEY `idx_detalle_pedidos_nombre` (`nombre`),
-  KEY `idx_detalle_pedidos_nombre_clave` (`nombre_clave`),
-  CONSTRAINT `chk_detalle_aplica_iva` CHECK (`aplica_iva` in (0,1)),
-  CONSTRAINT `detalle_pedidos_ibfk_1` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `detalle_pedidos`
@@ -109,6 +76,7 @@ CREATE TABLE `pedidos` (
   `iva_porcentaje` decimal(5,2) NOT NULL DEFAULT 0.00,
   `iva_monto` decimal(10,2) NOT NULL DEFAULT 0.00,
   `tasa_cambio` decimal(12,4) DEFAULT NULL,
+  `tasa_es_estimada` tinyint(1) NOT NULL DEFAULT 0,
   `subtotal_bs` decimal(14,2) NOT NULL DEFAULT 0.00,
   `iva_bs` decimal(14,2) NOT NULL DEFAULT 0.00,
   `total_bs` decimal(14,2) DEFAULT NULL,
@@ -262,12 +230,60 @@ CREATE TABLE `usuarios` (
   `correo` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
   `pass` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
   `rol` varchar(20) COLLATE utf8_spanish_ci NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   `nombre_unico` varchar(200) GENERATED ALWAYS AS (lower(trim(`nombre`))) STORED,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_usuarios_correo` (`correo`),
   UNIQUE KEY `uq_usuarios_nombre` (`nombre_unico`),
-  CONSTRAINT `chk_usuarios_nombre_formato` CHECK ((char_length(`nombre`) between 3 and 60) and regexp_like(`nombre`, '^[[:alnum:]][[:alnum:] ._-]{1,58}[[:alnum:]]$'))
+  CONSTRAINT `chk_usuarios_nombre_formato` CHECK ((char_length(`nombre`) between 3 and 60) and (lower(trim(`nombre`)) <> 'admin') and regexp_like(`nombre`, '^[[:alnum:]][[:alnum:] ._-]{1,58}[[:alnum:]]$'))
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- Estado de intentos de autenticación; está limitado a cuentas existentes y se limpia al eliminarlas.
+DROP TABLE IF EXISTS `login_intentos`;
+CREATE TABLE `login_intentos` (
+  `usuario_id` int(11) NOT NULL,
+  `intentos` int(11) NOT NULL DEFAULT 0,
+  `bloqueado_hasta_ms` bigint(20) NOT NULL DEFAULT 0,
+  `actualizado_en` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`usuario_id`),
+  CONSTRAINT `fk_login_intentos_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_login_intentos_no_negativos` CHECK ((`intentos` >= 0) and (`bloqueado_hasta_ms` >= 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+--
+-- Dumping data for table `config`
+--
+
+LOCK TABLES `config` WRITE;
+/*!40000 ALTER TABLE `config` DISABLE KEYS */;
+INSERT INTO `config` (`id`, `ruc`, `nombre`, `telefono`, `direccion`, `mensaje`, `tasa_dolar`, `iva_porcentaje`, `logo_path`, `cliente_predeterminado_nombre`, `cliente_predeterminado_documento`, `meses_retencion_pedidos`, `imprimir_logo_ticket`, `impresora_tickets`, `modo_salida_tickets`) VALUES (1,'J-12345678-0','Restaurante la Delicia','0414-1234567','Caracas - Venezuela','Gracias por su compra',36.5000,16.00,NULL,'Consumidor Final','V-00000000',24,1,'DEFAULT','TERMICA_DIRECTA');
+/*!40000 ALTER TABLE `config` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `detalle_pedidos`
+--
+
+DROP TABLE IF EXISTS `detalle_pedidos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `detalle_pedidos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
+  `precio` decimal(10,2) NOT NULL,
+  `cantidad` int(11) NOT NULL,
+  `comentario` text COLLATE utf8_spanish_ci DEFAULT NULL,
+  `id_pedido` int(11) NOT NULL,
+  `aplica_iva` tinyint(1) NOT NULL DEFAULT 1,
+  `nombre_clave` varchar(200) GENERATED ALWAYS AS (lower(trim(`nombre`))) STORED,
+  PRIMARY KEY (`id`),
+  KEY `id_pedido` (`id_pedido`),
+  KEY `idx_detalle_pedidos_nombre` (`nombre`),
+  KEY `idx_detalle_pedidos_nombre_clave` (`nombre_clave`),
+  CONSTRAINT `chk_detalle_aplica_iva` CHECK (`aplica_iva` in (0,1)),
+  CONSTRAINT `detalle_pedidos_ibfk_1` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -276,7 +292,7 @@ CREATE TABLE `usuarios` (
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` (`id`, `nombre`, `correo`, `pass`, `rol`) VALUES (1,'Administrador','admin','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador'),(2,'ANGEL SIFUENTES','info@angelsifuentes.com','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador');
+INSERT INTO `usuarios` (`id`, `nombre`, `correo`, `pass`, `rol`, `activo`) VALUES (1,'Administrador','admin','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador',1),(2,'ANGEL SIFUENTES','info@angelsifuentes.com','pbkdf2-sha256$600000$kAoKN9v1KVjpT8qQvuYJFA$Jg2StMqHqNR0L2y94jRioh1DRX0zdH8u2cfulCgjur4','Administrador',1);
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -310,7 +326,8 @@ INSERT INTO `configuracion_sistema` (`clave`, `valor`, `descripcion`) VALUES
 ('imprimir_logo_ticket', 'true', 'Imprimir logo en ticket térmico 80mm'),
 ('cliente_predeterminado_nombre', 'Consumidor Final', 'Nombre de cliente por defecto en facturación'),
 ('cliente_predeterminado_documento', 'V-00000000', 'Cédula/RIF de cliente por defecto en facturación'),
-('meses_retencion_pedidos', '24', 'Meses de retención de pedidos');
+('meses_retencion_pedidos', '24', 'Meses de retención de pedidos'),
+('modo_atencion', 'OPCION_B', 'Modo predeterminado de atención de mesas');
 /*!40000 ALTER TABLE `configuracion_sistema` ENABLE KEYS */;
 UNLOCK TABLES;
 

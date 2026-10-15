@@ -57,7 +57,7 @@ public final class RefrescoVistas {
         if (topico == null || observador == null) {
             return;
         }
-        OBSERVADORES.computeIfAbsent(topico, k -> new ArrayList<>()).add(observador);
+        OBSERVADORES.computeIfAbsent(topico, k -> new java.util.concurrent.CopyOnWriteArrayList<>()).add(observador);
     }
 
     /** Elimina todos los observadores y notificaciones pendientes (evita acumular sesiones). */
