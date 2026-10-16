@@ -131,7 +131,7 @@ public class AdversarialFiltrosHistorialTest {
 
         SwingUtilities.invokeAndWait(() -> {
             assertEquals("Debe encontrar la fila con texto literal '[Especial]'", 1, tablePedidos.getRowCount());
-            assertEquals(99, tablePedidos.getValueAt(0, 0));
+            assertEquals(99, tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 0));
         });
     }
 
@@ -461,7 +461,7 @@ public class AdversarialFiltrosHistorialTest {
             // Si el código hace "".compareTo("2026-10-07") > 0 (false), la fila 102 es INCLUIDA indebidamente.
             boolean fila102Visible = false;
             for (int i = 0; i < tablePedidos.getRowCount(); i++) {
-                if ((int) tablePedidos.getValueAt(i, 0) == 102) {
+                if ((int) tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(i), 0) == 102) {
                     fila102Visible = true;
                 }
             }

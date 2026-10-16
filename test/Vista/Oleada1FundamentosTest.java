@@ -280,7 +280,7 @@ public class Oleada1FundamentosTest {
                 int sel = tbl.getSelectedRow();
                 assertTrue("La seleccion debe conservarse tras el refresco", sel >= 0);
                 assertEquals("Debe seguir seleccionado el mismo plato",
-                        2, ((Number) tbl.getValueAt(sel, 0)).intValue());
+                        2, ((Number) tbl.getModel().getValueAt(tbl.convertRowIndexToModel(sel), 0)).intValue());
             } catch (Throwable t) {
                 throw new AssertionError(t);
             }

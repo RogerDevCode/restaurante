@@ -169,7 +169,7 @@ public class MejorasUIYServicioTest {
             });
 
             assertEquals("Solo debe quedar 1 fila visible para 'VIP'", 1, tablePedidos.getRowCount());
-            assertEquals("VIP", tablePedidos.getValueAt(0, 1));
+            assertEquals("VIP", tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 1));
 
             // Limpiar búsqueda
             SwingUtilities.invokeAndWait(() -> {
@@ -366,8 +366,8 @@ public class MejorasUIYServicioTest {
             SwingUtilities.invokeAndWait(sistema::aumentarCantidadSeleccionada);
 
             SwingUtilities.invokeAndWait(() -> {
-                assertEquals("La cantidad debe ser 2", 2, Integer.parseInt(tableMenu.getValueAt(0, 2).toString()));
-                assertEquals("El subtotal debe ser 10", "10.00", tableMenu.getValueAt(0, 4).toString());
+                assertEquals("La cantidad debe ser 2", 2, Integer.parseInt(tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2).toString()));
+                assertEquals("El subtotal debe ser 10", "10.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4).toString());
                 assertTrue("El totalMenu debe reflejar 10", totalMenu.getText().contains("10"));
             });
 
@@ -375,8 +375,8 @@ public class MejorasUIYServicioTest {
             SwingUtilities.invokeAndWait(sistema::aumentarCantidadSeleccionada);
 
             SwingUtilities.invokeAndWait(() -> {
-                assertEquals("La cantidad debe ser 3", 3, Integer.parseInt(tableMenu.getValueAt(0, 2).toString()));
-                assertEquals("El subtotal debe ser 15", "15.00", tableMenu.getValueAt(0, 4).toString());
+                assertEquals("La cantidad debe ser 3", 3, Integer.parseInt(tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2).toString()));
+                assertEquals("El subtotal debe ser 15", "15.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4).toString());
                 assertTrue("El totalMenu debe reflejar 15", totalMenu.getText().contains("15"));
             });
         } finally {
@@ -403,8 +403,8 @@ public class MejorasUIYServicioTest {
 
             SwingUtilities.invokeAndWait(() -> {
                 assertEquals("Debe quedar 1 fila", 1, tableMenu.getRowCount());
-                assertEquals("La cantidad debe ser 1", 1, Integer.parseInt(tableMenu.getValueAt(0, 2).toString()));
-                assertEquals("El subtotal debe ser 8", "8.00", tableMenu.getValueAt(0, 4).toString());
+                assertEquals("La cantidad debe ser 1", 1, Integer.parseInt(tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2).toString()));
+                assertEquals("El subtotal debe ser 8", "8.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4).toString());
                 assertTrue("El total debe ser 8", totalMenu.getText().contains("8"));
             });
 

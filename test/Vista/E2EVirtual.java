@@ -201,7 +201,7 @@ public class E2EVirtual {
             while (System.currentTimeMillis() < fin) {
                 filaPollo = enEdt(() -> {
                     for (int i = 0; i < menu.getRowCount(); i++) {
-                        Object v = menu.getValueAt(i, 1);
+                        Object v = menu.getModel().getValueAt(menu.convertRowIndexToModel(i), 1);
                         if (v != null && v.toString().toUpperCase().contains("POLLO ASADO")) {
                             return i;
                         }
@@ -222,7 +222,7 @@ public class E2EVirtual {
             // Agregar 1 con clic real (el handler suma al carrito).
             final int f1 = filaPollo;
             enEdtV(() -> {
-                Rectangle r = menu.getCellRect(f1, 1, true);
+                Rectangle r = menu.getCellRect(f1, 0, true);
                 Point p = menu.getLocationOnScreen();
                 robot.mouseMove(p.x + r.x + r.width / 2, p.y + r.y + r.height / 2);
             });
@@ -284,7 +284,7 @@ public class E2EVirtual {
             for (int k = 0; k < 2; k++) {
                 int fr = enEdt(() -> {
                     for (int i = 0; i < menu.getRowCount(); i++) {
-                        Object v = menu.getValueAt(i, 1);
+                        Object v = menu.getModel().getValueAt(menu.convertRowIndexToModel(i), 1);
                         if (v != null && v.toString().toUpperCase().contains("POLLO ASADO")) {
                             return i;
                         }
@@ -297,7 +297,7 @@ public class E2EVirtual {
                 }
                 final int ff = fr;
                 enEdtV(() -> {
-                    Rectangle r = menu.getCellRect(ff, 1, true);
+                    Rectangle r = menu.getCellRect(ff, 0, true);
                     Point p = menu.getLocationOnScreen();
                     robot.mouseMove(p.x + r.x + r.width / 2, p.y + r.y + r.height / 2);
                 });
@@ -309,7 +309,7 @@ public class E2EVirtual {
             int intcant = enEdt(() -> {
                 int t = 0;
                 for (int i = 0; i < carro.getRowCount(); i++) {
-                    t += Integer.parseInt(carro.getValueAt(i, 2).toString());
+                    t += Integer.parseInt(carro.getModel().getValueAt(carro.convertRowIndexToModel(i), 2).toString());
                 }
                 return t;
             });

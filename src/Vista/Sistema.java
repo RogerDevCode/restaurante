@@ -878,26 +878,27 @@ public final class Sistema extends javax.swing.JFrame {
         aplicarEncabezados();
         configurarVentanaResponsiva();
         configurarTodasLasTablas(getContentPane());
+        ocultarColumnasId(); // IDs fuera de la vista antes de repartir anchos (siguen en el modelo)
         configurarTablaSalasProporcional();
         configurarTablaUsuariosIgualitaria();
         configurarTablaHistorialProporcional();
         configurarTablaFinalizarProporcional();
         configurarColumnasProporcionales(tableMenu,
-                new int[]{40, 120, 50, 90, 100, 100, 60},
-                new int[]{40, 220, 50, 90, 100, 160, 60},
-                new int[]{40, -1, 50, 90, 100, -1, 60});
+                new int[]{120, 50, 90, 100, 100, 60},
+                new int[]{220, 50, 90, 100, 160, 60},
+                new int[]{-1, 50, 90, 100, -1, 60});
         configurarColumnasProporcionales(tblTemPlatos,
-                new int[]{40, 150, 80},
-                new int[]{40, 200, 90},
-                new int[]{40, -1, 90});
+                new int[]{150, 80},
+                new int[]{200, 90},
+                new int[]{-1, 90});
         configurarColumnasProporcionales(TablePlatos,
-                new int[]{60, 150, 90, 70},
-                new int[]{70, 220, 100, 80},
-                new int[]{80, -1, 110, 90});
+                new int[]{150, 90, 70},
+                new int[]{220, 100, 80},
+                new int[]{-1, 110, 90});
         configurarColumnasProporcionales(tableMesonerosConfig,
-                new int[]{60, 150, 100, 100, 90},
-                new int[]{70, 200, 110, 110, 100},
-                new int[]{80, -1, 120, 120, 110});
+                new int[]{150, 100, 100, 90},
+                new int[]{200, 110, 110, 100},
+                new int[]{-1, 120, 120, 110});
         configurarColumnasProporcionales(tableTopPlatos,
                 new int[]{120, 60, 90},
                 new int[]{160, 70, 110},
@@ -911,9 +912,9 @@ public final class Sistema extends javax.swing.JFrame {
                 new int[]{110, 180, 110, 80, 100, 100},
                 new int[]{120, -1, 120, 80, 110, 110});
         configurarColumnasProporcionales(tableFacturasCliente,
-                new int[]{70, 100, 100, 60, 90, 90, 100, 90},
-                new int[]{80, 110, 120, 70, 100, 100, 130, 100},
-                new int[]{80, 110, 120, 70, 100, 100, -1, 100});
+                new int[]{100, 100, 60, 90, 90, 100, 90},
+                new int[]{110, 120, 70, 100, 100, 130, 100},
+                new int[]{110, 120, 70, 100, 100, -1, 100});
         registrarPersistenciaAnchos();
         // tableMesonerosConfig y tablas del dashboard se configuran en sus constructores
         // (se crean despues de aplicarMejorasDeUX).
@@ -940,21 +941,19 @@ public final class Sistema extends javax.swing.JFrame {
         javax.swing.UIManager.put("TableHeader.font", baseNegrita);
     }
 
-    /** Tabla de salas proporcional: ID, Mesas y Tipo fijas, la columna Nombre absorbe el 100 % del ancho libre. */
+    /** Tabla de salas proporcional: Mesas y Tipo fijas, la columna Nombre absorbe el 100 % del ancho libre. */
     private void configurarTablaSalasProporcional() {
-        if (tableSala == null || tableSala.getColumnModel().getColumnCount() < 3) {
+        if (tableSala == null || tableSala.getColumnModel().getColumnCount() < 2) {
             return;
         }
         tableSala.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
-        tableSala.getColumnModel().getColumn(0).setMinWidth(90);
-        tableSala.getColumnModel().getColumn(0).setMaxWidth(90);
-        tableSala.getColumnModel().getColumn(1).setMinWidth(150);
-        tableSala.getColumnModel().getColumn(1).setPreferredWidth(200);
-        tableSala.getColumnModel().getColumn(2).setMinWidth(110);
-        tableSala.getColumnModel().getColumn(2).setMaxWidth(110);
-        if (tableSala.getColumnModel().getColumnCount() > 3) {
-            tableSala.getColumnModel().getColumn(3).setMinWidth(110);
-            tableSala.getColumnModel().getColumn(3).setMaxWidth(110);
+        tableSala.getColumnModel().getColumn(0).setMinWidth(150);
+        tableSala.getColumnModel().getColumn(0).setPreferredWidth(200);
+        tableSala.getColumnModel().getColumn(1).setMinWidth(110);
+        tableSala.getColumnModel().getColumn(1).setMaxWidth(110);
+        if (tableSala.getColumnModel().getColumnCount() > 2) {
+            tableSala.getColumnModel().getColumn(2).setMinWidth(110);
+            tableSala.getColumnModel().getColumn(2).setMaxWidth(110);
         }
     }
 
@@ -1013,33 +1012,29 @@ public final class Sistema extends javax.swing.JFrame {
         comp.setForeground(COLOR_TEXTO_INPUT);
     }
 
-    /** Tabla de usuarios: 5 columnas repartiendose el ancho disponible con proporciones legibles. */
+    /** Tabla de usuarios: 4 columnas visibles repartiendose el ancho disponible con proporciones legibles. */
     private void configurarTablaUsuariosIgualitaria() {
         if (TableUsuarios == null || TableUsuarios.getColumnModel().getColumnCount() == 0) {
             return;
         }
         TableUsuarios.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
         int cols = TableUsuarios.getColumnModel().getColumnCount();
-        if (cols >= 5) {
-            TableUsuarios.getColumnModel().getColumn(0).setMaxWidth(80);
-            TableUsuarios.getColumnModel().getColumn(0).setMinWidth(50);
-            TableUsuarios.getColumnModel().getColumn(0).setPreferredWidth(60);
+        if (cols >= 4) {
+            TableUsuarios.getColumnModel().getColumn(0).setMaxWidth(Integer.MAX_VALUE);
+            TableUsuarios.getColumnModel().getColumn(0).setMinWidth(90);
+            TableUsuarios.getColumnModel().getColumn(0).setPreferredWidth(140);
 
             TableUsuarios.getColumnModel().getColumn(1).setMaxWidth(Integer.MAX_VALUE);
-            TableUsuarios.getColumnModel().getColumn(1).setMinWidth(90);
-            TableUsuarios.getColumnModel().getColumn(1).setPreferredWidth(140);
+            TableUsuarios.getColumnModel().getColumn(1).setMinWidth(110);
+            TableUsuarios.getColumnModel().getColumn(1).setPreferredWidth(160);
 
-            TableUsuarios.getColumnModel().getColumn(2).setMaxWidth(Integer.MAX_VALUE);
-            TableUsuarios.getColumnModel().getColumn(2).setMinWidth(110);
-            TableUsuarios.getColumnModel().getColumn(2).setPreferredWidth(160);
+            TableUsuarios.getColumnModel().getColumn(2).setMaxWidth(160);
+            TableUsuarios.getColumnModel().getColumn(2).setMinWidth(90);
+            TableUsuarios.getColumnModel().getColumn(2).setPreferredWidth(110);
 
-            TableUsuarios.getColumnModel().getColumn(3).setMaxWidth(160);
-            TableUsuarios.getColumnModel().getColumn(3).setMinWidth(90);
-            TableUsuarios.getColumnModel().getColumn(3).setPreferredWidth(110);
-
-            TableUsuarios.getColumnModel().getColumn(4).setMaxWidth(130);
-            TableUsuarios.getColumnModel().getColumn(4).setMinWidth(80);
-            TableUsuarios.getColumnModel().getColumn(4).setPreferredWidth(100);
+            TableUsuarios.getColumnModel().getColumn(3).setMaxWidth(130);
+            TableUsuarios.getColumnModel().getColumn(3).setMinWidth(80);
+            TableUsuarios.getColumnModel().getColumn(3).setPreferredWidth(100);
         } else {
             for (int i = 0; i < cols; i++) {
                 // Orden: maximo primero (setPreferredWidth recorta contra el maximo vigente).
@@ -1052,20 +1047,19 @@ public final class Sistema extends javax.swing.JFrame {
 
     /** Tabla de historial: columnas proporcionales que absorben el 100 % del ancho libre. */
     private void configurarTablaHistorialProporcional() {
-        if (TablePedidos == null || TablePedidos.getColumnModel().getColumnCount() < 7) {
+        if (TablePedidos == null || TablePedidos.getColumnModel().getColumnCount() < 6) {
             return;
         }
         TablePedidos.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
-        int[] minimos = {70, 110, 120, 80, 130, 100, 100};
-        int[] preferidos = {70, 140, 160, 80, 150, 100, 120};
-        for (int i = 0; i < 7; i++) {
+        int[] minimos = {110, 120, 80, 130, 100, 100};
+        int[] preferidos = {140, 160, 80, 150, 100, 120};
+        for (int i = 0; i < 6; i++) {
             TablePedidos.getColumnModel().getColumn(i).setMinWidth(minimos[i]);
             TablePedidos.getColumnModel().getColumn(i).setPreferredWidth(preferidos[i]);
             TablePedidos.getColumnModel().getColumn(i).setMaxWidth(Integer.MAX_VALUE);
         }
-        TablePedidos.getColumnModel().getColumn(0).setMaxWidth(70);
-        TablePedidos.getColumnModel().getColumn(3).setMaxWidth(80);
-        TablePedidos.getColumnModel().getColumn(5).setMaxWidth(100);
+        TablePedidos.getColumnModel().getColumn(2).setMaxWidth(80);
+        TablePedidos.getColumnModel().getColumn(4).setMaxWidth(100);
     }
 
     /** El scroll del historial llena el panel con margenes fijos (proporcional al tamano de ventana). */
@@ -1097,15 +1091,15 @@ public final class Sistema extends javax.swing.JFrame {
 
     /** Tabla de caja/facturacion: columnas fijas + Plato y Comentario absorbiendo el 100 % libre. */
     private void configurarTablaFinalizarProporcional() {
-        if (tableFinalizar == null || tableFinalizar.getColumnModel().getColumnCount() < 6) {
+        if (tableFinalizar == null || tableFinalizar.getColumnModel().getColumnCount() < 5) {
             return;
         }
         tableFinalizar.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
         // Orden maximo-primero: setPreferredWidth recorta contra el maximo vigente.
-        int[] maximos = {40, Integer.MAX_VALUE, 50, 90, 100, Integer.MAX_VALUE};
-        int[] minimos = {40, 150, 50, 90, 100, 120};
-        int[] preferidos = {40, 220, 50, 90, 100, 160};
-        for (int i = 0; i < 6; i++) {
+        int[] maximos = {Integer.MAX_VALUE, 50, 90, 100, Integer.MAX_VALUE};
+        int[] minimos = {150, 50, 90, 100, 120};
+        int[] preferidos = {220, 50, 90, 100, 160};
+        for (int i = 0; i < 5; i++) {
             tableFinalizar.getColumnModel().getColumn(i).setMaxWidth(maximos[i]);
             tableFinalizar.getColumnModel().getColumn(i).setMinWidth(minimos[i]);
             tableFinalizar.getColumnModel().getColumn(i).setPreferredWidth(preferidos[i]);
@@ -1244,6 +1238,24 @@ public final class Sistema extends javax.swing.JFrame {
         registrarAnchos(dao, uid, tableMesonerosDashboard, "dash_mesoneros");
         registrarAnchos(dao, uid, tableClientes, "dash_clientes");
         registrarAnchos(dao, uid, tableFacturasCliente, "dash_facturas");
+    }
+
+    /**
+     * Oculta visualmente las columnas ID internas de todas las grillas (el ID sigue
+     * en el modelo para selecciones). Se aplica después de anchos/persistencia para
+     * que ninguna restauración de layout vuelva a mostrarlas. tableClientes conserva
+     * su primera columna (Cédula/RIF es clave de negocio, no ID interno).
+     */
+    private void ocultarColumnasId() {
+        Tables.ocultarColumnaModelo(tableSala, 0);
+        Tables.ocultarColumnaModelo(TablePedidos, 0);
+        Tables.ocultarColumnaModelo(TableUsuarios, 0);
+        Tables.ocultarColumnaModelo(tblTemPlatos, 0);
+        Tables.ocultarColumnaModelo(TablePlatos, 0);
+        Tables.ocultarColumnaModelo(tableMenu, 0);
+        Tables.ocultarColumnaModelo(tableFinalizar, 0);
+        Tables.ocultarColumnaModelo(tableMesonerosConfig, 0);
+        Tables.ocultarColumnaModelo(tableFacturasCliente, 0);
     }
 
     private static void registrarAnchos(Modelo.PreferenciasTablaDao dao, int uid,
@@ -2432,8 +2444,8 @@ public final class Sistema extends javax.swing.JFrame {
                     // Click en tblTemPlatos: Si el plato ya está en el carrito, sumarle 1 y seleccionarlo
                     int row = tblTemPlatos.rowAtPoint(evt.getPoint());
                     if (row >= 0) {
-                        int id = Integer.parseInt(tblTemPlatos.getValueAt(row, 0).toString());
-                        String nombreNuevo = tblTemPlatos.getValueAt(row, 1).toString();
+                        int id = Integer.parseInt(Tables.valorModelo(tblTemPlatos, row, 0).toString());
+                        String nombreNuevo = Tables.valorModelo(tblTemPlatos, row, 1).toString();
                         // Revisar si ya está en el tableMenu
                         DefaultTableModel tmp = (DefaultTableModel) tableMenu.getModel();
                         boolean found = false;
@@ -3694,93 +3706,107 @@ public final class Sistema extends javax.swing.JFrame {
             mostrarAvisoEnBanda("Selecciona un pedido para modificar");
             return;
         }
-        LimpiarTableMenu();
-        idPedidoEdicion = ped.getId();
-        idSalaEdicion = ped.getId_sala();
-        numMesaEdicion = ped.getNum_mesa();
-        txtTempIdSala.setText(String.valueOf(ped.getId_sala()));
-        txtTempNumMesa.setText(String.valueOf(ped.getNum_mesa()));
-        
+
+        final int idPedMod = ped.getId();
+        final int idSalaMod = ped.getId_sala();
+        final int numMesaMod = ped.getNum_mesa();
+        final String nombreSalaMod = ped.getSala();
+
+        vaciarCarritoVisual();
+        idPedidoEdicion = idPedMod;
+        idSalaEdicion = idSalaMod;
+        numMesaEdicion = numMesaMod;
+        txtTempIdSala.setText(String.valueOf(idSalaMod));
+        txtTempNumMesa.setText(String.valueOf(numMesaMod));
+
         jPanel23.setBorder(javax.swing.BorderFactory.createTitledBorder(
                 javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 102, 102)),
-                "MODIFICANDO PEDIDO N° " + ped.getId() + " - " + ped.getSala() + " | MESA " + ped.getNum_mesa(),
+                "MODIFICANDO PEDIDO N° " + idPedMod + " - " + (nombreSalaMod != null ? nombreSalaMod : "") + " | MESA " + numMesaMod,
                 javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                 javax.swing.border.TitledBorder.DEFAULT_POSITION,
                 new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14),
                 new java.awt.Color(0, 102, 102)));
-                
+
         btnGenerarPedido.setText("Actualizar Pedido");
         jTabbedPane1.setSelectedIndex(3);
-                    txtBuscarPlato.requestFocusInWindow();
-        
+        txtBuscarPlato.requestFocusInWindow();
+
         DefaultTableModel tmp = (DefaultTableModel) tableMenu.getModel();
         boolean tieneColumnaIva = tmp.getColumnCount() >= 7;
-        
-        java.util.List<Modelo.DetallePedido> detalles = pedidosControlador.verPedidoDetalle(ped.getId());
-        
-        for (Modelo.DetallePedido det : detalles) {
-            String nombre = det.getNombre();
-            int idPlato = 0;
-            boolean aplicaIva = det.getAplicaIva() != null ? det.getAplicaIva() : true;
-            for (int k = 0; k < tblTemPlatos.getRowCount(); k++) {
-                if (tblTemPlatos.getValueAt(k, 1).toString().equalsIgnoreCase(nombre)) {
-                    idPlato = Integer.parseInt(tblTemPlatos.getValueAt(k, 0).toString());
-                    if (det.getAplicaIva() == null) {
-                        aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
-                    }
-                    break;
-                }
-            }
-            Object[] O = new Object[tieneColumnaIva ? 7 : 6];
-            O[0] = idPlato > 0 ? idPlato : ""; 
-            O[1] = nombre;
-            O[2] = det.getCantidad();
-            java.math.BigDecimal precio = det.getPrecioDecimal().setScale(2, java.math.RoundingMode.HALF_UP);
-            String precioStr = String.format(java.util.Locale.US, "%.2f", precio);
-            O[3] = precioStr;
-            java.math.BigDecimal subtotal = precio.multiply(new java.math.BigDecimal(det.getCantidad())).setScale(2, java.math.RoundingMode.HALF_UP);
-            O[4] = String.format(java.util.Locale.US, "%.2f", subtotal);
-            O[5] = det.getComentario();
-            if (tieneColumnaIva) {
-                BigDecimal ivaRef = (ped != null && ped.getIvaPorcentaje() != null)
-                        ? ped.getIvaPorcentaje()
-                        : ((conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : null);
-                O[6] = formatearEtiquetaIva(aplicaIva, ivaRef);
-            }
-            tmp.addRow(O);
-        }
-        TotalPagar(tableMenu, totalMenu);
-        actualizarEstadoBotonesCarrito();
-        
-        if (ped.getIdMesonero() != null && ped.getIdMesonero() > 0) {
-            boolean encontrado = false;
-            for (int i = 0; i < cbMesoneroPedido.getItemCount(); i++) {
-                Object mObj = cbMesoneroPedido.getItemAt(i);
-                if (mObj instanceof Modelo.Mesonero m) {
-                    if (m.getId() == ped.getIdMesonero()) {
-                        cbMesoneroPedido.setSelectedIndex(i);
-                        encontrado = true;
+
+        try {
+            java.util.List<Modelo.DetallePedido> detalles = pedidosControlador.verPedidoDetalle(idPedMod);
+
+            for (Modelo.DetallePedido det : detalles) {
+                String nombre = det.getNombre();
+                int idPlato = 0;
+                boolean aplicaIva = det.getAplicaIva() != null ? det.getAplicaIva() : true;
+                for (int k = 0; k < tblTemPlatos.getRowCount(); k++) {
+                    if (Tables.valorModelo(tblTemPlatos, k, 1).toString().equalsIgnoreCase(nombre)) {
+                        idPlato = Integer.parseInt(Tables.valorModelo(tblTemPlatos, k, 0).toString());
+                        if (det.getAplicaIva() == null) {
+                            aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
+                        }
                         break;
                     }
                 }
+                Object[] O = new Object[tieneColumnaIva ? 7 : 6];
+                O[0] = idPlato > 0 ? idPlato : ""; 
+                O[1] = nombre;
+                O[2] = det.getCantidad();
+                java.math.BigDecimal precio = det.getPrecioDecimal().setScale(2, java.math.RoundingMode.HALF_UP);
+                String precioStr = String.format(java.util.Locale.US, "%.2f", precio);
+                O[3] = precioStr;
+                java.math.BigDecimal subtotal = precio.multiply(new java.math.BigDecimal(det.getCantidad())).setScale(2, java.math.RoundingMode.HALF_UP);
+                O[4] = String.format(java.util.Locale.US, "%.2f", subtotal);
+                O[5] = det.getComentario();
+                if (tieneColumnaIva) {
+                    BigDecimal ivaRef = (ped != null && ped.getIvaPorcentaje() != null)
+                            ? ped.getIvaPorcentaje()
+                            : ((conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : null);
+                    O[6] = formatearEtiquetaIva(aplicaIva, ivaRef);
+                }
+                tmp.addRow(O);
             }
-            if (encontrado) {
-                idMesoneroEdicionOriginal = ped.getIdMesonero();
-                nombreMesoneroEdicionOriginal = ped.getMesoneroNombre();
-                quitarMesoneroEdicion = false;
+            TotalPagar(tableMenu, totalMenu);
+            actualizarEstadoBotonesCarrito();
+
+            if (ped.getIdMesonero() != null && ped.getIdMesonero() > 0) {
+                boolean encontrado = false;
+                for (int i = 0; i < cbMesoneroPedido.getItemCount(); i++) {
+                    Object mObj = cbMesoneroPedido.getItemAt(i);
+                    if (mObj instanceof Modelo.Mesonero m) {
+                        if (m.getId() == ped.getIdMesonero()) {
+                            cbMesoneroPedido.setSelectedIndex(i);
+                            encontrado = true;
+                            break;
+                        }
+                    }
+                }
+                if (encontrado) {
+                    idMesoneroEdicionOriginal = ped.getIdMesonero();
+                    nombreMesoneroEdicionOriginal = ped.getMesoneroNombre();
+                    quitarMesoneroEdicion = false;
+                } else {
+                    idMesoneroEdicionOriginal = ped.getIdMesonero();
+                    nombreMesoneroEdicionOriginal = ped.getMesoneroNombre();
+                    cbMesoneroPedido.setSelectedIndex(0);
+                    quitarMesoneroEdicion = false;
+                    mostrarAvisoEnBanda("El mesonero asignado ('"
+                            + (nombreMesoneroEdicionOriginal != null ? nombreMesoneroEdicionOriginal : ("#" + idMesoneroEdicionOriginal))
+                            + "') ya no está activo; seleccione uno activo, use Quitar para liberarlo o se conservará la asignación.");
+                }
             } else {
-                idMesoneroEdicionOriginal = ped.getIdMesonero();
-                nombreMesoneroEdicionOriginal = ped.getMesoneroNombre();
-                cbMesoneroPedido.setSelectedIndex(0);
+                idMesoneroEdicionOriginal = null;
+                nombreMesoneroEdicionOriginal = null;
                 quitarMesoneroEdicion = false;
-                mostrarAvisoEnBanda("El mesonero asignado ('"
-                        + (nombreMesoneroEdicionOriginal != null ? nombreMesoneroEdicionOriginal : ("#" + idMesoneroEdicionOriginal))
-                        + "') ya no está activo; seleccione uno activo, use Quitar para liberarlo o se conservará la asignación.");
             }
-        } else {
-            idMesoneroEdicionOriginal = null;
-            nombreMesoneroEdicionOriginal = null;
-            quitarMesoneroEdicion = false;
+        } catch (Exception ex) {
+            LimpiarTableMenu();
+            mostrarAvisoEnBanda("Error al cargar detalles del pedido #" + idPedMod + ": " + ex.getMessage());
+            JOptionPane.showMessageDialog(this,
+                    "No se pudieron cargar los detalles del pedido #" + idPedMod + " para edición:\n" + ex.getMessage(),
+                    "Error de Carga", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -3810,7 +3836,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (fila < 0) {
             return;
         }
-        int id_pedido = Integer.parseInt(TablePedidos.getValueAt(fila, 0).toString());
+        int id_pedido = Integer.parseInt(Tables.valorModelo(TablePedidos, fila, 0).toString());
         cargarPedidoEnPantalla(id_pedido, false);
     }//GEN-LAST:event_TablePedidosMouseClicked
 
@@ -3819,14 +3845,14 @@ public final class Sistema extends javax.swing.JFrame {
         if (fila < 0) {
             return;
         }
-        txtIdSala.setText(tableSala.getValueAt(fila, 0).toString());
-        txtNombreSala.setText(tableSala.getValueAt(fila, 1).toString());
-        txtMesas.setText(tableSala.getValueAt(fila, 2).toString());
+        txtIdSala.setText(Tables.valorModelo(tableSala, fila, 0).toString());
+        txtNombreSala.setText(Tables.valorModelo(tableSala, fila, 1).toString());
+        txtMesas.setText(Tables.valorModelo(tableSala, fila, 2).toString());
         try {
-            int idSala = Integer.parseInt(tableSala.getValueAt(fila, 0).toString());
+            int idSala = Integer.parseInt(Tables.valorModelo(tableSala, fila, 0).toString());
             String tipo = salaTipoMap.getOrDefault(idSala, "SALON");
-            if (tableSala.getColumnCount() > 3 && tableSala.getValueAt(fila, 3) != null) {
-                tipo = tableSala.getValueAt(fila, 3).toString();
+            if (tableSala.getModel().getColumnCount() > 3 && Tables.valorModelo(tableSala, fila, 3) != null) {
+                tipo = Tables.valorModelo(tableSala, fila, 3).toString();
             }
             boolean esBarra = "BARRA".equalsIgnoreCase(tipo);
             if (cbTipoSala != null) {
@@ -4029,20 +4055,21 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void btnAddPlatoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAddPlatoActionPerformed
         if (tblTemPlatos.getSelectedRow() >= 0) {
-            int id = Integer.parseInt(tblTemPlatos.getValueAt(tblTemPlatos.getSelectedRow(), 0).toString());
-            String descripcion = tblTemPlatos.getValueAt(tblTemPlatos.getSelectedRow(), 1).toString();
+            int filaSel = tblTemPlatos.getSelectedRow();
+            int id = Integer.parseInt(Tables.valorModelo(tblTemPlatos, filaSel, 0).toString());
+            String descripcion = Tables.valorModelo(tblTemPlatos, filaSel, 1).toString();
             Platos plato = platosPorId.get(id);
             BigDecimal precio = plato != null
                     ? ("VES".equalsIgnoreCase(plato.getMonedaBase()) && plato.getPrecioVes() != null
                             ? plato.getPrecioVes()
                             : (plato.getPrecioUsd() != null ? plato.getPrecioUsd() : plato.getPrecioDecimal()))
-                    : importeMonetario(tblTemPlatos.getValueAt(tblTemPlatos.getSelectedRow(), 2));
+                    : importeMonetario(Tables.valorModelo(tblTemPlatos, filaSel, 2));
             BigDecimal total = precio;
             item = item + 1;
             tmp = (DefaultTableModel) tableMenu.getModel();
             for (int i = 0; i < tableMenu.getRowCount(); i++) {
-                String idFila = tableMenu.getValueAt(i, 0).toString();
-                String nombreFila = tableMenu.getValueAt(i, 1).toString();
+                String idFila = Tables.valorModelo(tableMenu, i, 0).toString();
+                String nombreFila = Tables.valorModelo(tableMenu, i, 1).toString();
                 boolean coincide = false;
                 if (!idFila.isBlank() && idFila.matches("\\d+")) {
                     coincide = Integer.parseInt(idFila) == id;
@@ -4051,7 +4078,7 @@ public final class Sistema extends javax.swing.JFrame {
                     coincide = true;
                 }
                 if (coincide) {
-                    int cantActual = Integer.parseInt(tableMenu.getValueAt(i, 2).toString());
+                    int cantActual = Integer.parseInt(Tables.valorModelo(tableMenu, i, 2).toString());
                     if (cantActual >= Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO) {
                         tableMenu.setRowSelectionInterval(i, i);
                         mostrarAlertaCampo(txtCantidadManual, "La cantidad máxima por plato es "
@@ -4085,6 +4112,7 @@ public final class Sistema extends javax.swing.JFrame {
             }
             tmp.addRow(O);
             tableMenu.setModel(tmp);
+            Tables.ocultarColumnaModelo(tableMenu, 0); // ID interno oculto tras reconstruir columnas
             TotalPagar(tableMenu, totalMenu);
             actualizarEstadoBotonesCarrito();
             // UX: dejar preseleccionada la fila agregada para ajustar cantidad al instante (+/- o campo).
@@ -4268,7 +4296,7 @@ public final class Sistema extends javax.swing.JFrame {
             return;
         }
         try {
-            int cantActual = Integer.parseInt(tableMenu.getValueAt(fila, 2).toString().trim());
+            int cantActual = Integer.parseInt(Tables.valorModelo(tableMenu, fila, 2).toString().trim());
             if (cantActual < 0) {
                 cantActual = 0;
             }
@@ -4278,7 +4306,7 @@ public final class Sistema extends javax.swing.JFrame {
                 return;
             }
             int nuevaCantidad = Math.addExact(cantActual, 1);
-            BigDecimal precioUnitario = importeMonetario(tableMenu.getValueAt(fila, 3));
+            BigDecimal precioUnitario = importeMonetario(Tables.valorModelo(tableMenu, fila, 3));
             BigDecimal nuevoSub = precioUnitario.multiply(BigDecimal.valueOf(nuevaCantidad))
                     .setScale(2, RoundingMode.HALF_UP);
 
@@ -4301,11 +4329,11 @@ public final class Sistema extends javax.swing.JFrame {
             return;
         }
         try {
-            int cantActual = Integer.parseInt(tableMenu.getValueAt(fila, 2).toString().trim());
+            int cantActual = Integer.parseInt(Tables.valorModelo(tableMenu, fila, 2).toString().trim());
             tmp = (DefaultTableModel) tableMenu.getModel();
             if (cantActual > 1) {
                 int nuevaCantidad = cantActual - 1;
-                BigDecimal precioUnitario = importeMonetario(tableMenu.getValueAt(fila, 3));
+                BigDecimal precioUnitario = importeMonetario(Tables.valorModelo(tableMenu, fila, 3));
                 BigDecimal nuevoSub = precioUnitario.multiply(BigDecimal.valueOf(nuevaCantidad))
                         .setScale(2, RoundingMode.HALF_UP);
                 tmp.setValueAt(nuevaCantidad, fila, 2);
@@ -4338,7 +4366,7 @@ public final class Sistema extends javax.swing.JFrame {
             txtCantidadManual.setEnabled(haySeleccion);
             if (haySeleccion && !isUpdatingUI) {
                 isUpdatingUI = true;
-                Object val = tableMenu.getValueAt(tableMenu.getSelectedRow(), 2);
+                Object val = Tables.valorModelo(tableMenu, tableMenu.getSelectedRow(), 2);
                 txtCantidadManual.setText(val != null ? val.toString() : "1");
                 isUpdatingUI = false;
             } else if (!haySeleccion) {
@@ -4359,9 +4387,9 @@ public final class Sistema extends javax.swing.JFrame {
         if (tableMenu.getSelectedRow() < 0) {
             mostrarAvisoEnBanda("Seleccione una fila del carrito");
         } else {
-            int id = Integer.parseInt(tableMenu.getValueAt(tableMenu.getSelectedRow(), 0).toString());
+            int id = Integer.parseInt(Tables.valorModelo(tableMenu, tableMenu.getSelectedRow(), 0).toString());
             for (int i = 0; i < tableMenu.getRowCount(); i++) {
-                if (tableMenu.getValueAt(i, 0).equals(id)) {
+                if (Tables.valorModelo(tableMenu, i, 0).equals(id)) {
                     tmp.setValueAt(txtComentario.getText(), i, 5);
                     txtComentario.setText("");
                     tableMenu.clearSelection();
@@ -4707,10 +4735,10 @@ public final class Sistema extends javax.swing.JFrame {
         if (fila < 0) {
             return;
         }
-        txtIdPlato.setText(TablePlatos.getValueAt(fila, 0).toString());
-        txtNombrePlato.setText(TablePlatos.getValueAt(fila, 1).toString());
+        txtIdPlato.setText(Tables.valorModelo(TablePlatos, fila, 0).toString());
+        txtNombrePlato.setText(Tables.valorModelo(TablePlatos, fila, 1).toString());
         try {
-            int idPlato = Integer.parseInt(TablePlatos.getValueAt(fila, 0).toString());
+            int idPlato = Integer.parseInt(Tables.valorModelo(TablePlatos, fila, 0).toString());
             Platos platoSel = platosPorId.get(idPlato);
             if (platoSel != null) {
                 String mb = platoSel.getMonedaBase() != null ? platoSel.getMonedaBase().toUpperCase() : "USD";
@@ -4723,7 +4751,7 @@ public final class Sistema extends javax.swing.JFrame {
                 if (precioPrimario != null) {
                     txtPrecioPlato.setText(precioPrimario.setScale(2, RoundingMode.HALF_UP).toPlainString());
                 } else {
-                    txtPrecioPlato.setText(TablePlatos.getValueAt(fila, 2).toString().replaceAll("[^0-9.]", "").trim());
+                    txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, fila, 2).toString().replaceAll("[^0-9.]", "").trim());
                 }
                 if (chkAplicaIvaPlato != null) {
                     chkAplicaIvaPlato.setSelected(platoSel.isAplicaIva());
@@ -4734,10 +4762,10 @@ public final class Sistema extends javax.swing.JFrame {
                 }
                 actualizarPrecioReferenciaPlato();
             } else {
-                txtPrecioPlato.setText(TablePlatos.getValueAt(fila, 2).toString().replaceAll("[^0-9.]", "").trim());
+                txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, fila, 2).toString().replaceAll("[^0-9.]", "").trim());
                 boolean aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
-                if (TablePlatos.getColumnCount() > 3 && TablePlatos.getValueAt(fila, 3) != null) {
-                    String val = TablePlatos.getValueAt(fila, 3).toString().toLowerCase(java.util.Locale.ROOT);
+                if (TablePlatos.getModel().getColumnCount() > 3 && Tables.valorModelo(TablePlatos, fila, 3) != null) {
+                    String val = Tables.valorModelo(TablePlatos, fila, 3).toString().toLowerCase(java.util.Locale.ROOT);
                     aplicaIva = !val.contains("exento") && !val.contains("no");
                 }
                 if (chkAplicaIvaPlato != null) {
@@ -4750,7 +4778,7 @@ public final class Sistema extends javax.swing.JFrame {
                 actualizarPrecioReferenciaPlato();
             }
         } catch (Exception ignored) {
-            txtPrecioPlato.setText(TablePlatos.getValueAt(fila, 2).toString().replaceAll("[^0-9.]", "").trim());
+            txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, fila, 2).toString().replaceAll("[^0-9.]", "").trim());
         }
     }//GEN-LAST:event_TablePlatosMouseClicked
 
@@ -5293,14 +5321,11 @@ public final class Sistema extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this, ayuda, "Ayuda de Atajos", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void LimpiarTableMenu() {
-        idPedidoEdicion = -1;
-        idSalaEdicion = -1;
-        numMesaEdicion = -1;
-        idMesoneroEdicionOriginal = null;
-        nombreMesoneroEdicionOriginal = null;
-        quitarMesoneroEdicion = false;
-        if (btnGenerarPedido != null) btnGenerarPedido.setText("Realizar Pedido");
+    /**
+     * Vacía exclusivamente las filas y totales del carrito visual (tableMenu)
+     * sin alterar el estado de edición del pedido (idPedidoEdicion, sala, mesa).
+     */
+    private void vaciarCarritoVisual() {
         tmp = (DefaultTableModel) tableMenu.getModel();
         tmp.setRowCount(0);
         item = 0;
@@ -5309,6 +5334,17 @@ public final class Sistema extends javax.swing.JFrame {
             TotalPagar(tableMenu, totalMenu);
         }
         actualizarEstadoBotonesCarrito();
+    }
+
+    private void LimpiarTableMenu() {
+        idPedidoEdicion = -1;
+        idSalaEdicion = -1;
+        numMesaEdicion = -1;
+        idMesoneroEdicionOriginal = null;
+        nombreMesoneroEdicionOriginal = null;
+        quitarMesoneroEdicion = false;
+        if (btnGenerarPedido != null) btnGenerarPedido.setText("Realizar Pedido");
+        vaciarCarritoVisual();
     }
 
     public void ListarConfig() {
@@ -6068,7 +6104,7 @@ public final class Sistema extends javax.swing.JFrame {
             mostrarAvisoEnBanda("Selecciona una factura de la tabla para ver/reimprimir");
             return;
         }
-        int idPedido = Integer.parseInt(String.valueOf(tableFacturasCliente.getValueAt(fila, 0)));
+        int idPedido = Integer.parseInt(String.valueOf(Tables.valorModelo(tableFacturasCliente, fila, 0)));
         try {
             String motivo = solicitarMotivoAccion("Reimpresión de Factura de Cliente",
                     "Ingrese el motivo de la reimpresión del pedido #" + idPedido + ":", "Copia solicitada por cliente");
@@ -6088,7 +6124,7 @@ public final class Sistema extends javax.swing.JFrame {
             mostrarAvisoEnBanda("Selecciona una factura de la tabla para previsualizar");
             return;
         }
-        int idPedido = Integer.parseInt(String.valueOf(tableFacturasCliente.getValueAt(fila, 0)));
+        int idPedido = Integer.parseInt(String.valueOf(Tables.valorModelo(tableFacturasCliente, fila, 0)));
         try {
             pedidosControlador.previsualizarPdfPedido(idPedido);
         } catch (Exception ex) {
@@ -6799,6 +6835,7 @@ public final class Sistema extends javax.swing.JFrame {
         javax.swing.JTable tablaInactivos = new javax.swing.JTable(modeloInactivos);
         tablaInactivos.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         tablaInactivos.setRowHeight(24);
+        Tables.ocultarColumnaModelo(tablaInactivos, 0); // ID interno oculto, sigue en el modelo
         if (tablaInactivos.getRowCount() > 0) {
             tablaInactivos.setRowSelectionInterval(0, 0);
         }
@@ -6815,8 +6852,8 @@ public final class Sistema extends javax.swing.JFrame {
                         "Aviso", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            int id = (int) tablaInactivos.getValueAt(fila, 0);
-            String nombrePlato = tablaInactivos.getValueAt(fila, 1).toString();
+            int id = (int) Tables.valorModelo(tablaInactivos, fila, 0);
+            String nombrePlato = Tables.valorModelo(tablaInactivos, fila, 1).toString();
             try {
                 if (platosControlador.reactivar(id)) {
                     dialogo.dispose();
@@ -7529,8 +7566,10 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
 
-        if (TableUsuarios.getColumnModel().getColumnCount() >= 5) {
-            TableUsuarios.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
+        if (TableUsuarios.getModel().getColumnCount() >= 5) {
+            int vistaEstado = TableUsuarios.convertColumnIndexToView(4);
+            if (vistaEstado >= 0) {
+                TableUsuarios.getColumnModel().getColumn(vistaEstado).setCellRenderer(new DefaultTableCellRenderer() {
                 @Override
                 public java.awt.Component getTableCellRendererComponent(
                         JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -7548,6 +7587,7 @@ public final class Sistema extends javax.swing.JFrame {
                     return c;
                 }
             });
+            }
         }
 
         javax.swing.JPopupMenu popupUsuarios = new javax.swing.JPopupMenu();
@@ -7581,7 +7621,7 @@ public final class Sistema extends javax.swing.JFrame {
                     actualizarEstadoBotonesUsuarios();
                     if (TableUsuarios.getSelectedRow() >= 0 && politicaAcceso != null && politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS)) {
                         int sel = TableUsuarios.getSelectedRow();
-                        Object est = TableUsuarios.getValueAt(sel, 4);
+                        Object est = Tables.valorModelo(TableUsuarios, sel, 4);
                         boolean act = est == null || !"Inactivo".equalsIgnoreCase(est.toString());
                         itemCambiarEstado.setText(act ? "Desactivar cuenta" : "Reactivar cuenta");
                         popupUsuarios.show(e.getComponent(), e.getX(), e.getY());
@@ -7607,7 +7647,7 @@ public final class Sistema extends javax.swing.JFrame {
             btnEstadoUsuario.setText("Desactivar");
             return;
         }
-        Object estadoObj = TableUsuarios.getValueAt(fila, 4);
+        Object estadoObj = Tables.valorModelo(TableUsuarios, fila, 4);
         boolean estaActivo = estadoObj == null || !"Inactivo".equalsIgnoreCase(estadoObj.toString());
         btnEstadoUsuario.setEnabled(true);
         btnEstadoUsuario.setText(estaActivo ? "Desactivar" : "Reactivar");
@@ -7621,8 +7661,8 @@ public final class Sistema extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(this, "Selecciona un usuario de la tabla.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        int idUsuario = Integer.parseInt(TableUsuarios.getValueAt(fila, 0).toString());
-        String nombre = TableUsuarios.getValueAt(fila, 1).toString();
+        int idUsuario = Integer.parseInt(Tables.valorModelo(TableUsuarios, fila, 0).toString());
+        String nombre = Tables.valorModelo(TableUsuarios, fila, 1).toString();
 
         JPasswordField pwd = new JPasswordField(20);
         JPasswordField pwdConfirm = new JPasswordField(20);
@@ -7684,9 +7724,9 @@ public final class Sistema extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(this, "Selecciona un usuario de la tabla.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        int idUsuario = Integer.parseInt(TableUsuarios.getValueAt(fila, 0).toString());
-        String nombre = TableUsuarios.getValueAt(fila, 1).toString();
-        Object estadoObj = TableUsuarios.getValueAt(fila, 4);
+        int idUsuario = Integer.parseInt(Tables.valorModelo(TableUsuarios, fila, 0).toString());
+        String nombre = Tables.valorModelo(TableUsuarios, fila, 1).toString();
+        Object estadoObj = Tables.valorModelo(TableUsuarios, fila, 4);
         boolean estaActivo = estadoObj == null || !"Inactivo".equalsIgnoreCase(estadoObj.toString());
 
         String accion = estaActivo ? "desactivar" : "reactivar";
@@ -7724,8 +7764,8 @@ public final class Sistema extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(this, "Selecciona un usuario de la tabla.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        int idUsuario = Integer.parseInt(TableUsuarios.getValueAt(fila, 0).toString());
-        String nombre = TableUsuarios.getValueAt(fila, 1).toString();
+        int idUsuario = Integer.parseInt(Tables.valorModelo(TableUsuarios, fila, 0).toString());
+        String nombre = Tables.valorModelo(TableUsuarios, fila, 1).toString();
 
         int confirm = JOptionPane.showConfirmDialog(
                 this,
@@ -7799,7 +7839,7 @@ public final class Sistema extends javax.swing.JFrame {
     private void mostrarSalasEnTabla(List<Salas> Listar) {
         modelo = (DefaultTableModel) tableSala.getModel();
         modelo.setRowCount(0);
-        boolean tieneColumnaTipo = tableSala.getColumnCount() >= 4;
+        boolean tieneColumnaTipo = modelo.getColumnCount() >= 4;
         Object[] ob = new Object[tieneColumnaTipo ? 4 : 3];
         for (int i = 0; i < Listar.size(); i++) {
             Salas s = Listar.get(i);
@@ -8972,6 +9012,11 @@ public final class Sistema extends javax.swing.JFrame {
         return panelSplitScreen;
     }
 
+    /** Id del usuario autenticado (0 si no hay); usado para preferencias por usuario. */
+    public int getIdUsuarioActual() {
+        return usuarioActual != null ? usuarioActual.getId() : 0;
+    }
+
     // platos
     private void ListarPlatos(JTable tabla, String filtro) {
         boolean menuPedido = tabla == tblTemPlatos;
@@ -8995,10 +9040,10 @@ public final class Sistema extends javax.swing.JFrame {
         // A1: preservar la seleccion por ID entre refrescos (el filtrado no debe perderla).
         int filaSel = tabla.getSelectedRow();
         String idSel = (filaSel >= 0 && filaSel < tabla.getRowCount())
-                ? String.valueOf(tabla.getValueAt(filaSel, 0)) : null;
+                ? String.valueOf(Tables.valorModelo(tabla, filaSel, 0)) : null;
         modelo = (DefaultTableModel) tabla.getModel();
         modelo.setRowCount(0);
-        boolean tieneColumnaIva = tabla.getColumnCount() >= 4;
+        boolean tieneColumnaIva = modelo.getColumnCount() >= 4;
         Object[] ob = new Object[tieneColumnaIva ? 4 : 3];
         int filaRestaurar = -1;
         for (int i = 0; i < Listar.size(); i++) {
@@ -9617,13 +9662,13 @@ public final class Sistema extends javax.swing.JFrame {
         List<DetallePedido> detalles = new ArrayList<>();
         for (int i = 0; i < tableMenu.getRowCount(); i++) {
             DetallePedido detalle = new DetallePedido();
-            detalle.setNombre(tableMenu.getValueAt(i, 1).toString());
-            detalle.setCantidad(Integer.parseInt(tableMenu.getValueAt(i, 2).toString()));
-            detalle.setPrecioDecimal(importeMonetario(tableMenu.getValueAt(i, 3)));
-            Object comentario = tableMenu.getValueAt(i, 5);
+            detalle.setNombre(Tables.valorModelo(tableMenu, i, 1).toString());
+            detalle.setCantidad(Integer.parseInt(Tables.valorModelo(tableMenu, i, 2).toString()));
+            detalle.setPrecioDecimal(importeMonetario(Tables.valorModelo(tableMenu, i, 3)));
+            Object comentario = Tables.valorModelo(tableMenu, i, 5);
             detalle.setComentario(comentario == null ? "" : comentario.toString());
 
-            Object idObj = tableMenu.getValueAt(i, 0);
+            Object idObj = Tables.valorModelo(tableMenu, i, 0);
             Integer idPlato = null;
             if (idObj != null && !idObj.toString().isBlank()) {
                 try {
@@ -9660,11 +9705,11 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private boolean aplicaIvaEnFila(int fila) {
-        if (tableMenu.getColumnCount() > 6 && tableMenu.getValueAt(fila, 6) != null) {
-            String valor = tableMenu.getValueAt(fila, 6).toString().toLowerCase(java.util.Locale.ROOT);
+        if (tableMenu.getModel().getColumnCount() > 6 && Tables.valorModelo(tableMenu, fila, 6) != null) {
+            String valor = Tables.valorModelo(tableMenu, fila, 6).toString().toLowerCase(java.util.Locale.ROOT);
             return !(valor.contains("exento") || valor.contains("no") || valor.equals("false") || valor.equals("0"));
         }
-        Object idObj = tableMenu.getValueAt(fila, 0);
+        Object idObj = Tables.valorModelo(tableMenu, fila, 0);
         if (idObj != null) {
             try {
                 return platoAplicaIvaMap.getOrDefault(Integer.parseInt(idObj.toString()), true);

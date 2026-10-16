@@ -80,7 +80,8 @@ public class RendererPlato implements TableCellRenderer {
             }
         }
 
-        if (columna == 1 && p != null) {
+        int colModelo = (tabla != null) ? tabla.convertColumnIndexToModel(columna) : columna;
+        if (colModelo == 1 && p != null) {
             String texto = valorStr;
             while (texto.startsWith("★ ") || texto.startsWith("🔥 ")) {
                 texto = texto.substring(2);

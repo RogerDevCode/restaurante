@@ -66,14 +66,29 @@ public final class OpcionCSplitE2EVirtual {
             p1.setRankingTotal(new BigDecimal("25"));
             p1.setCategoriaNombre("Pollos");
             p1.setCategoriaColor("#E67E22");
+            p1.setMonedaBase("USD");
+            p1.setPrecioUsd(new BigDecimal("12.50"));
+            p1.setAplicaIva(true);
+            p1.setPrecioIncluyeIva(false);
+            p1.setPrecioClasificado(true);
 
             Platos p2 = new Platos(2, "Papas Fritas", new BigDecimal("3.00"), LocalDate.now().toString(), false);
             p2.setCategoriaNombre("Guarniciones");
             p2.setCategoriaColor("#F39C12");
+            p2.setMonedaBase("USD");
+            p2.setPrecioUsd(new BigDecimal("3.00"));
+            p2.setAplicaIva(true);
+            p2.setPrecioIncluyeIva(false);
+            p2.setPrecioClasificado(true);
 
             Platos p3 = new Platos(3, "Refresco", new BigDecimal("1.50"), LocalDate.now().toString(), false);
             p3.setCategoriaNombre("Bebidas");
             p3.setCategoriaColor("#3498DB");
+            p3.setMonedaBase("USD");
+            p3.setPrecioUsd(new BigDecimal("1.50"));
+            p3.setAplicaIva(true);
+            p3.setPrecioIncluyeIva(false);
+            p3.setPrecioClasificado(true);
 
             platos = List.of(p1, p2, p3);
         }
@@ -256,11 +271,11 @@ public final class OpcionCSplitE2EVirtual {
             check(tblCatalogo.getRowCount() >= 3, "Catálogo tiene platos cargados (encontrados: " + tblCatalogo.getRowCount() + ")");
 
             // Validar estilo y presentación sincronizada del catálogo de platos:
-            javax.swing.table.TableCellRenderer cr = tblCatalogo.getCellRenderer(0, 1);
-            java.awt.Component comp0 = cr.getTableCellRendererComponent(tblCatalogo, tblCatalogo.getValueAt(0, 1), false, false, 0, 1);
+            javax.swing.table.TableCellRenderer cr = tblCatalogo.getCellRenderer(0, 0);
+            java.awt.Component comp0 = cr.getTableCellRendererComponent(tblCatalogo, tblCatalogo.getModel().getValueAt(tblCatalogo.convertRowIndexToModel(0), 1), false, false, 0, 0);
             check(comp0 instanceof JLabel && ((JLabel) comp0).getText().contains("★"), "Plato favorito/top muestra distintivo '★' en el catálogo");
             check(comp0 instanceof JLabel && ((JLabel) comp0).getBackground().equals(java.awt.Color.decode("#E67E22")), "Plato tiene color de su categoría en el catálogo");
-            check("Pollo a la Brasa".equals(tblCatalogo.getValueAt(0, 1)), "El valor en el modelo conserva el nombre limpio sin alterar la base de datos");
+            check("Pollo a la Brasa".equals(tblCatalogo.getModel().getValueAt(tblCatalogo.convertRowIndexToModel(0), 1)), "El valor en el modelo conserva el nombre limpio sin alterar la base de datos");
 
             SwingUtilities.invokeAndWait(() -> {
                 tblCatalogo.setRowSelectionInterval(0, 0);
@@ -326,6 +341,13 @@ public final class OpcionCSplitE2EVirtual {
             // CASO 8: Cambio a otra mesa y retorno con recarga de comanda
             // -------------------------------------------------------------
             System.out.println("\n--- Caso 8: Recarga automática de comanda existente ---");
+            for (int t = 0; t < 30; t++) {
+                List<JButton> bs = obtenerBotonesMesa(split);
+                if (!bs.isEmpty() && bs.get(0).getText().contains("OCUPADA")) {
+                    break;
+                }
+                Thread.sleep(100);
+            }
             List<JButton> botonesMesaActualizados = obtenerBotonesMesa(split);
             if (botonesMesaActualizados.size() >= 2) {
                 // Clic en Mesa 2 (libre)
@@ -335,7 +357,9 @@ public final class OpcionCSplitE2EVirtual {
 
                 // Retorno a Mesa 1 (ocupada)
                 SwingUtilities.invokeAndWait(() -> botonesMesaActualizados.get(0).doClick());
-                Thread.sleep(800);
+                for (int t = 0; t < 30 && split.getCantidadItemsEnCarrito() == 0; t++) {
+                    Thread.sleep(100);
+                }
                 check(split.getCantidadItemsEnCarrito() >= 1,
                         "Mesa 1 (ocupada) recarga automáticamente sus items (Items: " + split.getCantidadItemsEnCarrito() + ")");
             }

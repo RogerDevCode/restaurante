@@ -344,8 +344,8 @@ public class SistemaTabsYVistasTest {
 
             JTable tableSala = campo(sistema, "tableSala", JTable.class);
             assertEquals(2, tableSala.getRowCount());
-            assertEquals("Patio", tableSala.getValueAt(0, 1));
-            assertEquals(6, tableSala.getValueAt(0, 2));
+            assertEquals("Patio", tableSala.getModel().getValueAt(tableSala.convertRowIndexToModel(0), 1));
+            assertEquals(6, tableSala.getModel().getValueAt(tableSala.convertRowIndexToModel(0), 2));
 
             // Probar método de limpieza
             JTextField txtNombreSala = campo(sistema, "txtNombreSala", JTextField.class);
@@ -436,12 +436,12 @@ public class SistemaTabsYVistasTest {
             assertEquals(2, tblTemPlatos.getRowCount());
 
             // En el catálogo y toma de pedidos, los precios se muestran en USD con 2 decimales
-            assertEquals("Arepa Reina Pepiada", tblTemPlatos.getValueAt(0, 1));
-            String precioStr1 = tblTemPlatos.getValueAt(0, 2).toString();
+            assertEquals("Arepa Reina Pepiada", tblTemPlatos.getModel().getValueAt(tblTemPlatos.convertRowIndexToModel(0), 1));
+            String precioStr1 = tblTemPlatos.getModel().getValueAt(tblTemPlatos.convertRowIndexToModel(0), 2).toString();
             assertEquals("$ 10.00", precioStr1);
 
-            assertEquals("Jugo Natural", tblTemPlatos.getValueAt(1, 1));
-            String precioStr2 = tblTemPlatos.getValueAt(1, 2).toString();
+            assertEquals("Jugo Natural", tblTemPlatos.getModel().getValueAt(tblTemPlatos.convertRowIndexToModel(1), 1));
+            String precioStr2 = tblTemPlatos.getModel().getValueAt(tblTemPlatos.convertRowIndexToModel(1), 2).toString();
             assertEquals("$ 2.50", precioStr2);
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
@@ -472,10 +472,10 @@ public class SistemaTabsYVistasTest {
             });
 
             assertEquals(1, tableMenu.getRowCount());
-            assertEquals(101, tableMenu.getValueAt(0, 0));
-            assertEquals("Pabellón Criollo", tableMenu.getValueAt(0, 1));
-            assertEquals(1, tableMenu.getValueAt(0, 2));
-            assertEquals("10.00", tableMenu.getValueAt(0, 4)); // Subtotal con 2 decimales
+            assertEquals(101, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 0));
+            assertEquals("Pabellón Criollo", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 1));
+            assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+            assertEquals("10.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4)); // Subtotal con 2 decimales
 
             // Agregar por segunda vez: debe incrementar cantidad a 2 y subtotal a 20.00
             SwingUtilities.invokeAndWait(() -> {
@@ -484,8 +484,8 @@ public class SistemaTabsYVistasTest {
             });
 
             assertEquals(1, tableMenu.getRowCount());
-            assertEquals(2, tableMenu.getValueAt(0, 2)); // Cantidad = 2
-            assertEquals("20.00", tableMenu.getValueAt(0, 4)); // Subtotal = 20.00
+            assertEquals(2, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2)); // Cantidad = 2
+            assertEquals("20.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4)); // Subtotal = 20.00
 
             // El total preliminar del menú debe mostrarse en USD con 2 decimales:
             assertEquals("$ 20.00", totalMenu.getText());
@@ -641,8 +641,8 @@ public class SistemaTabsYVistasTest {
             JLabel totalFinalizar = campo(sistema, "totalFinalizar", JLabel.class);
 
             assertEquals(1, tableFinalizar.getRowCount());
-            assertEquals("Pabellón", tableFinalizar.getValueAt(0, 1));
-            assertEquals(2, tableFinalizar.getValueAt(0, 2));
+            assertEquals("Pabellón", tableFinalizar.getModel().getValueAt(tableFinalizar.convertRowIndexToModel(0), 1));
+            assertEquals(2, tableFinalizar.getModel().getValueAt(tableFinalizar.convertRowIndexToModel(0), 2));
 
             // Total inclusivo de IVA, visible en ambas monedas.
             assertEquals("USD $ 23.20  |  Bs. 846.80", totalFinalizar.getText());
@@ -675,12 +675,12 @@ public class SistemaTabsYVistasTest {
 
             JTable tablePedidos = campo(sistema, "TablePedidos", JTable.class);
             assertEquals(1, tablePedidos.getRowCount());
-            assertEquals(1, tablePedidos.getValueAt(0, 0));
-            assertEquals("Salón", tablePedidos.getValueAt(0, 1));
-            assertEquals("admin", tablePedidos.getValueAt(0, 2));
-            assertEquals(2, tablePedidos.getValueAt(0, 3));
-            assertEquals("FINALIZADO", tablePedidos.getValueAt(0, 6));
-            assertTrue(tablePedidos.getValueAt(0, 5).toString().contains("Bs. 846.80"));
+            assertEquals(1, tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 0));
+            assertEquals("Salón", tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 1));
+            assertEquals("admin", tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 2));
+            assertEquals(2, tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 3));
+            assertEquals("FINALIZADO", tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 6));
+            assertTrue(tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 5).toString().contains("Bs. 846.80"));
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
         }
@@ -801,13 +801,14 @@ public class SistemaTabsYVistasTest {
                 Thread.sleep(100);
             }
             assertEquals(2, tableUsuarios.getRowCount());
-            assertEquals("Administrador", tableUsuarios.getValueAt(0, 1));
-            assertEquals("Cajero", tableUsuarios.getValueAt(1, 1));
-            assertEquals("Asistente", tableUsuarios.getValueAt(1, 3));
-            assertEquals(5, tableUsuarios.getColumnCount());
-            assertEquals("Estado", tableUsuarios.getColumnName(4));
-            assertEquals("Activo", tableUsuarios.getValueAt(0, 4));
-            assertEquals("Activo", tableUsuarios.getValueAt(1, 4));
+            assertEquals("Administrador", tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(0), 1));
+            assertEquals("Cajero", tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(1), 1));
+            assertEquals("Asistente", tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(1), 3));
+            assertEquals(4, tableUsuarios.getColumnCount());
+            assertEquals(5, tableUsuarios.getModel().getColumnCount()); // ID interno sigue en el modelo
+            assertEquals("Estado", tableUsuarios.getColumnName(3));
+            assertEquals("Activo", tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(0), 4));
+            assertEquals("Activo", tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(1), 4));
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
         }
@@ -838,8 +839,8 @@ public class SistemaTabsYVistasTest {
             });
 
             assertEquals(2, tableUsuarios.getRowCount());
-            assertEquals("Activo", tableUsuarios.getValueAt(0, 4));
-            assertEquals("Inactivo", tableUsuarios.getValueAt(1, 4));
+            assertEquals("Activo", tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(0), 4));
+            assertEquals("Inactivo", tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(1), 4));
 
             // Sin selección: botones deshabilitados
             SwingUtilities.invokeAndWait(() -> {
@@ -960,7 +961,7 @@ public class SistemaTabsYVistasTest {
             JTable tableMenu = campo(sistema, "tableMenu", JTable.class);
             assertEquals(1, tableMenu.getRowCount());
             // Columna 6 es IVA: debe ser "Sí (10%)" y NO "Sí (16%)"
-            assertEquals("Sí (10%)", tableMenu.getValueAt(0, 6));
+            assertEquals("Sí (10%)", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 6));
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
         }
@@ -987,10 +988,10 @@ public class SistemaTabsYVistasTest {
             });
 
             assertEquals(2, tablePlatos.getRowCount());
-            assertEquals("Chivo en Coco", tablePlatos.getValueAt(0, 1));
-            assertEquals("18.00", tablePlatos.getValueAt(0, 2)); // Formato estándar con 2 decimales
-            assertEquals("Postre Tres Leches", tablePlatos.getValueAt(1, 1));
-            assertEquals("4.50", tablePlatos.getValueAt(1, 2));  // 4.50 con 2 decimales exactos
+            assertEquals("Chivo en Coco", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(0), 1));
+            assertEquals("18.00", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(0), 2)); // Formato estándar con 2 decimales
+            assertEquals("Postre Tres Leches", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(1), 1));
+            assertEquals("4.50", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(1), 2));  // 4.50 con 2 decimales exactos
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
         }

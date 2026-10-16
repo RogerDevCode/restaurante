@@ -25,6 +25,9 @@ limpiar() {
 }
 trap limpiar EXIT
 limpiar
+echo "== Compilando tests =="
+ant -q compile-test
+
 echo "== Xvfb $DISP ($GEOM) =="
 mkdir -p /tmp/opencode
 DISPLAY="$DISP" setsid nohup Xvfb "$DISP" -screen 0 "$GEOM" > /tmp/opencode/xvfb-e2e.log 2>&1 < /dev/null &
@@ -33,9 +36,6 @@ for i in $(seq 1 20); do
     sleep 0.5
 done
 DISPLAY="$DISP" xdotool getdisplaygeometry || { echo "Xvfb no respondió" >&2; exit 1; }
-
-echo "== Compilando tests =="
-ant -q compile-test
 
 CLASE="${1:-Vista.E2EVirtual}"
 shift || true

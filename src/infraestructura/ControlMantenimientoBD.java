@@ -290,12 +290,14 @@ public final class ControlMantenimientoBD {
                     try { conexion.rollback(); } catch (SQLException rollback) { ex.addSuppressed(rollback); }
                 }
                 if (ex instanceof SQLException sqlEx && nombre.startsWith("execute")) {
+                    final String sqlFijo = sqlConsulta;
+                    final Statement stFijo = st;
                     LOGGER.log(java.util.logging.Level.WARNING, () -> String.format(
                             "[SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código %d, SQLState '%s'): %s | SQL: %s",
                             sqlEx.getErrorCode(),
                             sqlEx.getSQLState() != null ? sqlEx.getSQLState() : "N/A",
                             sqlEx.getMessage(),
-                            sqlConsulta != null ? sqlConsulta.replaceAll("\\s+", " ").trim() : st.toString()));
+                            sqlFijo != null ? sqlFijo.replaceAll("\\s+", " ").trim() : stFijo.toString()));
                 }
                 throw ex;
             } finally {

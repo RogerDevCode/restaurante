@@ -85,7 +85,7 @@ public class FiltrosHistorialTest {
             // Filas 1 y 2 son de hoy
             assertEquals("Deben verse exactamente 2 pedidos de hoy", 2, tablePedidos.getRowCount());
             for (int i = 0; i < tablePedidos.getRowCount(); i++) {
-                String f = tablePedidos.getValueAt(i, 4).toString();
+                String f = tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(i), 4).toString();
                 assertEquals(true, f.startsWith(hoy));
             }
         });
@@ -99,7 +99,7 @@ public class FiltrosHistorialTest {
             // Filas 1 y 4 son PENDIENTES
             assertEquals("Deben verse 2 pedidos pendientes", 2, tablePedidos.getRowCount());
             for (int i = 0; i < tablePedidos.getRowCount(); i++) {
-                assertEquals("PENDIENTE", tablePedidos.getValueAt(i, 6));
+                assertEquals("PENDIENTE", tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(i), 6));
             }
         });
     }
@@ -112,7 +112,7 @@ public class FiltrosHistorialTest {
             // Filas 2, 3 y 5 son FINALIZADOS
             assertEquals("Deben verse 3 pedidos finalizados", 3, tablePedidos.getRowCount());
             for (int i = 0; i < tablePedidos.getRowCount(); i++) {
-                assertEquals("FINALIZADO", tablePedidos.getValueAt(i, 6));
+                assertEquals("FINALIZADO", tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(i), 6));
             }
         });
     }
@@ -147,9 +147,9 @@ public class FiltrosHistorialTest {
         SwingUtilities.invokeAndWait(() -> {
             // Terraza tiene id 1 (PENDIENTE) y id 3 (FINALIZADO). Con filtro FINALIZADO solo queda id 3.
             assertEquals("Solo debe coincidir 1 fila", 1, tablePedidos.getRowCount());
-            assertEquals(3, tablePedidos.getValueAt(0, 0));
-            assertEquals("Terraza", tablePedidos.getValueAt(0, 1));
-            assertEquals("FINALIZADO", tablePedidos.getValueAt(0, 6));
+            assertEquals(3, tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 0));
+            assertEquals("Terraza", tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 1));
+            assertEquals("FINALIZADO", tablePedidos.getModel().getValueAt(tablePedidos.convertRowIndexToModel(0), 6));
         });
     }
 

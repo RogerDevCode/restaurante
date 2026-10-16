@@ -115,14 +115,14 @@ public class SistemaCantidadesTest {
                 btnAdd.doClick(); // Should add 1 Arepa to cart
                 
                 assertEquals(1, tableMenu.getRowCount());
-                assertEquals("1", tableMenu.getValueAt(0, 2).toString());
+                assertEquals("1", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2).toString());
                 
                 // Select in cart
                 tableMenu.setRowSelectionInterval(0, 0);
                 
                 // Simulate + click
                 btnMas.doClick();
-                assertEquals("2", tableMenu.getValueAt(0, 2).toString());
+                assertEquals("2", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2).toString());
                 assertEquals("2", txtCantidad.getText());
                 
                 // Set manual quantity via input
@@ -135,7 +135,7 @@ public class SistemaCantidadesTest {
                 }
                 
                 // Verify update
-                assertEquals("15", tableMenu.getValueAt(0, 2).toString());
+                assertEquals("15", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2).toString());
                 
                 // Find grid buttons
                 // They are inside the pnlBotonesCantidad hierarchy, let's just trigger applying manually
@@ -143,7 +143,7 @@ public class SistemaCantidadesTest {
                 aplicarMethod.setAccessible(true);
                 aplicarMethod.invoke(sistema, "8", 0);
                 
-                assertEquals("8", tableMenu.getValueAt(0, 2).toString());
+                assertEquals("8", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2).toString());
                 assertEquals("8", txtCantidad.getText());
                 
             } catch (Exception e) {

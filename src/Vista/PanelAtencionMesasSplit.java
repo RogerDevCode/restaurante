@@ -111,6 +111,8 @@ public class PanelAtencionMesasSplit extends JPanel {
     private JButton btnEnviarCocina;
     private JButton btnCobrar;
     private JButton btnLimpiar;
+    /** Ancho objetivo por tarjeta (botón 115 + gaps): la grilla ajusta columnas al viewport. */
+    private static final int ANCHO_TARJETA_MESA_OBJETIVO = 125;
 
     public PanelAtencionMesasSplit(
             Sistema sistema,
@@ -178,6 +180,12 @@ public class PanelAtencionMesasSplit extends JPanel {
                 JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollMesas.setBorder(BorderFactory.createLineBorder(new Color(220, 224, 230), 1));
         scrollMesas.getVerticalScrollBar().setUnitIncrement(16);
+        scrollMesas.getViewport().addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                ajustarColumnasGrillaMesas();
+            }
+        });
         pnlIzquierdo.add(scrollMesas, BorderLayout.CENTER);
 
         // Footer izquierdo: leyenda y actualización
@@ -308,6 +316,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCatalogoPlatos.getColumnModel().getColumn(1).setPreferredWidth(300);
         tblCatalogoPlatos.getColumnModel().getColumn(2).setPreferredWidth(140);
         tblCatalogoPlatos.getColumnModel().getColumn(2).setMaxWidth(220);
+        Tables.ocultarColumnaModelo(tblCatalogoPlatos, 0); // ID interno: oculto, sigue en el modelo
 
         tblCatalogoPlatos.addMouseListener(new MouseAdapter() {
             @Override
@@ -354,21 +363,21 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCarrito.setRowHeight(24);
         tblCarrito.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tblCarrito.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
-        tblCarrito.getColumnModel().getColumn(0).setPreferredWidth(40);
-        tblCarrito.getColumnModel().getColumn(0).setMaxWidth(50);
-        tblCarrito.getColumnModel().getColumn(1).setPreferredWidth(220);
-        tblCarrito.getColumnModel().getColumn(2).setPreferredWidth(48);
-        tblCarrito.getColumnModel().getColumn(2).setMaxWidth(55);
-        tblCarrito.getColumnModel().getColumn(3).setPreferredWidth(70);
-        tblCarrito.getColumnModel().getColumn(3).setMaxWidth(85);
-        tblCarrito.getColumnModel().getColumn(4).setPreferredWidth(80);
-        tblCarrito.getColumnModel().getColumn(4).setMaxWidth(95);
-        tblCarrito.getColumnModel().getColumn(5).setPreferredWidth(120);
+        // Ancho proporcional igualitario: sin topes, AUTO_RESIZE reparte según
+        // preferredWidth, así cada columna ocupa 1/6 del viewport y crece pareja.
+        for (int i = 0; i < tblCarrito.getColumnModel().getColumnCount(); i++) {
+            tblCarrito.getColumnModel().getColumn(i).setPreferredWidth(100);
+            tblCarrito.getColumnModel().getColumn(i).setMaxWidth(Integer.MAX_VALUE);
+            tblCarrito.getColumnModel().getColumn(i).setMinWidth(30);
+        }
+        // ID y Comentario fuera de la vista (siguen en el modelo para guardar correctamente).
+        Tables.ocultarColumnaModelo(tblCarrito, 0);
+        Tables.ocultarColumnaModelo(tblCarrito, 5);
 
         tblCarrito.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && tblCarrito.getSelectedRow() >= 0) {
                 int fila = tblCarrito.getSelectedRow();
-                txtCantManual.setText(String.valueOf(tblCarrito.getValueAt(fila, 2)));
+                txtCantManual.setText(String.valueOf(Tables.valorModelo(tblCarrito, fila, 2)));
             }
         });
 
@@ -518,6 +527,23 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         RefrescoVistas.suscribir(RefrescoVistas.PLATOS, this::refrescarPlatos);
         RefrescoVistas.suscribir(RefrescoVistas.PEDIDOS, this::refrescarPedidos);
+        registrarPersistenciaAnchos();
+    }
+
+    /** Persiste los anchos del catálogo y carrito por usuario (claves split_*). */
+    private void registrarPersistenciaAnchos() {
+        try {
+            int uid = (sistema != null) ? sistema.getIdUsuarioActual() : 0;
+            if (uid <= 0) {
+                return;
+            }
+            Modelo.PreferenciasTablaDao dao = new Modelo.PreferenciasTablaDao();
+            new GestorAnchosTabla(tblCatalogoPlatos, "split_catalogo", uid, dao);
+            new GestorAnchosTabla(tblCarrito, "split_carrito", uid, dao);
+        } catch (RuntimeException ex) {
+            java.util.logging.Logger.getLogger(PanelAtencionMesasSplit.class.getName())
+                    .log(java.util.logging.Level.FINE, "Sin persistencia de anchos split: " + ex.getMessage());
+        }
     }
 
     public void refrescarPlatos(Object carga) {
@@ -708,9 +734,37 @@ public class PanelAtencionMesasSplit extends JPanel {
             panelGrillaMesas.add(btnMesa);
         }
 
+        ajustarColumnasGrillaMesas();
         panelGrillaMesas.revalidate();
         panelGrillaMesas.repaint();
         lblEstadoSalas.setText(nombreSalaSeleccionada + ": " + cantMesasSalaSeleccionada + (salaSeleccionadaEsBarra ? " puestos" : " mesas"));
+    }
+
+    /**
+     * Rejilla responsiva: calcula columnas según el ancho visible para que cada
+     * tarjeta conserve su tamaño y las mesas fluyan hacia abajo con scroll vertical.
+     */
+    private void ajustarColumnasGrillaMesas() {
+        if (panelGrillaMesas == null || scrollMesas == null || scrollMesas.getViewport() == null) {
+            return;
+        }
+        int ancho = scrollMesas.getViewport().getExtentSize().width;
+        if (ancho <= 0) {
+            ancho = scrollMesas.getWidth();
+        }
+        if (ancho <= 0) {
+            return;
+        }
+        int n = panelGrillaMesas.getComponentCount();
+        if (n == 0) {
+            return;
+        }
+        int cols = Math.max(1, (ancho - 16) / ANCHO_TARJETA_MESA_OBJETIVO);
+        cols = Math.min(cols, n);
+        if (panelGrillaMesas.getLayout() instanceof java.awt.GridLayout rejilla && rejilla.getColumns() != cols) {
+            rejilla.setColumns(cols);
+            panelGrillaMesas.revalidate();
+        }
     }
 
     /**
@@ -887,7 +941,7 @@ public class PanelAtencionMesasSplit extends JPanel {
                     List<Platos> platos = get();
                     int filaSel = tblCatalogoPlatos.getSelectedRow();
                     Integer idSel = (filaSel >= 0 && filaSel < tblCatalogoPlatos.getRowCount())
-                            ? (Integer) tblCatalogoPlatos.getValueAt(filaSel, 0) : null;
+                            ? (Integer) Tables.valorModelo(tblCatalogoPlatos, filaSel, 0) : null;
                     platosPorId.clear();
                     modeloCatalogoPlatos.setRowCount(0);
                     int filaRestaurar = -1;
@@ -954,7 +1008,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         int fila = tblCatalogoPlatos.getSelectedRow();
         if (fila < 0) return;
 
-        int idPlato = (int) tblCatalogoPlatos.getValueAt(fila, 0);
+        int idPlato = (int) Tables.valorModelo(tblCatalogoPlatos, fila, 0);
         Platos platoObj = platosPorId.get(idPlato);
         if (platoObj != null && !platoObj.isPrecioClasificado()) {
             sistema.mostrarAvisoEnBanda("El producto '" + platoObj.getNombre() + "' no está clasificado con moneda/IVA.");
@@ -969,7 +1023,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCatalogoPlatos.setSelectionBackground(new Color(144, 238, 144));
         new javax.swing.Timer(300, ev -> tblCatalogoPlatos.setSelectionBackground(javax.swing.UIManager.getColor("Table.selectionBackground"))).start();
 
-        String nombre = (String) tblCatalogoPlatos.getValueAt(fila, 1);
+        String nombre = (String) Tables.valorModelo(tblCatalogoPlatos, fila, 1);
         String moneda = (platoObj != null && platoObj.getMonedaBase() != null) ? platoObj.getMonedaBase().toUpperCase() : "USD";
         BigDecimal precio;
         if (platoObj != null) {

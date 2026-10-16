@@ -174,7 +174,7 @@ public final class PedidoRapidoE2EVirtual {
             robot.keyRelease(KeyEvent.VK_A); robot.keyRelease(KeyEvent.VK_CONTROL);
             escribir(robot, "arepa");
             esperarFilas(robot, menu, 1);
-            Rectangle celda = edt(() -> menu.getCellRect(0, 1, true));
+            Rectangle celda = edt(() -> menu.getCellRect(0, 0, true));
             Point origen = edt(menu::getLocationOnScreen);
             robot.mouseMove(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK); robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK); robot.delay(200);
@@ -182,19 +182,19 @@ public final class PedidoRapidoE2EVirtual {
             esperar(edt(carrito::getRowCount) == 1, "producto gravado se añade al carrito");
             JButton mas = (JButton) campo(sistema, "btnMasCantidad");
             clic(robot, mas);
-            esperar("2".equals(String.valueOf(edt(() -> carrito.getValueAt(0, 2)))), "cantidad se incrementa desde el control rápido");
-            celda = edt(() -> menu.getCellRect(0, 1, true));
+            esperar("2".equals(String.valueOf(edt(() -> carrito.getModel().getValueAt(carrito.convertRowIndexToModel(0), 2)))), "cantidad se incrementa desde el control rápido");
+            celda = edt(() -> menu.getCellRect(0, 0, true));
             origen = edt(menu::getLocationOnScreen);
             robot.mouseMove(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK); robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK); robot.delay(250);
-            esperar("3".equals(String.valueOf(edt(() -> carrito.getValueAt(0, 2)))), "repetir un producto suma cantidad en la misma línea");
+            esperar("3".equals(String.valueOf(edt(() -> carrito.getModel().getValueAt(carrito.convertRowIndexToModel(0), 2)))), "repetir un producto suma cantidad en la misma línea");
 
             clic(robot, buscar);
             robot.keyPress(KeyEvent.VK_CONTROL); robot.keyPress(KeyEvent.VK_A);
             robot.keyRelease(KeyEvent.VK_A); robot.keyRelease(KeyEvent.VK_CONTROL);
             escribir(robot, "jugo");
             esperarFilas(robot, menu, 1);
-            celda = edt(() -> menu.getCellRect(0, 1, true));
+            celda = edt(() -> menu.getCellRect(0, 0, true));
             origen = edt(menu::getLocationOnScreen);
             robot.mouseMove(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK); robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK); robot.delay(200);
@@ -212,7 +212,7 @@ public final class PedidoRapidoE2EVirtual {
             robot.keyRelease(KeyEvent.VK_A); robot.keyRelease(KeyEvent.VK_CONTROL);
             escribir(robot, "jugo");
             esperarFilas(robot, menu, 1);
-            celda = edt(() -> menu.getCellRect(0, 1, true));
+            celda = edt(() -> menu.getCellRect(0, 0, true));
             origen = edt(menu::getLocationOnScreen);
             robot.mouseMove(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK); robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK); robot.delay(200);

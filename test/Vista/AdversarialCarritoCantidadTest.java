@@ -246,14 +246,14 @@ public class AdversarialCarritoCantidadTest {
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
 
         // Verificar que las cantidades no cambiaron
-        assertEquals(2, tableMenu.getValueAt(0, 2));
-        assertEquals(1, tableMenu.getValueAt(1, 2));
+        assertEquals(2, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(1), 2));
 
         // Invocar disminuir sin selección
         SwingUtilities.invokeAndWait(() -> sistema.disminuirCantidadSeleccionada());
         assertEquals(2, tableMenu.getRowCount());
-        assertEquals(2, tableMenu.getValueAt(0, 2));
-        assertEquals(1, tableMenu.getValueAt(1, 2));
+        assertEquals(2, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(1), 2));
     }
 
     // =========================================================================
@@ -268,11 +268,11 @@ public class AdversarialCarritoCantidadTest {
         // Aumentar con texto no numérico
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
         // El valor no debe corromperse a número aleatorio ni borrar la fila
-        assertEquals("invalido", tableMenu.getValueAt(0, 2));
+        assertEquals("invalido", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
 
         // Disminuir con texto no numérico
         SwingUtilities.invokeAndWait(() -> sistema.disminuirCantidadSeleccionada());
-        assertEquals("invalido", tableMenu.getValueAt(0, 2));
+        assertEquals("invalido", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
         assertEquals(1, tableMenu.getRowCount());
     }
 
@@ -282,10 +282,10 @@ public class AdversarialCarritoCantidadTest {
         seleccionarFila(0);
 
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
-        assertEquals("   ", tableMenu.getValueAt(0, 2));
+        assertEquals("   ", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
 
         SwingUtilities.invokeAndWait(() -> sistema.disminuirCantidadSeleccionada());
-        assertEquals("   ", tableMenu.getValueAt(0, 2));
+        assertEquals("   ", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
     }
 
     @Test
@@ -295,7 +295,7 @@ public class AdversarialCarritoCantidadTest {
 
         // Debe atrapar NumberFormatException porque cantidad debe ser un int
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
-        assertEquals("2.5", tableMenu.getValueAt(0, 2));
+        assertEquals("2.5", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
     }
 
     @Test
@@ -305,7 +305,7 @@ public class AdversarialCarritoCantidadTest {
 
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
         // Debe ser atrapado por el bloque try-catch sin crash
-        assertEquals(null, tableMenu.getValueAt(0, 2));
+        assertEquals(null, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
     }
 
     // =========================================================================
@@ -326,7 +326,7 @@ public class AdversarialCarritoCantidadTest {
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
 
         // Verificamos que la tabla no haya crasheado la JVM y documentamos el valor asignado
-        assertNotNull(tableMenu.getValueAt(0, 2));
+        assertNotNull(tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
     }
 
     @Test
@@ -337,8 +337,8 @@ public class AdversarialCarritoCantidadTest {
 
         // Aumentar pasa de 0 a 1
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
-        assertEquals(1, tableMenu.getValueAt(0, 2));
-        assertEquals("10.00", tableMenu.getValueAt(0, 4));
+        assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals("10.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4));
 
         // Forzamos cantidad a 0 de nuevo
         SwingUtilities.invokeAndWait(() -> tableMenu.setValueAt(0, 0, 2));
@@ -358,7 +358,7 @@ public class AdversarialCarritoCantidadTest {
 
         // Aumentar normaliza de forma segura cualquier valor anómalo negativo a 1
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
-        assertEquals(1, tableMenu.getValueAt(0, 2));
+        assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
 
         // Disminuir desde 1: entra al bloque else y remueve la fila
         SwingUtilities.invokeAndWait(() -> sistema.disminuirCantidadSeleccionada());
@@ -376,8 +376,8 @@ public class AdversarialCarritoCantidadTest {
 
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
 
-        assertEquals(2, tableMenu.getValueAt(0, 2));
-        assertEquals("50.00", tableMenu.getValueAt(0, 4));
+        assertEquals(2, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals("50.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4));
         assertTrue(totalMenu.getText().contains("50.00"));
     }
 
@@ -388,8 +388,8 @@ public class AdversarialCarritoCantidadTest {
 
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
 
-        assertEquals(2, tableMenu.getValueAt(0, 2));
-        assertEquals("9.00", tableMenu.getValueAt(0, 4));
+        assertEquals(2, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals("9.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4));
         assertTrue(totalMenu.getText().contains("9.00"));
     }
 
@@ -400,8 +400,8 @@ public class AdversarialCarritoCantidadTest {
 
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
 
-        assertEquals(2, tableMenu.getValueAt(0, 2));
-        assertEquals("0.00", tableMenu.getValueAt(0, 4));
+        assertEquals(2, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals("0.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4));
         assertEquals("$ 0.00", totalMenu.getText());
     }
 
@@ -414,13 +414,13 @@ public class AdversarialCarritoCantidadTest {
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
 
         // Cantidad no debió alterarse
-        assertEquals(1, tableMenu.getValueAt(0, 2));
+        assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
 
         // Ahora probamos con null en precio
         agregarFilaAlCarrito(2, "Plato Null", 1, null, "10");
         seleccionarFila(1);
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
-        assertEquals(1, tableMenu.getValueAt(1, 2));
+        assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(1), 2));
     }
 
     // =========================================================================
@@ -439,16 +439,16 @@ public class AdversarialCarritoCantidadTest {
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
 
         // Fila 0 intacta
-        assertEquals(1, tableMenu.getValueAt(0, 2));
-        assertEquals("10", tableMenu.getValueAt(0, 4));
+        assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals("10", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4));
 
         // Fila 1 incrementada
-        assertEquals(3, tableMenu.getValueAt(1, 2));
-        assertEquals("60.00", tableMenu.getValueAt(1, 4));
+        assertEquals(3, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(1), 2));
+        assertEquals("60.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(1), 4));
 
         // Fila 2 intacta
-        assertEquals(3, tableMenu.getValueAt(2, 2));
-        assertEquals("15", tableMenu.getValueAt(2, 4));
+        assertEquals(3, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(2), 2));
+        assertEquals("15", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(2), 4));
 
         // Total: 10 + 60 + 15 = 85
         assertEquals("$ 85.00", totalMenu.getText());
@@ -468,8 +468,8 @@ public class AdversarialCarritoCantidadTest {
         SwingUtilities.invokeAndWait(() -> sistema.disminuirCantidadSeleccionada());
 
         assertEquals(2, tableMenu.getRowCount());
-        assertEquals("Plato A", tableMenu.getValueAt(0, 1));
-        assertEquals("Plato C", tableMenu.getValueAt(1, 1));
+        assertEquals("Plato A", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 1));
+        assertEquals("Plato C", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(1), 1));
 
         // La selección debe reajustarse al índice 1 (que ahora es Plato C) sin desbordar
         assertEquals(1, tableMenu.getSelectedRow());
@@ -488,7 +488,7 @@ public class AdversarialCarritoCantidadTest {
         SwingUtilities.invokeAndWait(() -> sistema.disminuirCantidadSeleccionada());
 
         assertEquals(1, tableMenu.getRowCount());
-        assertEquals("Plato A", tableMenu.getValueAt(0, 1));
+        assertEquals("Plato A", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 1));
 
         // Reajuste al nuevo límite superior: índice 0
         assertEquals(0, tableMenu.getSelectedRow());
@@ -533,8 +533,8 @@ public class AdversarialCarritoCantidadTest {
             SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
         }
 
-        assertEquals(21, tableMenu.getValueAt(0, 2));
-        assertEquals("315.00", tableMenu.getValueAt(0, 4)); // 21 * 15 = 315
+        assertEquals(21, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals("315.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4)); // 21 * 15 = 315
         assertEquals("$ 315.00", totalMenu.getText());
         assertEquals(0, tableMenu.getSelectedRow());
 
@@ -543,8 +543,8 @@ public class AdversarialCarritoCantidadTest {
             SwingUtilities.invokeAndWait(() -> sistema.disminuirCantidadSeleccionada());
         }
 
-        assertEquals(11, tableMenu.getValueAt(0, 2));
-        assertEquals("165.00", tableMenu.getValueAt(0, 4)); // 11 * 15 = 165
+        assertEquals(11, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals("165.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4)); // 11 * 15 = 165
         assertEquals("$ 165.00", totalMenu.getText());
         assertEquals(0, tableMenu.getSelectedRow());
     }
@@ -624,9 +624,9 @@ public class AdversarialCarritoCantidadTest {
         // y colapsar la selección a esa sola fila (evitando inconsistencias visuales)
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
 
-        assertEquals(2, tableMenu.getValueAt(0, 2));
-        assertEquals("20.00", tableMenu.getValueAt(0, 4));
-        assertEquals(1, tableMenu.getValueAt(1, 2)); // Fila 1 no se tocó
+        assertEquals(2, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
+        assertEquals("20.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4));
+        assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(1), 2)); // Fila 1 no se tocó
         assertEquals(1, tableMenu.getSelectedRowCount());
         assertEquals(0, tableMenu.getSelectedRow());
     }
@@ -651,7 +651,7 @@ public class AdversarialCarritoCantidadTest {
         SwingUtilities.invokeAndWait(() -> sistema.aumentarCantidadSeleccionada());
 
         // Verificamos que el sistema no se derrumbó con excepción no controlada
-        assertNotNull(tableMenu.getValueAt(0, 2));
+        assertNotNull(tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
     }
 
     // =========================================================================
