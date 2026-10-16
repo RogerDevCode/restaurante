@@ -1093,8 +1093,11 @@ public class PanelAtencionMesasSplit extends JPanel {
                         for (int i = 0; i < modeloCatalogoPlatos.getRowCount(); i++) {
                             Object v = modeloCatalogoPlatos.getValueAt(i, 0);
                             if (v != null && String.valueOf(objetivo).equals(v.toString())) {
-                                tblCatalogoPlatos.setRowSelectionInterval(i, i);
-                                tblCatalogoPlatos.scrollRectToVisible(tblCatalogoPlatos.getCellRect(i, 0, true));
+                                int filaV = tblCatalogoPlatos.convertRowIndexToView(i);
+                                if (filaV >= 0) {
+                                    tblCatalogoPlatos.setRowSelectionInterval(filaV, filaV);
+                                    tblCatalogoPlatos.scrollRectToVisible(tblCatalogoPlatos.getCellRect(filaV, 0, true));
+                                }
                                 break;
                             }
                         }

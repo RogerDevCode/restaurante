@@ -141,6 +141,9 @@ public final class Sistema extends javax.swing.JFrame {
     private boolean sincronizandoPlatoForm = false;
     private javax.swing.JCheckBox chkFiltroRapido;
     private Integer desplazarAPlatoIdToma = null;
+    private javax.swing.JCheckBox chkFiltroRapidoAdminPlatos;
+    private javax.swing.JTextField txtBuscarAdminPlatos;
+    private Integer desplazarAPlatoIdAdmin = null;
     private Integer idMesoneroEdicionOriginal = null;
     private String nombreMesoneroEdicionOriginal = null;
     private boolean quitarMesoneroEdicion = false;
@@ -2031,11 +2034,7 @@ public final class Sistema extends javax.swing.JFrame {
         chkFiltroRapido.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
         chkFiltroRapido.setToolTipText("Al elegir un plato se limpia el filtro y se muestra en la lista completa");
         chkFiltroRapido.addItemListener(e -> {
-            boolean sel = chkFiltroRapido.isSelected();
-            guardarPreferenciaFiltroRapido(sel);
-            if (panelSplitScreen != null) {
-                panelSplitScreen.setFiltroRapido(sel);
-            }
+            guardarPreferenciaFiltroRapido(chkFiltroRapido.isSelected());
         });
         jScrollPane11 = new javax.swing.JScrollPane();
         tableMenu = new javax.swing.JTable();
@@ -4894,11 +4893,12 @@ public final class Sistema extends javax.swing.JFrame {
             return;
         }
         sincronizandoPlatoForm = true;
+        int idPlato = -1;
         try {
         txtIdPlato.setText(Tables.valorModelo(TablePlatos, filaVista, 0).toString());
         txtNombrePlato.setText(Tables.valorModelo(TablePlatos, filaVista, 1).toString());
         try {
-            int idPlato = Integer.parseInt(Tables.valorModelo(TablePlatos, filaVista, 0).toString());
+            idPlato = Integer.parseInt(Tables.valorModelo(TablePlatos, filaVista, 0).toString());
             Platos platoSel = platosPorId.get(idPlato);
             if (platoSel != null) {
                 String mb = platoSel.getMonedaBase() != null ? platoSel.getMonedaBase().toUpperCase() : "USD";
@@ -4942,6 +4942,18 @@ public final class Sistema extends javax.swing.JFrame {
         }
         } finally {
             sincronizandoPlatoForm = false;
+        }
+        if (idPlato > 0) {
+            autoLimpiarFiltroAdminTrasSeleccionar(idPlato);
+        }
+    }
+
+    private void autoLimpiarFiltroAdminTrasSeleccionar(int idPlato) {
+        if (chkFiltroRapidoAdminPlatos != null && chkFiltroRapidoAdminPlatos.isSelected()
+                && txtBuscarAdminPlatos != null && !txtBuscarAdminPlatos.getText().trim().isEmpty()) {
+            desplazarAPlatoIdAdmin = idPlato;
+            txtBuscarAdminPlatos.setText("");
+            ListarPlatos(TablePlatos, "");
         }
     }
 
@@ -8534,27 +8546,41 @@ public final class Sistema extends javax.swing.JFrame {
             lblBuscarAdmin.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
             pnlBuscarAdmin.add(lblBuscarAdmin, java.awt.BorderLayout.WEST);
 
-            javax.swing.JTextField txtBuscarAdmin = new javax.swing.JTextField();
-            txtBuscarAdmin.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
-            txtBuscarAdmin.putClientProperty("JTextField.placeholderText", "Buscar por nombre o categoría...");
-            txtBuscarAdmin.addKeyListener(new java.awt.event.KeyAdapter() {
+            txtBuscarAdminPlatos = new javax.swing.JTextField();
+            txtBuscarAdminPlatos.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+            txtBuscarAdminPlatos.putClientProperty("JTextField.placeholderText", "Buscar por nombre o categoría...");
+            txtBuscarAdminPlatos.addKeyListener(new java.awt.event.KeyAdapter() {
                 @Override
                 public void keyReleased(java.awt.event.KeyEvent e) {
-                    ListarPlatos(TablePlatos, txtBuscarAdmin.getText().trim());
+                    ListarPlatos(TablePlatos, txtBuscarAdminPlatos.getText().trim());
                 }
             });
-            pnlBuscarAdmin.add(txtBuscarAdmin, java.awt.BorderLayout.CENTER);
+            pnlBuscarAdmin.add(txtBuscarAdminPlatos, java.awt.BorderLayout.CENTER);
+
+            javax.swing.JPanel pnlAccionesAdmin = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
+            pnlAccionesAdmin.setOpaque(false);
 
             javax.swing.JButton btnLimpiarAdmin = new javax.swing.JButton("x");
             btnLimpiarAdmin.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
             btnLimpiarAdmin.setFocusable(false);
             btnLimpiarAdmin.setToolTipText("Limpiar filtro");
             btnLimpiarAdmin.addActionListener(e -> {
-                txtBuscarAdmin.setText("");
+                txtBuscarAdminPlatos.setText("");
                 ListarPlatos(TablePlatos, "");
-                txtBuscarAdmin.requestFocusInWindow();
+                txtBuscarAdminPlatos.requestFocusInWindow();
             });
-            pnlBuscarAdmin.add(btnLimpiarAdmin, java.awt.BorderLayout.EAST);
+            pnlAccionesAdmin.add(btnLimpiarAdmin);
+
+            chkFiltroRapidoAdminPlatos = new javax.swing.JCheckBox("Auto-limpiar", true);
+            chkFiltroRapidoAdminPlatos.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+            chkFiltroRapidoAdminPlatos.setOpaque(false);
+            chkFiltroRapidoAdminPlatos.setFocusable(false);
+            chkFiltroRapidoAdminPlatos.setToolTipText("Al elegir un plato se limpia el filtro y se muestra en la lista completa");
+            chkFiltroRapidoAdminPlatos.addItemListener(e -> {
+                guardarPreferenciaFiltroRapido(chkFiltroRapidoAdminPlatos.isSelected());
+            });
+            pnlAccionesAdmin.add(chkFiltroRapidoAdminPlatos);
+            pnlBuscarAdmin.add(pnlAccionesAdmin, java.awt.BorderLayout.EAST);
 
             jPanel2.removeAll();
             jPanel2.setLayout(new java.awt.BorderLayout(20, 10));
@@ -9016,6 +9042,9 @@ public final class Sistema extends javax.swing.JFrame {
                     if (chkFiltroRapido != null) {
                         chkFiltroRapido.setSelected(sel);
                     }
+                    if (chkFiltroRapidoAdminPlatos != null) {
+                        chkFiltroRapidoAdminPlatos.setSelected(sel);
+                    }
                     if (panelSplitScreen != null) {
                         panelSplitScreen.setFiltroRapido(sel);
                     }
@@ -9025,6 +9054,15 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     void guardarPreferenciaFiltroRapido(boolean sel) {
+        if (chkFiltroRapido != null && chkFiltroRapido.isSelected() != sel) {
+            chkFiltroRapido.setSelected(sel);
+        }
+        if (chkFiltroRapidoAdminPlatos != null && chkFiltroRapidoAdminPlatos.isSelected() != sel) {
+            chkFiltroRapidoAdminPlatos.setSelected(sel);
+        }
+        if (panelSplitScreen != null) {
+            panelSplitScreen.setFiltroRapido(sel);
+        }
         final String valor = sel ? "1" : "0";
         Servicio.ConcurrenciaServicio.ejecutarAsync(
                 () -> {
@@ -9408,14 +9446,24 @@ public final class Sistema extends javax.swing.JFrame {
             if (filaRestaurar >= 0 && filaRestaurar < tabla.getRowCount()) {
                 tabla.setRowSelectionInterval(filaRestaurar, filaRestaurar);
             }
-            if (desplazarAPlatoIdToma != null && tabla == tblTemPlatos) {
-                int objetivo = desplazarAPlatoIdToma;
-                desplazarAPlatoIdToma = null;
+            Integer desplazarObj = (tabla == tblTemPlatos) ? desplazarAPlatoIdToma
+                    : (tabla == TablePlatos ? desplazarAPlatoIdAdmin : null);
+            if (desplazarObj != null) {
+                int objetivo = desplazarObj;
+                if (tabla == tblTemPlatos) {
+                    desplazarAPlatoIdToma = null;
+                }
+                if (tabla == TablePlatos) {
+                    desplazarAPlatoIdAdmin = null;
+                }
                 for (int i = 0; i < modelo.getRowCount(); i++) {
                     Object v = modelo.getValueAt(i, 0);
                     if (v != null && String.valueOf(objetivo).equals(v.toString())) {
-                        tabla.setRowSelectionInterval(i, i);
-                        tabla.scrollRectToVisible(tabla.getCellRect(i, 0, true));
+                        int filaV = tabla.convertRowIndexToView(i);
+                        if (filaV >= 0) {
+                            tabla.setRowSelectionInterval(filaV, filaV);
+                            tabla.scrollRectToVisible(tabla.getCellRect(filaV, 0, true));
+                        }
                         break;
                     }
                 }
