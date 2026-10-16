@@ -331,7 +331,18 @@ public class LoginDao implements AutenticacionRepositorio {
                     usuario.setRol(resultados.getString("rol"));
                     try {
                         Object act = resultados.getObject("activo");
-                        usuario.setActivo(act == null || ((Number) act).intValue() == 1);
+                        // MySQL TINYINT(1) llega como Boolean; otros motores como Number.
+                        boolean activo;
+                        if (act == null) {
+                            activo = true;
+                        } else if (act instanceof Boolean b) {
+                            activo = b;
+                        } else if (act instanceof Number n) {
+                            activo = n.intValue() == 1;
+                        } else {
+                            activo = "1".equals(act.toString()) || "true".equalsIgnoreCase(act.toString());
+                        }
+                        usuario.setActivo(activo);
                     } catch (SQLException ignored) {
                         usuario.setActivo(true);
                     }

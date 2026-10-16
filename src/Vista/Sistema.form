@@ -860,9 +860,9 @@
                       <Table columnCount="6" rowCount="0">
                         <Column editable="false" title="" type="java.lang.Object"/>
                         <Column editable="false" title="Plato" type="java.lang.Object"/>
-                        <Column editable="false" title="Cant" type="java.lang.Object"/>
+                        <Column editable="false" title="Cant." type="java.lang.Object"/>
                         <Column editable="false" title="Precio" type="java.lang.Object"/>
-                        <Column editable="false" title="SubTotal" type="java.lang.Object"/>
+                        <Column editable="false" title="Sub-Total" type="java.lang.Object"/>
                         <Column editable="true" title="Comentario" type="java.lang.Object"/>
                       </Table>
                     </Property>
@@ -1056,9 +1056,9 @@
                       <Table columnCount="6" rowCount="0">
                         <Column editable="false" title="" type="java.lang.Object"/>
                         <Column editable="false" title="Plato" type="java.lang.Object"/>
-                        <Column editable="false" title="Cant" type="java.lang.Object"/>
+                        <Column editable="false" title="Cant." type="java.lang.Object"/>
                         <Column editable="false" title="Precio" type="java.lang.Object"/>
-                        <Column editable="false" title="SubTotal" type="java.lang.Object"/>
+                        <Column editable="false" title="Sub-Total" type="java.lang.Object"/>
                         <Column editable="true" title="Comentario" type="java.lang.Object"/>
                       </Table>
                     </Property>

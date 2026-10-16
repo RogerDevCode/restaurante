@@ -216,6 +216,7 @@ public final class Sistema extends javax.swing.JFrame {
     private boolean salaActualEsBarra = false;
     private javax.swing.JCheckBox chkAplicaIvaPlato;
     private javax.swing.JComboBox<String> cbMonedaBasePlato;
+    private javax.swing.JComboBox<Modelo.Categoria> cbCategoriaFicha;
     private javax.swing.JLabel lblPrecioReferenciaPlato;
     private javax.swing.JCheckBox chkPrecioIncluyeIvaPlato;
     private javax.swing.JComboBox<String> cbTipoSala;
@@ -935,6 +936,40 @@ public final class Sistema extends javax.swing.JFrame {
         centrarTextoBarraLateral();
         estilizarBarraLateral();
         solidificarBotones(getContentPane());
+        aplicarTitulosTabsContraste();
+        if (jTabbedPane1 != null) {
+            jTabbedPane1.addChangeListener(e -> aplicarTitulosTabsContraste());
+        }
+    }
+
+    /**
+     * Títulos de pestaña con color explícito (el L&F GTK ignora los UIManager de
+     * TabbedPane y los deja tenues). Usa componentes de pestaña para no alterar el
+     * título interno (los indexOfTab siguen funcionando). Seleccionada en verde
+     * petróleo, resto en negro suave; se reaplica al cambiar de pestaña.
+     */
+    private void aplicarTitulosTabsContraste() {
+        if (jTabbedPane1 == null) {
+            return;
+        }
+        int sel = jTabbedPane1.getSelectedIndex();
+        for (int i = 0; i < jTabbedPane1.getTabCount(); i++) {
+            String titulo = jTabbedPane1.getTitleAt(i);
+            if (titulo == null) {
+                continue;
+            }
+            java.awt.Component comp = jTabbedPane1.getTabComponentAt(i);
+            javax.swing.JLabel lbl;
+            if (comp instanceof javax.swing.JLabel l) {
+                lbl = l;
+            } else {
+                lbl = new javax.swing.JLabel();
+                lbl.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+                jTabbedPane1.setTabComponentAt(i, lbl);
+            }
+            lbl.setText(titulo);
+            lbl.setForeground(new java.awt.Color(i == sel ? 0x00_66_66 : 0x21_21_21));
+        }
     }
 
     /** Fuente base Segoe UI para los componentes que no traen fuente explicita (tablas, campos, combos). */
@@ -952,6 +987,11 @@ public final class Sistema extends javax.swing.JFrame {
         // Selección visible en fondo blanco con texto negro (contraste máximo).
         javax.swing.UIManager.put("Table.selectionBackground", new javax.swing.plaf.ColorUIResource(java.awt.Color.WHITE));
         javax.swing.UIManager.put("Table.selectionForeground", new javax.swing.plaf.ColorUIResource(java.awt.Color.BLACK));
+        // Pestañas legibles en cualquier tema del SO: texto oscuro sobre fondo claro.
+        javax.swing.UIManager.put("TabbedPane.foreground", new javax.swing.plaf.ColorUIResource(new java.awt.Color(33, 33, 33)));
+        javax.swing.UIManager.put("TabbedPane.background", new javax.swing.plaf.ColorUIResource(new java.awt.Color(232, 235, 239)));
+        javax.swing.UIManager.put("TabbedPane.selected", new javax.swing.plaf.ColorUIResource(java.awt.Color.WHITE));
+        javax.swing.UIManager.put("TabbedPane.focus", new javax.swing.plaf.ColorUIResource(new java.awt.Color(0, 102, 102)));
     }
 
     /** Tabla de salas proporcional: Mesas y Tipo fijas, la columna Nombre absorbe el 100 % del ancho libre. */
@@ -2683,7 +2723,7 @@ public final class Sistema extends javax.swing.JFrame {
 
             },
             new String [] {
-                "", "Plato", "Cant", "Precio", "SubTotal", "Comentario"
+                "", "Plato", "Cant.", "Precio", "Sub-Total", "Comentario"
             }
         ) {
             boolean[] canEdit = new boolean [] {
@@ -2964,7 +3004,7 @@ public final class Sistema extends javax.swing.JFrame {
 
             },
             new String [] {
-                "", "Plato", "Cant", "Precio", "SubTotal", "Comentario"
+                "", "Plato", "Cant.", "Precio", "Sub-Total", "Comentario"
             }
         ) {
             boolean[] canEdit = new boolean [] {
@@ -4758,6 +4798,7 @@ public final class Sistema extends javax.swing.JFrame {
             pla.setPrecioIncluyeIva(aplicaIva && chkPrecioIncluyeIvaPlato != null && chkPrecioIncluyeIvaPlato.isSelected());
             BigDecimal tasa = getTasaActual();
             if (platosControlador.registrar(pla, tasa)) {
+                aplicarCategoriaFicha(pla.getNombre());
                 ListarPlatos(TablePlatos, "");
                 LimpiarPlatos();
                 RefrescoVistas.notificar(RefrescoVistas.PLATOS);
@@ -4823,6 +4864,7 @@ public final class Sistema extends javax.swing.JFrame {
                         return;
                     }
                     if (res != null) {
+                        aplicarCategoriaFicha(pla.getNombre());
                         ListarPlatos(TablePlatos, "");
                         LimpiarPlatos();
                         RefrescoVistas.notificar(RefrescoVistas.PLATOS, res);
@@ -4920,6 +4962,7 @@ public final class Sistema extends javax.swing.JFrame {
                     chkPrecioIncluyeIvaPlato.setEnabled(platoSel.isAplicaIva());
                     chkPrecioIncluyeIvaPlato.setSelected(platoSel.isAplicaIva() && Boolean.TRUE.equals(platoSel.getPrecioIncluyeIva()));
                 }
+                seleccionarCategoriaFicha(platoSel.getIdCategoria());
                 actualizarPrecioReferenciaPlato();
             } else {
                 txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, filaVista, 2).toString().replaceAll("[^0-9.]", "").trim());
@@ -8462,6 +8505,18 @@ public final class Sistema extends javax.swing.JFrame {
                 }
             });
 
+            javax.swing.JLabel lblCategoriaFicha = new javax.swing.JLabel("Categoría:");
+            lblCategoriaFicha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+            jPanel11.add(lblCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 242, 80, 24));
+
+            cbCategoriaFicha = new javax.swing.JComboBox<>();
+            cbCategoriaFicha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+            cbCategoriaFicha.setBackground(java.awt.Color.WHITE);
+            cbCategoriaFicha.setRenderer(new RendererCategoria());
+            cbCategoriaFicha.setToolTipText("Categoría del plato (se guarda con Guardar/Editar)");
+            jPanel11.add(cbCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 242, 170, 24));
+            cargarCategoriasFicha();
+
             if (txtPrecioPlato != null) {
                 txtPrecioPlato.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
                     @Override
@@ -8605,6 +8660,61 @@ public final class Sistema extends javax.swing.JFrame {
             if (modelMenu.getColumnCount() == 6) {
                 modelMenu.addColumn("IVA");
             }
+        }
+    }
+
+    /**
+     * Llena el combo de categoría de la ficha (con opción "Sin categoría").
+     * Preserva la selección actual si sigue existiendo.
+     */
+    private void cargarCategoriasFicha() {
+        if (cbCategoriaFicha == null) {
+            return;
+        }
+        Object sel = cbCategoriaFicha.getSelectedItem();
+        int idSel = (sel instanceof Modelo.Categoria c) ? c.getId() : -1;
+        cbCategoriaFicha.removeAllItems();
+        cbCategoriaFicha.addItem(new Modelo.Categoria(0, "Sin categoría", null, 0));
+        try {
+            for (Modelo.Categoria c : categoriaControlador().listar()) {
+                if (c != null) {
+                    cbCategoriaFicha.addItem(c);
+                }
+            }
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(Sistema.class.getName())
+                    .log(java.util.logging.Level.WARNING, "No se pudieron cargar categorías: " + ex.getMessage());
+        }
+        if (idSel >= 0) {
+            seleccionarCategoriaFicha(idSel);
+        }
+    }
+
+    private void seleccionarCategoriaFicha(int idCategoria) {
+        if (cbCategoriaFicha == null) {
+            return;
+        }
+        for (int i = 0; i < cbCategoriaFicha.getItemCount(); i++) {
+            Object o = cbCategoriaFicha.getItemAt(i);
+            if (o instanceof Modelo.Categoria c && c.getId() == idCategoria) {
+                cbCategoriaFicha.setSelectedIndex(i);
+                return;
+            }
+        }
+        cbCategoriaFicha.setSelectedIndex(0);
+    }
+
+    /** Guarda la categoría elegida en la ficha para el plato indicado. */
+    private void aplicarCategoriaFicha(String nombrePlato) {
+        if (cbCategoriaFicha == null || nombrePlato == null || nombrePlato.isBlank()) {
+            return;
+        }
+        Object sel = cbCategoriaFicha.getSelectedItem();
+        int idCat = (sel instanceof Modelo.Categoria c) ? c.getId() : 0;
+        try {
+            categoriaControlador().asignarPlato(nombrePlato.trim(), idCat);
+        } catch (Exception ex) {
+            mostrarAvisoEnBanda("Plato guardado, pero la categoría no se aplicó: " + mensajeError(ex));
         }
     }
 
@@ -9942,7 +10052,7 @@ public final class Sistema extends javax.swing.JFrame {
         private IconoColor(String hex) {
             Color c;
             try {
-                c = hex != null ? Color.decode(hex) : Color.GRAY;
+                c = hex != null ? Modelo.PaletaCategorias.atenuar(hex, 0.30) : Color.GRAY;
             } catch (NumberFormatException e) {
                 c = Color.GRAY;
             }

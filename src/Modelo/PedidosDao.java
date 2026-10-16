@@ -1587,12 +1587,15 @@ public class PedidosDao implements PedidosRepositorio {
                 }
             }
 
-            // P2-D: Suma de montos aplicados persistidos (COALESCE con monto_bs para compatibilidad con pagos legados)
+            // P2-D: montos aplicados por moneda de origen. monto_aplicado está en la
+            // moneda del tramo (mezclarlo como Bs. descuadra el saldo en pagos mixtos);
+            // monto_bs / monto_usd guardan el equivalente aplicado a tasa del pago.
+            // Legado: sin monto_aplicado se usa monto_bs (importe aplicado histórico).
             BigDecimal pagadoBsAplicado = BigDecimal.ZERO.setScale(2);
             BigDecimal pagadoUsdAplicado = BigDecimal.ZERO.setScale(2);
             try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT COALESCE(SUM(COALESCE(monto_aplicado, monto_bs)), 0) AS total_bs, " +
-                    "       COALESCE(SUM(COALESCE(monto_usd, 0)), 0) AS total_usd " +
+                    "SELECT COALESCE(SUM(COALESCE(monto_bs, monto_aplicado)), 0) AS total_bs, " +
+                    "       COALESCE(SUM(CASE WHEN moneda = 'USD' THEN COALESCE(monto_aplicado, monto_usd) ELSE 0 END), 0) AS total_usd " +
                     "FROM pedido_pagos WHERE id_pedido = ?")) {
                 ps.setInt(1, idPedido);
                 try (ResultSet rs = ps.executeQuery()) {

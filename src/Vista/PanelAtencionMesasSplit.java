@@ -112,10 +112,11 @@ public class PanelAtencionMesasSplit extends JPanel {
     private JButton btnEnviarCocina;
     private JButton btnCobrar;
     private JButton btnLimpiar;
+    private ImageIcon iconoMesaSplit;
     private JCheckBox chkFiltroRapidoSplit;
     private Integer desplazarAPlatoIdSplit = null;
-    /** Ancho objetivo por tarjeta (botón 115 + gaps): la grilla ajusta columnas al viewport. */
-    private static final int ANCHO_TARJETA_MESA_OBJETIVO = 125;
+    /** Ancho objetivo por tarjeta (botón 120 + gaps): la grilla ajusta columnas al viewport. */
+    private static final int ANCHO_TARJETA_MESA_OBJETIVO = 135;
 
     public PanelAtencionMesasSplit(
             Sistema sistema,
@@ -365,7 +366,7 @@ public class PanelAtencionMesasSplit extends JPanel {
                 new Font("Segoe UI", Font.BOLD, 11), new Color(80, 80, 80)
         ));
 
-        modeloCarrito = new DefaultTableModel(new Object[]{"ID", "Plato", "Cant", "Precio", "SubTotal", "Comentario"}, 0) {
+        modeloCarrito = new DefaultTableModel(new Object[]{"ID", "Plato", "Cant.", "Precio", "Sub-Total", "Comentario"}, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return col == 5; // Solo comentario editable directo
@@ -791,11 +792,17 @@ public class PanelAtencionMesasSplit extends JPanel {
                     : null;
 
             JButton btnMesa = new JButton();
-            btnMesa.setPreferredSize(new Dimension(115, 85));
-            btnMesa.setMinimumSize(new Dimension(95, 75));
+            btnMesa.setPreferredSize(new Dimension(120, 110));
+            btnMesa.setMinimumSize(new Dimension(100, 95));
             btnMesa.putClientProperty("numMesa", numMesa);
             btnMesa.setFocusable(false);
             btnMesa.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            ImageIcon iconoMesa = iconoMesaSplit();
+            if (iconoMesa != null) {
+                btnMesa.setIcon(iconoMesa);
+                btnMesa.setHorizontalTextPosition(SwingConstants.CENTER);
+                btnMesa.setVerticalTextPosition(SwingConstants.BOTTOM);
+            }
 
             if (ocupada) {
                 btnMesa.setBackground(ServicioMesa.FONDO_MESA_OCUPADA);
@@ -1455,7 +1462,18 @@ public class PanelAtencionMesasSplit extends JPanel {
         }
     }
 
-    /** U/B por fila del carrito/catálogo según el plato ("U", "B" o "" si se desconoce). */
+    /** Icono de mesa compartido con el modo clásico (48px, se carga una vez). */
+    private ImageIcon iconoMesaSplit() {
+        if (iconoMesaSplit == null) {
+            java.net.URL url = getClass().getResource("/Img/mesa.png");
+            if (url != null) {
+                java.awt.Image img = new ImageIcon(url).getImage()
+                        .getScaledInstance(48, 48, java.awt.Image.SCALE_SMOOTH);
+                iconoMesaSplit = new ImageIcon(img);
+            }
+        }
+        return iconoMesaSplit;
+    }
     private String monedaUbFilaCatalogo(int filaModelo) {
         return monedaUbDePlato(modeloCatalogoPlatos, filaModelo);
     }

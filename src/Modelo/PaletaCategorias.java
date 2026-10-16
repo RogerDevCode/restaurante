@@ -20,6 +20,33 @@ public final class PaletaCategorias {
     private PaletaCategorias() {
     }
 
+    /**
+     * Atenúa un color mezclándolo con blanco: 1.0 lo deja intacto, 0.0 da blanco.
+     * Usado para fondos tenues (p. ej. 0.30 = 30 % del valor actual).
+     */
+    public static java.awt.Color atenuar(java.awt.Color color, double proporcion) {
+        if (color == null) {
+            return java.awt.Color.WHITE;
+        }
+        double f = Math.min(1.0, Math.max(0.0, proporcion));
+        int r = (int) Math.round(255 - (255 - color.getRed()) * f);
+        int g = (int) Math.round(255 - (255 - color.getGreen()) * f);
+        int b = (int) Math.round(255 - (255 - color.getBlue()) * f);
+        return new java.awt.Color(r, g, b);
+    }
+
+    /** Atenúa un color en hexadecimal ("#RRGGBB"); ante formato inválido, gris tenue. */
+    public static java.awt.Color atenuar(String hex, double proporcion) {
+        if (hex == null) {
+            return atenuar(java.awt.Color.GRAY, proporcion);
+        }
+        try {
+            return atenuar(java.awt.Color.decode(hex), proporcion);
+        } catch (NumberFormatException ex) {
+            return atenuar(java.awt.Color.GRAY, proporcion);
+        }
+    }
+
     public static List<String> paleta() {
         return PALETA;
     }

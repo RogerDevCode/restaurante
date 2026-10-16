@@ -65,7 +65,7 @@ public class RendererPlato implements TableCellRenderer {
             Color fondo = null;
             if (p != null && p.getCategoriaColor() != null) {
                 try {
-                    fondo = Color.decode(p.getCategoriaColor());
+                    fondo = Modelo.PaletaCategorias.atenuar(p.getCategoriaColor(), 0.30);
                 } catch (NumberFormatException ignored) {}
             }
             if (fondo != null) {

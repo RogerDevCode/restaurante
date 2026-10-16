@@ -123,6 +123,55 @@ public class Tables extends DefaultTableCellRenderer {
         tabla.setDefaultRenderer(Object.class, new RendererNumerico());
     }
 
+    private static javax.swing.ImageIcon iconoMesa48;
+
+    /**
+     * Tarjeta de mesa estándar para todos los modos de atención directa (B clásico
+     * y C split): icono 48px, código, unidad, estado/mesonero y borde de selección.
+     * El tooltip y la acción los define cada modo.
+     */
+    public static javax.swing.JButton crearBotonMesa(
+            String codigoMesa, String lineaUnidad, String lineaEstado, boolean ocupada,
+            boolean seleccionada, String toolTip, java.awt.event.ActionListener accion) {
+        javax.swing.JButton b = new javax.swing.JButton();
+        b.setPreferredSize(new java.awt.Dimension(120, 110));
+        b.setMinimumSize(new java.awt.Dimension(100, 95));
+        b.setFocusable(false);
+        b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        if (iconoMesa48 == null) {
+            java.net.URL url = Tables.class.getResource("/Img/mesa.png");
+            if (url != null) {
+                java.awt.Image img = new javax.swing.ImageIcon(url).getImage()
+                        .getScaledInstance(48, 48, java.awt.Image.SCALE_SMOOTH);
+                iconoMesa48 = new javax.swing.ImageIcon(img);
+            }
+        }
+        if (iconoMesa48 != null) {
+            b.setIcon(iconoMesa48);
+            b.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+            b.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        }
+        b.setBackground(ocupada ? ServicioMesa.FONDO_MESA_OCUPADA : ServicioMesa.FONDO_MESA_LIBRE);
+        b.setForeground(java.awt.Color.WHITE);
+        StringBuilder html = new StringBuilder("<html><center><font size='+2'><b>")
+                .append(codigoMesa).append("</b></font><br>")
+                .append("<span style='font-size:12px;'><b>").append(lineaUnidad).append("</b></span>");
+        if (lineaEstado != null && !lineaEstado.isBlank()) {
+            html.append("<br><span style='font-size:12px;'><b>").append(lineaEstado).append("</b></span>");
+        }
+        b.setText(html.append("</center></html>").toString());
+        if (toolTip != null) {
+            b.setToolTipText(toolTip);
+        }
+        b.setBorder(javax.swing.BorderFactory.createLineBorder(
+                seleccionada ? ServicioMesa.BORDE_MESA_SELECCIONADA : b.getBackground().darker(),
+                seleccionada ? 4 : 2));
+        if (accion != null) {
+            b.addActionListener(accion);
+        }
+        return b;
+    }
+
     /** Identificador de la columna vista de moneda (U/B), sin columna en el modelo. */
     public static final String ID_COLUMNA_MONEDA = "MONEDA_U_B";
 

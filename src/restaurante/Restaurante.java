@@ -51,7 +51,18 @@ public class Restaurante {
             System.exit(0);
         }
         try {
-            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+            // Nimbus (100 % Java): idéntico en Linux y Windows; si no está, sistema.
+            boolean nimbus = false;
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    nimbus = true;
+                    break;
+                }
+            }
+            if (!nimbus) {
+                javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+            }
             
             // UX/UI Customizations for Dialogs and Inputs
             java.awt.Color colorFondoDialogo = new java.awt.Color(242, 242, 242);
