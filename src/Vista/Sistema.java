@@ -1660,7 +1660,9 @@ public final class Sistema extends javax.swing.JFrame {
             return;
         }
         int anchoBarra = ANCHO_BARRA_LATERAL;
-        if (jPanel1 != null) {
+        if (scrollBarraLateral != null) {
+            scrollBarraLateral.setBounds(0, 0, anchoBarra, alto);
+        } else if (jPanel1 != null) {
             jPanel1.setBounds(0, 0, anchoBarra, alto);
         }
         if (lblBannerTasa != null) {
@@ -2183,7 +2185,14 @@ public final class Sistema extends javax.swing.JFrame {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        getContentPane().add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 150, 720));
+        // Barra lateral con scroll: jPanel1 supera los 720 px con 10 botones y el
+        // Dashboard quedaba recortado. El viewport muestra scroll vertical solo si hace falta.
+        scrollBarraLateral = new javax.swing.JScrollPane(jPanel1,
+                javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollBarraLateral.setBorder(null);
+        scrollBarraLateral.getVerticalScrollBar().setUnitIncrement(16);
+        getContentPane().add(scrollBarraLateral, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 150, 720));
 
         jLabel38.setFont(new java.awt.Font("Zilla Slab", 3, 48)); // NOI18N
         jLabel38.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/titulo.png"))); // NOI18N
@@ -4772,6 +4781,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JScrollPane scrollBarraLateral;
     private javax.swing.JPanel jPanel10;
     private javax.swing.JPanel jPanel11;
     private javax.swing.JPanel jPanel12;
@@ -5267,6 +5277,9 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private static Config nuevoConfigPorDefecto() {
+        java.util.logging.Logger.getLogger(Sistema.class.getName()).log(
+                java.util.logging.Level.WARNING,
+                "nuevoConfigPorDefecto: Instanciando configuración referencial por defecto para arranque UI (36.5000 / 16.00%).");
         Config c = new Config();
         c.setId(1);
         c.setTasaDolar(new BigDecimal("36.5000"));
@@ -8122,8 +8135,8 @@ public final class Sistema extends javax.swing.JFrame {
         javax.swing.JLabel lblLeyendaTitulo = new javax.swing.JLabel("Leyenda:");
         lblLeyendaTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         panelFooter.add(lblLeyendaTitulo);
-        panelFooter.add(cuadroColor(new java.awt.Color(0, 102, 102), "Libre"));
-        panelFooter.add(cuadroColor(new java.awt.Color(192, 57, 43), "Ocupada"));
+        panelFooter.add(cuadroColor(Servicio.ServicioMesa.FONDO_MESA_LIBRE, "Libre"));
+        panelFooter.add(cuadroColor(Servicio.ServicioMesa.FONDO_MESA_OCUPADA, "Ocupada"));
 
         jPanel22.add(panelFooter, java.awt.BorderLayout.SOUTH);
         jPanel22.revalidate();
@@ -8239,17 +8252,17 @@ public final class Sistema extends javax.swing.JFrame {
 
             String prefijoTexto = esBarra ? "PUESTO " : "MESA ";
             if (verificar > 0) {
-                boton.setBackground(new Color(192, 57, 43));
+                boton.setBackground(Servicio.ServicioMesa.FONDO_MESA_OCUPADA);
                 if (visual != null && !visual.isBlank()) {
-                    boton.setText("<html><center><font size='+1'><b>" + codigoMesa + "</b></font><br><span style='font-size:10px;'>" + prefijoTexto + i + "</span><br><font color='#FFFF99' size='2'><b>" + visual + "</b></font></center></html>");
+                    boton.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + prefijoTexto + i + "</b></span><br><span style='font-size:12px;'><b>" + visual + "</b></span></center></html>");
                     boton.setToolTipText((esBarra ? "Puesto Ocupado (" : "Mesa Ocupada (") + codigoMesa + ") - Atendida por: " + nombreMesonero);
                 } else {
-                    boton.setText("<html><center><font size='+1'><b>" + codigoMesa + "</b></font><br><span style='font-size:10px;'>" + prefijoTexto + i + "</span></center></html>");
+                    boton.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + prefijoTexto + i + "</b></span></center></html>");
                     boton.setToolTipText((esBarra ? "Puesto Ocupado (" : "Mesa Ocupada (") + codigoMesa + ") (Sin mesonero asignado)");
                 }
             } else {
-                boton.setBackground(new Color(0, 102, 102));
-                boton.setText("<html><center><font size='+1'><b>" + codigoMesa + "</b></font><br><span style='font-size:10px;'>" + prefijoTexto + i + "</span><br><span style='color:#A2D9CE;font-size:10px;'>Disponible</span></center></html>");
+                boton.setBackground(Servicio.ServicioMesa.FONDO_MESA_LIBRE);
+                boton.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + prefijoTexto + i + "</b></span><br><span style='font-size:12px;'><b>LIBRE</b></span></center></html>");
                 boton.setToolTipText((esBarra ? "Puesto " : "Mesa ") + i + " (" + codigoMesa + ") Disponible");
             }
             boton.setForeground(Color.WHITE);
@@ -8693,10 +8706,28 @@ public final class Sistema extends javax.swing.JFrame {
         }
         if (txtTasaConfig != null && !txtTasaConfig.getText().trim().isEmpty()) {
             try {
-                return new BigDecimal(txtTasaConfig.getText().trim());
+                BigDecimal t = new BigDecimal(txtTasaConfig.getText().trim());
+                if (t.compareTo(BigDecimal.ZERO) > 0) {
+                    return t;
+                }
             } catch (Exception ignored) {}
         }
-        return new BigDecimal("36.5000");
+        return null;
+    }
+
+    public BigDecimal getIvaPorcentajeActual() {
+        if (conf != null && conf.getIvaPorcentaje() != null && conf.getIvaPorcentaje().compareTo(BigDecimal.ZERO) >= 0) {
+            return conf.getIvaPorcentaje();
+        }
+        if (txtIvaConfig != null && !txtIvaConfig.getText().trim().isEmpty()) {
+            try {
+                BigDecimal iva = new BigDecimal(txtIvaConfig.getText().trim());
+                if (iva.compareTo(BigDecimal.ZERO) >= 0) {
+                    return iva;
+                }
+            } catch (Exception ignored) {}
+        }
+        return null;
     }
 
     public String getNombreUsuarioActual() {
@@ -9302,15 +9333,16 @@ public final class Sistema extends javax.swing.JFrame {
     private int registrarPedidoCompleto() {
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
-        BigDecimal tasa = (conf != null && conf.getTasaDolar() != null && conf.getTasaDolar().signum() > 0)
-                ? conf.getTasaDolar().setScale(4, RoundingMode.HALF_UP)
-                : null;
-        if (tasa == null) {
+        BigDecimal tasa = getTasaActual();
+        if (tasa == null || tasa.signum() <= 0) {
             throw ErrorAplicacionException.validacion("La tasa de cambio configurada en el sistema es inválida o no ha sido establecida.");
         }
-        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null)
-                ? conf.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP)
-                : new BigDecimal("16.00");
+        tasa = tasa.setScale(4, RoundingMode.HALF_UP);
+        BigDecimal ivaPorcentaje = getIvaPorcentajeActual();
+        if (ivaPorcentaje == null || ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("El porcentaje de IVA configurado en el sistema es inválido o no ha sido establecido.");
+        }
+        ivaPorcentaje = ivaPorcentaje.setScale(2, RoundingMode.HALF_UP);
         List<DetallePedido> detalles = construirDetallesDesdeCarrito();
         Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasa);
 
@@ -9339,15 +9371,16 @@ public final class Sistema extends javax.swing.JFrame {
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
-        BigDecimal tasa = (conf != null && conf.getTasaDolar() != null && conf.getTasaDolar().signum() > 0)
-                ? conf.getTasaDolar().setScale(4, RoundingMode.HALF_UP)
-                : null;
-        if (tasa == null) {
+        BigDecimal tasa = getTasaActual();
+        if (tasa == null || tasa.signum() <= 0) {
             throw ErrorAplicacionException.validacion("La tasa de cambio configurada en el sistema es inválida o no ha sido establecida.");
         }
-        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null)
-                ? conf.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP)
-                : new BigDecimal("16.00");
+        tasa = tasa.setScale(4, RoundingMode.HALF_UP);
+        BigDecimal ivaPorcentaje = getIvaPorcentajeActual();
+        if (ivaPorcentaje == null || ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("El porcentaje de IVA configurado en el sistema es inválido o no ha sido establecido.");
+        }
+        ivaPorcentaje = ivaPorcentaje.setScale(2, RoundingMode.HALF_UP);
 
         List<DetallePedido> detalles = construirDetallesDesdeCarrito();
         Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasa);
@@ -9373,9 +9406,11 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private List<DetallePedido> construirDetallesDesdeCarrito() {
-        BigDecimal ivaPorcentaje = (conf != null && conf.getIvaPorcentaje() != null)
-                ? conf.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP)
-                : new BigDecimal("16.00");
+        BigDecimal ivaPorcentaje = getIvaPorcentajeActual();
+        if (ivaPorcentaje == null || ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("El porcentaje de IVA configurado en el sistema es inválido o no ha sido establecido.");
+        }
+        ivaPorcentaje = ivaPorcentaje.setScale(2, RoundingMode.HALF_UP);
         List<DetallePedido> detalles = new ArrayList<>();
         for (int i = 0; i < tableMenu.getRowCount(); i++) {
             DetallePedido detalle = new DetallePedido();

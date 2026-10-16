@@ -53,6 +53,9 @@ public final class PedidoServicio {
         if (pedido.getUsuario() == null || pedido.getUsuario().trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("El usuario que registra el pedido es obligatorio.");
         }
+        if (pedido.getIvaPorcentaje() == null || pedido.getIvaPorcentaje().compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("El pedido debe tener un porcentaje de IVA válido mayor o igual a cero.");
+        }
         validarImporte(pedido.getTotalDecimal(), "El total del pedido");
         if (detalles == null || detalles.isEmpty()) {
             throw ErrorAplicacionException.validacion("El pedido debe incluir al menos un detalle.");
@@ -80,7 +83,7 @@ public final class PedidoServicio {
             }
             if (detalle.getIvaPorcentaje() == null) {
                 detalle.setIvaPorcentaje(Boolean.TRUE.equals(detalle.getAplicaIva())
-                        ? (pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : new BigDecimal("16.00"))
+                        ? pedido.getIvaPorcentaje()
                         : BigDecimal.ZERO.setScale(2));
             }
         }

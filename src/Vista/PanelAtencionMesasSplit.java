@@ -661,34 +661,34 @@ public class PanelAtencionMesasSplit extends JPanel {
                     : null;
 
             JButton btnMesa = new JButton();
-            btnMesa.setPreferredSize(new Dimension(100, 75));
-            btnMesa.setMinimumSize(new Dimension(80, 65));
+            btnMesa.setPreferredSize(new Dimension(115, 85));
+            btnMesa.setMinimumSize(new Dimension(95, 75));
             btnMesa.putClientProperty("numMesa", numMesa);
             btnMesa.setFocusable(false);
             btnMesa.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
             if (ocupada) {
-                btnMesa.setBackground(new Color(192, 57, 43));
+                btnMesa.setBackground(ServicioMesa.FONDO_MESA_OCUPADA);
                 btnMesa.setForeground(Color.WHITE);
-                btnMesa.setText("<html><center><font size='+1'><b>" + codigoMesa + "</b></font><br>"
-                        + "<span style='font-size:10px;'>" + (salaSeleccionadaEsBarra ? "Puesto " : "Mesa ") + numMesa + "</span>"
-                        + (visualMesonero != null ? "<br><font color='#FFFF99' size='2'><b>" + visualMesonero + "</b></font>" : "")
+                btnMesa.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br>"
+                        + "<span style='font-size:12px;'><b>" + (salaSeleccionadaEsBarra ? "Puesto " : "Mesa ") + numMesa + "</b></span>"
+                        + (visualMesonero != null ? "<br><span style='font-size:12px;'><b>" + visualMesonero + "</b></span>" : "")
                         + "</center></html>");
                 btnMesa.setToolTipText("Ocupada (" + codigoMesa + ") - Pedido #" + idPed + (nombreMesonero != null ? " (" + nombreMesonero + ")" : ""));
             } else {
-                btnMesa.setBackground(new Color(0, 102, 102));
+                btnMesa.setBackground(ServicioMesa.FONDO_MESA_LIBRE);
                 btnMesa.setForeground(Color.WHITE);
-                btnMesa.setText("<html><center><font size='+1'><b>" + codigoMesa + "</b></font><br>"
-                        + "<span style='font-size:10px;'>" + (salaSeleccionadaEsBarra ? "Puesto " : "Mesa ") + numMesa + "</span><br>"
-                        + "<span style='color:#A2D9CE;font-size:10px;'>Libre</span></center></html>");
+                btnMesa.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br>"
+                        + "<span style='font-size:12px;'><b>" + (salaSeleccionadaEsBarra ? "Puesto " : "Mesa ") + numMesa + "</b></span><br>"
+                        + "<span style='font-size:12px;'><b>LIBRE</b></span></center></html>");
                 btnMesa.setToolTipText("Disponible (" + codigoMesa + ")");
             }
 
             // Resaltar si esta mesa es la actualmente abierta en el panel derecho
             if (numMesa == numMesaSeleccionada) {
-                btnMesa.setBorder(BorderFactory.createLineBorder(new Color(241, 196, 15), 3));
+                btnMesa.setBorder(BorderFactory.createLineBorder(ServicioMesa.BORDE_MESA_SELECCIONADA, 4));
             } else {
-                btnMesa.setBorder(BorderFactory.createLineBorder(btnMesa.getBackground().darker(), 1));
+                btnMesa.setBorder(BorderFactory.createLineBorder(btnMesa.getBackground().darker(), 2));
             }
 
             btnMesa.addActionListener(e -> seleccionarMesaParaComanda(numMesa, codigoMesa, idPed));
@@ -1011,7 +1011,13 @@ public class PanelAtencionMesasSplit extends JPanel {
             btnCobrar.setEnabled(false);
             return;
         }
-        BigDecimal ivaPorcentaje = new BigDecimal("16.00");
+        BigDecimal ivaPorcentaje = sistema.getIvaPorcentajeActual();
+        if (ivaPorcentaje == null || ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0) {
+            lblTotalUsd.setText("Total: $ 0.00");
+            lblTotalBs.setText("(IVA no configurado)");
+            btnCobrar.setEnabled(false);
+            return;
+        }
 
         List<DetallePedido> detalles = new ArrayList<>();
         for (int i = 0; i < modeloCarrito.getRowCount(); i++) {
@@ -1019,9 +1025,21 @@ public class PanelAtencionMesasSplit extends JPanel {
             int cant = (int) modeloCarrito.getValueAt(i, 2);
             BigDecimal precio = new BigDecimal(modeloCarrito.getValueAt(i, 3).toString());
             Platos plato = platosPorId.get(idPlato);
-            String mb = plato != null && plato.getMonedaBase() != null ? plato.getMonedaBase() : "USD";
-            boolean gravado = plato == null || plato.isAplicaIva();
-            boolean incIva = plato != null && Boolean.TRUE.equals(plato.getPrecioIncluyeIva());
+            if (plato == null || plato.getMonedaBase() == null || plato.getMonedaBase().isBlank()) {
+                lblTotalUsd.setText("Total: $ 0.00");
+                lblTotalBs.setText("(Producto sin clasificar)");
+                btnCobrar.setEnabled(false);
+                return;
+            }
+            if (plato.isAplicaIva() && plato.getPrecioIncluyeIva() == null) {
+                lblTotalUsd.setText("Total: $ 0.00");
+                lblTotalBs.setText("(IVA inc. no definido)");
+                btnCobrar.setEnabled(false);
+                return;
+            }
+            String mb = plato.getMonedaBase();
+            boolean gravado = plato.isAplicaIva();
+            boolean incIva = Boolean.TRUE.equals(plato.getPrecioIncluyeIva());
 
             DetallePedido det = new DetallePedido();
             det.setPrecioDecimal(precio);
@@ -1055,7 +1073,11 @@ public class PanelAtencionMesasSplit extends JPanel {
             sistema.mostrarAvisoEnBanda("Configure una tasa de cambio válida antes de enviar el pedido.");
             return;
         }
-        BigDecimal ivaPorcentaje = new BigDecimal("16.00");
+        BigDecimal ivaPorcentaje = sistema.getIvaPorcentajeActual();
+        if (ivaPorcentaje == null || ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0) {
+            sistema.mostrarAvisoEnBanda("Configure un porcentaje de IVA válido antes de enviar el pedido.");
+            return;
+        }
 
         List<DetallePedido> detalles = new ArrayList<>();
 
@@ -1066,21 +1088,25 @@ public class PanelAtencionMesasSplit extends JPanel {
             BigDecimal precio = new BigDecimal(modeloCarrito.getValueAt(i, 3).toString());
             String comentario = modeloCarrito.getValueAt(i, 5) != null ? modeloCarrito.getValueAt(i, 5).toString() : "";
 
+            Platos plato = platosPorId.get(idPlato);
+            if (plato == null || plato.getMonedaBase() == null || plato.getMonedaBase().isBlank()) {
+                sistema.mostrarAvisoEnBanda("El producto '" + nombre + "' no tiene moneda base asignada (requiere clasificación).");
+                return;
+            }
+            if (plato.isAplicaIva() && plato.getPrecioIncluyeIva() == null) {
+                sistema.mostrarAvisoEnBanda("El producto '" + nombre + "' no tiene clasificada la condición de IVA incluido.");
+                return;
+            }
+
             DetallePedido det = new DetallePedido();
             det.setIdPlato(idPlato > 0 ? idPlato : null);
             det.setNombre(nombre);
             det.setCantidad(cant);
             det.setPrecioDecimal(precio);
             det.setComentario(comentario);
-
-            Platos plato = platosPorId.get(idPlato);
-            String mb = plato != null && plato.getMonedaBase() != null ? plato.getMonedaBase() : "USD";
-            boolean gravado = plato == null || plato.isAplicaIva();
-            boolean incIva = plato != null && Boolean.TRUE.equals(plato.getPrecioIncluyeIva());
-
-            det.setMonedaBase(mb);
-            det.setAplicaIva(gravado);
-            det.setPrecioIncluyeIva(incIva);
+            det.setMonedaBase(plato.getMonedaBase());
+            det.setAplicaIva(plato.isAplicaIva());
+            det.setPrecioIncluyeIva(Boolean.TRUE.equals(plato.getPrecioIncluyeIva()));
             det.setIvaPorcentaje(ivaPorcentaje);
 
             detalles.add(det);

@@ -91,7 +91,7 @@ public class Pedidos {
     }
 
     public BigDecimal getIvaPorcentaje() {
-        return ivaPorcentaje != null ? ivaPorcentaje : BigDecimal.ZERO;
+        return ivaPorcentaje;
     }
 
     public void setIvaPorcentaje(BigDecimal ivaPorcentaje) {
@@ -99,7 +99,7 @@ public class Pedidos {
     }
 
     public BigDecimal getIvaMonto() {
-        return ivaMonto != null ? ivaMonto : BigDecimal.ZERO;
+        return ivaMonto;
     }
 
     public void setIvaMonto(BigDecimal ivaMonto) {

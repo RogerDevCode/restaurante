@@ -921,7 +921,7 @@ public final class MigradorEsquemaJdbc {
                     + "WHERE d.id_pedido IS NOT NULL AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 AND COALESCE(p.tasa_es_estimada, 0) = 0");
 
             // Pedidos sin tasa: marcar tasa_es_estimada = 1 y asignar 36.5000, PRESERVANDO montos en Bs existentes
-            st.executeUpdate("UPDATE pedidos p LEFT JOIN (SELECT id_pedido, "
+            int filasEstimadas = st.executeUpdate("UPDATE pedidos p LEFT JOIN (SELECT id_pedido, "
                     + "SUM(precio * cantidad) subtotal, "
                     + "SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) base_imponible "
                     + "FROM detalle_pedidos GROUP BY id_pedido) d ON d.id_pedido = p.id "
@@ -931,6 +931,9 @@ public final class MigradorEsquemaJdbc {
                     + "p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2), "
                     + "p.total = COALESCE(d.subtotal, p.subtotal) + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2) "
                     + "WHERE d.id_pedido IS NOT NULL AND (p.tasa_cambio IS NULL OR p.tasa_cambio = 0)");
+            if (filasEstimadas > 0) {
+                LOGGER.log(Level.WARNING, "Migración de esquema: Se asignó tasa estimada 36.5000 (tasa_es_estimada=1) a {0} pedidos históricos sin tasa registrada.", filasEstimadas);
+            }
         }
     }
 

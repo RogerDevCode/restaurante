@@ -9,8 +9,8 @@ public class Config {
     private String telefono;
     private String direccion;
     private String mensaje;
-    private BigDecimal tasaDolar = new BigDecimal("36.5000");
-    private BigDecimal ivaPorcentaje = new BigDecimal("16.00");
+    private BigDecimal tasaDolar;
+    private BigDecimal ivaPorcentaje;
     private String logoPath;
     private String clienteDefaultNombre = "Consumidor Final";
     private String clienteDefaultDocumento = "V-00000000";
@@ -24,11 +24,11 @@ public class Config {
     }
 
     public Config(int id, String ruc, String nombre, String telefono, String direccion, String mensaje) {
-        this(id, ruc, nombre, telefono, direccion, mensaje, new BigDecimal("36.5000"), new BigDecimal("16.00"));
+        this(id, ruc, nombre, telefono, direccion, mensaje, null, null);
     }
 
     public Config(int id, String ruc, String nombre, String telefono, String direccion, String mensaje, BigDecimal tasaDolar) {
-        this(id, ruc, nombre, telefono, direccion, mensaje, tasaDolar, new BigDecimal("16.00"));
+        this(id, ruc, nombre, telefono, direccion, mensaje, tasaDolar, null);
     }
 
     public Config(int id, String ruc, String nombre, String telefono, String direccion, String mensaje, BigDecimal tasaDolar, BigDecimal ivaPorcentaje) {
@@ -103,7 +103,7 @@ public class Config {
         if (tasaDolar != null && tasaDolar.compareTo(BigDecimal.ZERO) > 0) {
             this.tasaDolar = tasaDolar;
         } else {
-            this.tasaDolar = new BigDecimal("36.5000");
+            this.tasaDolar = null;
         }
     }
 
@@ -121,7 +121,7 @@ public class Config {
 
     public void setIvaPorcentaje(BigDecimal ivaPorcentaje) {
         if (ivaPorcentaje == null) {
-            this.ivaPorcentaje = new BigDecimal("16.00");
+            this.ivaPorcentaje = null;
             return;
         }
         if (ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0 || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0 || ivaPorcentaje.scale() > 2) {

@@ -68,6 +68,9 @@ public class ConfiguracionServicio {
 
     public String getString(String clave, String porDefecto) {
         if (clave == null || clave.trim().isEmpty()) {
+            if (porDefecto != null) {
+                LOGGER.log(Level.INFO, "Fallback aplicado: Clave nula o vacía. Usando valor por defecto: ''{0}''.", porDefecto);
+            }
             return porDefecto;
         }
         asegurarCache();
@@ -76,13 +79,20 @@ public class ConfiguracionServicio {
             return val;
         }
         try {
-            String deBd = repositorio.obtener(clave.trim(), porDefecto);
+            String deBd = repositorio.obtener(clave.trim(), null);
             if (deBd != null) {
                 cache.put(clave.trim(), deBd);
+                return deBd;
             }
-            return deBd != null ? deBd : porDefecto;
+            if (porDefecto != null) {
+                LOGGER.log(Level.INFO, "Fallback aplicado: Clave ''{0}'' no encontrada. Usando valor referencial: ''{1}''.", new Object[]{clave, porDefecto});
+            }
+            return porDefecto;
         } catch (Exception ex) {
             LOGGER.log(Level.WARNING, "Error al consultar clave '" + clave + "' en repositorio: " + ex.getMessage());
+            if (porDefecto != null) {
+                LOGGER.log(Level.INFO, "Fallback aplicado por error: Clave ''{0}''. Usando valor referencial: ''{1}''.", new Object[]{clave, porDefecto});
+            }
             return porDefecto;
         }
     }
@@ -90,6 +100,9 @@ public class ConfiguracionServicio {
     public BigDecimal getDecimal(String clave, BigDecimal porDefecto) {
         String texto = getString(clave, null);
         if (texto == null || texto.trim().isEmpty()) {
+            if (porDefecto != null) {
+                LOGGER.log(Level.INFO, "Fallback aplicado: Clave decimal ''{0}'' no configurada. Usando valor referencial: {1}.", new Object[]{clave, porDefecto});
+            }
             return porDefecto;
         }
         try {
@@ -103,6 +116,7 @@ public class ConfiguracionServicio {
     public int getInt(String clave, int porDefecto) {
         String texto = getString(clave, null);
         if (texto == null || texto.trim().isEmpty()) {
+            LOGGER.log(Level.INFO, "Fallback aplicado: Clave entera ''{0}'' no configurada. Usando valor referencial: {1}.", new Object[]{clave, porDefecto});
             return porDefecto;
         }
         try {
@@ -116,6 +130,7 @@ public class ConfiguracionServicio {
     public boolean getBoolean(String clave, boolean porDefecto) {
         String texto = getString(clave, null);
         if (texto == null || texto.trim().isEmpty()) {
+            LOGGER.log(Level.INFO, "Fallback aplicado: Clave booleana ''{0}'' no configurada. Usando valor referencial: {1}.", new Object[]{clave, porDefecto});
             return porDefecto;
         }
         String normalizado = texto.trim().toLowerCase();
@@ -125,6 +140,7 @@ public class ConfiguracionServicio {
         if ("false".equals(normalizado) || "0".equals(normalizado) || "no".equals(normalizado) || "off".equals(normalizado)) {
             return false;
         }
+        LOGGER.log(Level.INFO, "Fallback aplicado: Clave booleana ''{0}'' con formato no estándar (''{1}''). Usando valor referencial: {2}.", new Object[]{clave, texto, porDefecto});
         return porDefecto;
     }
 

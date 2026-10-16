@@ -1030,6 +1030,7 @@ public class LoginDao implements AutenticacionRepositorio {
                 configuracion.setMensaje(resultados.getString("mensaje"));
                 configuracion.setTasaDolar(new java.math.BigDecimal("36.5000"));
                 configuracion.setIvaPorcentaje(new java.math.BigDecimal("16.00"));
+                LOGGER.log(Level.WARNING, "datosEmpresaLegacy: Columnas tasa_dolar/iva_porcentaje no existen en tabla config. Aplicando fallback referencial (36.5000 / 16.00%).");
             }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo consultar la configuración.", ex);

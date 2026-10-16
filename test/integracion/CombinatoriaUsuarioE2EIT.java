@@ -228,6 +228,7 @@ public class CombinatoriaUsuarioE2EIT {
         BigDecimal totalBs1 = totalUSD1.multiply(tasaInicial).setScale(2, RoundingMode.HALF_UP); // 29 * 36.50 = 1058.50
 
         Pedidos pedido1 = new Pedidos(0, idSala, 3, fechaHoy, totalUSD1, nombreSala, asistente.getNombre(), "PENDIENTE", tasaInicial, totalBs1);
+        pedido1.setIvaPorcentaje(configEmpresa.getIvaPorcentaje() != null ? configEmpresa.getIvaPorcentaje() : new BigDecimal("16.00"));
         DetallePedido d1 = new DetallePedido(0, nombrePlatoA, new BigDecimal("12.00"), 2, "Con extra queso", 0);
         d1.setMonedaBase("USD");
         d1.setAplicaIva(false);
@@ -245,6 +246,7 @@ public class CombinatoriaUsuarioE2EIT {
 
         // 8. Intentar crear segundo pedido PENDIENTE en la misma sala y mesa 3 -> DEBE FALLAR por uq_pedidos_mesa_pendiente
         Pedidos pedidoDuplicado = new Pedidos(0, idSala, 3, fechaHoy, totalUSD1, nombreSala, admin.getNombre(), "PENDIENTE", tasaInicial, totalBs1);
+        pedidoDuplicado.setIvaPorcentaje(pedido1.getIvaPorcentaje());
         assertThrows("No se permite segundo pedido pendiente en la misma mesa",
                 PedidoPendienteExistenteException.class,
                 () -> pedidosCtrl.registrarPedidoCompleto(pedidoDuplicado, detalles1));
@@ -262,6 +264,7 @@ public class CombinatoriaUsuarioE2EIT {
         BigDecimal totalBs2 = totalUSD2.multiply(tasaNueva).setScale(2, RoundingMode.HALF_UP); // 12 * 40 = 480.00
 
         Pedidos pedido2 = new Pedidos(0, idSala, 4, fechaHoy, totalUSD2, nombreSala, asistente.getNombre(), "PENDIENTE", tasaNueva, totalBs2);
+        pedido2.setIvaPorcentaje(configEmpresa.getIvaPorcentaje() != null ? configEmpresa.getIvaPorcentaje() : new BigDecimal("16.00"));
         DetallePedido d2_1 = new DetallePedido(0, nombrePlatoA, new BigDecimal("12.00"), 1, "", 0);
         d2_1.setMonedaBase("USD");
         d2_1.setAplicaIva(false);
@@ -299,6 +302,7 @@ public class CombinatoriaUsuarioE2EIT {
 
         // Mesa 3 queda liberada: ahora sí se puede crear un nuevo pedido en Mesa 3
         Pedidos pedido3Mesa3 = new Pedidos(0, idSala, 3, fechaHoy, totalUSD2, nombreSala, asistente.getNombre(), "PENDIENTE", tasaNueva, totalBs2);
+        pedido3Mesa3.setIvaPorcentaje(pedido2.getIvaPorcentaje());
         int idPedido3 = pedidosCtrl.registrarPedidoCompleto(pedido3Mesa3, detalles2);
         assertTrue("Mesa 3 liberada puede recibir nuevo pedido", idPedido3 > 0);
     }

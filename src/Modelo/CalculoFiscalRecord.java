@@ -103,11 +103,14 @@ public record CalculoFiscalRecord(
                 throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' no tiene tasa de IVA asignada.");
             }
         }
+        if (ivaPorcentaje == null || ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0 || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0) {
+            throw ErrorAplicacionException.validacion("El porcentaje de IVA es obligatorio y debe estar entre 0.00% y 100.00%.");
+        }
         if (tasaCambio == null || tasaCambio.compareTo(BigDecimal.ZERO) <= 0) {
             throw ErrorAplicacionException.validacion("La tasa de cambio debe ser positiva.");
         }
         BigDecimal tasaValida = tasaCambio.setScale(4, RoundingMode.HALF_UP);
-        BigDecimal ivaValido = ivaPorcentaje != null ? ivaPorcentaje.setScale(2, RoundingMode.HALF_UP) : new BigDecimal("16.00");
+        BigDecimal ivaValido = ivaPorcentaje.setScale(2, RoundingMode.HALF_UP);
 
         Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasaValida);
         BigDecimal baseUsd = BigDecimal.ZERO.setScale(2);
@@ -155,13 +158,11 @@ public record CalculoFiscalRecord(
         if (exentoUsd != null && exentoUsd.compareTo(BigDecimal.ZERO) < 0) {
             throw ErrorAplicacionException.validacion("El monto exento en USD no puede ser negativo.");
         }
-        if (ivaPorcentaje != null) {
-            if (ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0 || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0) {
-                throw ErrorAplicacionException.validacion("El porcentaje de IVA debe estar entre 0.00% y 100.00%.");
-            }
-            if (ivaPorcentaje.scale() > 2) {
-                throw ErrorAplicacionException.validacion("El porcentaje de IVA debe tener hasta dos decimales.");
-            }
+        if (ivaPorcentaje == null || ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0 || ivaPorcentaje.compareTo(new BigDecimal("100.00")) > 0) {
+            throw ErrorAplicacionException.validacion("El porcentaje de IVA es obligatorio y debe estar entre 0.00% y 100.00%.");
+        }
+        if (ivaPorcentaje.scale() > 2) {
+            throw ErrorAplicacionException.validacion("El porcentaje de IVA debe tener hasta dos decimales.");
         }
         if (tasaCambio == null || tasaCambio.compareTo(BigDecimal.ZERO) <= 0) {
             throw ErrorAplicacionException.validacion("La tasa de cambio debe ser positiva.");
@@ -170,7 +171,7 @@ public record CalculoFiscalRecord(
         BigDecimal baseUsd = baseImponibleUsd != null ? baseImponibleUsd.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
         BigDecimal exUsd = exentoUsd != null ? exentoUsd.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
         BigDecimal subUsd = baseUsd.add(exUsd).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal ivaPct = ivaPorcentaje != null ? ivaPorcentaje.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+        BigDecimal ivaPct = ivaPorcentaje.setScale(2, RoundingMode.HALF_UP);
         BigDecimal tasa = tasaCambio.setScale(4, RoundingMode.HALF_UP);
 
         BigDecimal cien = new BigDecimal("100");

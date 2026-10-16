@@ -60,7 +60,10 @@ public class CierreCajaDao {
 
         BigDecimal tasaConfig = (config != null && config.getTasaDolar() != null && config.getTasaDolar().compareTo(BigDecimal.ZERO) > 0)
                 ? config.getTasaDolar()
-                : new BigDecimal("36.5000");
+                : null;
+        if (tasaConfig == null) {
+            throw ErrorAplicacionException.validacion("No se puede consultar el cierre de caja: la tasa de cambio del sistema no ha sido configurada o es inválida.");
+        }
 
         CierreCaja cierre = new CierreCaja();
         cierre.setTipo(tipo);
@@ -73,6 +76,21 @@ public class CierreCajaDao {
 
         try (Connection con = conexiones.getConnection()) {
             infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
+
+            // Registrar log si existen pedidos legados que requieran fallback referencial
+            try (PreparedStatement psLeg = con.prepareStatement(
+                    "SELECT COUNT(*) FROM pedidos p WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?) " +
+                    "AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id) AND (p.tasa_cambio IS NULL OR p.total_bs IS NULL)")) {
+                psLeg.setString(1, likeParam);
+                psLeg.setString(2, fechaFiltro);
+                try (ResultSet rsLeg = psLeg.executeQuery()) {
+                    if (rsLeg.next() && rsLeg.getInt(1) > 0) {
+                        LOGGER.log(Level.WARNING, "CierreCajaDao.consultarCierre: Se detectaron {0} pedidos legados sin tasa o totalBs; se aplicó fallback referencial en el reporte.", rsLeg.getInt(1));
+                    }
+                }
+            } catch (SQLException exLeg) {
+                LOGGER.log(Level.FINE, "No se pudo auditar pedidos legados para cierre: " + exLeg.getMessage());
+            }
 
             boolean autoCommitPrevio = con.getAutoCommit();
             int aislamientoPrevio = con.getTransactionIsolation();
@@ -358,7 +376,11 @@ public class CierreCajaDao {
         cierre.setUsuarioEmisor(usuarioEmisor != null ? usuarioEmisor : "Sistema");
 
         BigDecimal tasa = (config != null && config.getTasaDolar() != null && config.getTasaDolar().compareTo(BigDecimal.ZERO) > 0)
-                ? config.getTasaDolar() : new BigDecimal("36.5000");
+                ? config.getTasaDolar() : null;
+        if (tasa == null) {
+            LOGGER.log(Level.WARNING, "CierreCajaDao.calcularDesdeMemoria: Configuración sin tasa válida. Aplicando tasa referencial por defecto 36.5000.");
+            tasa = new BigDecimal("36.5000");
+        }
         cierre.setTasaCambioReferencia(tasa);
 
         if (pedidos == null) {
@@ -514,6 +536,12 @@ public class CierreCajaDao {
                 tasa_cambio, ruta_pdf
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
+        if (cierre == null) {
+            throw ErrorAplicacionException.validacion("El objeto de cierre de caja no puede ser nulo.");
+        }
+        if (cierre.getTasaCambioReferencia() == null || cierre.getTasaCambioReferencia().compareTo(BigDecimal.ZERO) <= 0) {
+            throw ErrorAplicacionException.validacion("No se puede registrar el cierre de caja: la tasa de cambio de referencia es obligatoria y debe ser mayor a cero.");
+        }
         try (Connection con = conexiones.getConnection()) {
             infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
             try (PreparedStatement ps = con.prepareStatement(sql)) {

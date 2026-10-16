@@ -37,6 +37,8 @@ public class AdversarialValidationTest {
     public void pedidoTotalNegativo() {
         PedidoServicio servicio = new PedidoServicio(new DummyPedidosRepositorio());
         Pedidos pedido = new Pedidos(0, 1, 1, "2026-01-01", new BigDecimal("-10.00"), "Sala A", "usuario", "PENDIENTE");
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO);
         List<DetallePedido> detalles = Arrays.asList(new DetallePedido(1, "Plato", new BigDecimal("-10.00"), 1, "", 1));
         
         ErrorAplicacionException e = assertThrows(ErrorAplicacionException.class, () -> servicio.registrarPedidoCompleto(pedido, detalles));
@@ -47,6 +49,8 @@ public class AdversarialValidationTest {
     public void pedidoTotalCero() {
         PedidoServicio servicio = new PedidoServicio(new DummyPedidosRepositorio());
         Pedidos pedido = new Pedidos(0, 1, 1, "2026-01-01", BigDecimal.ZERO, "Sala A", "usuario", "PENDIENTE");
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO);
         List<DetallePedido> detalles = Arrays.asList(new DetallePedido(1, "Plato", BigDecimal.ZERO, 1, "", 1));
         
         ErrorAplicacionException e = assertThrows(ErrorAplicacionException.class, () -> servicio.registrarPedidoCompleto(pedido, detalles));
@@ -57,6 +61,8 @@ public class AdversarialValidationTest {
     public void pedidoSinDetalles() {
         PedidoServicio servicio = new PedidoServicio(new DummyPedidosRepositorio());
         Pedidos pedido = new Pedidos(0, 1, 1, "2026-01-01", new BigDecimal("10.00"), "Sala A", "usuario", "PENDIENTE");
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO);
         List<DetallePedido> detalles = new ArrayList<>();
         
         ErrorAplicacionException e = assertThrows(ErrorAplicacionException.class, () -> servicio.registrarPedidoCompleto(pedido, detalles));
@@ -67,7 +73,13 @@ public class AdversarialValidationTest {
     public void pedidoMismatchedTotal() {
         PedidoServicio servicio = new PedidoServicio(new DummyPedidosRepositorio());
         Pedidos pedido = new Pedidos(0, 1, 1, "2026-01-01", new BigDecimal("20.00"), "Sala A", "usuario", "PENDIENTE");
-        List<DetallePedido> detalles = Arrays.asList(new DetallePedido(1, "Plato", new BigDecimal("10.00"), 1, "", 1));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO);
+        DetallePedido d = new DetallePedido(1, "Plato", new BigDecimal("10.00"), 1, "", 1);
+        d.setMonedaBase("USD");
+        d.setAplicaIva(false);
+        d.setPrecioIncluyeIva(false);
+        List<DetallePedido> detalles = Arrays.asList(d);
         
         ErrorAplicacionException e = assertThrows(ErrorAplicacionException.class, () -> servicio.registrarPedidoCompleto(pedido, detalles));
         assertTrue(e.getMessage().contains("no coincide con sus detalles"));
@@ -77,6 +89,8 @@ public class AdversarialValidationTest {
     public void cantidadNulaONegativa() {
         PedidoServicio servicio = new PedidoServicio(new DummyPedidosRepositorio());
         Pedidos pedido = new Pedidos(0, 1, 1, "2026-01-01", new BigDecimal("-10.00"), "Sala A", "usuario", "PENDIENTE");
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO);
         List<DetallePedido> detalles = Arrays.asList(new DetallePedido(1, "Plato", new BigDecimal("10.00"), -1, "", 1));
         
         ErrorAplicacionException e = assertThrows(ErrorAplicacionException.class, () -> servicio.registrarPedidoCompleto(pedido, detalles));
@@ -98,12 +112,18 @@ public class AdversarialValidationTest {
         PlatosServicio servicio = new PlatosServicio(new DummyPlatosRepositorio(), politicaAdmin);
         
         Platos platoCero = new Platos(0, "P", BigDecimal.ZERO, "2026-01-01");
+        platoCero.setMonedaBase("USD");
+        platoCero.setPrecioIncluyeIva(false);
         assertThrows(ErrorAplicacionException.class, () -> servicio.registrar(platoCero));
 
         Platos platoNeg = new Platos(0, "P", new BigDecimal("-10"), "2026-01-01");
+        platoNeg.setMonedaBase("USD");
+        platoNeg.setPrecioIncluyeIva(false);
         assertThrows(ErrorAplicacionException.class, () -> servicio.registrar(platoNeg));
 
         Platos platoExc = new Platos(0, "P", new BigDecimal("100000000.00"), "2026-01-01");
+        platoExc.setMonedaBase("USD");
+        platoExc.setPrecioIncluyeIva(false);
         assertThrows(ErrorAplicacionException.class, () -> servicio.registrar(platoExc));
     }
 
@@ -111,6 +131,8 @@ public class AdversarialValidationTest {
     public void platoRestriccionAsistente() {
         PlatosServicio servicio = new PlatosServicio(new DummyPlatosRepositorio(), politicaAsistente);
         Platos plato = new Platos(0, "P", new BigDecimal("10.00"), "2026-01-01");
+        plato.setMonedaBase("USD");
+        plato.setPrecioIncluyeIva(false);
         ErrorAplicacionException e = assertThrows(ErrorAplicacionException.class, () -> servicio.registrar(plato));
         assertTrue(e.getMessage().contains("Tu rol no permite"));
     }

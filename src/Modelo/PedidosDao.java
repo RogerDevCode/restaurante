@@ -128,13 +128,13 @@ public class PedidosDao implements PedidosRepositorio {
                         sentenciaDetalle.setInt(3, detalle.getCantidad());
                         sentenciaDetalle.setString(4, detalle.getComentario() != null ? detalle.getComentario() : "");
                         sentenciaDetalle.setInt(5, idPedido);
-                        sentenciaDetalle.setBoolean(6, detalle.getAplicaIva() == null || detalle.getAplicaIva());
+                        sentenciaDetalle.setBoolean(6, detalle.getAplicaIva());
                         if (detalle.getIdPlato() != null && detalle.getIdPlato() > 0) {
                             sentenciaDetalle.setInt(7, detalle.getIdPlato());
                         } else {
                             sentenciaDetalle.setNull(7, java.sql.Types.INTEGER);
                         }
-                        sentenciaDetalle.setString(8, detalle.getMonedaBase() != null ? detalle.getMonedaBase() : "USD");
+                        sentenciaDetalle.setString(8, detalle.getMonedaBase());
                         if (detalle.getPrecioIncluyeIva() != null) {
                             sentenciaDetalle.setInt(9, detalle.getPrecioIncluyeIva() ? 1 : 0);
                         } else {
@@ -236,13 +236,13 @@ public class PedidosDao implements PedidosRepositorio {
                     insDetalle.setInt(3, det.getCantidad());
                     insDetalle.setString(4, det.getComentario() == null ? "" : det.getComentario());
                     insDetalle.setInt(5, idPedido);
-                    insDetalle.setBoolean(6, det.getAplicaIva() == null || det.getAplicaIva());
+                    insDetalle.setBoolean(6, det.getAplicaIva());
                     if (det.getIdPlato() != null && det.getIdPlato() > 0) {
                         insDetalle.setInt(7, det.getIdPlato());
                     } else {
                         insDetalle.setNull(7, java.sql.Types.INTEGER);
                     }
-                    insDetalle.setString(8, det.getMonedaBase() != null ? det.getMonedaBase() : "USD");
+                    insDetalle.setString(8, det.getMonedaBase());
                     if (det.getPrecioIncluyeIva() != null) {
                         insDetalle.setInt(9, det.getPrecioIncluyeIva() ? 1 : 0);
                     } else {
@@ -441,7 +441,10 @@ public class PedidosDao implements PedidosRepositorio {
         }
         BigDecimal tasa = pedido.getTasaCambio().setScale(4, RoundingMode.HALF_UP);
 
-        BigDecimal ivaPedido = pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP) : new BigDecimal("16.00");
+        if (pedido.getIvaPorcentaje() == null || pedido.getIvaPorcentaje().compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("El pedido debe tener un porcentaje de IVA válido mayor o igual a cero.");
+        }
+        BigDecimal ivaPedido = pedido.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP);
         List<DetallePedido> detallesNormalizados = new ArrayList<>(detalles.size());
         for (DetallePedido d : detalles) {
             if (d == null) {
@@ -549,7 +552,10 @@ public class PedidosDao implements PedidosRepositorio {
             }
         }
 
-        BigDecimal ivaPedido = pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP) : new BigDecimal("16.00");
+        if (pedido.getIvaPorcentaje() == null || pedido.getIvaPorcentaje().compareTo(BigDecimal.ZERO) < 0) {
+            throw ErrorAplicacionException.validacion("El pedido debe tener un porcentaje de IVA válido mayor o igual a cero.");
+        }
+        BigDecimal ivaPedido = pedido.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP);
         for (DetallePedido det : detalles) {
             if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) {
                 throw ErrorAplicacionException.validacion(
@@ -886,7 +892,8 @@ public class PedidosDao implements PedidosRepositorio {
                         }
                         totalBs = rs.getBigDecimal("total_bs");
                         if (totalBs == null) {
-                            totalBs = rs.getBigDecimal("total").multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                            throw ErrorAplicacionException.validacion(
+                                    "No se puede cobrar: el pedido #" + id_pedido + " no tiene total en bolívares (total_bs) guardado en la base de datos.");
                         }
                         versionPrecio = rs.getInt("version_precio");
                     }
@@ -1347,9 +1354,10 @@ public class PedidosDao implements PedidosRepositorio {
                         throw ErrorAplicacionException.validacion("La tasa de cambio configurada en el sistema es inválida o no ha sido establecida.");
                     }
                     BigDecimal tasaNormalizada = tasaActual.setScale(4, RoundingMode.HALF_UP);
-                    BigDecimal ivaNormalizado = (ivaPorcentaje != null && ivaPorcentaje.signum() >= 0)
-                            ? ivaPorcentaje.setScale(2, RoundingMode.HALF_UP)
-                            : new BigDecimal("16.00");
+                    if (ivaPorcentaje == null || ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0) {
+                        throw ErrorAplicacionException.validacion("El porcentaje de IVA configurado en el sistema es inválido o no ha sido establecido.");
+                    }
+                    BigDecimal ivaNormalizado = ivaPorcentaje.setScale(2, RoundingMode.HALF_UP);
 
                     // 2. Bloquear pedido
                     int versionActual;
@@ -1445,9 +1453,14 @@ public class PedidosDao implements PedidosRepositorio {
                                     }
                                     String mb = rsPla.getString("moneda_base");
                                     d.setMonedaBase(mb);
-                                    d.setAplicaIva(rsPla.getInt("aplica_iva") != 0);
+                                    boolean gravado = rsPla.getInt("aplica_iva") != 0;
+                                    d.setAplicaIva(gravado);
                                     int incIva = rsPla.getInt("precio_incluye_iva");
-                                    d.setPrecioIncluyeIva(!rsPla.wasNull() && incIva != 0);
+                                    boolean wasNull = rsPla.wasNull();
+                                    if (gravado && wasNull) {
+                                        throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' no tiene clasificada la condición de IVA incluido en el catálogo.");
+                                    }
+                                    d.setPrecioIncluyeIva(!wasNull && incIva != 0);
                                     BigDecimal precioCat = "VES".equalsIgnoreCase(mb) ? rsPla.getBigDecimal("precio_ves") : rsPla.getBigDecimal("precio_usd");
                                     if (precioCat != null && precioCat.signum() > 0) {
                                         d.setPrecioDecimal(precioCat);
@@ -1587,6 +1600,18 @@ public class PedidosDao implements PedidosRepositorio {
                         pagadoUsdAplicado = rs.getBigDecimal("total_usd").setScale(2, RoundingMode.HALF_UP);
                     }
                 }
+            }
+
+            try (PreparedStatement psCheck = con.prepareStatement(
+                    "SELECT COUNT(*) FROM pedido_pagos WHERE id_pedido = ? AND monto_aplicado IS NULL")) {
+                psCheck.setInt(1, idPedido);
+                try (ResultSet rsCheck = psCheck.executeQuery()) {
+                    if (rsCheck.next() && rsCheck.getInt(1) > 0) {
+                        LOGGER.log(Level.WARNING, "resumenConciliacion: El pedido #{0} contiene {1} pagos legados con monto_aplicado nulo; se utilizó monto_bs como fallback.", new Object[]{idPedido, rsCheck.getInt(1)});
+                    }
+                }
+            } catch (SQLException exCheck) {
+                LOGGER.log(Level.FINE, "No se pudo auditar pagos legados: " + exCheck.getMessage());
             }
 
             BigDecimal saldoBs = totalBs.subtract(pagadoBsAplicado).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);

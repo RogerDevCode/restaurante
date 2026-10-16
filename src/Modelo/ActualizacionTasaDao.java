@@ -258,6 +258,10 @@ public class ActualizacionTasaDao {
                     int idPed = pedidosAfectados.get(i);
                     BigDecimal totalBsAnt = totalesAnteriores.get(i);
                     BigDecimal ivaPorc = ivasPorcentaje.get(i);
+                    if (ivaPorc == null || ivaPorc.compareTo(BigDecimal.ZERO) < 0) {
+                        throw ErrorAplicacionException.validacion("No se puede actualizar la tasa: el pedido #" + idPed
+                                + " no tiene un porcentaje de IVA válido registrado. Verifique la cabecera antes de continuar.");
+                    }
                     if (totalBsAnt != null) {
                         totalAnteriorGlobal = totalAnteriorGlobal.add(totalBsAnt);
                     }
@@ -293,7 +297,7 @@ public class ActualizacionTasaDao {
                                 }
                                 if (det.getIvaPorcentaje() == null) {
                                     det.setIvaPorcentaje(Boolean.TRUE.equals(det.getAplicaIva())
-                                            ? (ivaPorc != null ? ivaPorc : new BigDecimal("16.00"))
+                                            ? ivaPorc
                                             : BigDecimal.ZERO.setScale(2));
                                 }
                                 detalles.add(det);
@@ -308,7 +312,7 @@ public class ActualizacionTasaDao {
                     try (PreparedStatement psUp = con.prepareStatement(sqlUpdateCabecera)) {
                         psUp.setBigDecimal(1, tasaNueva);
                         psUp.setBigDecimal(2, calc.subtotalUsd());
-                        psUp.setBigDecimal(3, ivaPorc != null ? ivaPorc : new BigDecimal("16.00"));
+                        psUp.setBigDecimal(3, ivaPorc);
                         psUp.setBigDecimal(4, calc.ivaUsd());
                         psUp.setBigDecimal(5, calc.totalUsd());
                         psUp.setBigDecimal(6, calc.subtotalVes());

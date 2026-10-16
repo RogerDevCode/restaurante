@@ -238,6 +238,9 @@ public class PreciosPedidosDao {
                     if (tasaCambio == null || tasaCambio.signum() <= 0) {
                         throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no tiene una tasa de cambio válida registrada.");
                     }
+                    if (ivaPorcentajeCabecera == null || ivaPorcentajeCabecera.compareTo(BigDecimal.ZERO) < 0) {
+                        throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no tiene un porcentaje de IVA válido registrado.");
+                    }
                     if (totalBsAnterior != null) {
                         totalAnteriorGlobal = totalAnteriorGlobal.add(totalBsAnterior);
                     }
@@ -291,7 +294,7 @@ public class PreciosPedidosDao {
                                 det.setPrecioIncluyeIva(Boolean.TRUE.equals(plato.getPrecioIncluyeIva()));
                                 if (det.getIvaPorcentaje() == null) {
                                     det.setIvaPorcentaje(det.getAplicaIva()
-                                            ? (ivaPorcentajeCabecera != null ? ivaPorcentajeCabecera : new BigDecimal("16.00"))
+                                            ? ivaPorcentajeCabecera
                                             : BigDecimal.ZERO.setScale(2));
                                 }
 
@@ -313,7 +316,7 @@ public class PreciosPedidosDao {
                                 }
                                 if (det.getIvaPorcentaje() == null) {
                                     det.setIvaPorcentaje(Boolean.TRUE.equals(det.getAplicaIva())
-                                            ? (ivaPorcentajeCabecera != null ? ivaPorcentajeCabecera : new BigDecimal("16.00"))
+                                            ? ivaPorcentajeCabecera
                                             : BigDecimal.ZERO.setScale(2));
                                 }
                             }
@@ -333,7 +336,7 @@ public class PreciosPedidosDao {
                         """;
                     try (PreparedStatement ps = con.prepareStatement(sqlUpdateCabecera)) {
                         ps.setBigDecimal(1, calc.subtotalUsd());
-                        ps.setBigDecimal(2, ivaPorcentajeCabecera != null ? ivaPorcentajeCabecera : new BigDecimal("16.00"));
+                        ps.setBigDecimal(2, ivaPorcentajeCabecera);
                         ps.setBigDecimal(3, calc.ivaUsd());
                         ps.setBigDecimal(4, calc.totalUsd());
                         ps.setBigDecimal(5, calc.subtotalVes());

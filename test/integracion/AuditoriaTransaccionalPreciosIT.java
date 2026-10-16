@@ -139,6 +139,7 @@ public class AuditoriaTransaccionalPreciosIT {
         p.setNum_mesa(1);
         p.setUsuario(USUARIO_PRUEBA);
         p.setTasaCambio(new BigDecimal("40.0000"));
+        p.setIvaPorcentaje(new BigDecimal("16.00"));
         p.setSubtotal(new BigDecimal("12.00"));
         p.setTotalDecimal(new BigDecimal("12.00"));
         DetallePedido d = new DetallePedido();

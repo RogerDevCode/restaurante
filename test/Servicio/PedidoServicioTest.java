@@ -141,6 +141,15 @@ public class PedidoServicioTest {
                 () -> servicio.registrarPedidoCompleto(pedido, List.of(detalleValido())));
     }
 
+    @Test
+    public void rechazaPedidoSinIvaPorcentaje() {
+        PedidoServicio servicio = new PedidoServicio(new PedidosRepositorioFalso());
+        Pedidos pedido = pedidoValido();
+        pedido.setIvaPorcentaje(null);
+        org.junit.Assert.assertThrows(ErrorAplicacionException.class,
+                () -> servicio.registrarPedidoCompleto(pedido, List.of(detalleValido())));
+    }
+
     private Pedidos pedidoValido() {
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(1);
@@ -148,6 +157,7 @@ public class PedidoServicioTest {
         pedido.setSubtotal(new BigDecimal("2500.00"));
         pedido.setTotalDecimal(new BigDecimal("2500.00"));
         pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setIvaPorcentaje(new BigDecimal("16.00"));
         pedido.setUsuario("Ana");
         return pedido;
     }

@@ -140,12 +140,14 @@ public class SimulacionUsuarioE2EIT {
 
             Pedidos pedido = new Pedidos(0, salaCreada.getId(), 4, hoy, totalUsd, salaCreada.getNombre(), admin.getNombre(), "PENDIENTE", tasaDolar, totalBs);
             pedido.setSubtotal(totalUsd);
+            pedido.setIvaPorcentaje(config.getIvaPorcentaje() != null ? config.getIvaPorcentaje() : new BigDecimal("16.00"));
             int idPedido = pedidosCtrl.registrarPedidoCompleto(pedido, Arrays.asList(det1, det2));
             assertTrue("ID de pedido debe ser positivo", idPedido > 0);
 
             // 5. Conflicto de concurrencia: no se puede duplicar pedido pendiente en la misma mesa
             Pedidos pedidoConflicto = new Pedidos(0, salaCreada.getId(), 4, hoy, new BigDecimal("10.00"), salaCreada.getNombre(), "Mozo2", "PENDIENTE", tasaDolar, new BigDecimal("385.00"));
             pedidoConflicto.setSubtotal(new BigDecimal("10.00"));
+            pedidoConflicto.setIvaPorcentaje(pedido.getIvaPorcentaje());
             assertThrows(PedidoPendienteExistenteException.class,
                     () -> pedidosCtrl.registrarPedidoCompleto(pedidoConflicto, Arrays.asList(det2)));
 

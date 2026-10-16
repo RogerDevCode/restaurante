@@ -145,7 +145,7 @@ public class CierreCaja {
     private BigDecimal subtotalBs = BigDecimal.ZERO.setScale(2);
     private BigDecimal ivaUsd = BigDecimal.ZERO.setScale(2);
     private BigDecimal ivaBs = BigDecimal.ZERO.setScale(2);
-    private BigDecimal tasaCambioReferencia = new BigDecimal("36.5000");
+    private BigDecimal tasaCambioReferencia;
     private int pedidosFinalizados = 0;
     private int pedidosPendientes = 0;
     private int mesasCerradasPendientesPago = 0;
@@ -246,7 +246,7 @@ public class CierreCaja {
     }
 
     public void setTasaCambioReferencia(BigDecimal tasaCambioReferencia) {
-        this.tasaCambioReferencia = tasaCambioReferencia != null ? tasaCambioReferencia : new BigDecimal("36.5000");
+        this.tasaCambioReferencia = tasaCambioReferencia;
     }
 
     public int getPedidosFinalizados() {

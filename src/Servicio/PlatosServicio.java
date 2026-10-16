@@ -142,11 +142,12 @@ public final class PlatosServicio {
         if (plato == null || plato.getNombre() == null || plato.getNombre().trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("El nombre del plato es obligatorio.");
         }
-        if (plato.getMonedaBase() != null && !plato.getMonedaBase().trim().isEmpty()) {
-            String m = plato.getMonedaBase().trim().toUpperCase(java.util.Locale.ROOT);
-            if (!"USD".equals(m) && !"VES".equals(m)) {
-                throw ErrorAplicacionException.validacion("La moneda base del plato debe ser USD o VES.");
-            }
+        if (plato.getMonedaBase() == null || plato.getMonedaBase().trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("Debe indicar la moneda base del plato (USD o VES).");
+        }
+        String m = plato.getMonedaBase().trim().toUpperCase(java.util.Locale.ROOT);
+        if (!"USD".equals(m) && !"VES".equals(m)) {
+            throw ErrorAplicacionException.validacion("La moneda base del plato debe ser USD o VES.");
         }
         validarPrecio(plato.getPrecioDecimal());
         validarFecha(plato.getFecha());
@@ -172,9 +173,7 @@ public final class PlatosServicio {
     }
 
     private Platos normalizar(Platos plato, BigDecimal tasa) {
-        String moneda = plato.getMonedaBase() != null && !plato.getMonedaBase().trim().isEmpty()
-                ? plato.getMonedaBase().trim().toUpperCase(java.util.Locale.ROOT)
-                : "USD";
+        String moneda = plato.getMonedaBase().trim().toUpperCase(java.util.Locale.ROOT);
 
         Platos normalizado = new Platos(
                 plato.getId(), plato.getNombre().trim(), plato.getPrecioDecimal(), plato.getFecha());

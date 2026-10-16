@@ -82,6 +82,8 @@ public class CombinatoriaReglasNegocioTest {
         };
         for (BigDecimal precio : preciosValidos) {
             Platos plato = new Platos(0, "Plato Valido " + precio, precio, "2026-10-05");
+            plato.setMonedaBase("USD");
+            plato.setPrecioIncluyeIva(false);
             assertTrue("Precio válido " + precio + " debe aceptarse", servicio.registrar(plato));
         }
 
@@ -98,6 +100,8 @@ public class CombinatoriaReglasNegocioTest {
         };
         for (BigDecimal precio : preciosInvalidos) {
             Platos plato = new Platos(0, "Plato Invalido", precio, "2026-10-05");
+            plato.setMonedaBase("USD");
+            plato.setPrecioIncluyeIva(false);
             assertThrows("Precio inválido " + precio + " debe lanzar excepción",
                     ErrorAplicacionException.class,
                     () -> servicio.registrar(plato));
@@ -112,6 +116,8 @@ public class CombinatoriaReglasNegocioTest {
         String[] fechasValidas = {"2026-01-01", "2026-12-31", "2024-02-29"}; // 2024 bisiesto
         for (String fecha : fechasValidas) {
             Platos plato = new Platos(0, "Plato", new BigDecimal("10.00"), fecha);
+            plato.setMonedaBase("USD");
+            plato.setPrecioIncluyeIva(false);
             assertTrue("Fecha válida " + fecha + " debe ser aceptada", servicio.registrar(plato));
         }
 
@@ -184,20 +190,27 @@ public class CombinatoriaReglasNegocioTest {
         PedidoServicio servicio = new PedidoServicio(new RepositorioPedidosMemoria());
 
         // Pedido con múltiples líneas y cantidades combinadas
-        List<DetallePedido> detalles = Arrays.asList(
-                new DetallePedido(1, "Pabellón", new BigDecimal("12.00"), 2, "Sin cebolla", 0),
-                new DetallePedido(2, "Jugo Natural", new BigDecimal("3.50"), 3, "De parchita", 0),
-                new DetallePedido(3, "Postre Tres Leches", new BigDecimal("4.00"), 1, "", 0)
-        );
+        DetallePedido d1 = new DetallePedido(1, "Pabellón", new BigDecimal("12.00"), 2, "Sin cebolla", 0);
+        d1.setMonedaBase("USD"); d1.setAplicaIva(false); d1.setPrecioIncluyeIva(false);
+        DetallePedido d2 = new DetallePedido(2, "Jugo Natural", new BigDecimal("3.50"), 3, "De parchita", 0);
+        d2.setMonedaBase("USD"); d2.setAplicaIva(false); d2.setPrecioIncluyeIva(false);
+        DetallePedido d3 = new DetallePedido(3, "Postre Tres Leches", new BigDecimal("4.00"), 1, "", 0);
+        d3.setMonedaBase("USD"); d3.setAplicaIva(false); d3.setPrecioIncluyeIva(false);
+
+        List<DetallePedido> detalles = Arrays.asList(d1, d2, d3);
         // Total esperado: 12*2 + 3.50*3 + 4*1 = 24.00 + 10.50 + 4.00 = 38.50
         BigDecimal totalEsperado = new BigDecimal("38.50");
 
         Pedidos pedidoValido = new Pedidos(0, 1, 4, "2026-10-05", totalEsperado, "Sala Principal", "Admin", "PENDIENTE");
+        pedidoValido.setTasaCambio(new BigDecimal("36.5000"));
+        pedidoValido.setIvaPorcentaje(BigDecimal.ZERO);
         int idPedido = servicio.registrarPedidoCompleto(pedidoValido, detalles);
         assertTrue("Pedido con suma coincidente debe registrarse", idPedido > 0);
 
         // Suma intencionalmente alterada por 0.01 centavo
         Pedidos pedidoAlterado = new Pedidos(0, 1, 4, "2026-10-05", new BigDecimal("38.51"), "Sala Principal", "Admin", "PENDIENTE");
+        pedidoAlterado.setTasaCambio(new BigDecimal("36.5000"));
+        pedidoAlterado.setIvaPorcentaje(BigDecimal.ZERO);
         assertThrows("Suma con discrepancia debe rechazarse",
                 ErrorAplicacionException.class,
                 () -> servicio.registrarPedidoCompleto(pedidoAlterado, detalles));

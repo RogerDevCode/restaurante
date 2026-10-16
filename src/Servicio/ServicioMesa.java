@@ -24,6 +24,11 @@ import java.util.regex.Pattern;
  */
 public final class ServicioMesa {
 
+    /** Paleta de alto contraste para tarjetas de mesa (blanco sobre fondo oscuro ~5-7:1). */
+    public static final java.awt.Color FONDO_MESA_LIBRE = new java.awt.Color(27, 94, 32);
+    public static final java.awt.Color FONDO_MESA_OCUPADA = new java.awt.Color(183, 28, 28);
+    public static final java.awt.Color BORDE_MESA_SELECCIONADA = new java.awt.Color(255, 214, 0);
+
     private static final Set<String> PALABRAS_IGNORADAS = Set.of(
             "SALA", "SALON", "AREA", "ZONA", "ESPACIO", "SECTOR", "DE", "DEL", "LA", "EL", "LOS", "LAS"
     );
