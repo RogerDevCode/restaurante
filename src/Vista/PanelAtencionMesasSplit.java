@@ -41,6 +41,7 @@ import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -111,6 +112,8 @@ public class PanelAtencionMesasSplit extends JPanel {
     private JButton btnEnviarCocina;
     private JButton btnCobrar;
     private JButton btnLimpiar;
+    private JCheckBox chkFiltroRapidoSplit;
+    private Integer desplazarAPlatoIdSplit = null;
     /** Ancho objetivo por tarjeta (botón 115 + gaps): la grilla ajusta columnas al viewport. */
     private static final int ANCHO_TARJETA_MESA_OBJETIVO = 125;
 
@@ -297,6 +300,14 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         pnlAccionesBuscar.add(btnLimpiarBuscar);
         pnlAccionesBuscar.add(btnAddPlato);
+        chkFiltroRapidoSplit = new JCheckBox("Auto-limpiar", true);
+        chkFiltroRapidoSplit.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        chkFiltroRapidoSplit.setToolTipText("Al elegir un plato se limpia el filtro y se muestra en la lista completa");
+        chkFiltroRapidoSplit.addItemListener(e -> {
+            boolean sel = chkFiltroRapidoSplit.isSelected();
+            sistema.guardarPreferenciaFiltroRapido(sel);
+        });
+        pnlAccionesBuscar.add(chkFiltroRapidoSplit, 0);
         pnlBuscar.add(pnlAccionesBuscar, BorderLayout.EAST);
 
         pnlCatalogo.add(pnlBuscar, BorderLayout.NORTH);
@@ -590,6 +601,13 @@ public class PanelAtencionMesasSplit extends JPanel {
                 verificarPedidoActivoTrasEvento();
             }
         }
+    }
+
+    /**
+     * Repinta el mapa de mesas (para el refresco periódico del modo visible).
+     */
+    public void refrescarMapa() {
+        refrescarMesasSalaActual();
     }
 
     /**
@@ -1069,6 +1087,18 @@ public class PanelAtencionMesasSplit extends JPanel {
                     } else if (tblCatalogoPlatos.getRowCount() > 0) {
                         tblCatalogoPlatos.setRowSelectionInterval(0, 0);
                     }
+                    if (desplazarAPlatoIdSplit != null) {
+                        int objetivo = desplazarAPlatoIdSplit;
+                        desplazarAPlatoIdSplit = null;
+                        for (int i = 0; i < modeloCatalogoPlatos.getRowCount(); i++) {
+                            Object v = modeloCatalogoPlatos.getValueAt(i, 0);
+                            if (v != null && String.valueOf(objetivo).equals(v.toString())) {
+                                tblCatalogoPlatos.setRowSelectionInterval(i, i);
+                                tblCatalogoPlatos.scrollRectToVisible(tblCatalogoPlatos.getCellRect(i, 0, true));
+                                break;
+                            }
+                        }
+                    }
                     RendererPlato renderer = new RendererPlato(platosPorId);
                     for (int i = 0; i < tblCatalogoPlatos.getColumnCount(); i++) {
                         if (Tables.ID_COLUMNA_MONEDA.equals(tblCatalogoPlatos.getColumnModel().getColumn(i).getIdentifier())) {
@@ -1130,6 +1160,7 @@ public class PanelAtencionMesasSplit extends JPanel {
                 tblCarrito.setRowSelectionInterval(i, i);
                 txtCantManual.setText(String.valueOf(nuevaCant));
                 recalcularTotales();
+                autoLimpiarFiltroSplitTrasAgregar(idPlato);
                 return;
             }
         }
@@ -1147,6 +1178,20 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCarrito.setRowSelectionInterval(indexNuevo, indexNuevo);
         txtCantManual.setText("1");
         recalcularTotales();
+        autoLimpiarFiltroSplitTrasAgregar(idPlato);
+    }
+
+    /**
+     * Filtro rápido: tras agregar un plato, limpia el filtro y muestra la lista
+     * completa dejando seleccionado y visible el plato elegido.
+     */
+    private void autoLimpiarFiltroSplitTrasAgregar(int idPlato) {
+        if (chkFiltroRapidoSplit != null && chkFiltroRapidoSplit.isSelected()
+                && txtBuscarPlato != null && !txtBuscarPlato.getText().trim().isEmpty()) {
+            desplazarAPlatoIdSplit = idPlato;
+            txtBuscarPlato.setText("");
+            filtrarCatalogoPlatos("");
+        }
     }
 
     private void ajustarCantidadFilaSeleccionada(int delta) {
@@ -1454,6 +1499,13 @@ public class PanelAtencionMesasSplit extends JPanel {
     /** Recarga el combo tras altas/bajas en Configuración; conserva la selección si sigue activa. */
     public void recargarMesoneros() {
         cargarMesoneros();
+    }
+
+    /** Sincroniza el toggle de filtro rápido con el de la toma clásica. */
+    public void setFiltroRapido(boolean sel) {
+        if (chkFiltroRapidoSplit != null && chkFiltroRapidoSplit.isSelected() != sel) {
+            chkFiltroRapidoSplit.setSelected(sel);
+        }
     }
 
     private void preseleccionarMesoneroPorId(int idMesonero) {

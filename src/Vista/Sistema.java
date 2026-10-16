@@ -139,6 +139,8 @@ public final class Sistema extends javax.swing.JFrame {
     private int idSalaEdicion = -1;
     private int numMesaEdicion = -1;
     private boolean sincronizandoPlatoForm = false;
+    private javax.swing.JCheckBox chkFiltroRapido;
+    private Integer desplazarAPlatoIdToma = null;
     private Integer idMesoneroEdicionOriginal = null;
     private String nombreMesoneroEdicionOriginal = null;
     private boolean quitarMesoneroEdicion = false;
@@ -152,6 +154,7 @@ public final class Sistema extends javax.swing.JFrame {
     private int idSalaActualMesas;
     private String nombreSalaActualMesas;
     private int cantMesasActual;
+    private javax.swing.Timer temporizadorRefrescoModos;
     private javax.swing.JLabel lblLogoPreview;
     private javax.swing.JTextField txtRutaLogo;
     private javax.swing.JButton btnCambiarLogo;
@@ -868,6 +871,7 @@ public final class Sistema extends javax.swing.JFrame {
         panelSalas();
         observarEdicionConfig();
         ListarConfig();
+        cargarPreferenciaFiltroRapido();
         actualizarEstadoTasaUI();
         configurarTabCategorias();
 
@@ -1818,12 +1822,55 @@ public final class Sistema extends javax.swing.JFrame {
         RefrescoVistas.suscribir(RefrescoVistas.USUARIOS, this::ListarUsuarios);
         RefrescoVistas.suscribir(RefrescoVistas.CONFIG, this::ListarConfig);
         RefrescoVistas.suscribir(RefrescoVistas.DASHBOARD, () -> { if (politicaAcceso.esAdministrador()) cargarDashboardYClientes(); });
+        iniciarRefrescoPeriodicoModos();
     }
 
     /** Vuelve a leer el menú/selector de platos (pestaña de toma de pedido). */
     private void refrescarMenuPlatos() {
         if (tblTemPlatos != null) {
             ListarPlatos(tblTemPlatos, txtBuscarPlato != null ? txtBuscarPlato.getText() : "");
+        }
+    }
+
+    /**
+     * Refresco permanente: cada 30 s relee la vista del modo visible (A/B/C/Clásico)
+     * para que ningún mapa quede obsoleto (p. ej. cambios desde otro terminal, que el
+     * bus en-proceso no recibe). Solo relee; no mueve selección ni foco. Desactivado
+     * en E2E para no interferir con pruebas guiadas.
+     */
+    private void iniciarRefrescoPeriodicoModos() {
+        if (temporizadorRefrescoModos != null) {
+            return;
+        }
+        if ("SI".equals(System.getProperty("e2e.permitir"))) {
+            return;
+        }
+        temporizadorRefrescoModos = new javax.swing.Timer(30000, e -> refrescarVistaModoVisible());
+        temporizadorRefrescoModos.setRepeats(true);
+        temporizadorRefrescoModos.setCoalesce(true);
+        temporizadorRefrescoModos.start();
+    }
+
+    private void refrescarVistaModoVisible() {
+        if (!isVisible() || jTabbedPane1 == null) {
+            return;
+        }
+        try {
+            java.awt.Component sel = jTabbedPane1.getSelectedComponent();
+            if (sel == null) {
+                return;
+            }
+            if (panelSplitScreen != null && javax.swing.SwingUtilities.isDescendingFrom(panelSplitScreen, sel)) {
+                panelSplitScreen.refrescarMapa();
+                return;
+            }
+            int idxSel = jTabbedPane1.getSelectedIndex();
+            if (idxSel == jTabbedPane1.indexOfTab("Mesas")) {
+                refrescarPanelMesasActual();
+            } else if (idxSel == jTabbedPane1.indexOfTab("Panel")) {
+                panelSalas();
+            }
+        } catch (Exception ignored) {
         }
     }
 
@@ -1980,6 +2027,16 @@ public final class Sistema extends javax.swing.JFrame {
         tblTemPlatos = new javax.swing.JTable();
         btnAddPlato = new javax.swing.JButton();
         btnLimpiarBuscar = new javax.swing.JButton();
+        chkFiltroRapido = new javax.swing.JCheckBox("Auto-limpiar", true);
+        chkFiltroRapido.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        chkFiltroRapido.setToolTipText("Al elegir un plato se limpia el filtro y se muestra en la lista completa");
+        chkFiltroRapido.addItemListener(e -> {
+            boolean sel = chkFiltroRapido.isSelected();
+            guardarPreferenciaFiltroRapido(sel);
+            if (panelSplitScreen != null) {
+                panelSplitScreen.setFiltroRapido(sel);
+            }
+        });
         jScrollPane11 = new javax.swing.JScrollPane();
         tableMenu = new javax.swing.JTable();
         jLabel6 = new javax.swing.JLabel();
@@ -2602,6 +2659,8 @@ public final class Sistema extends javax.swing.JFrame {
                         .addComponent(txtBuscarPlato, javax.swing.GroupLayout.PREFERRED_SIZE, 230, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(btnLimpiarBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 42, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(chkFiltroRapido, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 2, Short.MAX_VALUE)
                         .addComponent(btnAddPlato)))
                 .addContainerGap())
@@ -2613,6 +2672,7 @@ public final class Sistema extends javax.swing.JFrame {
                 .addGroup(jPanel24Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(txtBuscarPlato, javax.swing.GroupLayout.DEFAULT_SIZE, 32, Short.MAX_VALUE)
                     .addComponent(btnLimpiarBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(chkFiltroRapido, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnAddPlato, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
                 .addGap(18, 18, 18)
                 .addComponent(jScrollPane10, javax.swing.GroupLayout.DEFAULT_SIZE, 330, Short.MAX_VALUE)
@@ -4161,6 +4221,7 @@ public final class Sistema extends javax.swing.JFrame {
                         return;
                     }
                     setCantidadPlatoPorFila(i, cantActual + 1);
+                    autoLimpiarFiltroPlatosTrasAgregar(id);
                     return;
                 }
             }
@@ -4191,6 +4252,7 @@ public final class Sistema extends javax.swing.JFrame {
             Tables.agregarColumnaMoneda(tableMenu, 3, mf -> monedaUbFila(tableMenu, mf));
             TotalPagar(tableMenu, totalMenu);
             actualizarEstadoBotonesCarrito();
+            autoLimpiarFiltroPlatosTrasAgregar(id);
             // UX: dejar preseleccionada la fila agregada para ajustar cantidad al instante (+/- o campo).
             int nuevaFila = tmp.getRowCount() - 1;
             if (nuevaFila >= 0) {
@@ -4207,6 +4269,19 @@ public final class Sistema extends javax.swing.JFrame {
             mostrarAvisoEnBanda("Seleccione un plato del menú");
         }
     }//GEN-LAST:event_btnAddPlatoActionPerformed
+
+    /**
+     * Filtro rápido: tras agregar un plato, limpia el filtro y muestra la lista
+     * completa dejando seleccionado y visible el plato elegido.
+     */
+    private void autoLimpiarFiltroPlatosTrasAgregar(int idPlato) {
+        if (chkFiltroRapido != null && chkFiltroRapido.isSelected()
+                && txtBuscarPlato != null && !txtBuscarPlato.getText().trim().isEmpty()) {
+            desplazarAPlatoIdToma = idPlato;
+            txtBuscarPlato.setText("");
+            ListarPlatos(tblTemPlatos, "");
+        }
+    }
 
     private void btnGenerarPedidoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGenerarPedidoActionPerformed
         if (tableMenu.getRowCount() > 0) {
@@ -8925,6 +9000,43 @@ public final class Sistema extends javax.swing.JFrame {
         );
     }
 
+    /** Lee la preferencia de auto-limpiar filtro y la aplica a ambos checkboxes. */
+    private void cargarPreferenciaFiltroRapido() {
+        Servicio.ConcurrenciaServicio.ejecutarAsync(
+                () -> {
+                    try {
+                        return new Modelo.ConfiguracionSistemaDao()
+                                .obtener(Modelo.ConfigClaves.FILTRO_RAPIDO_PLATOS, "1");
+                    } catch (Exception ex) {
+                        return "1";
+                    }
+                },
+                valor -> {
+                    boolean sel = !"0".equals(valor);
+                    if (chkFiltroRapido != null) {
+                        chkFiltroRapido.setSelected(sel);
+                    }
+                    if (panelSplitScreen != null) {
+                        panelSplitScreen.setFiltroRapido(sel);
+                    }
+                },
+                ex -> {
+                });
+    }
+
+    void guardarPreferenciaFiltroRapido(boolean sel) {
+        final String valor = sel ? "1" : "0";
+        Servicio.ConcurrenciaServicio.ejecutarAsync(
+                () -> {
+                    new Modelo.ConfiguracionSistemaDao().guardar(Modelo.ConfigClaves.FILTRO_RAPIDO_PLATOS, valor);
+                    return null;
+                },
+                exito -> {
+                },
+                ex -> java.util.logging.Logger.getLogger(Sistema.class.getName())
+                        .log(java.util.logging.Level.FINE, "Aviso al persistir filtro rápido: " + ex.getMessage()));
+    }
+
     private void sincronizarCombosModo(String modo) {
         if (cambiandoModoProgramaticamente) return;
         cambiandoModoProgramaticamente = true;
@@ -9293,10 +9405,22 @@ public final class Sistema extends javax.swing.JFrame {
             monedasPlatos.add(p.getMonedaBase());
         }
         Tables.fijarCabeceraMoneda(tabla, 2, monedasPlatos);
-        if (filaRestaurar >= 0 && filaRestaurar < tabla.getRowCount()) {
-            tabla.setRowSelectionInterval(filaRestaurar, filaRestaurar);
-        }
-        installarRenderersPlatos(tabla);
+            if (filaRestaurar >= 0 && filaRestaurar < tabla.getRowCount()) {
+                tabla.setRowSelectionInterval(filaRestaurar, filaRestaurar);
+            }
+            if (desplazarAPlatoIdToma != null && tabla == tblTemPlatos) {
+                int objetivo = desplazarAPlatoIdToma;
+                desplazarAPlatoIdToma = null;
+                for (int i = 0; i < modelo.getRowCount(); i++) {
+                    Object v = modelo.getValueAt(i, 0);
+                    if (v != null && String.valueOf(objetivo).equals(v.toString())) {
+                        tabla.setRowSelectionInterval(i, i);
+                        tabla.scrollRectToVisible(tabla.getCellRect(i, 0, true));
+                        break;
+                    }
+                }
+            }
+            installarRenderersPlatos(tabla);
         colorHeader(tabla);
     }
 
