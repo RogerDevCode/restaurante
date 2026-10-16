@@ -701,6 +701,15 @@ BEGIN
         ALTER TABLE detalle_pedidos ADD CONSTRAINT chk_detalle_precio_iva_coherente CHECK (aplica_iva=1 OR precio_incluye_iva IS NULL OR precio_incluye_iva=0);
     END IF;
 
+    -- Clasificar platos heredados: USD como primera moneda y precio no incluye IVA
+    UPDATE platos
+    SET moneda_base = 'USD',
+        precio_usd = COALESCE(precio_usd, precio),
+        precio_ves = COALESCE(precio_ves, ROUND(COALESCE(precio_usd, precio) * (SELECT COALESCE(MAX(tasa_dolar), 36.5000) FROM config WHERE id = 1), 2)),
+        precio_clasificado = 1,
+        precio_incluye_iva = 0
+    WHERE precio_clasificado = 0 OR moneda_base IS NULL OR precio_incluye_iva IS NULL;
+
     -- La identidad del producto es explícita; no se vinculan pedidos heredados por nombre.
     IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='detalle_pedidos' AND index_name='idx_detalle_pedidos_plato') THEN
         ALTER TABLE detalle_pedidos ADD INDEX idx_detalle_pedidos_plato (id_plato);

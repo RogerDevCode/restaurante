@@ -261,7 +261,7 @@ CREATE TABLE `platos` (
 
 LOCK TABLES `platos` WRITE;
 /*!40000 ALTER TABLE `platos` DISABLE KEYS */;
-INSERT INTO `platos` (`id`, `nombre`, `precio`, `fecha`, `activo`, `desactivado_en`, `aplica_iva`) VALUES (1,'ARROZ CON POLLO',10.00,CURRENT_DATE(),1,NULL,1),(2,'CHAUFA',20.00,CURRENT_DATE(),1,NULL,1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,CURRENT_DATE(),1,NULL,1);
+INSERT INTO `platos` (`id`, `nombre`, `precio`, `moneda_base`, `precio_usd`, `precio_ves`, `precio_clasificado`, `precio_incluye_iva`, `fecha`, `activo`, `desactivado_en`, `aplica_iva`) VALUES (1,'ARROZ CON POLLO',10.00,'USD',10.00,365.00,1,0,CURRENT_DATE(),1,NULL,1),(2,'CHAUFA',20.00,'USD',20.00,730.00,1,0,CURRENT_DATE(),1,NULL,1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,'USD',8.00,292.00,1,0,CURRENT_DATE(),1,NULL,1);
 /*!40000 ALTER TABLE `platos` ENABLE KEYS */;
 UNLOCK TABLES;
 
