@@ -57,8 +57,37 @@ public class AuditoriaTransaccionalPreciosIT {
                 System.getProperty("DB_PASSWORD"));
     }
 
+    private BigDecimal tasaOriginalGlobal;
+
     @Before
+    public void setup() throws SQLException {
+        try (Connection con = conexion(); Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT tasa_dolar FROM config WHERE id = 1")) {
+            if (rs.next()) {
+                tasaOriginalGlobal = rs.getBigDecimal(1);
+            }
+        }
+        limpiarBase();
+    }
+
     @After
+    public void tearDown() throws SQLException {
+        try {
+            if (tasaOriginalGlobal != null) {
+                try (Connection con = conexion();
+                     PreparedStatement ps = con.prepareStatement("UPDATE config SET tasa_dolar = ? WHERE id = 1");
+                     PreparedStatement psCs = con.prepareStatement("UPDATE configuracion_sistema SET valor = ? WHERE clave = 'tasa_cambio'")) {
+                    ps.setBigDecimal(1, tasaOriginalGlobal);
+                    ps.executeUpdate();
+                    psCs.setString(1, tasaOriginalGlobal.stripTrailingZeros().toPlainString());
+                    psCs.executeUpdate();
+                }
+            }
+        } finally {
+            limpiarBase();
+        }
+    }
+
     public void limpiarBase() throws SQLException {
         try (Connection con = conexion(); Statement st = con.createStatement()) {
             st.executeUpdate("DELETE FROM detalle_pedidos WHERE id_pedido IN (SELECT id FROM pedidos WHERE usuario='" + USUARIO_PRUEBA + "')");
@@ -211,11 +240,11 @@ public class AuditoriaTransaccionalPreciosIT {
         String idempotencyKey = "key-tasa-" + UUID.randomUUID();
         BigDecimal tasaNueva = new BigDecimal("44.5000");
 
-        ResultadoActualizacionPrecios res1 = tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA, idempotencyKey, idSala);
+        ResultadoActualizacionPrecios res1 = tasaDao.actualizarTasaYRecalcularPendientesParaTest(tasaNueva, USUARIO_PRUEBA, idempotencyKey, idSala);
         assertNotNull(res1);
 
         // Reintento idempotente con la misma clave
-        ResultadoActualizacionPrecios res2 = tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA, idempotencyKey, idSala);
+        ResultadoActualizacionPrecios res2 = tasaDao.actualizarTasaYRecalcularPendientesParaTest(tasaNueva, USUARIO_PRUEBA, idempotencyKey, idSala);
         assertNotNull(res2);
 
         // Verificar que se insertó auditoría para esta clave y que el reintento no la duplicó

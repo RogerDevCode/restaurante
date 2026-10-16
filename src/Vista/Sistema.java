@@ -4546,7 +4546,9 @@ public final class Sistema extends javax.swing.JFrame {
                 mostrarAvisoEnBanda("No se registró el plato");
             }
         } catch (ErrorAplicacionException ex) {
-            mostrarAlertaCampo(txtPrecioPlato, ex.getMessage());
+            javax.swing.JComponent campo = (chkPrecioIncluyeIvaPlato != null && ex.getMessage().toLowerCase().contains("iva")) ? chkPrecioIncluyeIvaPlato : txtPrecioPlato;
+            mostrarAlertaCampo(campo, ex.getMessage());
+            campo.requestFocusInWindow();
         }
     }//GEN-LAST:event_btnGuardarPlatoActionPerformed
 
@@ -4564,6 +4566,9 @@ public final class Sistema extends javax.swing.JFrame {
                     pla.setNombre(txtNombrePlato.getText().trim());
                     pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText().trim()));
                     pla.setId(Integer.parseInt(txtIdPlato.getText().trim()));
+                    if (pla.getFecha() == null || pla.getFecha().isBlank()) {
+                        pla.setFecha(fechaActual());
+                    }
                     String moneda = cbMonedaBasePlato != null ? String.valueOf(cbMonedaBasePlato.getSelectedItem()) : "USD";
                     pla.setMonedaBase(moneda);
                     boolean aplicaIva = chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected();
@@ -4585,6 +4590,11 @@ public final class Sistema extends javax.swing.JFrame {
                     Modelo.ResultadoActualizacionPrecios res;
                     try {
                         res = platosControlador.modificarProductoYRecalcularPendientes(pla, tasa, getNombreUsuarioActual());
+                    } catch (ErrorAplicacionException ex) {
+                        javax.swing.JComponent campo = (chkPrecioIncluyeIvaPlato != null && ex.getMessage().toLowerCase().contains("iva")) ? chkPrecioIncluyeIvaPlato : txtPrecioPlato;
+                        mostrarAlertaCampo(campo, ex.getMessage());
+                        campo.requestFocusInWindow();
+                        return;
                     } catch (Exception ex) {
                         JOptionPane.showMessageDialog(this,
                                 "La operación fue completamente revertida. No se aplicaron cambios al catálogo ni a los pedidos:\n"
@@ -4611,11 +4621,13 @@ public final class Sistema extends javax.swing.JFrame {
                 } catch (NumberFormatException ex) {
                     mostrarAvisoEnBanda("No se pudo leer el identificador del plato");
                 } catch (ErrorAplicacionException ex) {
-                    mostrarAlertaCampo(txtPrecioPlato, ex.getMessage());
+                    javax.swing.JComponent campo = (chkPrecioIncluyeIvaPlato != null && ex.getMessage().toLowerCase().contains("iva")) ? chkPrecioIncluyeIvaPlato : txtPrecioPlato;
+                    mostrarAlertaCampo(campo, ex.getMessage());
+                    campo.requestFocusInWindow();
                 }
             }
         }
-    }//NOI18N:event_btnEditarPlatoActionPerformed
+    }//GEN-LAST:event_btnEditarPlatoActionPerformed
 
     private void btnEliminarPlatoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEliminarPlatoActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) return;
@@ -7742,6 +7754,26 @@ public final class Sistema extends javax.swing.JFrame {
 
     public javax.swing.JCheckBox getChkAplicaIvaPlato() {
         return chkAplicaIvaPlato;
+    }
+
+    public javax.swing.JTextField getTxtNombrePlato() {
+        return txtNombrePlato;
+    }
+
+    public javax.swing.JTextField getTxtIdPlato() {
+        return txtIdPlato;
+    }
+
+    public javax.swing.JTextField getTxtPrecioPlato() {
+        return txtPrecioPlato;
+    }
+
+    public javax.swing.JButton getBtnGuardarPlato() {
+        return btnGuardarPlato;
+    }
+
+    public javax.swing.JButton getBtnEditarPlato() {
+        return btnEditarPlato;
     }
 
     private void panelSalas() {

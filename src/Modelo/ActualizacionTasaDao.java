@@ -42,11 +42,23 @@ public class ActualizacionTasaDao {
         this.auditoriaDao = auditoriaDao != null ? auditoriaDao : new AuditoriaPreciosDao();
     }
 
+    /**
+     * Cuenta todos los pedidos pendientes y abiertos en el sistema.
+     * En producción no se filtran salas: se requiere visibilidad completa de comandas activas.
+     */
     public int contarPedidosAbiertos() {
-        return contarPedidosAbiertos(null);
+        return contarPedidosAbiertosInterno(null);
     }
 
-    public int contarPedidosAbiertos(Integer idSalaFiltro) {
+    /**
+     * Helper acotado exclusivamente a pruebas de integración para aislar el conteo a la sala del fixture.
+     */
+    public int contarPedidosAbiertosParaTest(Integer idSalaFiltro) {
+        assert idSalaFiltro != null && idSalaFiltro > 0 : "El helper de test requiere idSalaFiltro explícito";
+        return contarPedidosAbiertosInterno(idSalaFiltro);
+    }
+
+    private int contarPedidosAbiertosInterno(Integer idSalaFiltro) {
         String sql = (idSalaFiltro != null && idSalaFiltro > 0)
                 ? "SELECT COUNT(*) FROM pedidos WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL AND id_sala = ?"
                 : "SELECT COUNT(*) FROM pedidos WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL";
@@ -64,15 +76,34 @@ public class ActualizacionTasaDao {
         }
     }
 
+    /**
+     * Firma canónica de producción: actualiza la tasa global y recalcula la totalidad de los pedidos abiertos.
+     * Garantiza la atomicidad de Task 6: todos los pedidos pendientes o ninguno.
+     */
     public ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario) {
-        return actualizarTasaYRecalcularPendientes(tasaNueva, usuario, null, null);
+        return actualizarTasaYRecalcularPendientes(tasaNueva, usuario, null);
     }
 
+    /**
+     * Firma canónica de producción con idempotencia: actualiza la tasa global y recalcula todos los pedidos abiertos.
+     */
     public ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario, String idempotencyKey) {
-        return actualizarTasaYRecalcularPendientes(tasaNueva, usuario, idempotencyKey, null);
+        return ejecutarActualizacion(tasaNueva, usuario, idempotencyKey, null);
     }
 
-    public ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario, String idempotencyKey, Integer idSalaFiltro) {
+    /**
+     * Helper acotado exclusivamente a pruebas de integración con aislamiento de fixture.
+     * Permite acotar el recálculo a los pedidos de una sala creada durante el test, evitando colisiones
+     * con registros históricos/semilla no clasificados.
+     */
+    public ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientesParaTest(
+            BigDecimal tasaNueva, String usuario, String idempotencyKey, Integer idSalaFiltro) {
+        assert idSalaFiltro != null && idSalaFiltro > 0 : "El helper de test requiere idSalaFiltro explícito";
+        return ejecutarActualizacion(tasaNueva, usuario, idempotencyKey, idSalaFiltro);
+    }
+
+    private ResultadoActualizacionPrecios ejecutarActualizacion(
+            BigDecimal tasaNueva, String usuario, String idempotencyKey, Integer idSalaFiltro) {
         if (tasaNueva == null || tasaNueva.signum() <= 0) {
             throw ErrorAplicacionException.validacion("La tasa de cambio debe ser positiva.");
         }
