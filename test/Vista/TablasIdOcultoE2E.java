@@ -297,7 +297,7 @@ public final class TablasIdOcultoE2E {
         String[] claves = {"split_catalogo", "split_carrito", "toma_carrito", "historial"};
         Map<String, Optional<double[]>> respaldo = new HashMap<>();
         for (String c : claves) {
-            respaldo.put(c, cargarPesos(prefDao, 1, c));
+            respaldo.put(c, cargarPesos(prefDao, admin.getId(), c));
         }
 
         try {
@@ -510,17 +510,18 @@ public final class TablasIdOcultoE2E {
             // ================= CASO 6: anchos a BD y restauración =================
             System.out.println("\n--- CASO 6: resize guarda en BD y se restaura ---");
             String[][] objetivos = {
-                    {"split_carrito", "carrito", "0,5"}, {"toma_carrito", "menu", "0"}, {"historial", "pedidos", "0"}};
+                    {"split_carrito", "carrito", "0,5", "3"}, {"toma_carrito", "menu", "0", "3"}, {"historial", "pedidos", "0", "-1"}};
             for (String[] par : objetivos) {
                 String clave = par[0];
                 JTable tabla = par[1].equals("carrito") ? carrito
                         : par[1].equals("menu") ? tableMenu : tablePedidos;
                 int[] ocultas = java.util.Arrays.stream(par[2].split(",")).mapToInt(Integer::parseInt).toArray();
+                final int colPrecio = Integer.parseInt(par[3]);
                 seleccionarTabDe(sistema, tabla);
                 Thread.sleep(400);
                 arrastrarBordeColumna(tabla, 0, 90);
                 Thread.sleep(3000);
-                Optional<double[]> guardado = cargarPesos(prefDao, 1, clave);
+                Optional<double[]> guardado = cargarPesos(prefDao, admin.getId(), clave);
                 check(guardado.isPresent(), clave + ": pesos guardados en preferencias_tabla");
                 if (guardado.isPresent()) {
                     double[] w = guardado.get();
@@ -531,8 +532,11 @@ public final class TablasIdOcultoE2E {
                         for (int oc : ocultas) {
                             Tables.ocultarColumnaModelo(t2, oc);
                         }
+                        if (colPrecio >= 0) {
+                            Tables.agregarColumnaMoneda(t2, colPrecio, mf -> "");
+                        }
                         t2.setSize(800, 300);
-                        new GestorAnchosTabla(t2, clave, 1, prefDao);
+                        new GestorAnchosTabla(t2, clave, admin.getId(), prefDao);
                         javax.swing.table.TableColumnModel cm = t2.getColumnModel();
                         double[] r = new double[cm.getColumnCount()];
                         for (int i = 0; i < r.length; i++) {
@@ -541,12 +545,24 @@ public final class TablasIdOcultoE2E {
                         return r;
                     });
                     boolean cerca = rest.length == w.length;
+                    boolean[] esM = enEdt(() -> {
+                        boolean[] r = new boolean[rest.length];
+                        javax.swing.table.TableColumnModel cm0 = tabla.getColumnModel();
+                        for (int i = 0; i < r.length && i < cm0.getColumnCount(); i++) {
+                            r[i] = Tables.ID_COLUMNA_MONEDA.equals(cm0.getColumn(i).getIdentifier());
+                        }
+                        return r;
+                    });
                     for (int i = 0; cerca && i < w.length; i++) {
+                        if (esM[i]) {
+                            continue; // M es fija-angosta (26-44px): su peso guardado no se restaura 1:1
+                        }
                         if (Math.abs(rest[i] - w[i]) > 0.05) {
                             cerca = false;
                         }
                     }
-                    check(cerca, clave + ": tabla nueva restaura proporciones guardadas");
+                    check(cerca, clave + ": tabla nueva restaura proporciones guardadas "
+                            + java.util.Arrays.toString(w) + " vs " + java.util.Arrays.toString(rest));
                 }
             }
         } finally {
@@ -554,9 +570,9 @@ public final class TablasIdOcultoE2E {
                 Optional<double[]> orig = respaldo.get(c);
                 try {
                     if (orig != null && orig.isPresent()) {
-                        prefDao.guardar(1, c, orig.get());
+                        prefDao.guardar(admin.getId(), c, orig.get());
                     } else {
-                        borrarPreferencia(1, c);
+                        borrarPreferencia(admin.getId(), c);
                     }
                 } catch (Exception ex) {
                     System.err.println("Aviso restaurando preferencia " + c + ": " + ex.getMessage());

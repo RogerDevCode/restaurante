@@ -73,6 +73,11 @@ public final class PlatosServicio {
     public boolean registrar(Platos plato, BigDecimal tasa) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         validarDatos(plato);
+        String nombre = plato.getNombre().trim();
+        if (repositorio.buscarActivoPorNombre(nombre).isPresent()) {
+            throw ErrorAplicacionException.validacion(
+                    "Ya existe el plato '" + nombre + "'. Selecciónelo en la tabla y use Editar para modificarlo.");
+        }
         return repositorio.registrar(normalizar(plato, tasa));
     }
 

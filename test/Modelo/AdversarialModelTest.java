@@ -12,10 +12,10 @@ public class AdversarialModelTest {
         Config config = new Config();
         
         config.setTasaDolar(new BigDecimal("-36.50"));
-        assertEquals("Debe ignorar negativos y usar default", new BigDecimal("36.5000"), config.getTasaDolar());
+        org.junit.Assert.assertNull("Debe rechazar negativos dejando null sin fallback silencioso", config.getTasaDolar());
         
         config.setTasaDolar(BigDecimal.ZERO);
-        assertEquals("Debe ignorar cero y usar default", new BigDecimal("36.5000"), config.getTasaDolar());
+        org.junit.Assert.assertNull("Debe rechazar cero dejando null sin fallback silencioso", config.getTasaDolar());
 
         config.setTasaDolar(new BigDecimal("999999999.9999"));
         assertEquals("Acepta valores positivos extremos (aunque el DAO tal vez no)", new BigDecimal("999999999.9999"), config.getTasaDolar());

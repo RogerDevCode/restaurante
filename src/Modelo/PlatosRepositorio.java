@@ -36,6 +36,14 @@ public interface PlatosRepositorio {
 
     boolean modificar(Platos plato);
 
+    /**
+     * Busca un plato activo con el mismo nombre (insensible a mayúsculas y espacios).
+     * Vacío si no existe o el repositorio no lo soporta; usado para evitar altas duplicadas.
+     */
+    default java.util.Optional<Platos> buscarActivoPorNombre(String nombre) {
+        return java.util.Optional.empty();
+    }
+
     default ResultadoActualizacionPrecios modificarProductoYRecalcularPendientes(Platos plato, String usuario) {
         modificar(plato);
         return new ResultadoActualizacionPrecios(plato, 0, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO, java.util.List.of(), 0);

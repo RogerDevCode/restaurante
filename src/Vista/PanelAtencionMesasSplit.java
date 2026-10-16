@@ -199,6 +199,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnRefrescarMesas = new JButton("Actualizar");
         btnRefrescarMesas.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnRefrescarMesas.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnRefrescarMesas.setToolTipText("Recargar el estado de las mesas de la sala");
         btnRefrescarMesas.addActionListener(e -> refrescarMesasSalaActual());
         pnlSurSalas.add(btnRefrescarMesas, BorderLayout.EAST);
 
@@ -314,10 +315,11 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCatalogoPlatos.getColumnModel().getColumn(0).setPreferredWidth(45);
         tblCatalogoPlatos.getColumnModel().getColumn(0).setMaxWidth(55);
         tblCatalogoPlatos.getColumnModel().getColumn(1).setPreferredWidth(300);
-        tblCatalogoPlatos.getColumnModel().getColumn(2).setPreferredWidth(140);
+        tblCatalogoPlatos.getColumnModel().getColumn(2).setPreferredWidth(160);
+        tblCatalogoPlatos.getColumnModel().getColumn(2).setMinWidth(160);
         tblCatalogoPlatos.getColumnModel().getColumn(2).setMaxWidth(220);
         Tables.ocultarColumnaModelo(tblCatalogoPlatos, 0); // ID interno: oculto, sigue en el modelo
-
+        Tables.agregarColumnaMoneda(tblCatalogoPlatos, 2, this::monedaUbFilaCatalogo);
         tblCatalogoPlatos.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -370,9 +372,18 @@ public class PanelAtencionMesasSplit extends JPanel {
             tblCarrito.getColumnModel().getColumn(i).setMaxWidth(Integer.MAX_VALUE);
             tblCarrito.getColumnModel().getColumn(i).setMinWidth(30);
         }
+        // Precio/SubTotal con mínimo suficiente para el importe más largo.
+        for (int mc : new int[]{3, 4}) {
+            int v = tblCarrito.convertColumnIndexToView(mc);
+            if (v >= 0) {
+                tblCarrito.getColumnModel().getColumn(v).setMinWidth(110);
+                tblCarrito.getColumnModel().getColumn(v).setPreferredWidth(110);
+            }
+        }
         // ID y Comentario fuera de la vista (siguen en el modelo para guardar correctamente).
         Tables.ocultarColumnaModelo(tblCarrito, 0);
         Tables.ocultarColumnaModelo(tblCarrito, 5);
+        Tables.agregarColumnaMoneda(tblCarrito, 3, this::monedaUbFilaCarrito);
 
         tblCarrito.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && tblCarrito.getSelectedRow() >= 0) {
@@ -392,6 +403,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnMenosCant = new JButton("−");
         btnMenosCant.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnMenosCant.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnMenosCant.setToolTipText("Disminuir cantidad de la línea seleccionada");
         btnMenosCant.addActionListener(e -> ajustarCantidadFilaSeleccionada(-1));
         pnlAjusteCant.add(btnMenosCant);
 
@@ -411,6 +423,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnMasCant = new JButton("+");
         btnMasCant.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnMasCant.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnMasCant.setToolTipText("Aumentar cantidad de la línea seleccionada");
         btnMasCant.addActionListener(e -> ajustarCantidadFilaSeleccionada(1));
         pnlAjusteCant.add(btnMasCant);
 
@@ -418,6 +431,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnEliminarFila.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnEliminarFila.setForeground(new Color(180, 40, 40));
         btnEliminarFila.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnEliminarFila.setToolTipText("Quitar la línea seleccionada de la comanda");
         btnEliminarFila.addActionListener(e -> eliminarFilaSeleccionada());
         pnlAjusteCant.add(btnEliminarFila);
 
@@ -494,6 +508,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnLimpiar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         btnLimpiar.setPreferredSize(new Dimension(130, 28));
         btnLimpiar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnLimpiar.setToolTipText("Vaciar la comanda actual sin guardar");
         btnLimpiar.addActionListener(e -> limpiarComanda());
         pnlBotones.add(btnLimpiar);
 
@@ -503,6 +518,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnEnviarCocina.setForeground(Color.WHITE);
         btnEnviarCocina.setPreferredSize(new Dimension(140, 28));
         btnEnviarCocina.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnEnviarCocina.setToolTipText("Guardar la comanda y enviarla a cocina");
         btnEnviarCocina.addActionListener(e -> enviarPedidoCocina());
         pnlBotones.add(btnEnviarCocina);
 
@@ -512,6 +528,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnCobrar.setForeground(Color.WHITE);
         btnCobrar.setPreferredSize(new Dimension(145, 28));
         btnCobrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCobrar.setToolTipText("Cobrar y facturar la comanda de la mesa");
         btnCobrar.addActionListener(e -> cobrarPedidoDirecto());
         pnlBotones.add(btnCobrar);
 
@@ -555,6 +572,9 @@ public class PanelAtencionMesasSplit extends JPanel {
     }
 
     public void refrescarPedidos(Object carga) {
+        // La ocupación pudo cambiar en cualquier mesa (incluso desde otro terminal
+        // o con el flujo de caja): repintar siempre la grilla, además de la comanda activa.
+        refrescarMesasSalaActual();
         if (idPedidoActivo > 0) {
             if (carga instanceof Modelo.ResultadoActualizacionPrecios res) {
                 if (res.pedidosAfectados() == null || res.pedidosAfectados().isEmpty() || res.pedidosAfectados().contains(idPedidoActivo)) {
@@ -565,9 +585,61 @@ public class PanelAtencionMesasSplit extends JPanel {
                     cargarDetallesPedidoExistente(idPedidoActivo);
                 }
             } else {
-                cargarDetallesPedidoExistente(idPedidoActivo);
+                // Evento sin detalle (p. ej. cobro/facturación): el pedido activo pudo
+                // finalizarse; verificar en BD y liberar la mesa si ya no está pendiente.
+                verificarPedidoActivoTrasEvento();
             }
         }
+    }
+
+    /**
+     * Tras un evento de pedidos sin carga, comprueba si la comanda activa sigue
+     * pendiente; si se cobró/facturó (o desapareció), deja la mesa como
+     * disponible y repinta la grilla en verde en vez de mostrarla ocupada.
+     */
+    private void verificarPedidoActivoTrasEvento() {
+        final int idVerificar = idPedidoActivo;
+        new javax.swing.SwingWorker<Pedidos, Void>() {
+            @Override
+            protected Pedidos doInBackground() {
+                try {
+                    return pedidosControlador.verPedido(idVerificar);
+                } catch (Exception ex) {
+                    return null;
+                }
+            }
+
+            @Override
+            protected void done() {
+                if (idPedidoActivo != idVerificar) {
+                    return; // El operador ya cambió de mesa; respuesta obsoleta.
+                }
+                Pedidos ped = null;
+                try {
+                    ped = get();
+                } catch (Exception ignored) {
+                }
+                if (ped != null && "PENDIENTE".equalsIgnoreCase(ped.getEstado())) {
+                    cargarDetallesPedidoExistente(idPedidoActivo);
+                    return;
+                }
+                idPedidoActivo = -1;
+                idMesoneroOriginal = null;
+                nombreMesoneroOriginal = null;
+                mesoneroQuitadoExplicito = false;
+                modeloCarrito.setRowCount(0);
+                lblCabeceraMesa.setText("MESA: " + codigoMesaSeleccionada + " (" + nombreSalaSeleccionada + ") — DISPONIBLE (Nuevo Pedido)");
+                lblCabeceraMesa.setForeground(new Color(0, 102, 102));
+                btnEnviarCocina.setText("Enviar a Cocina");
+                btnCobrar.setEnabled(false);
+                if (cbMesonero != null && cbMesonero.getItemCount() > 0) {
+                    cbMesonero.setSelectedIndex(0);
+                }
+                recalcularTotales();
+                sistema.mostrarAvisoEnBanda("Mesa " + codigoMesaSeleccionada + " liberada tras el cobro");
+                refrescarMesasSalaActual();
+            }
+        }.execute();
     }
 
     /**
@@ -598,6 +670,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             btnTab.setFont(new Font("Segoe UI", Font.BOLD, 11));
             btnTab.setCursor(new Cursor(Cursor.HAND_CURSOR));
             btnTab.setFocusable(false);
+            btnTab.setToolTipText("Ver mesas de " + s.getNombre());
 
             boolean esActiva = (id == idSalaSeleccionada);
             if (esActiva) {
@@ -984,6 +1057,13 @@ public class PanelAtencionMesasSplit extends JPanel {
                             }
                         }
                     }
+                    java.util.List<String> monedasCat = new java.util.ArrayList<>();
+                    if (platos != null) {
+                        for (Platos p : platos) {
+                            monedasCat.add(p.getMonedaBase());
+                        }
+                    }
+                    Tables.fijarCabeceraMoneda(tblCatalogoPlatos, 2, monedasCat);
                     if (filaRestaurar >= 0 && filaRestaurar < tblCatalogoPlatos.getRowCount()) {
                         tblCatalogoPlatos.setRowSelectionInterval(filaRestaurar, filaRestaurar);
                     } else if (tblCatalogoPlatos.getRowCount() > 0) {
@@ -991,6 +1071,9 @@ public class PanelAtencionMesasSplit extends JPanel {
                     }
                     RendererPlato renderer = new RendererPlato(platosPorId);
                     for (int i = 0; i < tblCatalogoPlatos.getColumnCount(); i++) {
+                        if (Tables.ID_COLUMNA_MONEDA.equals(tblCatalogoPlatos.getColumnModel().getColumn(i).getIdentifier())) {
+                            continue;
+                        }
                         tblCatalogoPlatos.getColumnModel().getColumn(i).setCellRenderer(renderer);
                     }
                     tblCatalogoPlatos.repaint();
@@ -1191,6 +1274,23 @@ public class PanelAtencionMesasSplit extends JPanel {
         lblTotalBs.setText("(Bs. " + String.format(java.util.Locale.US, "%.2f", calc.totalVes()) + ")");
 
         btnCobrar.setEnabled(idPedidoActivo > 0 || modeloCarrito.getRowCount() > 0);
+        actualizarCabecerasMonedaCarrito();
+    }
+
+    /** Cabeceras Precio/SubTotal según la moneda de las líneas (USD, VES o USD/VES). */
+    private void actualizarCabecerasMonedaCarrito() {
+        java.util.List<String> monedas = new java.util.ArrayList<>();
+        for (int i = 0; i < modeloCarrito.getRowCount(); i++) {
+            Object idObj = modeloCarrito.getValueAt(i, 0);
+            if (idObj instanceof Number n) {
+                Platos p = platosPorId.get(n.intValue());
+                if (p != null && p.getMonedaBase() != null) {
+                    monedas.add(p.getMonedaBase());
+                }
+            }
+        }
+        Tables.fijarCabeceraMoneda(tblCarrito, 3, monedas);
+        Tables.fijarCabeceraMoneda(tblCarrito, 4, monedas);
     }
 
     private void enviarPedidoCocina() {
@@ -1305,6 +1405,30 @@ public class PanelAtencionMesasSplit extends JPanel {
         } else {
             sistema.mostrarAvisoEnBanda("No hay pedido para cobrar en esta mesa");
         }
+    }
+
+    /** U/B por fila del carrito/catálogo según el plato ("U", "B" o "" si se desconoce). */
+    private String monedaUbFilaCatalogo(int filaModelo) {
+        return monedaUbDePlato(modeloCatalogoPlatos, filaModelo);
+    }
+
+    private String monedaUbFilaCarrito(int filaModelo) {
+        return monedaUbDePlato(modeloCarrito, filaModelo);
+    }
+
+    private String monedaUbDePlato(javax.swing.table.DefaultTableModel modelo, int filaModelo) {
+        if (filaModelo < 0 || filaModelo >= modelo.getRowCount()) {
+            return "";
+        }
+        Object idObj = modelo.getValueAt(filaModelo, 0);
+        if (!(idObj instanceof Number n)) {
+            return "";
+        }
+        Platos p = platosPorId.get(n.intValue());
+        if (p == null || p.getMonedaBase() == null) {
+            return "";
+        }
+        return "VES".equalsIgnoreCase(p.getMonedaBase().trim()) ? "B" : "U";
     }
 
     private void cargarMesoneros() {

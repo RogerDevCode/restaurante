@@ -138,6 +138,7 @@ public final class Sistema extends javax.swing.JFrame {
     private int idPedidoEdicion = -1;
     private int idSalaEdicion = -1;
     private int numMesaEdicion = -1;
+    private boolean sincronizandoPlatoForm = false;
     private Integer idMesoneroEdicionOriginal = null;
     private String nombreMesoneroEdicionOriginal = null;
     private boolean quitarMesoneroEdicion = false;
@@ -204,6 +205,8 @@ public final class Sistema extends javax.swing.JFrame {
     private final Map<Integer, Boolean> platoAplicaIvaMap = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<Integer, String> salaTipoMap = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<Integer, Platos> platosPorId = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Moneda U/B por fila-modelo de tableFinalizar (su modelo no trae moneda). */
+    private final Map<Integer, String> monedaFilaFinalizar = new java.util.concurrent.ConcurrentHashMap<>();
     private boolean salaActualEsBarra = false;
     private javax.swing.JCheckBox chkAplicaIvaPlato;
     private javax.swing.JComboBox<String> cbMonedaBasePlato;
@@ -884,17 +887,17 @@ public final class Sistema extends javax.swing.JFrame {
         configurarTablaHistorialProporcional();
         configurarTablaFinalizarProporcional();
         configurarColumnasProporcionales(tableMenu,
-                new int[]{120, 50, 90, 100, 100, 60},
-                new int[]{220, 50, 90, 100, 160, 60},
-                new int[]{-1, 50, 90, 100, -1, 60});
+                new int[]{120, 50, 110, 100, 100, 60},
+                new int[]{220, 50, 110, 100, 160, 60},
+                new int[]{-1, 50, -1, -1, -1, 60});
         configurarColumnasProporcionales(tblTemPlatos,
-                new int[]{150, 80},
-                new int[]{200, 90},
-                new int[]{-1, 90});
+                new int[]{150, 110},
+                new int[]{200, 110},
+                new int[]{-1, -1});
         configurarColumnasProporcionales(TablePlatos,
-                new int[]{150, 90, 70},
-                new int[]{220, 100, 80},
-                new int[]{-1, 110, 90});
+                new int[]{150, 110, 70},
+                new int[]{220, 120, 80},
+                new int[]{-1, -1, 90});
         configurarColumnasProporcionales(tableMesonerosConfig,
                 new int[]{150, 100, 100, 90},
                 new int[]{200, 110, 110, 100},
@@ -939,6 +942,9 @@ public final class Sistema extends javax.swing.JFrame {
         }
         javax.swing.UIManager.put("Button.font", baseNegrita);
         javax.swing.UIManager.put("TableHeader.font", baseNegrita);
+        // Selección visible en fondo blanco con texto negro (contraste máximo).
+        javax.swing.UIManager.put("Table.selectionBackground", new javax.swing.plaf.ColorUIResource(java.awt.Color.WHITE));
+        javax.swing.UIManager.put("Table.selectionForeground", new javax.swing.plaf.ColorUIResource(java.awt.Color.BLACK));
     }
 
     /** Tabla de salas proporcional: Mesas y Tipo fijas, la columna Nombre absorbe el 100 % del ancho libre. */
@@ -1096,9 +1102,11 @@ public final class Sistema extends javax.swing.JFrame {
         }
         tableFinalizar.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
         // Orden maximo-primero: setPreferredWidth recorta contra el maximo vigente.
-        int[] maximos = {Integer.MAX_VALUE, 50, 90, 100, Integer.MAX_VALUE};
-        int[] minimos = {150, 50, 90, 100, 120};
-        int[] preferidos = {220, 50, 90, 100, 160};
+        // Comentario a la mitad para ceder espacio a Precio/SubTotal (USD/VES), sin topes
+        // que bloqueen el redimensionado manual (se persisten por usuario).
+        int[] maximos = {Integer.MAX_VALUE, 50, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE};
+        int[] minimos = {150, 50, 90, 100, 60};
+        int[] preferidos = {220, 50, 130, 140, 80};
         for (int i = 0; i < 5; i++) {
             tableFinalizar.getColumnModel().getColumn(i).setMaxWidth(maximos[i]);
             tableFinalizar.getColumnModel().getColumn(i).setMinWidth(minimos[i]);
@@ -1256,6 +1264,47 @@ public final class Sistema extends javax.swing.JFrame {
         Tables.ocultarColumnaModelo(tableFinalizar, 0);
         Tables.ocultarColumnaModelo(tableMesonerosConfig, 0);
         Tables.ocultarColumnaModelo(tableFacturasCliente, 0);
+        configurarColumnasMoneda();
+    }
+
+    /** U/B por fila según el plato (U=USD, B=VES, ""=desconocida). */
+    private String monedaUbFila(javax.swing.JTable tabla, int filaModelo) {
+        if (tabla == null) {
+            return "";
+        }
+        javax.swing.table.TableModel m = tabla.getModel();
+        if (filaModelo < 0 || filaModelo >= m.getRowCount()) {
+            return "";
+        }
+        Object idObj = m.getValueAt(filaModelo, 0);
+        if (idObj == null) {
+            return "";
+        }
+        try {
+            Platos p = platosPorId.get(Integer.parseInt(idObj.toString().trim()));
+            return ub(p == null ? null : p.getMonedaBase());
+        } catch (NumberFormatException ex) {
+            return "";
+        }
+    }
+
+    private static String ub(String moneda) {
+        if (moneda == null) {
+            return "";
+        }
+        String n = moneda.trim().toUpperCase(java.util.Locale.ROOT);
+        if ("VES".equals(n)) {
+            return "B";
+        }
+        return "USD".equals(n) ? "U" : "";
+    }
+
+    /** Columna M (U/B) junto al precio unitario; sin efecto en el modelo. */
+    private void configurarColumnasMoneda() {
+        Tables.agregarColumnaMoneda(tableMenu, 3, mf -> monedaUbFila(tableMenu, mf));
+        Tables.agregarColumnaMoneda(tableFinalizar, 3, mf -> monedaFilaFinalizar.getOrDefault(mf, ""));
+        Tables.agregarColumnaMoneda(tblTemPlatos, 2, mf -> monedaUbFila(tblTemPlatos, mf));
+        Tables.agregarColumnaMoneda(TablePlatos, 2, mf -> monedaUbFila(TablePlatos, mf));
     }
 
     private static void registrarAnchos(Modelo.PreferenciasTablaDao dao, int uid,
@@ -1534,6 +1583,8 @@ public final class Sistema extends javax.swing.JFrame {
 
         modeloPagosFac.addTableModelListener(e -> actualizarResumenPagosFac());
         ajustarScrollFinalizar();
+        configurarTablaIndividual(tablaPagosFac);
+        aplicarTooltipsDefecto(jPanel25);
     }
 
     /** Unifica la barra lateral: botones pizarra con texto blanco y fuente Segoe UI. */
@@ -1804,9 +1855,30 @@ public final class Sistema extends javax.swing.JFrame {
                     boton.setMinimumSize(new java.awt.Dimension(ANCHO_BOTON_ESTANDAR, ALTO_BOTON_ESTANDAR));
                     boton.setPreferredSize(new java.awt.Dimension(ancho, ALTO_BOTON_ESTANDAR));
                 }
+                aplicarTooltipsDefecto(boton);
             }
             if (c instanceof java.awt.Container sub) {
                 aplicarMedidaEstandarBotones(sub, excluidos);
+            }
+        }
+    }
+
+    /**
+     * Garantiza tooltip en un botón (usa su texto si no tiene) y, para contenedores,
+     * lo aplica recursivamente. Usado en ventanas de diálogo construidas bajo demanda.
+     */
+    public static void aplicarTooltipsDefecto(java.awt.Component comp) {
+        if (comp instanceof javax.swing.JButton boton) {
+            String tip = boton.getToolTipText();
+            String texto = boton.getText();
+            if ((tip == null || tip.isBlank()) && texto != null && !texto.isBlank()) {
+                boton.setToolTipText(texto.trim());
+            }
+            return;
+        }
+        if (comp instanceof java.awt.Container cont) {
+            for (java.awt.Component hijo : cont.getComponents()) {
+                aplicarTooltipsDefecto(hijo);
             }
         }
     }
@@ -2499,6 +2571,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnAddPlato.setFont(new java.awt.Font("Arial Black", 1, 24)); // NOI18N
         btnAddPlato.setForeground(new java.awt.Color(255, 255, 255));
         btnAddPlato.setText("+");
+        btnAddPlato.setToolTipText("Agregar plato seleccionado al pedido");
         btnAddPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnAddPlato.setFocusable(false);
         btnAddPlato.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
@@ -2604,6 +2677,7 @@ public final class Sistema extends javax.swing.JFrame {
         });
 
         btnEliminarTempPlato.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/eliminar.png"))); // NOI18N
+        btnEliminarTempPlato.setToolTipText("Eliminar plato seleccionado del pedido");
         btnEliminarTempPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnEliminarTempPlato.setToolTipText("Eliminar plato seleccionado del pedido");
         btnEliminarTempPlato.addActionListener(new java.awt.event.ActionListener() {
@@ -2890,6 +2964,7 @@ public final class Sistema extends javax.swing.JFrame {
         jPanel25.add(txtMesoneroFinalizar, new org.netbeans.lib.awtextra.AbsoluteConstraints(540, 350, 220, 30));
 
         btnPdfPedido.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Img/pdf.png"))); // NOI18N
+        btnPdfPedido.setToolTipText("Generar y ver el PDF del pedido");
         btnPdfPedido.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnPdfPedidoActionPerformed(evt);
@@ -4113,6 +4188,7 @@ public final class Sistema extends javax.swing.JFrame {
             tmp.addRow(O);
             tableMenu.setModel(tmp);
             Tables.ocultarColumnaModelo(tableMenu, 0); // ID interno oculto tras reconstruir columnas
+            Tables.agregarColumnaMoneda(tableMenu, 3, mf -> monedaUbFila(tableMenu, mf));
             TotalPagar(tableMenu, totalMenu);
             actualizarEstadoBotonesCarrito();
             // UX: dejar preseleccionada la fila agregada para ajustar cantidad al instante (+/- o campo).
@@ -4554,16 +4630,8 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void volverAInicioSeleccionSala() {
         LimpiarTableMenu();
-        if (idSalaActualMesas > 0 && cantMesasActual > 0) {
-            panelMesas(idSalaActualMesas, nombreSalaActualMesas, cantMesasActual);
-            int idxMesas = jTabbedPane1.indexOfTab("Mesas");
-            if (idxMesas != -1) {
-                jTabbedPane1.setSelectedIndex(idxMesas);
-                return;
-            }
-        }
-        jTabbedPane1.setSelectedIndex(0);
-        panelSalas();
+        // Respetar el modo de atención del selector (A/B/C/Clásico) en vez de ir fijo a "Mesas".
+        abrirAtencionDirectaSegunModo();
     }
 
     private String mensajeError(Throwable error) {
@@ -4593,6 +4661,10 @@ public final class Sistema extends javax.swing.JFrame {
 
     private void btnGuardarPlatoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarPlatoActionPerformed
         if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) return;
+        if (!txtIdPlato.getText().trim().isEmpty()) {
+            mostrarAvisoEnBanda("Ya hay un plato cargado en el formulario: use Editar para modificarlo o Nuevo para limpiar.");
+            return;
+        }
         if (txtNombrePlato.getText().trim().isEmpty()) {
             mostrarAlertaCampo(txtNombrePlato, "El nombre del plato es obligatorio.");
             return;
@@ -4735,10 +4807,23 @@ public final class Sistema extends javax.swing.JFrame {
         if (fila < 0) {
             return;
         }
-        txtIdPlato.setText(Tables.valorModelo(TablePlatos, fila, 0).toString());
-        txtNombrePlato.setText(Tables.valorModelo(TablePlatos, fila, 1).toString());
+        cargarPlatoEnFormulario(fila);
+    }//GEN-LAST:event_TablePlatosMouseClicked
+
+    /**
+     * Sincroniza el formulario de plato con la fila indicada (tabla→detalles).
+     * La edición inversa vive en {@link #reflejarFormularioEnFilaPlato()}.
+     */
+    private void cargarPlatoEnFormulario(int filaVista) {
+        if (sincronizandoPlatoForm) {
+            return;
+        }
+        sincronizandoPlatoForm = true;
         try {
-            int idPlato = Integer.parseInt(Tables.valorModelo(TablePlatos, fila, 0).toString());
+        txtIdPlato.setText(Tables.valorModelo(TablePlatos, filaVista, 0).toString());
+        txtNombrePlato.setText(Tables.valorModelo(TablePlatos, filaVista, 1).toString());
+        try {
+            int idPlato = Integer.parseInt(Tables.valorModelo(TablePlatos, filaVista, 0).toString());
             Platos platoSel = platosPorId.get(idPlato);
             if (platoSel != null) {
                 String mb = platoSel.getMonedaBase() != null ? platoSel.getMonedaBase().toUpperCase() : "USD";
@@ -4751,7 +4836,7 @@ public final class Sistema extends javax.swing.JFrame {
                 if (precioPrimario != null) {
                     txtPrecioPlato.setText(precioPrimario.setScale(2, RoundingMode.HALF_UP).toPlainString());
                 } else {
-                    txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, fila, 2).toString().replaceAll("[^0-9.]", "").trim());
+                    txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, filaVista, 2).toString().replaceAll("[^0-9.]", "").trim());
                 }
                 if (chkAplicaIvaPlato != null) {
                     chkAplicaIvaPlato.setSelected(platoSel.isAplicaIva());
@@ -4762,10 +4847,10 @@ public final class Sistema extends javax.swing.JFrame {
                 }
                 actualizarPrecioReferenciaPlato();
             } else {
-                txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, fila, 2).toString().replaceAll("[^0-9.]", "").trim());
+                txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, filaVista, 2).toString().replaceAll("[^0-9.]", "").trim());
                 boolean aplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
-                if (TablePlatos.getModel().getColumnCount() > 3 && Tables.valorModelo(TablePlatos, fila, 3) != null) {
-                    String val = Tables.valorModelo(TablePlatos, fila, 3).toString().toLowerCase(java.util.Locale.ROOT);
+                if (TablePlatos.getModel().getColumnCount() > 3 && Tables.valorModelo(TablePlatos, filaVista, 3) != null) {
+                    String val = Tables.valorModelo(TablePlatos, filaVista, 3).toString().toLowerCase(java.util.Locale.ROOT);
                     aplicaIva = !val.contains("exento") && !val.contains("no");
                 }
                 if (chkAplicaIvaPlato != null) {
@@ -4778,9 +4863,12 @@ public final class Sistema extends javax.swing.JFrame {
                 actualizarPrecioReferenciaPlato();
             }
         } catch (Exception ignored) {
-            txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, fila, 2).toString().replaceAll("[^0-9.]", "").trim());
+            txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, filaVista, 2).toString().replaceAll("[^0-9.]", "").trim());
         }
-    }//GEN-LAST:event_TablePlatosMouseClicked
+        } finally {
+            sincronizandoPlatoForm = false;
+        }
+    }
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -4990,6 +5078,32 @@ public final class Sistema extends javax.swing.JFrame {
             label.setToolTipText("Consumo en mesa: $ " + totalUsdStr
                     + " (IVA y total en Bs. se calculan al facturar)");
         }
+        if (tabla == tableMenu) {
+            actualizarCabecerasMonedaMenu();
+        }
+    }
+
+    /** Cabeceras Precio/SubTotal del carrito según la moneda de sus líneas. */
+    private void actualizarCabecerasMonedaMenu() {
+        if (tableMenu == null || !(tableMenu.getModel() instanceof DefaultTableModel m)) {
+            return;
+        }
+        java.util.List<String> monedas = new java.util.ArrayList<>();
+        for (int i = 0; i < m.getRowCount(); i++) {
+            Object idObj = m.getValueAt(i, 0);
+            if (idObj == null) {
+                continue;
+            }
+            try {
+                Platos p = platosPorId.get(Integer.parseInt(idObj.toString()));
+                if (p != null && p.getMonedaBase() != null) {
+                    monedas.add(p.getMonedaBase());
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        Tables.fijarCabeceraMoneda(tableMenu, 3, monedas);
+        Tables.fijarCabeceraMoneda(tableMenu, 4, monedas);
     }
 
     private void envolverConEncabezado(java.awt.Component target, String titulo, java.awt.Color bg, Runnable accionVolver) {
@@ -5006,6 +5120,7 @@ public final class Sistema extends javax.swing.JFrame {
         
         if (accionVolver != null) {
             javax.swing.JButton btnVolver = new javax.swing.JButton("⬅ Volver");
+            btnVolver.setToolTipText("Volver a la pantalla anterior");
             btnVolver.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
             btnVolver.setForeground(new java.awt.Color(50, 50, 50));
             btnVolver.setBackground(new java.awt.Color(255, 255, 255));
@@ -6030,6 +6145,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         cargarLogs.accept(null);
         dialog.setContentPane(pnlPrincipal);
+        aplicarTooltipsDefecto(dialog.getContentPane());
         dialog.setVisible(true);
     }
 
@@ -6523,6 +6639,7 @@ public final class Sistema extends javax.swing.JFrame {
         cancelar.addActionListener(e -> dialogoCierre.dispose());
         dialogoCierre.pack();
         dialogoCierre.setLocationRelativeTo(this);
+        aplicarTooltipsDefecto(dialogoCierre.getContentPane());
         dialogoCierre.setVisible(true);
         int seleccion = seleccionRef.get();
         if (seleccion < 0) return;
@@ -6729,6 +6846,7 @@ public final class Sistema extends javax.swing.JFrame {
         dialogoClave.getRootPane().setDefaultButton(confirmarClave);
         dialogoClave.pack();
         dialogoClave.setLocationRelativeTo(this);
+        aplicarTooltipsDefecto(dialogoClave.getContentPane());
         dialogoClave.setVisible(true);
         if (!claveConfirmada.get()) {
             pwd.setText("");
@@ -6836,6 +6954,18 @@ public final class Sistema extends javax.swing.JFrame {
         tablaInactivos.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         tablaInactivos.setRowHeight(24);
         Tables.ocultarColumnaModelo(tablaInactivos, 0); // ID interno oculto, sigue en el modelo
+        java.util.Map<Integer, String> monedaInact = new java.util.HashMap<>();
+        for (int i = 0; i < inactivos.size(); i++) {
+            monedaInact.put(i, ub(inactivos.get(i).getMonedaBase()));
+        }
+        final java.util.Map<Integer, String> monedaInactFija = java.util.Collections.unmodifiableMap(monedaInact);
+        Tables.agregarColumnaMoneda(tablaInactivos, 2, mf -> monedaInactFija.getOrDefault(mf, ""));
+        Tables.aplicarAlineacionNumerica(tablaInactivos);
+        java.util.List<String> monedasInact = new java.util.ArrayList<>();
+        for (Platos p : inactivos) {
+            monedasInact.add(p.getMonedaBase());
+        }
+        Tables.fijarCabeceraMoneda(tablaInactivos, 2, monedasInact);
         if (tablaInactivos.getRowCount() > 0) {
             tablaInactivos.setRowSelectionInterval(0, 0);
         }
@@ -6885,6 +7015,7 @@ public final class Sistema extends javax.swing.JFrame {
         configurarTablaIndividual(tablaInactivos);
         dialogo.add(panelBotones, java.awt.BorderLayout.SOUTH);
 
+        aplicarTooltipsDefecto(dialogo.getContentPane());
         dialogo.setVisible(true);
     }
 
@@ -7474,6 +7605,7 @@ public final class Sistema extends javax.swing.JFrame {
         dialogo.getRootPane().setDefaultButton(aceptar);
         dialogo.pack();
         dialogo.setLocationRelativeTo(this);
+        aplicarTooltipsDefecto(dialogo.getContentPane());
         dialogo.setVisible(true);
         return resultado.get();
     }
@@ -7509,7 +7641,7 @@ public final class Sistema extends javax.swing.JFrame {
         tablaAud.setRowHeight(22);
         dlg.add(new javax.swing.JScrollPane(tablaAud));
         configurarTablaIndividual(tablaAud);
-        dlg.setVisible(true);
+        aplicarTooltipsDefecto(dlg.getContentPane());        dlg.setVisible(true);
     }
 
     private java.util.function.Function<String, String> proveedorMotivoAccion = null;
@@ -7872,18 +8004,20 @@ public final class Sistema extends javax.swing.JFrame {
 
     /**
      * Hace que todas las columnas de la tabla sean redimensionables por el usuario
-     * y garantiza que su JScrollPane muestre barras horizontal y vertical cuando
-     * el contenido no quepa (AUTO_RESIZE_OFF habilita el scroll horizontal).
+     * y que ocupen el 100 % del ancho del viewport (AUTO_RESIZE_ALL_COLUMNS reparte
+     * el espacio según los preferredWidth; los min/max se respetan y el scroll
+     * vertical sigue disponible en su JScrollPane).
      */
     public static void configurarTablaIndividual(javax.swing.JTable tabla) {
         if (tabla == null) {
             return;
         }
-        tabla.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
+        tabla.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
         javax.swing.table.TableColumnModel columnas = tabla.getColumnModel();
         for (int i = 0; i < columnas.getColumnCount(); i++) {
             columnas.getColumn(i).setResizable(true);
         }
+        Tables.aplicarAlineacionNumerica(tabla);
         java.awt.Container padre = tabla.getParent();
         while (padre != null && !(padre instanceof javax.swing.JScrollPane)) {
             padre = padre.getParent();
@@ -7985,6 +8119,58 @@ public final class Sistema extends javax.swing.JFrame {
             }
         } catch (Exception ex) {
             lblPrecioReferenciaPlato.setText("Ref: ---");
+        }
+        reflejarFormularioEnFilaPlato();
+    }
+
+    /**
+     * Sincroniza los detalles editados con la fila del plato (detalles→tabla, solo vista).
+     * La persistencia real sigue ocurriendo en Guardar/Editar + refresco de catálogo.
+     */
+    private void reflejarFormularioEnFilaPlato() {
+        if (sincronizandoPlatoForm || TablePlatos == null || txtIdPlato == null) {
+            return;
+        }
+        String idTxt = txtIdPlato.getText().trim();
+        if (idTxt.isEmpty() || !(TablePlatos.getModel() instanceof DefaultTableModel m)) {
+            return;
+        }
+        int filaModelo = -1;
+        for (int i = 0; i < m.getRowCount(); i++) {
+            Object v = m.getValueAt(i, 0);
+            if (v != null && idTxt.equals(v.toString())) {
+                filaModelo = i;
+                break;
+            }
+        }
+        if (filaModelo < 0) {
+            return;
+        }
+        sincronizandoPlatoForm = true;
+        try {
+            if (txtNombrePlato != null) {
+                m.setValueAt(txtNombrePlato.getText().trim(), filaModelo, 1);
+            }
+            String actual = String.valueOf(m.getValueAt(filaModelo, 2));
+            String sufijo = actual.contains("[!]") ? " [!]" : "";
+            String moneda = (cbMonedaBasePlato != null && cbMonedaBasePlato.getSelectedItem() != null)
+                    ? String.valueOf(cbMonedaBasePlato.getSelectedItem()) : "USD";
+            String numTxt = txtPrecioPlato != null ? txtPrecioPlato.getText().trim() : "";
+            String precioCelda;
+            try {
+                precioCelda = ("VES".equalsIgnoreCase(moneda) ? "Bs. " : "$ ")
+                        + String.format(java.util.Locale.US, "%.2f", importeMonetario(numTxt)) + sufijo;
+            } catch (Exception ex) {
+                precioCelda = numTxt + sufijo;
+            }
+            m.setValueAt(precioCelda, filaModelo, 2);
+            if (m.getColumnCount() > 3) {
+                boolean aplica = chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected();
+                boolean incluye = aplica && chkPrecioIncluyeIvaPlato != null && chkPrecioIncluyeIvaPlato.isSelected();
+                m.setValueAt(formatearEtiquetaIva(aplica) + (incluye ? " (Inc.)" : ""), filaModelo, 3);
+            }
+        } finally {
+            sincronizandoPlatoForm = false;
         }
     }
 
@@ -8232,6 +8418,34 @@ public final class Sistema extends javax.swing.JFrame {
                 modelPlatos.addColumn("IVA");
             }
             TablePlatos.setRowHeight(25);
+        }
+        // 3b. Sincronización bidireccional tabla <-> formulario de plato:
+        // selección (clic o teclado) carga detalles; editar detalles refleja la fila.
+        if (TablePlatos != null) {
+            TablePlatos.getSelectionModel().addListSelectionListener(e -> {
+                if (e.getValueIsAdjusting() || sincronizandoPlatoForm) {
+                    return;
+                }
+                int fila = TablePlatos.getSelectedRow();
+                if (fila >= 0) {
+                    cargarPlatoEnFormulario(fila);
+                }
+            });
+        }
+        javax.swing.event.DocumentListener reflejoPlato = new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { reflejarFormularioEnFilaPlato(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { reflejarFormularioEnFilaPlato(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { reflejarFormularioEnFilaPlato(); }
+        };
+        if (txtNombrePlato != null) {
+            txtNombrePlato.getDocument().addDocumentListener(reflejoPlato);
+        }
+        java.awt.event.ItemListener reflejoIvaPlato = e -> reflejarFormularioEnFilaPlato();
+        if (chkAplicaIvaPlato != null) {
+            chkAplicaIvaPlato.addItemListener(reflejoIvaPlato);
+        }
+        if (chkPrecioIncluyeIvaPlato != null) {
+            chkPrecioIncluyeIvaPlato.addItemListener(reflejoIvaPlato);
         }
         if (jPanel2 != null && jScrollPane4 != null && TablePlatos != null) {
             javax.swing.JPanel pnlDerechaPlatos = new javax.swing.JPanel(new java.awt.BorderLayout(0, 8));
@@ -8568,6 +8782,7 @@ public final class Sistema extends javax.swing.JFrame {
                         ServicioMesa.sugerirPrefijoBase(sala.getNombre(), sala.esBarra()));
                 boolean esSeleccionada = (sala.getId() == idSalaActualMesas);
                 JButton btn = new JButton(sala.getNombre() + " (" + prefijo + ")");
+                btn.setToolTipText("Ver mesas de " + sala.getNombre());
                 btn.setFont(new java.awt.Font("Segoe UI", esSeleccionada ? java.awt.Font.BOLD : java.awt.Font.PLAIN, 12));
                 btn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
                 btn.setFocusable(false);
@@ -9073,6 +9288,11 @@ public final class Sistema extends javax.swing.JFrame {
                 filaRestaurar = modelo.getRowCount() - 1;
             }
         }
+        java.util.List<String> monedasPlatos = new java.util.ArrayList<>();
+        for (Platos p : Listar) {
+            monedasPlatos.add(p.getMonedaBase());
+        }
+        Tables.fijarCabeceraMoneda(tabla, 2, monedasPlatos);
         if (filaRestaurar >= 0 && filaRestaurar < tabla.getRowCount()) {
             tabla.setRowSelectionInterval(filaRestaurar, filaRestaurar);
         }
@@ -9083,6 +9303,9 @@ public final class Sistema extends javax.swing.JFrame {
     private void installarRenderersPlatos(JTable tabla) {
         RendererPlato renderer = new RendererPlato(platosPorId);
         for (int i = 0; i < tabla.getColumnCount(); i++) {
+            if (Tables.ID_COLUMNA_MONEDA.equals(tabla.getColumnModel().getColumn(i).getIdentifier())) {
+                continue;
+            }
             tabla.getColumnModel().getColumn(i).setCellRenderer(renderer);
         }
     }
@@ -9855,6 +10078,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         modelo = (DefaultTableModel) tableFinalizar.getModel();
         modelo.setRowCount(0);
+        monedaFilaFinalizar.clear();
         boolean esClasificado = tasaValida && Listar.stream().allMatch(d -> d.getMonedaBase() != null && d.getAplicaIva() != null && d.getPrecioIncluyeIva() != null);
         Servicio.CalculoMonetarioPedido.CalculoPedido calcPantalla = esClasificado ? Servicio.CalculoMonetarioPedido.calcularPedido(Listar, tasa) : null;
         Object[] ob = new Object[6];
@@ -9891,7 +10115,14 @@ public final class Sistema extends javax.swing.JFrame {
             ob[4] = "$ " + String.format(java.util.Locale.US, "%.2f", subtotalPlatoUsd);
             ob[5] = det.getComentario();
             modelo.addRow(ob);
+            monedaFilaFinalizar.put(modelo.getRowCount() - 1, ub(det.getMonedaBase()));
         }
+        java.util.List<String> monedasFin = new java.util.ArrayList<>();
+        for (Modelo.DetallePedido det : Listar) {
+            monedasFin.add(det.getMonedaBase());
+        }
+        Tables.fijarCabeceraMoneda(tableFinalizar, 3, monedasFin);
+        Tables.fijarCabeceraMoneda(tableFinalizar, 4, monedasFin);
         colorHeader(tableFinalizar);
     }
 

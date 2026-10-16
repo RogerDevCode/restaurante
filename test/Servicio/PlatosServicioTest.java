@@ -228,6 +228,35 @@ public class PlatosServicioTest {
         assertFalse(repositorio.recibido.get().getPrecioIncluyeIva());
     }
 
+    @Test
+    public void rechazaAltaDuplicadaPorNombre() {
+        FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
+        repositorio.existente = java.util.Optional.of(new Platos(7, "Cerveza", new BigDecimal("8.00"), "2026-10-16"));
+        PlatosServicio servicio = new PlatosServicio(repositorio, politica("Administrador"));
+
+        Platos intento = plato(0, "  CERVEZA  ", "8.00");
+        intento.setMonedaBase("VES");
+        intento.setPrecioVes(new BigDecimal("8.00"));
+        intento.setPrecioIncluyeIva(false);
+        ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class, () -> servicio.registrar(intento));
+        assertTrue(ex.getMessage().contains("Ya existe"));
+        assertEquals(0, repositorio.escrituras.get());
+    }
+
+    @Test
+    public void permiteAltaConNombreDistinto() {
+        FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
+        repositorio.existente = java.util.Optional.empty();
+        PlatosServicio servicio = new PlatosServicio(repositorio, politica("Administrador"));
+
+        Platos plato = plato(0, "Malta", "8.00");
+        plato.setMonedaBase("VES");
+        plato.setPrecioVes(new BigDecimal("8.00"));
+        plato.setPrecioIncluyeIva(false);
+        assertTrue(servicio.registrar(plato));
+        assertEquals(1, repositorio.escrituras.get());
+    }
+
     private PoliticaAcceso politica(String rol) {
         Usuario usuario = new Usuario();
         usuario.setRol(rol);
@@ -262,8 +291,14 @@ public class PlatosServicioTest {
         private final AtomicReference<String> filtro = new AtomicReference<>();
         private final AtomicReference<String> fecha = new AtomicReference<>();
         private List<Platos> listaRetorno = Collections.emptyList();
+        private java.util.Optional<Platos> existente = java.util.Optional.empty();
         private boolean resultado = true;
         private RuntimeException fallo;
+
+        @Override public java.util.Optional<Platos> buscarActivoPorNombre(String nombre) {
+            if (fallo != null) throw fallo;
+            return existente;
+        }
 
         @Override public boolean registrar(Platos plato) { escritura(plato); return resultado; }
         @Override public List<Platos> listarPorFecha(String nombre, String fechaConsulta) {

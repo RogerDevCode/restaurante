@@ -81,6 +81,7 @@ public class RendererPlato implements TableCellRenderer {
         }
 
         int colModelo = (tabla != null) ? tabla.convertColumnIndexToModel(columna) : columna;
+        etiqueta.setHorizontalAlignment(colModelo == 2 ? SwingConstants.RIGHT : SwingConstants.LEFT);
         if (colModelo == 1 && p != null) {
             String texto = valorStr;
             while (texto.startsWith("★ ") || texto.startsWith("🔥 ")) {

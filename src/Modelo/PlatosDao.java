@@ -368,7 +368,36 @@ public class PlatosDao implements PlatosRepositorio {
         }
     }
 
-    /** Lista los platos desactivados para el panel de reactivación. */
+    /** Busca un plato activo por nombre exacto (anti-duplicados en altas). */
+    @Override
+    public java.util.Optional<Platos> buscarActivoPorNombre(String nombre) {
+        if (nombre == null || nombre.trim().isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        String sql = """
+            SELECT id, nombre
+            FROM platos
+            WHERE TRIM(LOWER(nombre)) = TRIM(LOWER(?)) AND activo = 1
+            ORDER BY id ASC
+            LIMIT 1
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setString(1, nombre.trim());
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (resultados.next()) {
+                    Platos plato = new Platos();
+                    plato.setId(resultados.getInt("id"));
+                    plato.setNombre(resultados.getString("nombre"));
+                    return java.util.Optional.of(plato);
+                }
+            }
+            return java.util.Optional.empty();
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo buscar el plato por nombre.", ex);
+        }
+    }
+
     @Override
     public List<Platos> listarInactivos() {
         List<Platos> platos = new ArrayList<>();

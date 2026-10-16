@@ -33,6 +33,7 @@ public class Tables extends DefaultTableCellRenderer {
                 setForeground(Color.BLACK);
                 break;
         }
+        setHorizontalAlignment(esNumerico(valor) ? javax.swing.SwingConstants.RIGHT : javax.swing.SwingConstants.LEFT);
         return this;
     }
 
@@ -69,5 +70,175 @@ public class Tables extends DefaultTableCellRenderer {
     public static Object valorModelo(JTable tabla, int filaVista, int colModelo) {
         int filaModelo = tabla.convertRowIndexToModel(filaVista);
         return tabla.getModel().getValueAt(filaModelo, colModelo);
+    }
+
+    /** Indica si el valor es numérico (tolera símbolos de moneda, [!], % y referencias entre paréntesis). */
+    public static boolean esNumerico(Object valor) {
+        if (valor instanceof Number) {
+            return true;
+        }
+        if (valor == null) {
+            return false;
+        }
+        String s = valor.toString().trim();
+        if (s.isEmpty()) {
+            return false;
+        }
+        if (s.contains("(")) {
+            s = s.substring(0, s.indexOf('(')).trim();
+        }
+        s = s.replace("Bs.", "").replace("Bs", "").replace("$", "")
+                .replace("[!]", "").replace("★", "").replace("🔥", "").trim();
+        if (s.endsWith("%")) {
+            s = s.substring(0, s.length() - 1).trim();
+        }
+        if (s.isEmpty()) {
+            return false;
+        }
+        try {
+            new java.math.BigDecimal(s);
+            return true;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    /** Renderer genérico: numéricos a la derecha, texto a la izquierda. */
+    private static final class RendererNumerico extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable tabla, Object valor, boolean seleccionado, boolean enfocado, int fila, int columna) {
+            super.getTableCellRendererComponent(tabla, valor, seleccionado, enfocado, fila, columna);
+            setHorizontalAlignment(esNumerico(valor)
+                    ? javax.swing.SwingConstants.RIGHT : javax.swing.SwingConstants.LEFT);
+            return this;
+        }
+    }
+
+    /** Aplica alineación numérica-derecha a las celdas sin renderer propio. */
+    public static void aplicarAlineacionNumerica(JTable tabla) {
+        if (tabla == null) {
+            return;
+        }
+        tabla.setDefaultRenderer(Object.class, new RendererNumerico());
+    }
+
+    /** Identificador de la columna vista de moneda (U/B), sin columna en el modelo. */
+    public static final String ID_COLUMNA_MONEDA = "MONEDA_U_B";
+
+    /**
+     * Agrega junto al precio una columna estrecha solo-vista con "$" (USD) o "Bs." (VES)
+     * según la moneda de cada fila. No altera el modelo ni sus índices.
+     *
+     * @param tabla tabla destino
+     * @param colModeloPrecio índice de modelo de la columna de precio unitario
+     * @param monedaPorFilaModelo función fila-modelo -&gt; "U"/"$", "B"/"Bs." o "" (desconocida)
+     */
+    public static void agregarColumnaMoneda(JTable tabla, int colModeloPrecio,
+            java.util.function.Function<Integer, String> monedaPorFilaModelo) {
+        if (tabla == null || monedaPorFilaModelo == null) {
+            return;
+        }
+        javax.swing.table.TableColumnModel cm = tabla.getColumnModel();
+        for (int i = 0; i < cm.getColumnCount(); i++) {
+            if (ID_COLUMNA_MONEDA.equals(cm.getColumn(i).getIdentifier())) {
+                return;
+            }
+        }
+        int vistaPrecio;
+        try {
+            vistaPrecio = tabla.convertColumnIndexToView(colModeloPrecio);
+        } catch (Exception e) {
+            return;
+        }
+        if (vistaPrecio < 0) {
+            return;
+        }
+        javax.swing.table.TableColumn col = new javax.swing.table.TableColumn(colModeloPrecio);
+        col.setIdentifier(ID_COLUMNA_MONEDA);
+        col.setHeaderValue("M");
+        col.setMinWidth(26);
+        col.setMaxWidth(44);
+        col.setPreferredWidth(30);
+        col.setResizable(true);
+        col.setCellRenderer(new RendererMoneda(monedaPorFilaModelo));
+        cm.addColumn(col);
+        try {
+            cm.moveColumn(cm.getColumnCount() - 1, vistaPrecio + 1);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Renderer de la columna M: $/Bs. centrado en negrita con tooltip de moneda. */
+    private static final class RendererMoneda extends DefaultTableCellRenderer {
+        private final java.util.function.Function<Integer, String> monedaPorFilaModelo;
+
+        RendererMoneda(java.util.function.Function<Integer, String> monedaPorFilaModelo) {
+            this.monedaPorFilaModelo = monedaPorFilaModelo;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable tabla, Object valor, boolean seleccionado, boolean enfocado, int fila, int columna) {
+            super.getTableCellRendererComponent(tabla, "", seleccionado, enfocado, fila, columna);
+            String m = "";
+            try {
+                int mf = tabla.convertRowIndexToModel(fila);
+                String r = monedaPorFilaModelo.apply(mf);
+                if (r != null) {
+                    String n = r.trim().toUpperCase(java.util.Locale.ROOT);
+                    if ("U".equals(n) || "$".equals(n)) {
+                        m = "$";
+                    } else if ("B".equals(n) || n.startsWith("BS")) {
+                        m = "Bs.";
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+            setText(m);
+            setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+            setFont(getFont().deriveFont(java.awt.Font.BOLD));
+            setToolTipText("$".equals(m) ? "Dólares (USD)" : "Bs.".equals(m) ? "Bolívares (VES)" : null);
+            return this;
+        }
+    }
+
+    /**
+     * Fija la cabecera de una columna de precio a la moneda mostrada: "USD" o "VES"
+     * si todas las filas comparten moneda, "USD/VES" si hay mezcla. Sin filas con
+     * moneda conocida conserva la cabecera actual. Solo cambia el título visible.
+     */
+    public static void fijarCabeceraMoneda(JTable tabla, int colModeloPrecio,
+            java.util.Collection<String> monedas) {
+        if (tabla == null || monedas == null || monedas.isEmpty()) {
+            return;
+        }
+        java.util.Set<String> distintas = new java.util.TreeSet<>();
+        for (String m : monedas) {
+            if (m == null) {
+                continue;
+            }
+            String n = m.trim().toUpperCase(java.util.Locale.ROOT);
+            if ("USD".equals(n) || "VES".equals(n)) {
+                distintas.add(n);
+            }
+        }
+        if (distintas.isEmpty()) {
+            return;
+        }
+        String titulo = distintas.size() == 1 ? distintas.iterator().next() : "USD/VES";
+        int vista;
+        try {
+            vista = tabla.convertColumnIndexToView(colModeloPrecio);
+        } catch (Exception e) {
+            return;
+        }
+        if (vista < 0 || vista >= tabla.getColumnModel().getColumnCount()) {
+            return;
+        }
+        tabla.getColumnModel().getColumn(vista).setHeaderValue(titulo);
+        if (tabla.getTableHeader() != null) {
+            tabla.getTableHeader().repaint();
+        }
     }
 }
