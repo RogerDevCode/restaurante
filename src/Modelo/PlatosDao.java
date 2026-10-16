@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PlatosDao implements PlatosRepositorio {
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(PlatosDao.class.getName());
     private final ProveedorConexionJdbc conexiones;
 
     public PlatosDao() {
@@ -171,6 +172,9 @@ public class PlatosDao implements PlatosRepositorio {
             }
             throw new DataAccessException("No se pudieron listar los platos.", ex);
         }
+        if (platos.isEmpty()) {
+            LOGGER.log(java.util.logging.Level.INFO, "[CARGA_DATOS] Carga de platos para fecha ''{0}'' retornó 0 items.", fecha);
+        }
         return platos;
     }
 
@@ -248,6 +252,9 @@ public class PlatosDao implements PlatosRepositorio {
                 return listarPorFechaLegacy(valor, fecha);
             }
             throw new DataAccessException("No se pudieron listar los platos para la venta.", ex);
+        }
+        if (platos.isEmpty()) {
+            LOGGER.log(java.util.logging.Level.INFO, "[CARGA_DATOS] Carga de platos para venta retornó 0 items (fecha: ''{0}'', filtro: ''{1}'').", new Object[]{fecha, valor != null ? valor : ""});
         }
         return platos;
     }
@@ -410,6 +417,9 @@ public class PlatosDao implements PlatosRepositorio {
                 return listarInactivosLegacy();
             }
             throw new DataAccessException("No se pudieron listar los platos inactivos.", ex);
+        }
+        if (platos.isEmpty()) {
+            LOGGER.log(java.util.logging.Level.INFO, "[CARGA_DATOS] Carga de platos inactivos retornó 0 items.");
         }
         return platos;
     }

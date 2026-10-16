@@ -13,6 +13,7 @@ import java.util.UUID;
 
 /** Barrera SQL compartida para evitar escrituras concurrentes con mantenimiento de esquema/BD. */
 public final class ControlMantenimientoBD {
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(ControlMantenimientoBD.class.getName());
     private static final ThreadLocal<Integer> PROFUNDIDAD_BYPASS = ThreadLocal.withInitial(() -> 0);
     private static volatile boolean activa;
 
@@ -241,13 +242,12 @@ public final class ControlMantenimientoBD {
             if ("isWrapperFor".equals(nombre) && args != null && args.length == 1) {
                 return ((Class<?>) args[0]).isInstance(proxy);
             }
-            String sqlEjecutado = sqlPreparado;
-            if (sqlEjecutado == null && args != null && args.length > 0 && args[0] instanceof String s
-                    && nombre.startsWith("execute")) sqlEjecutado = s;
+            final String sqlConsulta = (sqlPreparado != null) ? sqlPreparado
+                    : (args != null && args.length > 0 && args[0] instanceof String s && nombre.startsWith("execute")) ? s : null;
             if ("addBatch".equals(nombre) && args != null && args.length > 0 && args[0] instanceof String lote) {
                 loteEscritura[0] |= esEscritura(lote);
             }
-            boolean escritura = esEscritura(sqlEjecutado)
+            boolean escritura = esEscritura(sqlConsulta)
                     || ("executeBatch".equals(nombre) || "executeLargeBatch".equals(nombre)) && loteEscritura[0];
             boolean activaGuardia = escritura && activa && !bypassActivo();
             boolean autoCommitPrevio = false;
@@ -288,6 +288,14 @@ public final class ControlMantenimientoBD {
             } catch (Throwable ex) {
                 if (transaccionPropia) {
                     try { conexion.rollback(); } catch (SQLException rollback) { ex.addSuppressed(rollback); }
+                }
+                if (ex instanceof SQLException sqlEx && nombre.startsWith("execute")) {
+                    LOGGER.log(java.util.logging.Level.WARNING, () -> String.format(
+                            "[SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código %d, SQLState '%s'): %s | SQL: %s",
+                            sqlEx.getErrorCode(),
+                            sqlEx.getSQLState() != null ? sqlEx.getSQLState() : "N/A",
+                            sqlEx.getMessage(),
+                            sqlConsulta != null ? sqlConsulta.replaceAll("\\s+", " ").trim() : st.toString()));
                 }
                 throw ex;
             } finally {

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.logging.Level;
 
 public class SalasDao implements SalasRepositorio {
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(SalasDao.class.getName());
     private final ProveedorConexionJdbc conexiones;
 
     public SalasDao() {
@@ -87,6 +88,9 @@ public class SalasDao implements SalasRepositorio {
                 return listarLegacy();
             }
             throw new DataAccessException("No se pudieron listar las salas.", ex);
+        }
+        if (salas.isEmpty()) {
+            LOGGER.log(Level.INFO, "[CARGA_DATOS] Carga de salas retornó 0 items.");
         }
         return salas;
     }

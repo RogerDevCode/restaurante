@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ClienteDao implements ClienteRepositorio {
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(ClienteDao.class.getName());
     private final ProveedorConexionJdbc conexiones;
 
     public ClienteDao() {
@@ -112,9 +113,11 @@ public class ClienteDao implements ClienteRepositorio {
                 }
             }
         } catch (SQLException ex) {
-            java.util.logging.Logger.getLogger(ClienteDao.class.getName())
-                    .log(java.util.logging.Level.WARNING, "No se pudieron consultar los clientes: " + ex.getMessage(), ex);
+            LOGGER.log(java.util.logging.Level.WARNING, "No se pudieron consultar los clientes: " + ex.getMessage(), ex);
             return clientes;
+        }
+        if (clientes.isEmpty()) {
+            LOGGER.log(java.util.logging.Level.INFO, "[CARGA_DATOS] Carga de clientes retornó 0 items (criterio: ''{0}'').", criterio != null ? criterio : "");
         }
         return clientes;
     }
@@ -201,6 +204,9 @@ public class ClienteDao implements ClienteRepositorio {
             }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudieron listar las facturas del cliente.", ex);
+        }
+        if (facturas.isEmpty()) {
+            LOGGER.log(java.util.logging.Level.INFO, "[CARGA_DATOS] Carga de facturas para cliente retornó 0 items (criterio: ''{0}'').", documentoOCriterio);
         }
         return facturas;
     }
@@ -403,9 +409,14 @@ public class ClienteDao implements ClienteRepositorio {
             }
 
         } catch (SQLException ex) {
-            java.util.logging.Logger.getLogger(ClienteDao.class.getName())
-                    .log(java.util.logging.Level.SEVERE, "Error crítico de conexión al cargar estadísticas del dashboard", ex);
+            LOGGER.log(java.util.logging.Level.SEVERE, "Error crítico de conexión al cargar estadísticas del dashboard", ex);
             throw new DataAccessException("No se pudieron cargar las estadísticas del dashboard (" + ex.getMessage() + ")", ex);
+        }
+        if (stats.getTopPlatos() == null || stats.getTopPlatos().isEmpty()) {
+            LOGGER.log(java.util.logging.Level.INFO, "[CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.");
+        }
+        if (stats.getEstadisticasMesoneros() == null || stats.getEstadisticasMesoneros().isEmpty()) {
+            LOGGER.log(java.util.logging.Level.INFO, "[CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.");
         }
         return stats;
     }

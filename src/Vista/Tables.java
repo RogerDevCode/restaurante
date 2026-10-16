@@ -1,11 +1,12 @@
 package Vista;
 
+import Servicio.ServicioMesa;
 import java.awt.Color;
 import java.awt.Component;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 
-/** Renderer Swing que colorea pedidos según su estado. */
+/** Renderer Swing que colorea pedidos según su estado (paleta central ServicioMesa). */
 public class Tables extends DefaultTableCellRenderer {
 
     @Override
@@ -20,11 +21,11 @@ public class Tables extends DefaultTableCellRenderer {
         String estado = estadoCelda == null ? "" : estadoCelda.toString();
         switch (estado) {
             case "PENDIENTE":
-                setBackground(new Color(192, 57, 43));
+                setBackground(ServicioMesa.FONDO_MESA_OCUPADA);
                 setForeground(Color.WHITE);
                 break;
             case "FINALIZADO":
-                setBackground(new Color(0, 102, 102));
+                setBackground(ServicioMesa.FONDO_MESA_LIBRE);
                 setForeground(Color.WHITE);
                 break;
             default:

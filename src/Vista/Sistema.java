@@ -138,6 +138,10 @@ public final class Sistema extends javax.swing.JFrame {
     private int idPedidoEdicion = -1;
     private int idSalaEdicion = -1;
     private int numMesaEdicion = -1;
+    private Integer idMesoneroEdicionOriginal = null;
+    private String nombreMesoneroEdicionOriginal = null;
+    private boolean quitarMesoneroEdicion = false;
+    private javax.swing.JButton btnQuitarMesoneroPedido;
     private String ultimoTextoIngresado = "";
     private boolean isUpdatingUI = false;
     private Servicio.CierreCajaServicio cierreCajaServicio;
@@ -2151,7 +2155,7 @@ public final class Sistema extends javax.swing.JFrame {
             .addComponent(btnCategorias, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnDashboard, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addComponent(labelLogo, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(labelLogo, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(0, 0, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -2185,6 +2189,7 @@ public final class Sistema extends javax.swing.JFrame {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
+        // AVISO DISEÑADOR: bloque manual (no está en Sistema.form). Ver nota en el campo.
         // Barra lateral con scroll: jPanel1 supera los 720 px con 10 botones y el
         // Dashboard quedaba recortado. El viewport muestra scroll vertical solo si hace falta.
         scrollBarraLateral = new javax.swing.JScrollPane(jPanel1,
@@ -2703,6 +2708,16 @@ public final class Sistema extends javax.swing.JFrame {
         });
         pnlMesoneroPedido.add(lblMesoneroPedido, java.awt.BorderLayout.NORTH);
         pnlMesoneroPedido.add(cbMesoneroPedido, java.awt.BorderLayout.CENTER);
+        btnQuitarMesoneroPedido = new javax.swing.JButton("Quitar");
+        btnQuitarMesoneroPedido.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        btnQuitarMesoneroPedido.setToolTipText("Quitar la asignación del mesonero (se guarda sin mesonero)");
+        btnQuitarMesoneroPedido.addActionListener(e -> quitarMesoneroAsignadoPedido());
+        pnlMesoneroPedido.add(btnQuitarMesoneroPedido, java.awt.BorderLayout.EAST);
+        cbMesoneroPedido.addItemListener(e -> {
+            if (e.getStateChange() == java.awt.event.ItemEvent.SELECTED && e.getItem() instanceof Mesonero) {
+                quitarMesoneroEdicion = false;
+            }
+        });
 
         javax.swing.GroupLayout jPanel23Layout = new javax.swing.GroupLayout(jPanel23);
         jPanel23.setLayout(jPanel23Layout);
@@ -3738,15 +3753,34 @@ public final class Sistema extends javax.swing.JFrame {
         actualizarEstadoBotonesCarrito();
         
         if (ped.getIdMesonero() != null && ped.getIdMesonero() > 0) {
+            boolean encontrado = false;
             for (int i = 0; i < cbMesoneroPedido.getItemCount(); i++) {
                 Object mObj = cbMesoneroPedido.getItemAt(i);
                 if (mObj instanceof Modelo.Mesonero m) {
                     if (m.getId() == ped.getIdMesonero()) {
                         cbMesoneroPedido.setSelectedIndex(i);
+                        encontrado = true;
                         break;
                     }
                 }
             }
+            if (encontrado) {
+                idMesoneroEdicionOriginal = ped.getIdMesonero();
+                nombreMesoneroEdicionOriginal = ped.getMesoneroNombre();
+                quitarMesoneroEdicion = false;
+            } else {
+                idMesoneroEdicionOriginal = ped.getIdMesonero();
+                nombreMesoneroEdicionOriginal = ped.getMesoneroNombre();
+                cbMesoneroPedido.setSelectedIndex(0);
+                quitarMesoneroEdicion = false;
+                mostrarAvisoEnBanda("El mesonero asignado ('"
+                        + (nombreMesoneroEdicionOriginal != null ? nombreMesoneroEdicionOriginal : ("#" + idMesoneroEdicionOriginal))
+                        + "') ya no está activo; seleccione uno activo, use Quitar para liberarlo o se conservará la asignación.");
+            }
+        } else {
+            idMesoneroEdicionOriginal = null;
+            nombreMesoneroEdicionOriginal = null;
+            quitarMesoneroEdicion = false;
         }
     }
 
@@ -4103,6 +4137,9 @@ public final class Sistema extends javax.swing.JFrame {
                     idPedidoEdicion = -1;
                     idSalaEdicion = -1;
                     numMesaEdicion = -1;
+                    idMesoneroEdicionOriginal = null;
+                    nombreMesoneroEdicionOriginal = null;
+                    quitarMesoneroEdicion = false;
                     btnGenerarPedido.setText("Realizar Pedido");
                 } else {
                     idPedidoRegistrado = registrarPedidoCompleto();
@@ -4781,6 +4818,12 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
+    /**
+     * AVISO DISEÑADOR (NetBeans/Matisse): este scroll y btnDashboard son edición
+     * manual fuera del .form (ver creación en initComponents y reacomodarComponentes).
+     * No regenerar Sistema.java desde el diseñador: se perderían y Dashboard volvería
+     * a quedar recortado. Si se edita el .form, remodelar el JScrollPane allí.
+     */
     private javax.swing.JScrollPane scrollBarraLateral;
     private javax.swing.JPanel jPanel10;
     private javax.swing.JPanel jPanel11;
@@ -5254,6 +5297,9 @@ public final class Sistema extends javax.swing.JFrame {
         idPedidoEdicion = -1;
         idSalaEdicion = -1;
         numMesaEdicion = -1;
+        idMesoneroEdicionOriginal = null;
+        nombreMesoneroEdicionOriginal = null;
+        quitarMesoneroEdicion = false;
         if (btnGenerarPedido != null) btnGenerarPedido.setText("Realizar Pedido");
         tmp = (DefaultTableModel) tableMenu.getModel();
         tmp.setRowCount(0);
@@ -5485,6 +5531,15 @@ public final class Sistema extends javax.swing.JFrame {
         btnCierreZDash.setToolTipText("Generar e imprimir Cierre Total definitivo de la jornada (Corte Z)");
         btnCierreZDash.addActionListener(e -> solicitarCierreCaja(Modelo.CierreCaja.TipoCierre.TOTAL));
         pnlAccionesDash.add(btnCierreZDash);
+
+        javax.swing.JButton btnLogsDash = new javax.swing.JButton("Logs del Día");
+        btnLogsDash.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        btnLogsDash.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        java.net.URL urlLogsDash = getClass().getResource("/Img/lupa.png");
+        if (urlLogsDash != null) btnLogsDash.setIcon(new javax.swing.ImageIcon(urlLogsDash));
+        btnLogsDash.setToolTipText("Consultar los logs del día, errores SQL y eventos de carga");
+        btnLogsDash.addActionListener(e -> mostrarDialogoLogsDelDia());
+        pnlAccionesDash.add(btnLogsDash);
 
         javax.swing.JButton btnRefrescar = new javax.swing.JButton("Actualizar Métricas");
         btnRefrescar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
@@ -5820,6 +5875,126 @@ public final class Sistema extends javax.swing.JFrame {
 
         JOptionPane.showMessageDialog(this, "No se pudieron actualizar las métricas del dashboard: " + msg + sugerencia,
                 "Error en Dashboard", JOptionPane.WARNING_MESSAGE);
+    }
+
+    public void mostrarDialogoLogsDelDia() {
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        javax.swing.JDialog dialog = new javax.swing.JDialog(this, "Logs del Sistema — " + hoy, true);
+        dialog.setSize(950, 600);
+        dialog.setMinimumSize(new java.awt.Dimension(720, 450));
+        dialog.setLocationRelativeTo(this);
+
+        javax.swing.JPanel pnlPrincipal = new javax.swing.JPanel(new java.awt.BorderLayout(10, 10));
+        pnlPrincipal.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        // Header con filtros y botones
+        javax.swing.JPanel pnlTop = new javax.swing.JPanel(new java.awt.BorderLayout(8, 8));
+
+        javax.swing.JPanel pnlFiltros = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 4));
+        pnlFiltros.add(new javax.swing.JLabel("Filtrar por:"));
+
+        javax.swing.JComboBox<String> cmbNivel = new javax.swing.JComboBox<>(new String[]{
+            "Todos los eventos",
+            "Errores SQL ([SQL_ERROR])",
+            "Carga de datos 0 items ([CARGA_DATOS])",
+            "Solo Advertencias y Errores (WARNING/SEVERE)",
+            "Fallbacks Fiscales/Monetarios"
+        });
+        cmbNivel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        pnlFiltros.add(cmbNivel);
+
+        javax.swing.JTextField txtBusqueda = new javax.swing.JTextField(16);
+        txtBusqueda.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        txtBusqueda.setToolTipText("Buscar texto en los logs...");
+        pnlFiltros.add(new javax.swing.JLabel("Buscar:"));
+        pnlFiltros.add(txtBusqueda);
+
+        javax.swing.JPanel pnlBotones = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 4));
+        javax.swing.JButton btnRecargar = new javax.swing.JButton("Actualizar");
+        btnRecargar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        javax.swing.JButton btnCopiar = new javax.swing.JButton("Copiar");
+        btnCopiar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        javax.swing.JButton btnCerrar = new javax.swing.JButton("Cerrar");
+        btnCerrar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        pnlBotones.add(btnRecargar);
+        pnlBotones.add(btnCopiar);
+        pnlBotones.add(btnCerrar);
+
+        pnlTop.add(pnlFiltros, java.awt.BorderLayout.WEST);
+        pnlTop.add(pnlBotones, java.awt.BorderLayout.EAST);
+
+        // Área central de texto
+        javax.swing.JTextArea txtLogs = new javax.swing.JTextArea();
+        txtLogs.setEditable(false);
+        txtLogs.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+        txtLogs.setBackground(new java.awt.Color(30, 30, 30));
+        txtLogs.setForeground(new java.awt.Color(220, 220, 220));
+        txtLogs.setCaretColor(java.awt.Color.WHITE);
+        javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(txtLogs);
+
+        // Barra inferior de estado
+        javax.swing.JLabel lblEstado = new javax.swing.JLabel("Archivo: " + infraestructura.ArchivoLogDiario.obtenerRutaLog(hoy).toAbsolutePath());
+        lblEstado.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        lblEstado.setForeground(java.awt.Color.GRAY);
+
+        pnlPrincipal.add(pnlTop, java.awt.BorderLayout.NORTH);
+        pnlPrincipal.add(scroll, java.awt.BorderLayout.CENTER);
+        pnlPrincipal.add(lblEstado, java.awt.BorderLayout.SOUTH);
+
+        java.util.function.Consumer<Void> cargarLogs = (v) -> {
+            List<String> lineas = infraestructura.ArchivoLogDiario.leerLineasLog(hoy);
+            String filtroNivel = (String) cmbNivel.getSelectedItem();
+            String query = txtBusqueda.getText().trim().toLowerCase(java.util.Locale.ROOT);
+
+            StringBuilder sb = new StringBuilder();
+            int coincidencia = 0;
+            for (String linea : lineas) {
+                boolean pasaNivel = true;
+                if ("Errores SQL ([SQL_ERROR])".equals(filtroNivel)) {
+                    pasaNivel = linea.contains("[SQL_ERROR]");
+                } else if ("Carga de datos 0 items ([CARGA_DATOS])".equals(filtroNivel)) {
+                    pasaNivel = linea.contains("[CARGA_DATOS]");
+                } else if ("Solo Advertencias y Errores (WARNING/SEVERE)".equals(filtroNivel)) {
+                    pasaNivel = linea.contains("WARNING") || linea.contains("SEVERE");
+                } else if ("Fallbacks Fiscales/Monetarios".equals(filtroNivel)) {
+                    pasaNivel = linea.contains("Fallback aplicado") || linea.contains("referencial");
+                }
+
+                boolean pasaTexto = query.isEmpty() || linea.toLowerCase(java.util.Locale.ROOT).contains(query);
+
+                if (pasaNivel && pasaTexto) {
+                    sb.append(linea).append("\n");
+                    coincidencia++;
+                }
+            }
+            txtLogs.setText(sb.toString());
+            txtLogs.setCaretPosition(txtLogs.getDocument().getLength());
+            lblEstado.setText(String.format("Eventos/Líneas: %d de %d | Archivo: %s | Actualizado: %s",
+                    coincidencia, lineas.size(),
+                    infraestructura.ArchivoLogDiario.obtenerRutaLog(hoy).getFileName(),
+                    java.time.LocalTime.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS)));
+        };
+
+        btnRecargar.addActionListener(e -> cargarLogs.accept(null));
+        cmbNivel.addActionListener(e -> cargarLogs.accept(null));
+        txtBusqueda.addActionListener(e -> cargarLogs.accept(null));
+        txtBusqueda.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { cargarLogs.accept(null); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { cargarLogs.accept(null); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { cargarLogs.accept(null); }
+        });
+
+        btnCopiar.addActionListener(e -> {
+            java.awt.datatransfer.StringSelection sel = new java.awt.datatransfer.StringSelection(txtLogs.getText());
+            java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
+            JOptionPane.showMessageDialog(dialog, "Contenido copiado al portapapeles.", "Logs", JOptionPane.INFORMATION_MESSAGE);
+        });
+
+        btnCerrar.addActionListener(e -> dialog.dispose());
+
+        cargarLogs.accept(null);
+        dialog.setContentPane(pnlPrincipal);
+        dialog.setVisible(true);
     }
 
     public void buscarYListarClientes(String criterio) {
@@ -7076,6 +7251,23 @@ public final class Sistema extends javax.swing.JFrame {
         }
     }
 
+    /** Acción explícita para dejar el pedido en edición sin mesonero (con confirmación). */
+    private void quitarMesoneroAsignadoPedido() {
+        int confirm = javax.swing.JOptionPane.showConfirmDialog(this,
+                "¿Quitar al mesonero asignado? Al guardar, el pedido quedará sin mesonero.",
+                "Quitar mesonero", javax.swing.JOptionPane.YES_NO_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE);
+        if (confirm != javax.swing.JOptionPane.YES_OPTION) {
+            return;
+        }
+        idMesoneroEdicionOriginal = null;
+        nombreMesoneroEdicionOriginal = null;
+        if (cbMesoneroPedido != null) {
+            cbMesoneroPedido.setSelectedIndex(0);
+        }
+        quitarMesoneroEdicion = true;
+        mostrarAvisoEnBanda("Asignación de mesonero retirada; se guardará sin mesonero.");
+    }
+
     private void cargarComboMesoneros() {
         if (cbMesoneroPedido == null) return;
         cbMesoneroPedido.removeAllItems();
@@ -7090,6 +7282,9 @@ public final class Sistema extends javax.swing.JFrame {
                     .log(java.util.logging.Level.WARNING, "Error al cargar mesoneros activos: " + ex.getMessage());
         }
         cbMesoneroPedido.setSelectedIndex(0);
+        if (panelSplitScreen != null) {
+            panelSplitScreen.recargarMesoneros();
+        }
     }
 
     void ejecutarCreacionRespaldo() {
@@ -8241,7 +8436,12 @@ public final class Sistema extends javax.swing.JFrame {
             };
             boton.setContentAreaFilled(false);
             boton.setOpaque(true);
-            boton.setIcon(new ImageIcon(getClass().getResource("/Img/mesa.png")));
+            java.net.URL urlMesa = getClass().getResource("/Img/mesa.png");
+            if (urlMesa != null) {
+                java.awt.Image imgMesa = new ImageIcon(urlMesa).getImage()
+                        .getScaledInstance(48, 48, java.awt.Image.SCALE_SMOOTH);
+                boton.setIcon(new ImageIcon(imgMesa));
+            }
             boton.setHorizontalTextPosition(JButton.CENTER);
             boton.setVerticalTextPosition(JButton.BOTTOM);
             int verificar = estados.getOrDefault(num_mesa, 0);
@@ -9400,6 +9600,9 @@ public final class Sistema extends javax.swing.JFrame {
         if (cbMesoneroPedido != null && cbMesoneroPedido.getSelectedItem() instanceof Mesonero m) {
             pedido.setIdMesonero(m.getId());
             pedido.setMesoneroNombre(m.getNombreCompleto());
+        } else if (!quitarMesoneroEdicion && idPedidoEdicion > 0 && idMesoneroEdicionOriginal != null) {
+            pedido.setIdMesonero(idMesoneroEdicionOriginal);
+            pedido.setMesoneroNombre(nombreMesoneroEdicionOriginal);
         }
 
         pedidosControlador.actualizarPedidoCompleto(idPedidoEdicion, pedido, detalles);

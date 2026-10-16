@@ -140,6 +140,9 @@ public class MesoneroDao implements MesoneroRepositorio {
             while (rs.next()) {
                 lista.add(mapearMesonero(rs));
             }
+            if (lista.isEmpty()) {
+                LOGGER.log(Level.INFO, "[CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.");
+            }
             return lista;
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudieron listar los mesoneros: " + ex.getMessage(), ex);
@@ -155,6 +158,9 @@ public class MesoneroDao implements MesoneroRepositorio {
              ResultSet rs = st.executeQuery()) {
             while (rs.next()) {
                 lista.add(mapearMesonero(rs));
+            }
+            if (lista.isEmpty()) {
+                LOGGER.log(Level.INFO, "[CARGA_DATOS] Carga de mesoneros activos retornó 0 items.");
             }
             return lista;
         } catch (SQLException ex) {

@@ -156,4 +156,36 @@ public final class ArchivoLogDiario extends Handler {
             }
         }
     }
+
+    /** Obtiene la ruta física del archivo de log para la fecha indicada. */
+    public static Path obtenerRutaLog(LocalDate fecha) {
+        String configurado = System.getProperty("restaurante.logs.dir", "logs");
+        Path dir = Paths.get(configurado).toAbsolutePath().normalize();
+        return dir.resolve("restaurante-" + fecha + ".log");
+    }
+
+    /** Fuerza el vaciado de los buffers de los handlers activos en el logger raíz. */
+    public static void vaciarBuffers() {
+        java.util.logging.Logger raiz = java.util.logging.Logger.getLogger("");
+        for (Handler h : raiz.getHandlers()) {
+            try {
+                h.flush();
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /** Lee todas las líneas registradas en el archivo de log de la fecha solicitada. */
+    public static java.util.List<String> leerLineasLog(LocalDate fecha) {
+        vaciarBuffers();
+        Path archivo = obtenerRutaLog(fecha);
+        if (!Files.exists(archivo)) {
+            return java.util.Collections.singletonList("No se encontró el archivo de log para la fecha " + fecha + " (" + archivo + ").");
+        }
+        try {
+            return Files.readAllLines(archivo, StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            return java.util.Collections.singletonList("Error al leer el archivo de log: " + ex.getMessage());
+        }
+    }
 }

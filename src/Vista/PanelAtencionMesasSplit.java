@@ -83,6 +83,9 @@ public class PanelAtencionMesasSplit extends JPanel {
     private int numMesaSeleccionada = 0;
     private int idPedidoActivo = -1; // -1 si es nueva comanda, >0 si es pedido pendiente existente
     private String codigoMesaSeleccionada = "";
+    private Integer idMesoneroOriginal = null;
+    private String nombreMesoneroOriginal = null;
+    private boolean mesoneroQuitadoExplicito = false;
 
     // Componentes lado izquierdo (Salas y Mesas)
     private JPanel panelTabsSalas;
@@ -447,6 +450,16 @@ public class PanelAtencionMesasSplit extends JPanel {
             }
         });
         pnlMesonero.add(cbMesonero);
+        JButton btnQuitarMesonero = new JButton("Quitar");
+        btnQuitarMesonero.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnQuitarMesonero.setToolTipText("Quitar la asignación del mesonero (se guarda sin mesonero)");
+        btnQuitarMesonero.addActionListener(e -> quitarMesoneroAsignado());
+        pnlMesonero.add(btnQuitarMesonero);
+        cbMesonero.addItemListener(e -> {
+            if (e.getStateChange() == java.awt.event.ItemEvent.SELECTED && e.getItem() instanceof Mesonero) {
+                mesoneroQuitadoExplicito = false;
+            }
+        });
         pnlFilaTotales.add(pnlMesonero, BorderLayout.WEST);
 
         JPanel pnlTotales = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -713,9 +726,9 @@ public class PanelAtencionMesasSplit extends JPanel {
             if (c instanceof JButton b) {
                 Object val = b.getClientProperty("numMesa");
                 if (val instanceof Integer nm && nm == numMesa) {
-                    b.setBorder(BorderFactory.createLineBorder(new Color(241, 196, 15), 3));
+                    b.setBorder(BorderFactory.createLineBorder(ServicioMesa.BORDE_MESA_SELECCIONADA, 4));
                 } else {
-                    b.setBorder(BorderFactory.createLineBorder(b.getBackground().darker(), 1));
+                    b.setBorder(BorderFactory.createLineBorder(b.getBackground().darker(), 2));
                 }
             }
         }
@@ -732,6 +745,9 @@ public class PanelAtencionMesasSplit extends JPanel {
             lblCabeceraMesa.setForeground(new Color(180, 40, 40));
             btnEnviarCocina.setText("Actualizar Pedido");
             btnCobrar.setEnabled(true);
+            cargarMesoneros();
+            cbMesonero.setSelectedIndex(0);
+            preseleccionarMesoneroDelPedido(idPedidoExistente);
             cargarDetallesPedidoExistente(idPedidoExistente);
         } else {
             // Mesa disponible: Comanda en blanco lista para agregar platos
@@ -739,10 +755,75 @@ public class PanelAtencionMesasSplit extends JPanel {
             lblCabeceraMesa.setForeground(new Color(0, 102, 102));
             btnEnviarCocina.setText("Enviar a Cocina");
             btnCobrar.setEnabled(false);
+            idMesoneroOriginal = null;
+            nombreMesoneroOriginal = null;
+            mesoneroQuitadoExplicito = false;
             modeloCarrito.setRowCount(0);
             recalcularTotales();
             txtBuscarPlato.requestFocusInWindow();
         }
+    }
+
+    /** Acción explícita para dejar el pedido sin mesonero (con confirmación). */
+    private void quitarMesoneroAsignado() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "¿Quitar al mesonero asignado? Al guardar, el pedido quedará sin mesonero.",
+                "Quitar mesonero", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        idMesoneroOriginal = null;
+        nombreMesoneroOriginal = null;
+        cbMesonero.setSelectedIndex(0);
+        mesoneroQuitadoExplicito = true;
+        sistema.mostrarAvisoEnBanda("Asignación de mesonero retirada; se guardará sin mesonero.");
+    }
+
+    /** Al abrir una mesa ocupada, deja seleccionado el mesonero del pedido para no sobrescribirlo.
+     * El combo solo lista mesoneros 100% activos; si el asignado ya no lo está, se avisa y
+     * se conserva la asignación original salvo que se elija explícitamente otro activo. */
+    private void preseleccionarMesoneroDelPedido(int idPedido) {
+        idMesoneroOriginal = null;
+        nombreMesoneroOriginal = null;
+        mesoneroQuitadoExplicito = false;
+        new javax.swing.SwingWorker<Pedidos, Void>() {
+            @Override
+            protected Pedidos doInBackground() {
+                return pedidosControlador.verPedido(idPedido);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    if (idPedidoActivo != idPedido) {
+                        return; // El operador ya cambió de mesa; respuesta obsoleta.
+                    }
+                    Pedidos ped = get();
+                    if (ped == null || ped.getIdMesonero() == null || ped.getIdMesonero() <= 0) {
+                        cbMesonero.setSelectedIndex(0);
+                        return;
+                    }
+                    for (int i = 0; i < cbMesonero.getItemCount(); i++) {
+                        Object item = cbMesonero.getItemAt(i);
+                        if (item instanceof Mesonero m && m.getId() == ped.getIdMesonero()) {
+                            idMesoneroOriginal = ped.getIdMesonero();
+                            nombreMesoneroOriginal = ped.getMesoneroNombre();
+                            cbMesonero.setSelectedIndex(i);
+                            return;
+                        }
+                    }
+                    idMesoneroOriginal = ped.getIdMesonero();
+                    nombreMesoneroOriginal = ped.getMesoneroNombre();
+                    cbMesonero.setSelectedIndex(0);
+                    sistema.mostrarAvisoEnBanda("El mesonero asignado ('"
+                            + (nombreMesoneroOriginal != null ? nombreMesoneroOriginal : ("#" + idMesoneroOriginal))
+                            + "') ya no está activo; seleccione uno activo, use Quitar para liberarlo o se conservará la asignación.");
+                } catch (Exception ex) {
+                    java.util.logging.Logger.getLogger(PanelAtencionMesasSplit.class.getName())
+                            .log(java.util.logging.Level.WARNING, "No se pudo preseleccionar el mesonero del pedido #" + idPedido + ": " + ex.getMessage());
+                }
+            }
+        }.execute();
     }
 
     private void cargarDetallesPedidoExistente(int idPedido) {
@@ -1131,6 +1212,9 @@ public class PanelAtencionMesasSplit extends JPanel {
         if (cbMesonero.getSelectedItem() instanceof Mesonero m) {
             p.setIdMesonero(m.getId());
             p.setMesoneroNombre(m.getNombreCompleto());
+        } else if (!mesoneroQuitadoExplicito && idPedidoActivo > 0 && idMesoneroOriginal != null) {
+            p.setIdMesonero(idMesoneroOriginal);
+            p.setMesoneroNombre(nombreMesoneroOriginal);
         }
 
         try {
@@ -1170,6 +1254,8 @@ public class PanelAtencionMesasSplit extends JPanel {
     }
 
     private void cargarMesoneros() {
+        Object seleccionado = cbMesonero.getSelectedItem();
+        Integer idSeleccionado = (seleccionado instanceof Mesonero m) ? m.getId() : null;
         cbMesonero.removeAllItems();
         cbMesonero.addItem("- Sin mesonero -");
         try {
@@ -1178,7 +1264,28 @@ public class PanelAtencionMesasSplit extends JPanel {
             for (Mesonero m : activos) {
                 cbMesonero.addItem(m);
             }
-        } catch (Exception ignored) {}
+            if (idSeleccionado != null) {
+                preseleccionarMesoneroPorId(idSeleccionado);
+            }
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(PanelAtencionMesasSplit.class.getName())
+                    .log(java.util.logging.Level.WARNING, "Error al cargar mesoneros activos: " + ex.getMessage());
+        }
+    }
+
+    /** Recarga el combo tras altas/bajas en Configuración; conserva la selección si sigue activa. */
+    public void recargarMesoneros() {
+        cargarMesoneros();
+    }
+
+    private void preseleccionarMesoneroPorId(int idMesonero) {
+        for (int i = 0; i < cbMesonero.getItemCount(); i++) {
+            Object item = cbMesonero.getItemAt(i);
+            if (item instanceof Mesonero m && m.getId() == idMesonero) {
+                cbMesonero.setSelectedIndex(i);
+                return;
+            }
+        }
     }
 
     public void seleccionarSalaPorId(int idSala) {

@@ -663,6 +663,7 @@ public class PedidosDao implements PedidosRepositorio {
             throw new DataAccessException("No se pudieron consultar los detalles del pedido.", ex);
         }
         if (lista.isEmpty()) {
+            LOGGER.log(Level.INFO, "[CARGA_DATOS] Carga de detalles para el pedido ID {0} retornó 0 items.", id_pedido);
             throw new ErrorAplicacionException(
                     "El pedido " + id_pedido + " no tiene detalles asociados.",
                     new IllegalStateException("Un pedido debe contener al menos un detalle."));
@@ -1677,6 +1678,9 @@ public class PedidosDao implements PedidosRepositorio {
                 return listarPedidosLegacy();
             }
             throw new DataAccessException("No se pudieron listar los pedidos.", ex);
+        }
+        if (lista.isEmpty()) {
+            LOGGER.log(Level.INFO, "[CARGA_DATOS] Carga general de pedidos retornó 0 items.");
         }
         return lista;
     }

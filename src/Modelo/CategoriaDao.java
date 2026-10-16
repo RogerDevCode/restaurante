@@ -130,6 +130,9 @@ public class CategoriaDao implements CategoriaRepositorio {
             while (rs.next()) {
                 lista.add(mapearCategoria(rs));
             }
+            if (lista.isEmpty()) {
+                LOGGER.log(Level.INFO, "[CARGA_DATOS] Carga de categorías retornó 0 items.");
+            }
             return lista;
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudieron listar las categorías: " + ex.getMessage(), ex);
