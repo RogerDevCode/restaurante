@@ -896,8 +896,9 @@ public class MySqlIntegrationIT {
 
         Config config = new Config();
         config.setTasaDolar(new BigDecimal("36.5000"));
+        String fechaCierre = efectivoBs.getFecha().substring(0, 10);
         CierreCaja cierre = new CierreCajaDao().consultarCierre(
-                LocalDate.now().toString(), CierreCaja.TipoCierre.TOTAL, "Admin", config);
+                fechaCierre, CierreCaja.TipoCierre.TOTAL, "Admin", config);
         assertEquals(new BigDecimal("2591.13"), cierre.getTotalEfectivoBs());
         assertEquals(new BigDecimal("35.51"), cierre.getTotalEfectivoUsd());
         assertEquals(0, cierre.getPagosMixtosSinDesglose());
@@ -963,8 +964,9 @@ public class MySqlIntegrationIT {
 
         Config config = new Config();
         config.setTasaDolar(new BigDecimal("36.5000"));
+        String fechaCierre = finalizado.getFecha().substring(0, 10);
         CierreCaja cierre = new CierreCajaDao().consultarCierre(
-                LocalDate.now().toString(), CierreCaja.TipoCierre.TOTAL, "Admin", config);
+                fechaCierre, CierreCaja.TipoCierre.TOTAL, "Admin", config);
         assertEquals(0, cierre.getTotalEfectivoBs().compareTo(efectivoBs));
         assertEquals(0, cierre.getTotalEfectivoUsd().compareTo(efectivoUsd));
     }

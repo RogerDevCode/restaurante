@@ -25,9 +25,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import Modelo.ErrorAplicacionException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -72,6 +74,7 @@ public class ActualizacionTasaPedidosPendientesIT {
             st.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-TASA-%'");
             st.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-SALA-%'");
             st.executeUpdate("DELETE FROM auditoria_cambios_precio WHERE actor='" + USUARIO_PRUEBA + "'");
+            st.executeUpdate("UPDATE pedidos SET cerrada_en = '2022-05-18 23:59:59' WHERE id IN (2, 3, 4) AND cerrada_en IS NULL");
         }
     }
 
@@ -270,6 +273,61 @@ public class ActualizacionTasaPedidosPendientesIT {
                 assertTrue(auditados.contains(idPedido2));
                 assertFalse(auditados.contains(idPedido3));
                 assertFalse(auditados.contains(idPedido4));
+            }
+        }
+    }
+
+    @Test
+    public void testActualizarTasaFallaYRevierteSiMesaAbiertaTieneLineaSinClasificar() throws Exception {
+        int idSala = crearSalaPrueba(1);
+        Platos plato = crearPlato("USD-TEST-ABORT", new BigDecimal("10.00"), new BigDecimal("400.00"), "USD", false, false);
+
+        BigDecimal tasaInicial = new BigDecimal("40.0000");
+        tasaDao.actualizarTasaYRecalcularPendientes(tasaInicial, USUARIO_PRUEBA);
+
+        // Crear comanda abierta
+        Pedidos p = new Pedidos();
+        p.setId_sala(idSala);
+        p.setNum_mesa(1);
+        p.setUsuario(USUARIO_PRUEBA);
+        p.setTasaCambio(tasaInicial);
+        p.setIvaPorcentaje(BigDecimal.ZERO);
+        p.setSubtotal(new BigDecimal("10.00"));
+        p.setIvaMonto(BigDecimal.ZERO);
+        p.setTotalDecimal(new BigDecimal("10.00"));
+
+        DetallePedido d = new DetallePedido();
+        d.setIdPlato(plato.getId());
+        d.setNombre(plato.getNombre());
+        d.setPrecioDecimal(new BigDecimal("10.00"));
+        d.setCantidad(1);
+        d.setMonedaBase("USD");
+        d.setAplicaIva(false);
+        d.setPrecioIncluyeIva(false);
+        d.setIvaPorcentaje(BigDecimal.ZERO);
+
+        int idPedido = pedidosDao.registrarPedidoCompleto(p, List.of(d));
+        assertTrue(idPedido > 0);
+
+        // Simular que una línea de esta mesa abierta quedó sin clasificar en BD
+        try (Connection con = conexion();
+             PreparedStatement ps = con.prepareStatement("UPDATE detalle_pedidos SET moneda_base = NULL WHERE id_pedido = ?")) {
+            ps.setInt(1, idPedido);
+            assertEquals(1, ps.executeUpdate());
+        }
+
+        // Intentar actualizar la tasa global a 50.00
+        BigDecimal tasaNueva = new BigDecimal("50.0000");
+        ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
+                () -> tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA));
+        assertTrue(ex.getMessage().contains("sin clasificar"));
+
+        // Comprobar que en config la tasa NO cambió (rollback exitoso)
+        try (Connection con = conexion();
+             PreparedStatement ps = con.prepareStatement("SELECT tasa_dolar FROM config WHERE id = 1")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                assertTrue(rs.next());
+                assertEquals("La tasa en config debe conservar 40.0000", 0, tasaInicial.compareTo(rs.getBigDecimal(1)));
             }
         }
     }

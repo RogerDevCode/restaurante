@@ -89,6 +89,7 @@ public class CierreMesaYPagosCongeladosIT {
             st.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-T7-%'");
             st.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-T7-%'");
             st.executeUpdate("DELETE FROM auditoria_cambios_precio WHERE actor='" + USUARIO_PRUEBA + "'");
+            st.executeUpdate("UPDATE pedidos SET cerrada_en = '2022-05-18 23:59:59' WHERE id IN (2, 3, 4) AND cerrada_en IS NULL");
         }
     }
 
@@ -545,5 +546,64 @@ public class CierreMesaYPagosCongeladosIT {
         ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
                 () -> pedidosDao.cerrarMesa(idPedido, 1));
         assertTrue(ex.getMessage().contains("sin clasificar"));
+    }
+
+    @Test
+    public void testReintentoPagoConOrdenInvertidoEsIdempotenteYNoDuplica() throws Exception {
+        int idSala = crearSalaPrueba(1);
+        BigDecimal tasa = new BigDecimal("40.0000");
+        tasaDao.actualizarTasaYRecalcularPendientes(tasa, USUARIO_PRUEBA);
+
+        Platos plato = crearPlato("USD-REORDEN", new BigDecimal("10.00"), new BigDecimal("400.00"), "USD", false, false);
+
+        Pedidos p = new Pedidos();
+        p.setId_sala(idSala);
+        p.setNum_mesa(1);
+        p.setUsuario(USUARIO_PRUEBA);
+        p.setTasaCambio(tasa);
+        p.setIvaPorcentaje(BigDecimal.ZERO);
+        p.setSubtotal(new BigDecimal("10.00"));
+        p.setIvaMonto(BigDecimal.ZERO);
+        p.setTotalDecimal(new BigDecimal("10.00"));
+
+        DetallePedido d = new DetallePedido();
+        d.setIdPlato(plato.getId());
+        d.setNombre(plato.getNombre());
+        d.setPrecioDecimal(new BigDecimal("10.00"));
+        d.setCantidad(1);
+        d.setMonedaBase("USD");
+        d.setAplicaIva(false);
+        d.setPrecioIncluyeIva(false);
+        d.setIvaPorcentaje(BigDecimal.ZERO);
+
+        int idPedido = pedidosDao.registrarPedidoCompleto(p, List.of(d));
+        assertTrue(pedidosDao.cerrarMesa(idPedido, 1));
+
+        PagoPedido pagoBs = new PagoPedido("EFECTIVO_BS", "VES", new BigDecimal("200.00"));
+        PagoPedido pagoUsd = new PagoPedido("EFECTIVO_USD", "USD", new BigDecimal("5.00"));
+
+        // Primer cobro: orden [pagoBs, pagoUsd]
+        assertTrue(pedidosDao.actualizarEstadoConCliente(idPedido, "Cliente Idemp", "V-22222222", "MIXTO", List.of(pagoBs, pagoUsd)));
+
+        // Reintento: orden inverso [pagoUsd, pagoBs]
+        assertTrue(pedidosDao.actualizarEstadoConCliente(idPedido, "Cliente Idemp", "V-22222222", "MIXTO", List.of(pagoUsd, pagoBs)));
+
+        // Comprobar que en BD existen exactamente 1 liquidación y exactamente 2 pagos (no se duplicaron)
+        try (Connection con = conexion()) {
+            try (PreparedStatement psLiq = con.prepareStatement("SELECT COUNT(*) FROM pedido_liquidaciones WHERE id_pedido = ?")) {
+                psLiq.setInt(1, idPedido);
+                try (ResultSet rs = psLiq.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals("Debe existir exactamente 1 liquidación", 1, rs.getInt(1));
+                }
+            }
+            try (PreparedStatement psPag = con.prepareStatement("SELECT COUNT(*) FROM pedido_pagos WHERE id_pedido = ?")) {
+                psPag.setInt(1, idPedido);
+                try (ResultSet rs = psPag.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals("Debe existir exactamente 2 registros de pago", 2, rs.getInt(1));
+                }
+            }
+        }
     }
 }

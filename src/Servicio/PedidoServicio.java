@@ -70,16 +70,16 @@ public final class PedidoServicio {
             validarImporte(detalle.getPrecioDecimal(), "El precio de cada plato");
 
             if (detalle.getMonedaBase() == null || detalle.getMonedaBase().trim().isEmpty()) {
-                detalle.setMonedaBase("USD");
+                throw ErrorAplicacionException.validacion("El producto '" + detalle.getNombre() + "' debe tener asignada su moneda base (USD o VES).");
             }
             if (detalle.getAplicaIva() == null) {
-                detalle.setAplicaIva(Boolean.TRUE);
+                throw ErrorAplicacionException.validacion("El producto '" + detalle.getNombre() + "' debe indicar si aplica IVA.");
             }
             if (detalle.getPrecioIncluyeIva() == null) {
-                detalle.setPrecioIncluyeIva(Boolean.FALSE);
+                throw ErrorAplicacionException.validacion("El producto '" + detalle.getNombre() + "' debe indicar si el precio incluye IVA.");
             }
             if (detalle.getIvaPorcentaje() == null) {
-                detalle.setIvaPorcentaje(detalle.getAplicaIva()
+                detalle.setIvaPorcentaje(Boolean.TRUE.equals(detalle.getAplicaIva())
                         ? (pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje() : new BigDecimal("16.00"))
                         : BigDecimal.ZERO.setScale(2));
             }
@@ -87,8 +87,7 @@ public final class PedidoServicio {
 
         BigDecimal tasa = pedido.getTasaCambio();
         if (tasa == null || tasa.signum() <= 0) {
-            tasa = new BigDecimal("36.5000");
-            pedido.setTasaCambio(tasa);
+            throw ErrorAplicacionException.validacion("El pedido debe tener una tasa de cambio válida mayor a cero.");
         }
 
         CalculoMonetarioPedido.CalculoPedido resultado = CalculoMonetarioPedido.calcularPedido(detalles, tasa);

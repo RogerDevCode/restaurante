@@ -114,11 +114,40 @@ public class PedidoServicioTest {
         assertEquals(1, capturador.registros.size());
     }
 
+    @Test
+    public void rechazaDetalleSinMonedaBase() {
+        PedidoServicio servicio = new PedidoServicio(new PedidosRepositorioFalso());
+        DetallePedido det = detalleValido();
+        det.setMonedaBase(null);
+        org.junit.Assert.assertThrows(ErrorAplicacionException.class,
+                () -> servicio.registrarPedidoCompleto(pedidoValido(), List.of(det)));
+    }
+
+    @Test
+    public void rechazaDetalleSinAplicaIva() {
+        PedidoServicio servicio = new PedidoServicio(new PedidosRepositorioFalso());
+        DetallePedido det = detalleValido();
+        det.setAplicaIva(null);
+        org.junit.Assert.assertThrows(ErrorAplicacionException.class,
+                () -> servicio.registrarPedidoCompleto(pedidoValido(), List.of(det)));
+    }
+
+    @Test
+    public void rechazaPedidoSinTasaCambioPositiva() {
+        PedidoServicio servicio = new PedidoServicio(new PedidosRepositorioFalso());
+        Pedidos pedido = pedidoValido();
+        pedido.setTasaCambio(null);
+        org.junit.Assert.assertThrows(ErrorAplicacionException.class,
+                () -> servicio.registrarPedidoCompleto(pedido, List.of(detalleValido())));
+    }
+
     private Pedidos pedidoValido() {
         Pedidos pedido = new Pedidos();
         pedido.setId_sala(1);
         pedido.setNum_mesa(3);
+        pedido.setSubtotal(new BigDecimal("2500.00"));
         pedido.setTotalDecimal(new BigDecimal("2500.00"));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
         pedido.setUsuario("Ana");
         return pedido;
     }
@@ -128,6 +157,10 @@ public class PedidoServicioTest {
         detalle.setNombre("Plato del día");
         detalle.setCantidad(1);
         detalle.setPrecioDecimal(new BigDecimal("2500.00"));
+        detalle.setMonedaBase("USD");
+        detalle.setAplicaIva(false);
+        detalle.setPrecioIncluyeIva(false);
+        detalle.setIvaPorcentaje(BigDecimal.ZERO);
         return detalle;
     }
 

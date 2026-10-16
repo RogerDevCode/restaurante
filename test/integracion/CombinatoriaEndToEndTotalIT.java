@@ -200,9 +200,29 @@ public class CombinatoriaEndToEndTotalIT {
             String platoB = "E2E_PLATO_B_" + sufijo;
             String platoC = "E2E_PLATO_C_" + sufijo;
 
-            assertTrue(platosAdminServicio.registrar(new Platos(0, platoA, new BigDecimal("10.00"), fechaHoy)));
-            assertTrue(platosAdminServicio.registrar(new Platos(0, platoB, new BigDecimal("25.00"), fechaHoy)));
-            assertTrue(platosAdminServicio.registrar(new Platos(0, platoC, new BigDecimal("5.00"), fechaHoy)));
+            Platos pA = new Platos(0, platoA, new BigDecimal("10.00"), fechaHoy);
+            pA.setMonedaBase("USD");
+            pA.setPrecioUsd(new BigDecimal("10.00"));
+            pA.setAplicaIva(true);
+            pA.setPrecioIncluyeIva(false);
+            pA.setPrecioClasificado(true);
+            assertTrue(platosAdminServicio.registrar(pA));
+
+            Platos pB = new Platos(0, platoB, new BigDecimal("25.00"), fechaHoy);
+            pB.setMonedaBase("USD");
+            pB.setPrecioUsd(new BigDecimal("25.00"));
+            pB.setAplicaIva(true);
+            pB.setPrecioIncluyeIva(false);
+            pB.setPrecioClasificado(true);
+            assertTrue(platosAdminServicio.registrar(pB));
+
+            Platos pC = new Platos(0, platoC, new BigDecimal("5.00"), fechaHoy);
+            pC.setMonedaBase("USD");
+            pC.setPrecioUsd(new BigDecimal("5.00"));
+            pC.setAplicaIva(true);
+            pC.setPrecioIncluyeIva(false);
+            pC.setPrecioClasificado(true);
+            assertTrue(platosAdminServicio.registrar(pC));
 
             // -----------------------------------------------------------------
             // FASE 2: MATRIZ COMBINATORIA DE IVA Y TASAS DE CAMBIO
@@ -266,10 +286,17 @@ public class CombinatoriaEndToEndTotalIT {
                 pedidoNuevo.setTotalBs(fiscal.totalBs());
                 pedidoNuevo.setUsuario(nombreAsistente);
 
-                List<DetallePedido> detalles = Arrays.asList(
-                        new DetallePedido(0, platoA, new BigDecimal("10.00"), 2, "Término medio", 0),
-                        new DetallePedido(0, platoB, new BigDecimal("25.00"), 1, "Sin salsa", 0)
-                );
+                DetallePedido det1 = new DetallePedido(0, platoA, new BigDecimal("10.00"), 2, "Término medio", 0);
+                det1.setMonedaBase("USD");
+                det1.setAplicaIva(true);
+                det1.setPrecioIncluyeIva(false);
+
+                DetallePedido det2 = new DetallePedido(0, platoB, new BigDecimal("25.00"), 1, "Sin salsa", 0);
+                det2.setMonedaBase("USD");
+                det2.setAplicaIva(true);
+                det2.setPrecioIncluyeIva(false);
+
+                List<DetallePedido> detalles = Arrays.asList(det1, det2);
 
                 // Asistente registra pedido
                 int idPedido = pedidosCtrlAsistente.registrarPedidoCompleto(pedidoNuevo, detalles);
@@ -346,9 +373,11 @@ public class CombinatoriaEndToEndTotalIT {
                 pedidoReapertura.setTotalBs(fiscalReapertura.totalBs());
                 pedidoReapertura.setUsuario(nombreAsistente);
 
-                List<DetallePedido> detalleReapertura = Arrays.asList(
-                        new DetallePedido(0, platoC, new BigDecimal("5.00"), 1, "", 0)
-                );
+                DetallePedido detC = new DetallePedido(0, platoC, new BigDecimal("5.00"), 1, "", 0);
+                detC.setMonedaBase("USD");
+                detC.setAplicaIva(true);
+                detC.setPrecioIncluyeIva(false);
+                List<DetallePedido> detalleReapertura = Arrays.asList(detC);
                 int idReapertura = pedidosCtrlAsistente.registrarPedidoCompleto(pedidoReapertura, detalleReapertura);
                 assertTrue(idReapertura > 0);
                 assertTrue(pedidosCtrlAdmin.finalizarPedido(idReapertura));

@@ -113,7 +113,7 @@ public class ActualizacionTasaDao {
                     }
                 }
                 if (tasaAnterior == null) {
-                    tasaAnterior = new BigDecimal("36.5000");
+                    tasaAnterior = BigDecimal.ZERO;
                 }
 
                 // Si no hay cambio en la tasa, no se requiere recálculo de pedidos
@@ -226,11 +226,16 @@ public class ActualizacionTasaDao {
                                 det.setIvaPorcentaje(rs.getBigDecimal("iva_porcentaje"));
                                 det.setPrecioCongelado(rs.getInt("precio_congelado") != 0);
 
-                                if (det.getMonedaBase() == null) det.setMonedaBase("USD");
-                                if (det.getAplicaIva() == null) det.setAplicaIva(Boolean.TRUE);
-                                if (det.getPrecioIncluyeIva() == null) det.setPrecioIncluyeIva(Boolean.FALSE);
+                                if (!det.isPrecioCongelado()) {
+                                    if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()
+                                            || det.getAplicaIva() == null || det.getPrecioIncluyeIva() == null) {
+                                        throw ErrorAplicacionException.validacion("No se puede actualizar la tasa: el pedido #" + idPed
+                                                + " contiene productos heredados sin clasificar (detalle #" + det.getId() + ": '"
+                                                + det.getNombre() + "'). Clasifíquelos en el catálogo o congélelos antes de continuar.");
+                                    }
+                                }
                                 if (det.getIvaPorcentaje() == null) {
-                                    det.setIvaPorcentaje(det.getAplicaIva()
+                                    det.setIvaPorcentaje(Boolean.TRUE.equals(det.getAplicaIva())
                                             ? (ivaPorc != null ? ivaPorc : new BigDecimal("16.00"))
                                             : BigDecimal.ZERO.setScale(2));
                                 }

@@ -42,6 +42,10 @@ public class PedidoIvaIntegracionFlujoTest {
         d1.setNombre("Hamburguesa");
         d1.setCantidad(2);
         d1.setPrecioDecimal(new BigDecimal("10.00"));
+        d1.setMonedaBase("USD");
+        d1.setAplicaIva(true);
+        d1.setPrecioIncluyeIva(false);
+        d1.setIvaPorcentaje(new BigDecimal("16.00"));
         detalles.add(d1);
 
         BigDecimal subtotal = new BigDecimal("20.00");
@@ -134,6 +138,10 @@ public class PedidoIvaIntegracionFlujoTest {
         d1.setNombre("Pizza");
         d1.setCantidad(1);
         d1.setPrecioDecimal(new BigDecimal("15.00"));
+        d1.setMonedaBase("USD");
+        d1.setAplicaIva(false);
+        d1.setPrecioIncluyeIva(false);
+        d1.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
         detalles.add(d1);
 
         // Pedido donde total == subtotal (consumo en mesa sin IVA previo a facturar)
@@ -143,6 +151,7 @@ public class PedidoIvaIntegracionFlujoTest {
         pedido.setUsuario("Mesero 2");
         pedido.setSubtotal(new BigDecimal("15.00"));
         pedido.setTotalDecimal(new BigDecimal("15.00"));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
 
         int id = servicio.registrarPedidoCompleto(pedido, detalles);
         assertEquals(102, id);
@@ -158,6 +167,10 @@ public class PedidoIvaIntegracionFlujoTest {
         d1.setNombre("Pasta");
         d1.setCantidad(1);
         d1.setPrecioDecimal(new BigDecimal("10.00"));
+        d1.setMonedaBase("USD");
+        d1.setAplicaIva(true);
+        d1.setPrecioIncluyeIva(false);
+        d1.setIvaPorcentaje(new BigDecimal("16.00"));
         detalles.add(d1);
 
         Pedidos pedido = new Pedidos();
@@ -168,6 +181,7 @@ public class PedidoIvaIntegracionFlujoTest {
         pedido.setIvaPorcentaje(new BigDecimal("16.00"));
         pedido.setIvaMonto(new BigDecimal("1.60"));
         pedido.setTotalDecimal(new BigDecimal("99.99")); // Alterado fraudulentamente
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
 
         ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
                 () -> servicio.registrarPedidoCompleto(pedido, detalles));

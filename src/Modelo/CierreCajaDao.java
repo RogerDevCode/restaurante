@@ -44,7 +44,10 @@ public class CierreCajaDao {
         if (fechaConsulta != null && !fechaConsulta.trim().isEmpty()) {
             try {
                 LocalDate fechaParsed = LocalDate.parse(fechaConsulta.trim(), DateTimeFormatter.ISO_LOCAL_DATE);
-                if (fechaParsed.isAfter(LocalDate.now())) {
+                LocalDate maxFechaPermitida = LocalDate.now().isAfter(LocalDate.now(java.time.ZoneOffset.UTC))
+                        ? LocalDate.now()
+                        : LocalDate.now(java.time.ZoneOffset.UTC);
+                if (fechaParsed.isAfter(maxFechaPermitida)) {
                     throw ErrorAplicacionException.validacion("No se puede generar cierre de caja para una fecha futura: " + fechaConsulta.trim());
                 }
                 fechaFiltro = fechaParsed.toString();

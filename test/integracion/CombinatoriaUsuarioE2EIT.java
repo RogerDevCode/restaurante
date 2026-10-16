@@ -185,8 +185,21 @@ public class CombinatoriaUsuarioE2EIT {
         String fechaHoy = LocalDate.now().toString();
         String nombrePlatoA = "COMB_PLATO_A_" + sufijo;
         String nombrePlatoB = "COMB_PLATO_B_" + sufijo;
-        assertTrue(platosAdminServicio.registrar(new Platos(0, nombrePlatoA, new BigDecimal("12.00"), fechaHoy)));
-        assertTrue(platosAdminServicio.registrar(new Platos(0, nombrePlatoB, new BigDecimal("2.50"), fechaHoy)));
+        Platos pA = new Platos(0, nombrePlatoA, new BigDecimal("12.00"), fechaHoy);
+        pA.setMonedaBase("USD");
+        pA.setPrecioUsd(new BigDecimal("12.00"));
+        pA.setAplicaIva(false);
+        pA.setPrecioIncluyeIva(false);
+        pA.setPrecioClasificado(true);
+        assertTrue(platosAdminServicio.registrar(pA));
+
+        Platos pB = new Platos(0, nombrePlatoB, new BigDecimal("2.50"), fechaHoy);
+        pB.setMonedaBase("USD");
+        pB.setPrecioUsd(new BigDecimal("2.50"));
+        pB.setAplicaIva(false);
+        pB.setPrecioIncluyeIva(false);
+        pB.setPrecioClasificado(true);
+        assertTrue(platosAdminServicio.registrar(pB));
 
         // 6. Asistente puede consultar salas y platos
         assertTrue(salasAsistenteServicio.listar().stream().anyMatch(s -> s.getId() == idSala));
@@ -215,10 +228,17 @@ public class CombinatoriaUsuarioE2EIT {
         BigDecimal totalBs1 = totalUSD1.multiply(tasaInicial).setScale(2, RoundingMode.HALF_UP); // 29 * 36.50 = 1058.50
 
         Pedidos pedido1 = new Pedidos(0, idSala, 3, fechaHoy, totalUSD1, nombreSala, asistente.getNombre(), "PENDIENTE", tasaInicial, totalBs1);
-        List<DetallePedido> detalles1 = Arrays.asList(
-                new DetallePedido(0, nombrePlatoA, new BigDecimal("12.00"), 2, "Con extra queso", 0),
-                new DetallePedido(0, nombrePlatoB, new BigDecimal("2.50"), 2, "Bien frío con limón", 0)
-        );
+        DetallePedido d1 = new DetallePedido(0, nombrePlatoA, new BigDecimal("12.00"), 2, "Con extra queso", 0);
+        d1.setMonedaBase("USD");
+        d1.setAplicaIva(false);
+        d1.setPrecioIncluyeIva(false);
+
+        DetallePedido d2 = new DetallePedido(0, nombrePlatoB, new BigDecimal("2.50"), 2, "Bien frío con limón", 0);
+        d2.setMonedaBase("USD");
+        d2.setAplicaIva(false);
+        d2.setPrecioIncluyeIva(false);
+
+        List<DetallePedido> detalles1 = Arrays.asList(d1, d2);
 
         int idPedido1 = pedidosCtrl.registrarPedidoCompleto(pedido1, detalles1);
         assertTrue("Pedido 1 debe ser registrado con id > 0", idPedido1 > 0);
@@ -242,9 +262,12 @@ public class CombinatoriaUsuarioE2EIT {
         BigDecimal totalBs2 = totalUSD2.multiply(tasaNueva).setScale(2, RoundingMode.HALF_UP); // 12 * 40 = 480.00
 
         Pedidos pedido2 = new Pedidos(0, idSala, 4, fechaHoy, totalUSD2, nombreSala, asistente.getNombre(), "PENDIENTE", tasaNueva, totalBs2);
-        List<DetallePedido> detalles2 = Arrays.asList(
-                new DetallePedido(0, nombrePlatoA, new BigDecimal("12.00"), 1, "", 0)
-        );
+        DetallePedido d2_1 = new DetallePedido(0, nombrePlatoA, new BigDecimal("12.00"), 1, "", 0);
+        d2_1.setMonedaBase("USD");
+        d2_1.setAplicaIva(false);
+        d2_1.setPrecioIncluyeIva(false);
+
+        List<DetallePedido> detalles2 = Arrays.asList(d2_1);
 
         int idPedido2 = pedidosCtrl.registrarPedidoCompleto(pedido2, detalles2);
         assertTrue("Pedido 2 debe ser registrado con id > 0", idPedido2 > 0);

@@ -236,7 +236,7 @@ public class PreciosPedidosDao {
                     }
 
                     if (tasaCambio == null || tasaCambio.signum() <= 0) {
-                        tasaCambio = new BigDecimal("36.5000");
+                        throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no tiene una tasa de cambio válida registrada.");
                     }
                     if (totalBsAnterior != null) {
                         totalAnteriorGlobal = totalAnteriorGlobal.add(totalBsAnterior);
@@ -303,12 +303,16 @@ public class PreciosPedidosDao {
                                 ps.setInt(6, det.getId());
                                 ps.executeUpdate();
                             } else {
-                                // Asegurar normalización para CalculoMonetarioPedido
-                                if (det.getMonedaBase() == null) det.setMonedaBase("USD");
-                                if (det.getAplicaIva() == null) det.setAplicaIva(Boolean.TRUE);
-                                if (det.getPrecioIncluyeIva() == null) det.setPrecioIncluyeIva(Boolean.FALSE);
+                                if (!det.isPrecioCongelado()) {
+                                    if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()
+                                            || det.getAplicaIva() == null || det.getPrecioIncluyeIva() == null) {
+                                        throw ErrorAplicacionException.validacion("No se puede actualizar el catálogo: el pedido #" + idPedido
+                                                + " contiene productos heredados sin clasificar (detalle #" + det.getId() + ": '"
+                                                + det.getNombre() + "'). Clasifíquelos en el catálogo o márquelos como congelados antes de continuar.");
+                                    }
+                                }
                                 if (det.getIvaPorcentaje() == null) {
-                                    det.setIvaPorcentaje(det.getAplicaIva()
+                                    det.setIvaPorcentaje(Boolean.TRUE.equals(det.getAplicaIva())
                                             ? (ivaPorcentajeCabecera != null ? ivaPorcentajeCabecera : new BigDecimal("16.00"))
                                             : BigDecimal.ZERO.setScale(2));
                                 }

@@ -66,6 +66,7 @@ public class AuditoriaTransaccionalPreciosIT {
             st.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-AUD-%'");
             st.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-SALA-AUD-%'");
             st.executeUpdate("DELETE FROM auditoria_cambios_precio WHERE actor='" + USUARIO_PRUEBA + "'");
+            st.executeUpdate("UPDATE pedidos SET cerrada_en = '2022-05-18 23:59:59' WHERE id IN (2, 3, 4) AND cerrada_en IS NULL");
         }
     }
 
@@ -119,6 +120,7 @@ public class AuditoriaTransaccionalPreciosIT {
         d.setCantidad(1);
         d.setMonedaBase("USD");
         d.setAplicaIva(false);
+        d.setPrecioIncluyeIva(false);
         int idPedido = pedidosDao.registrarPedidoCompleto(p, List.of(d));
 
         List<DetallePedido> detalles = pedidosDao.verPedidoDetalle(idPedido);

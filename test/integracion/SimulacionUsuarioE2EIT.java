@@ -106,22 +106,46 @@ public class SimulacionUsuarioE2EIT {
 
             String hoy = LocalDate.now().toString();
             Platos plato1 = new Platos(0, "Plato E2E A " + sufijo, new BigDecimal("25.00"), hoy);
+            plato1.setPrecioUsd(new BigDecimal("25.00"));
+            plato1.setMonedaBase("USD");
+            plato1.setAplicaIva(false);
+            plato1.setPrecioIncluyeIva(false);
+            plato1.setPrecioClasificado(true);
+
             Platos plato2 = new Platos(0, "Plato E2E B " + sufijo, new BigDecimal("10.00"), hoy);
+            plato2.setPrecioUsd(new BigDecimal("10.00"));
+            plato2.setMonedaBase("USD");
+            plato2.setAplicaIva(false);
+            plato2.setPrecioIncluyeIva(false);
+            plato2.setPrecioClasificado(true);
+
             assertTrue(platosCtrl.registrar(plato1));
             assertTrue(platosCtrl.registrar(plato2));
 
             // 4. Registrar Pedido completo con cálculo en Bolívares y Dólares
             DetallePedido det1 = new DetallePedido(0, plato1.getNombre(), plato1.getPrecioDecimal(), 2, "Sin sal", 0);
+            det1.setMonedaBase("USD");
+            det1.setAplicaIva(false);
+            det1.setPrecioIncluyeIva(false);
+            det1.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+
             DetallePedido det2 = new DetallePedido(0, plato2.getNombre(), plato2.getPrecioDecimal(), 1, "Normal", 0);
+            det2.setMonedaBase("USD");
+            det2.setAplicaIva(false);
+            det2.setPrecioIncluyeIva(false);
+            det2.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+
             BigDecimal totalUsd = new BigDecimal("60.00"); // 25*2 + 10*1 = 60
             BigDecimal totalBs = totalUsd.multiply(tasaDolar).setScale(2, RoundingMode.HALF_UP); // 60 * 38.50 = 2310.00
 
             Pedidos pedido = new Pedidos(0, salaCreada.getId(), 4, hoy, totalUsd, salaCreada.getNombre(), admin.getNombre(), "PENDIENTE", tasaDolar, totalBs);
+            pedido.setSubtotal(totalUsd);
             int idPedido = pedidosCtrl.registrarPedidoCompleto(pedido, Arrays.asList(det1, det2));
             assertTrue("ID de pedido debe ser positivo", idPedido > 0);
 
             // 5. Conflicto de concurrencia: no se puede duplicar pedido pendiente en la misma mesa
             Pedidos pedidoConflicto = new Pedidos(0, salaCreada.getId(), 4, hoy, new BigDecimal("10.00"), salaCreada.getNombre(), "Mozo2", "PENDIENTE", tasaDolar, new BigDecimal("385.00"));
+            pedidoConflicto.setSubtotal(new BigDecimal("10.00"));
             assertThrows(PedidoPendienteExistenteException.class,
                     () -> pedidosCtrl.registrarPedidoCompleto(pedidoConflicto, Arrays.asList(det2)));
 

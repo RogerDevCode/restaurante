@@ -12,9 +12,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import Servicio.CalculoMonetarioPedido;
 import Servicio.CalculoMonetarioPedido.CalculoPedido;
@@ -434,8 +436,10 @@ public class PedidosDao implements PedidosRepositorio {
             importePersistible(detalle.getPrecioDecimal(), "El precio de cada plato");
         }
 
-        BigDecimal tasa = (pedido.getTasaCambio() != null && pedido.getTasaCambio().signum() > 0)
-                ? pedido.getTasaCambio().setScale(4, RoundingMode.HALF_UP) : new BigDecimal("36.5000");
+        if (pedido.getTasaCambio() == null || pedido.getTasaCambio().signum() <= 0) {
+            throw ErrorAplicacionException.validacion("El pedido debe tener una tasa de cambio válida mayor a cero.");
+        }
+        BigDecimal tasa = pedido.getTasaCambio().setScale(4, RoundingMode.HALF_UP);
 
         BigDecimal ivaPedido = pedido.getIvaPorcentaje() != null ? pedido.getIvaPorcentaje().setScale(2, RoundingMode.HALF_UP) : new BigDecimal("16.00");
         List<DetallePedido> detallesNormalizados = new ArrayList<>(detalles.size());
@@ -443,12 +447,21 @@ public class PedidosDao implements PedidosRepositorio {
             if (d == null) {
                 throw ErrorAplicacionException.validacion("El pedido contiene un detalle nulo.");
             }
+            if (d.getMonedaBase() == null || d.getMonedaBase().isBlank()) {
+                throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' debe tener asignada su moneda base (USD o VES).");
+            }
+            if (d.getAplicaIva() == null) {
+                throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' debe indicar si aplica IVA.");
+            }
+            if (d.getPrecioIncluyeIva() == null) {
+                throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' debe indicar si el precio incluye IVA.");
+            }
             DetallePedido clon = new DetallePedido();
             clon.setPrecioDecimal(d.getPrecioDecimal());
             clon.setCantidad(d.getCantidad());
-            clon.setMonedaBase(d.getMonedaBase() != null && !d.getMonedaBase().isBlank() ? d.getMonedaBase() : "USD");
-            clon.setAplicaIva(d.getAplicaIva() != null ? d.getAplicaIva() : Boolean.TRUE);
-            clon.setPrecioIncluyeIva(d.getPrecioIncluyeIva() != null ? d.getPrecioIncluyeIva() : Boolean.FALSE);
+            clon.setMonedaBase(d.getMonedaBase());
+            clon.setAplicaIva(d.getAplicaIva());
+            clon.setPrecioIncluyeIva(d.getPrecioIncluyeIva());
             clon.setIvaPorcentaje(d.getIvaPorcentaje() != null ? d.getIvaPorcentaje()
                     : (Boolean.TRUE.equals(clon.getAplicaIva()) ? ivaPedido : BigDecimal.ZERO.setScale(2)));
             detallesNormalizados.add(clon);
@@ -979,6 +992,8 @@ public class PedidosDao implements PedidosRepositorio {
                     LOGGER.fine("Tabla pedido_liquidaciones no disponible o ya registrada: " + exLiq.getMessage());
                 }
 
+                Map<String, Integer> contadorOcurrencias = new HashMap<>();
+
                 String sqlPago = """
                     INSERT INTO pedido_pagos
                         (id_pedido, metodo_pago, moneda, monto, tasa_cambio, monto_bs, monto_usd,
@@ -987,13 +1002,13 @@ public class PedidosDao implements PedidosRepositorio {
                     ON DUPLICATE KEY UPDATE id = id
                     """;
                 try (PreparedStatement ps = conexion.prepareStatement(sqlPago)) {
-                    int idx = 0;
                     for (PagoPedido pago : pagos) {
-                        idx++;
                         BigDecimal montoRec = pago.montoRecibido() != null ? pago.montoRecibido() : pago.monto();
                         BigDecimal montoApl = pago.montoAplicado() != null ? pago.montoAplicado() : pago.monto();
                         BigDecimal cambio = pago.cambioDevuelto() != null ? pago.cambioDevuelto() : BigDecimal.ZERO;
-                        String idempPago = "PAGO-" + id_pedido + "-" + idx + "-V" + versionPrecio + "-" + pago.metodo() + "-" + montoApl.stripTrailingZeros().toPlainString();
+                        String clavePago = pago.metodo() + "-" + pago.moneda() + "-" + montoApl.stripTrailingZeros().toPlainString();
+                        int ocurrencia = contadorOcurrencias.merge(clavePago, 1, Integer::sum);
+                        String idempPago = "PAGO-" + id_pedido + "-V" + versionPrecio + "-" + clavePago + "#" + ocurrencia;
 
                         ps.setInt(1, id_pedido);
                         ps.setString(2, pago.metodo());
@@ -1013,7 +1028,12 @@ public class PedidosDao implements PedidosRepositorio {
                         ps.setString(12, idempPago);
                         ps.addBatch();
                     }
-                    ps.executeBatch();
+                    int[] resultadosBatch = ps.executeBatch();
+                    for (int r : resultadosBatch) {
+                        if (r == 0) {
+                            LOGGER.log(Level.INFO, "Reintento de pago absorbido por idempotencia para el pedido #{0}", id_pedido);
+                        }
+                    }
                 }
 
                 try (PreparedStatement ps = conexion.prepareStatement("""
@@ -1079,7 +1099,7 @@ public class PedidosDao implements PedidosRepositorio {
             SET estado = ?, fecha = CURRENT_TIMESTAMP, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
                 efectivo_bs = CASE
                     WHEN ? = 'MIXTO' THEN ?
-                    WHEN ? IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(total_bs, total * COALESCE(NULLIF(tasa_cambio, 0), 36.5000))
+                    WHEN ? IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(total_bs, total * NULLIF(tasa_cambio, 0), 0)
                     ELSE 0 END,
                 efectivo_usd = CASE
                     WHEN ? = 'MIXTO' THEN ?
@@ -1166,7 +1186,7 @@ public class PedidosDao implements PedidosRepositorio {
                 BigDecimal totalUsd = rs.getBigDecimal("total");
                 BigDecimal tasa = rs.getBigDecimal("tasa_cambio");
                 if (tasa == null || tasa.signum() <= 0) {
-                    tasa = new BigDecimal("36.5000");
+                    throw ErrorAplicacionException.validacion("El pedido #" + idPedido + " no tiene tasa de cambio registrada.");
                 }
                 BigDecimal totalBs = rs.getBigDecimal("total_bs");
                 if (totalBs == null) {

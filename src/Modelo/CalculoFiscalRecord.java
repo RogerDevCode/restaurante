@@ -163,7 +163,7 @@ public record CalculoFiscalRecord(
                 throw ErrorAplicacionException.validacion("El porcentaje de IVA debe tener hasta dos decimales.");
             }
         }
-        if (tasaCambio != null && tasaCambio.compareTo(BigDecimal.ZERO) <= 0) {
+        if (tasaCambio == null || tasaCambio.compareTo(BigDecimal.ZERO) <= 0) {
             throw ErrorAplicacionException.validacion("La tasa de cambio debe ser positiva.");
         }
 
@@ -171,7 +171,7 @@ public record CalculoFiscalRecord(
         BigDecimal exUsd = exentoUsd != null ? exentoUsd.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
         BigDecimal subUsd = baseUsd.add(exUsd).setScale(2, RoundingMode.HALF_UP);
         BigDecimal ivaPct = ivaPorcentaje != null ? ivaPorcentaje.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
-        BigDecimal tasa = tasaCambio != null && tasaCambio.compareTo(BigDecimal.ZERO) > 0 ? tasaCambio : new BigDecimal("36.5000");
+        BigDecimal tasa = tasaCambio.setScale(4, RoundingMode.HALF_UP);
 
         BigDecimal cien = new BigDecimal("100");
         BigDecimal ivaUsd = baseUsd.multiply(ivaPct).divide(cien, 2, RoundingMode.HALF_UP);

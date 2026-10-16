@@ -1005,7 +1005,12 @@ public class PanelAtencionMesasSplit extends JPanel {
         }
 
         BigDecimal tasa = sistema.getTasaActual();
-        if (tasa == null || tasa.signum() <= 0) tasa = new BigDecimal("36.5000");
+        if (tasa == null || tasa.signum() <= 0) {
+            lblTotalUsd.setText("Total: $ 0.00");
+            lblTotalBs.setText("(Tasa no configurada)");
+            btnCobrar.setEnabled(false);
+            return;
+        }
         BigDecimal ivaPorcentaje = new BigDecimal("16.00");
 
         List<DetallePedido> detalles = new ArrayList<>();
@@ -1046,7 +1051,10 @@ public class PanelAtencionMesasSplit extends JPanel {
         }
 
         BigDecimal tasa = sistema.getTasaActual();
-        if (tasa == null || tasa.signum() <= 0) tasa = new BigDecimal("36.5000");
+        if (tasa == null || tasa.signum() <= 0) {
+            sistema.mostrarAvisoEnBanda("Configure una tasa de cambio válida antes de enviar el pedido.");
+            return;
+        }
         BigDecimal ivaPorcentaje = new BigDecimal("16.00");
 
         List<DetallePedido> detalles = new ArrayList<>();
