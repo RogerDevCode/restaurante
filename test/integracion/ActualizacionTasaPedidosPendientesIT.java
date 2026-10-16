@@ -316,11 +316,16 @@ public class ActualizacionTasaPedidosPendientesIT {
             assertEquals(1, ps.executeUpdate());
         }
 
+        List<DetallePedido> detallesGuardados = pedidosDao.verPedidoDetalle(idPedido);
+        int idDetalle = detallesGuardados.getFirst().getId();
+
         // Intentar actualizar la tasa global a 50.00
         BigDecimal tasaNueva = new BigDecimal("50.0000");
         ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
                 () -> tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA));
-        assertTrue(ex.getMessage().contains("sin clasificar"));
+        assertTrue("Debe mencionar sin clasificar", ex.getMessage().contains("sin clasificar"));
+        assertTrue("Debe incluir id_pedido", ex.getMessage().contains("pedido #" + idPedido));
+        assertTrue("Debe incluir id_detalle", ex.getMessage().contains("detalle #" + idDetalle));
 
         // Comprobar que en config la tasa NO cambió (rollback exitoso)
         try (Connection con = conexion();

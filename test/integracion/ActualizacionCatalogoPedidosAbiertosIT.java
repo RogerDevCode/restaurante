@@ -73,6 +73,7 @@ public class ActualizacionCatalogoPedidosAbiertosIT {
             st.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-PROP-%'");
             st.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-SALA-%'");
             st.executeUpdate("DELETE FROM auditoria_cambios_precio WHERE actor='" + USUARIO_PRUEBA + "'");
+            st.executeUpdate("UPDATE pedidos SET cerrada_en = '2022-05-18 23:59:59' WHERE id IN (2, 3, 4) AND cerrada_en IS NULL");
         }
     }
 
@@ -352,5 +353,74 @@ public class ActualizacionCatalogoPedidosAbiertosIT {
         // Verificar que el total sigue siendo el original
         Pedidos pedCerrado = pedidosDao.verPedido(idPedido);
         assertEquals(new BigDecimal("9.28"), pedCerrado.getTotalDecimal());
+    }
+
+    @Test
+    public void testActualizarCatalogoFallaYRevierteSiMesaAbiertaTieneLineaSinClasificar() throws Exception {
+        int idSala = crearSalaPrueba(1);
+        BigDecimal tasa = new BigDecimal("40.0000");
+
+        Platos plato1 = crearPlato("IT-PROP-PLATO1", new BigDecimal("10.00"), new BigDecimal("400.00"), "USD", false, false);
+        Platos plato2 = crearPlato("IT-PROP-PLATO2", new BigDecimal("20.00"), new BigDecimal("800.00"), "USD", false, false);
+
+        Pedidos p = new Pedidos();
+        p.setId_sala(idSala);
+        p.setNum_mesa(1);
+        p.setUsuario(USUARIO_PRUEBA);
+        p.setTasaCambio(tasa);
+        p.setIvaPorcentaje(BigDecimal.ZERO);
+        p.setSubtotal(new BigDecimal("30.00"));
+        p.setIvaMonto(BigDecimal.ZERO);
+        p.setTotalDecimal(new BigDecimal("30.00"));
+
+        DetallePedido d1 = new DetallePedido();
+        d1.setIdPlato(plato1.getId());
+        d1.setNombre(plato1.getNombre());
+        d1.setPrecioDecimal(new BigDecimal("10.00"));
+        d1.setCantidad(1);
+        d1.setMonedaBase("USD");
+        d1.setAplicaIva(false);
+        d1.setPrecioIncluyeIva(false);
+        d1.setIvaPorcentaje(BigDecimal.ZERO);
+
+        DetallePedido d2 = new DetallePedido();
+        d2.setIdPlato(plato2.getId());
+        d2.setNombre(plato2.getNombre());
+        d2.setPrecioDecimal(new BigDecimal("20.00"));
+        d2.setCantidad(1);
+        d2.setMonedaBase("USD");
+        d2.setAplicaIva(false);
+        d2.setPrecioIncluyeIva(false);
+        d2.setIvaPorcentaje(BigDecimal.ZERO);
+
+        int idPedido = pedidosDao.registrarPedidoCompleto(p, List.of(d1, d2));
+        assertTrue(idPedido > 0);
+
+        List<DetallePedido> detallesGuardados = pedidosDao.verPedidoDetalle(idPedido);
+        DetallePedido det2Guardado = detallesGuardados.stream().filter(d -> d.getIdPlato() == plato2.getId()).findFirst().orElseThrow();
+
+        // Simular que la línea del plato2 quedó sin clasificar en BD
+        try (Connection con = conexion();
+             PreparedStatement ps = con.prepareStatement("UPDATE detalle_pedidos SET moneda_base = NULL WHERE id = ?")) {
+            ps.setInt(1, det2Guardado.getId());
+            assertEquals(1, ps.executeUpdate());
+        }
+
+        // Modificar plato1 en catálogo e intentar propagarlo a pedidos abiertos
+        plato1.setPrecioUsd(new BigDecimal("15.00"));
+        plato1.setPrecioDecimal(new BigDecimal("15.00"));
+
+        ErrorAplicacionException ex = org.junit.Assert.assertThrows(ErrorAplicacionException.class, () ->
+                preciosPedidosDao.modificarProductoYRecalcularPendientes(plato1, USUARIO_PRUEBA)
+        );
+
+        // Verificar que el mensaje menciona el pedido y el detalle afectados
+        assertTrue("Debe mencionar sin clasificar", ex.getMessage().contains("sin clasificar"));
+        assertTrue("Debe incluir id_pedido", ex.getMessage().contains("pedido #" + idPedido));
+        assertTrue("Debe incluir id_detalle", ex.getMessage().contains("detalle #" + det2Guardado.getId()));
+
+        // Verificar que el pedido conservó su importe original de 30.00 (rollback exitoso)
+        Pedidos pedPost = pedidosDao.verPedido(idPedido);
+        assertEquals(0, new BigDecimal("30.00").compareTo(pedPost.getTotalDecimal()));
     }
 }
