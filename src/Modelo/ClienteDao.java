@@ -318,7 +318,18 @@ public class ClienteDao implements ClienteRepositorio {
             // 5. Top 5 Platos Más Vendidos
             try {
                 String sqlTopPlatos = """
-                    SELECT d.nombre, SUM(d.cantidad) AS cant, SUM(d.precio * d.cantidad) AS total_usd
+                    SELECT d.nombre,
+                           SUM(d.cantidad) AS cant,
+                           SUM(CASE
+                               WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES' AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0
+                                   THEN (d.precio * d.cantidad) / p.tasa_cambio
+                               ELSE (d.precio * d.cantidad)
+                           END) AS total_usd,
+                           SUM(CASE
+                               WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES'
+                                   THEN (d.precio * d.cantidad)
+                               ELSE (d.precio * d.cantidad) * COALESCE(p.tasa_cambio, 1)
+                           END) AS total_bs
                     FROM detalle_pedidos d
                     INNER JOIN pedidos p ON d.id_pedido = p.id
                     WHERE p.estado = 'FINALIZADO'
@@ -334,7 +345,7 @@ public class ClienteDao implements ClienteRepositorio {
                                 rs.getString("nombre"),
                                 rs.getInt("cant"),
                                 rs.getBigDecimal("total_usd"),
-                                null
+                                rs.getBigDecimal("total_bs")
                         ));
                     }
                 }

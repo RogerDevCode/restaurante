@@ -911,9 +911,9 @@ public final class Sistema extends javax.swing.JFrame {
                 new int[]{200, 110, 110, 100},
                 new int[]{-1, 120, 120, 110});
         configurarColumnasProporcionales(tableTopPlatos,
-                new int[]{120, 60, 90},
-                new int[]{160, 70, 110},
-                new int[]{-1, 70, 110});
+                new int[]{120, 50, 80, 80},
+                new int[]{150, 60, 100, 100},
+                new int[]{-1, 70, 110, 110});
         configurarColumnasProporcionales(tableMesonerosDashboard,
                 new int[]{100, 70, 80, 80},
                 new int[]{140, 80, 100, 100},
@@ -2936,7 +2936,7 @@ public final class Sistema extends javax.swing.JFrame {
                                         .addComponent(jLabel11)
                                         .addGroup(jPanel23Layout.createSequentialGroup()
                                             .addGap(10, 10, 10)
-                                            .addComponent(totalMenu, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                            .addComponent(totalMenu, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)))
                                     .addComponent(btnGenerarPedido, javax.swing.GroupLayout.Alignment.TRAILING))))))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel24, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -3929,10 +3929,13 @@ public final class Sistema extends javax.swing.JFrame {
                 O[1] = nombre;
                 O[2] = det.getCantidad();
                 java.math.BigDecimal precio = det.getPrecioDecimal().setScale(2, java.math.RoundingMode.HALF_UP);
-                String precioStr = String.format(java.util.Locale.US, "%.2f", precio);
-                O[3] = precioStr;
+                String monedaDet = (det.getMonedaBase() != null && !det.getMonedaBase().isBlank())
+                        ? det.getMonedaBase()
+                        : "USD";
+                BigDecimal tasaActual = getTasaActual();
                 java.math.BigDecimal subtotal = precio.multiply(new java.math.BigDecimal(det.getCantidad())).setScale(2, java.math.RoundingMode.HALF_UP);
-                O[4] = String.format(java.util.Locale.US, "%.2f", subtotal);
+                O[3] = formatearMontoCelda(precio, monedaDet, tasaActual);
+                O[4] = formatearMontoCelda(subtotal, monedaDet, tasaActual);
                 O[5] = det.getComentario();
                 if (tieneColumnaIva) {
                     BigDecimal ivaRef = (ped != null && ped.getIvaPorcentaje() != null)
@@ -4275,12 +4278,14 @@ public final class Sistema extends javax.swing.JFrame {
             lista.add(precioStr);
             boolean aplicaIva = platoAplicaIvaMap.getOrDefault(id, true);
             boolean tieneColumnaIva = tmp.getColumnCount() >= 7;
+            String mb = (plato != null && plato.getMonedaBase() != null) ? plato.getMonedaBase() : "USD";
+            BigDecimal tasaActual = getTasaActual();
             Object[] O = new Object[tieneColumnaIva ? 7 : 6];
             O[0] = lista.get(1);
             O[1] = lista.get(2);
             O[2] = lista.get(3);
-            O[3] = lista.get(4);
-            O[4] = lista.get(5);
+            O[3] = formatearMontoCelda(precio2Dec, mb, tasaActual);
+            O[4] = formatearMontoCelda(precio2Dec, mb, tasaActual);
             O[5] = "";
             if (tieneColumnaIva) {
                 O[6] = formatearEtiquetaIva(aplicaIva);
@@ -4451,8 +4456,10 @@ public final class Sistema extends javax.swing.JFrame {
         javax.swing.table.DefaultTableModel tmp = (javax.swing.table.DefaultTableModel) tableMenu.getModel();
         if (fila >= 0 && fila < tmp.getRowCount()) {
             java.math.BigDecimal precio = importeMonetario(tmp.getValueAt(fila, 3));
+            String monedaFila = monedaFilaEnCarrito(tableMenu, fila);
+            BigDecimal nuevoSub = precio.multiply(new java.math.BigDecimal(nuevaCant)).setScale(2, RoundingMode.HALF_UP);
             tmp.setValueAt(nuevaCant, fila, 2);
-            tmp.setValueAt(String.format(java.util.Locale.US, "%.2f", precio.multiply(new java.math.BigDecimal(nuevaCant))), fila, 4);
+            tmp.setValueAt(formatearMontoCelda(nuevoSub, monedaFila, getTasaActual()), fila, 4);
             TotalPagar(tableMenu, totalMenu);
             tableMenu.setRowSelectionInterval(fila, fila);
             if (tableMenu.getSelectedRow() == fila) {
@@ -4497,12 +4504,13 @@ public final class Sistema extends javax.swing.JFrame {
             }
             int nuevaCantidad = Math.addExact(cantActual, 1);
             BigDecimal precioUnitario = importeMonetario(Tables.valorModelo(tableMenu, fila, 3));
+            String monedaFila = monedaFilaEnCarrito(tableMenu, fila);
             BigDecimal nuevoSub = precioUnitario.multiply(BigDecimal.valueOf(nuevaCantidad))
                     .setScale(2, RoundingMode.HALF_UP);
 
             tmp = (DefaultTableModel) tableMenu.getModel();
             tmp.setValueAt(nuevaCantidad, fila, 2);
-            tmp.setValueAt(String.format(java.util.Locale.US, "%.2f", nuevoSub), fila, 4);
+            tmp.setValueAt(formatearMontoCelda(nuevoSub, monedaFila, getTasaActual()), fila, 4);
             TotalPagar(tableMenu, totalMenu);
             tableMenu.setRowSelectionInterval(fila, fila);
             actualizarEstadoBotonesCarrito();
@@ -4524,10 +4532,11 @@ public final class Sistema extends javax.swing.JFrame {
             if (cantActual > 1) {
                 int nuevaCantidad = cantActual - 1;
                 BigDecimal precioUnitario = importeMonetario(Tables.valorModelo(tableMenu, fila, 3));
+                String monedaFila = monedaFilaEnCarrito(tableMenu, fila);
                 BigDecimal nuevoSub = precioUnitario.multiply(BigDecimal.valueOf(nuevaCantidad))
                         .setScale(2, RoundingMode.HALF_UP);
                 tmp.setValueAt(nuevaCantidad, fila, 2);
-                tmp.setValueAt(String.format(java.util.Locale.US, "%.2f", nuevoSub), fila, 4);
+                tmp.setValueAt(formatearMontoCelda(nuevoSub, monedaFila, getTasaActual()), fila, 4);
                 tableMenu.setRowSelectionInterval(fila, fila);
             } else {
                 tmp.removeRow(fila);
@@ -5166,48 +5175,159 @@ public final class Sistema extends javax.swing.JFrame {
     // End of variables declaration//GEN-END:variables
 
     private void TotalPagar(JTable tabla, JLabel label) {
-        Totalpagar = BigDecimal.ZERO.setScale(2);
-        BigDecimal baseImponible = BigDecimal.ZERO.setScale(2);
-        BigDecimal exento = BigDecimal.ZERO.setScale(2);
         int numFila = tabla.getRowCount();
+        if (numFila == 0) {
+            Totalpagar = BigDecimal.ZERO.setScale(2);
+            label.setText("$ 0.00");
+            label.setToolTipText("Consumo en mesa: $ 0.00 (IVA y total en Bs. se calculan al facturar)");
+            if (tabla == tableMenu) {
+                actualizarCabecerasMonedaMenu();
+            }
+            return;
+        }
+
+        BigDecimal tasa = getTasaActual();
+        boolean tasaValida = tasa != null && tasa.signum() > 0;
+        BigDecimal tasaNorm = tasaValida ? tasa.setScale(4, RoundingMode.HALF_UP) : null;
+
+        BigDecimal ivaPorcentaje = getIvaPorcentajeActual();
+        BigDecimal ivaNorm = (ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) >= 0)
+                ? ivaPorcentaje.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+
+        boolean tienePlatosVes = false;
+        List<DetallePedido> detalles = new ArrayList<>();
+        BigDecimal totalUsdDirecto = BigDecimal.ZERO.setScale(2);
+        BigDecimal totalBsDirecto = BigDecimal.ZERO.setScale(2);
+
         for (int i = 0; i < numFila; i++) {
             BigDecimal subtotal = importeMonetario(tabla.getModel().getValueAt(i, 4));
+            int cant = 1;
+            try {
+                cant = Integer.parseInt(tabla.getModel().getValueAt(i, 2).toString().trim());
+                if (cant < 1) cant = 1;
+            } catch (Exception ignored) {}
+
+            BigDecimal precioUnit;
+            try {
+                precioUnit = importeMonetario(tabla.getModel().getValueAt(i, 3));
+            } catch (Exception ex) {
+                precioUnit = subtotal.divide(BigDecimal.valueOf(cant), 2, RoundingMode.HALF_UP);
+            }
+
+            Object idObj = tabla.getModel().getValueAt(i, 0);
+            Integer idPlato = null;
+            if (idObj != null && !idObj.toString().isBlank()) {
+                try {
+                    idPlato = Integer.parseInt(idObj.toString().trim());
+                } catch (NumberFormatException ignored) {}
+            }
+            Platos plato = idPlato != null ? platosPorId.get(idPlato) : null;
+            String nombre = tabla.getModel().getValueAt(i, 1) != null ? tabla.getModel().getValueAt(i, 1).toString() : "";
+            if (plato == null && !nombre.isBlank()) {
+                for (Platos p : platosPorId.values()) {
+                    if (p != null && p.getNombre() != null && p.getNombre().equalsIgnoreCase(nombre)) {
+                        plato = p;
+                        break;
+                    }
+                }
+            }
+
+            String mb = (plato != null && plato.getMonedaBase() != null)
+                    ? plato.getMonedaBase().toUpperCase(java.util.Locale.ROOT)
+                    : null;
+            if (mb == null) {
+                String valCelda = String.valueOf(tabla.getModel().getValueAt(i, 3)).trim().toUpperCase(java.util.Locale.ROOT);
+                if (valCelda.startsWith("BS") || valCelda.contains("BS.")) {
+                    mb = "VES";
+                } else if (valCelda.startsWith("$")) {
+                    mb = "USD";
+                } else {
+                    String r = monedaUbFila(tabla, i);
+                    if ("B".equalsIgnoreCase(r) || "VES".equalsIgnoreCase(r)) {
+                        mb = "VES";
+                    } else {
+                        mb = "USD";
+                    }
+                }
+            }
+            if ("VES".equals(mb)) {
+                tienePlatosVes = true;
+                totalBsDirecto = totalBsDirecto.add(subtotal);
+            } else {
+                totalUsdDirecto = totalUsdDirecto.add(subtotal);
+            }
+
             boolean itemAplicaIva = true;
             if (tabla.getModel().getColumnCount() > 6 && tabla.getModel().getValueAt(i, 6) != null) {
                 String valIva = tabla.getModel().getValueAt(i, 6).toString().toLowerCase(java.util.Locale.ROOT);
                 if (valIva.contains("exento") || valIva.contains("no") || valIva.equals("false") || valIva.equals("0")) {
                     itemAplicaIva = false;
                 }
-            } else {
-                Object idObj = tabla.getModel().getValueAt(i, 0);
-                if (idObj != null) {
-                    try {
-                        int idPlato = Integer.parseInt(idObj.toString());
-                        itemAplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
-                    } catch (Exception ignored) {}
-                }
+            } else if (plato != null) {
+                itemAplicaIva = plato.isAplicaIva();
+            } else if (idPlato != null) {
+                itemAplicaIva = platoAplicaIvaMap.getOrDefault(idPlato, true);
             }
-            if (itemAplicaIva) {
-                baseImponible = baseImponible.add(subtotal);
-            } else {
-                exento = exento.add(subtotal);
-            }
-            Totalpagar = Totalpagar.add(subtotal);
+
+            Boolean incIva = (plato != null) ? plato.getPrecioIncluyeIva() : Boolean.FALSE;
+            if (incIva == null || !itemAplicaIva) incIva = Boolean.FALSE;
+
+            DetallePedido det = new DetallePedido();
+            det.setNombre(nombre.isBlank() ? "Plato" : nombre);
+            det.setCantidad(cant);
+            det.setPrecioDecimal(precioUnit);
+            det.setMonedaBase(mb);
+            det.setAplicaIva(itemAplicaIva);
+            det.setPrecioIncluyeIva(incIva);
+            det.setIvaPorcentaje(itemAplicaIva ? ivaNorm : BigDecimal.ZERO.setScale(2));
+            detalles.add(det);
         }
-        Totalpagar = Totalpagar.setScale(2, RoundingMode.HALF_UP);
-        baseImponible = baseImponible.setScale(2, RoundingMode.HALF_UP);
-        exento = exento.setScale(2, RoundingMode.HALF_UP);
-        String totalUsdStr = String.format(java.util.Locale.US, "%.2f", Totalpagar);
-        label.setText("$ " + totalUsdStr);
-        if (exento.signum() > 0) {
-            label.setToolTipText("Consumo en mesa: $ " + totalUsdStr
-                    + " (Base Imponible: $ " + String.format(java.util.Locale.US, "%.2f", baseImponible)
-                    + ", Exento: $ " + String.format(java.util.Locale.US, "%.2f", exento)
-                    + " - IVA y total en Bs. se calculan al facturar)");
+
+        BigDecimal totalUsd;
+        BigDecimal totalBs;
+        BigDecimal subUsd;
+        BigDecimal subBs;
+        if (tasaValida) {
+            try {
+                Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasaNorm);
+                totalUsd = calc.totalUsd();
+                totalBs = calc.totalVes();
+                subUsd = calc.subtotalUsd();
+                subBs = calc.subtotalVes();
+            } catch (Exception ex) {
+                totalUsd = totalUsdDirecto.add(totalBsDirecto.divide(tasaNorm, 2, RoundingMode.HALF_UP));
+                totalBs = totalBsDirecto.add(totalUsdDirecto.multiply(tasaNorm).setScale(2, RoundingMode.HALF_UP));
+                subUsd = totalUsd;
+                subBs = totalBs;
+            }
         } else {
-            label.setToolTipText("Consumo en mesa: $ " + totalUsdStr
-                    + " (IVA y total en Bs. se calculan al facturar)");
+            totalUsd = totalUsdDirecto;
+            totalBs = totalBsDirecto;
+            subUsd = totalUsdDirecto;
+            subBs = totalBsDirecto;
         }
+
+        Totalpagar = totalUsd.setScale(2, RoundingMode.HALF_UP);
+        String totalUsdStr = String.format(java.util.Locale.US, "%.2f", Totalpagar);
+        String totalBsStr = String.format(java.util.Locale.US, "%.2f", totalBs.setScale(2, RoundingMode.HALF_UP));
+
+        if (tienePlatosVes) {
+            label.setText("USD $ " + totalUsdStr + "  |  Bs. " + totalBsStr);
+            label.setToolTipText("Consumo en mesa: USD $ " + totalUsdStr + " | Bs. " + totalBsStr
+                    + " (Subtotal: $ " + String.format(java.util.Locale.US, "%.2f", subUsd)
+                    + " / Bs. " + String.format(java.util.Locale.US, "%.2f", subBs)
+                    + " - IVA y total oficial se confirman al facturar)");
+        } else {
+            label.setText("$ " + totalUsdStr);
+            if (tasaValida) {
+                label.setToolTipText("Consumo en mesa: $ " + totalUsdStr + " (Bs. " + totalBsStr + ")"
+                        + " - IVA y total en Bs. se calculan al facturar");
+            } else {
+                label.setToolTipText("Consumo en mesa: $ " + totalUsdStr
+                        + " (IVA y total en Bs. se calculan al facturar)");
+            }
+        }
+
         if (tabla == tableMenu) {
             actualizarCabecerasMonedaMenu();
         }
@@ -5875,7 +5995,7 @@ public final class Sistema extends javax.swing.JFrame {
                 new java.awt.Color(40, 40, 40)));
 
         tableTopPlatos = new javax.swing.JTable(new javax.swing.table.DefaultTableModel(
-                new Object[][]{}, new String[]{"Plato", "Cant.", "Total ($)"}
+                new Object[][]{}, new String[]{"Plato", "Cant.", "Total ($)", "Total (Bs.)"}
         ) {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
@@ -6096,7 +6216,12 @@ public final class Sistema extends javax.swing.JFrame {
                 javax.swing.table.DefaultTableModel modelPlatos = (javax.swing.table.DefaultTableModel) tableTopPlatos.getModel();
                 modelPlatos.setRowCount(0);
                 for (Modelo.EstadisticasDashboard.ItemEstadistica item : stats.getTopPlatos()) {
-                    modelPlatos.addRow(new Object[]{item.getNombre(), item.getCantidad(), "$ " + String.format(java.util.Locale.US, "%.2f", item.getTotalDolares())});
+                    modelPlatos.addRow(new Object[]{
+                        item.getNombre(),
+                        item.getCantidad(),
+                        "$ " + String.format(java.util.Locale.US, "%.2f", item.getTotalDolares()),
+                        "Bs. " + String.format(java.util.Locale.US, "%.2f", item.getTotalBs())
+                    });
                 }
             }
 
@@ -9533,9 +9658,16 @@ public final class Sistema extends javax.swing.JFrame {
                     : (p.getPrecioUsd() != null ? p.getPrecioUsd() : p.getPrecioDecimal());
             if (precioPrimario == null) precioPrimario = BigDecimal.ZERO;
             String precioStr = String.format(java.util.Locale.US, "%.2f", precioPrimario.setScale(2, RoundingMode.HALF_UP));
-            String prefijo = "VES".equals(moneda) ? "Bs. " : "$ ";
             String clasif = !p.isPrecioClasificado() ? " [!]" : "";
-            ob[2] = prefijo + precioStr + clasif;
+            if ("VES".equals(moneda)) {
+                BigDecimal tasa = getTasaActual();
+                BigDecimal refUsd = (tasa != null && tasa.signum() > 0)
+                        ? precioPrimario.divide(tasa, 2, RoundingMode.HALF_UP)
+                        : null;
+                ob[2] = "Bs. " + precioStr + (refUsd != null ? " ($ " + String.format(java.util.Locale.US, "%.2f", refUsd) + ")" : "") + clasif;
+            } else {
+                ob[2] = "$ " + precioStr + clasif;
+            }
             if (tieneColumnaIva) {
                 String ivaLabel = formatearEtiquetaIva(p.isAplicaIva());
                 if (p.isAplicaIva() && Boolean.TRUE.equals(p.getPrecioIncluyeIva())) {
@@ -10200,8 +10332,15 @@ public final class Sistema extends javax.swing.JFrame {
                 detalle.setPrecioIncluyeIva(plato.getPrecioIncluyeIva());
                 detalle.setIvaPorcentaje(plato.isAplicaIva() ? ivaPorcentaje : BigDecimal.ZERO.setScale(2));
             } else {
+                String valCelda = String.valueOf(Tables.valorModelo(tableMenu, i, 3)).trim().toUpperCase(java.util.Locale.ROOT);
+                if (valCelda.startsWith("BS") || valCelda.contains("BS.")) {
+                    detalle.setMonedaBase("VES");
+                } else {
+                    detalle.setMonedaBase("USD");
+                }
                 boolean aplica = aplicaIvaEnFila(i);
                 detalle.setAplicaIva(aplica);
+                detalle.setPrecioIncluyeIva(Boolean.FALSE);
                 detalle.setIvaPorcentaje(aplica ? ivaPorcentaje : BigDecimal.ZERO.setScale(2));
             }
             detalles.add(detalle);
@@ -10259,6 +10398,46 @@ public final class Sistema extends javax.swing.JFrame {
         } catch (NumberFormatException | ArithmeticException ex) {
             throw ErrorAplicacionException.validacion("Ingresa un importe válido.");
         }
+    }
+
+    public static String formatearMontoCelda(BigDecimal monto, String monedaBase, BigDecimal tasa) {
+        if (monto == null) {
+            return "0.00";
+        }
+        BigDecimal montoNorm = monto.setScale(2, RoundingMode.HALF_UP);
+        boolean tasaValida = tasa != null && tasa.signum() > 0;
+        if ("VES".equalsIgnoreCase(monedaBase)) {
+            BigDecimal refUsd = tasaValida ? montoNorm.divide(tasa, 2, RoundingMode.HALF_UP) : null;
+            return "Bs. " + String.format(java.util.Locale.US, "%.2f", montoNorm)
+                    + (refUsd != null ? " ($ " + String.format(java.util.Locale.US, "%.2f", refUsd) + ")" : "");
+        } else {
+            BigDecimal refBs = tasaValida ? montoNorm.multiply(tasa).setScale(2, RoundingMode.HALF_UP) : null;
+            return "$ " + String.format(java.util.Locale.US, "%.2f", montoNorm)
+                    + (refBs != null ? " (Bs. " + String.format(java.util.Locale.US, "%.2f", refBs) + ")" : "");
+        }
+    }
+
+    private String monedaFilaEnCarrito(JTable tabla, int fila) {
+        if (tabla == null || fila < 0 || fila >= tabla.getRowCount()) {
+            return "USD";
+        }
+        Object idObj = tabla.getModel().getValueAt(fila, 0);
+        if (idObj != null && !idObj.toString().isBlank()) {
+            try {
+                Platos p = platosPorId.get(Integer.parseInt(idObj.toString().trim()));
+                if (p != null && p.getMonedaBase() != null) {
+                    return p.getMonedaBase().toUpperCase(java.util.Locale.ROOT);
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+        Object celda = tabla.getModel().getValueAt(fila, 3);
+        if (celda != null) {
+            String s = celda.toString().trim().toUpperCase(java.util.Locale.ROOT);
+            if (s.startsWith("BS") || s.contains("BS.")) {
+                return "VES";
+            }
+        }
+        return "USD";
     }
 
     private void cargarPedidoEnPantalla(int id_pedido, boolean permitirFinalizar) {
@@ -10393,8 +10572,16 @@ public final class Sistema extends javax.swing.JFrame {
                         ? "Bs. " + String.format(java.util.Locale.US, "%.2f", precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP))
                         : "Bs. N/D";
             }
+            String subtotalBsStr;
+            if (calcPantalla != null) {
+                Servicio.CalculoMonetarioPedido.CalculoLinea lin = calcPantalla.lineas().get(i);
+                subtotalBsStr = "Bs. " + String.format(java.util.Locale.US, "%.2f", lin.totalVes());
+            } else {
+                BigDecimal subBs = tasaValida ? subtotalPlatoUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP) : null;
+                subtotalBsStr = subBs != null ? "Bs. " + String.format(java.util.Locale.US, "%.2f", subBs) : "Bs. N/D";
+            }
             ob[3] = "$ " + String.format(java.util.Locale.US, "%.2f", precioUsd) + " (" + precioBs + ")";
-            ob[4] = "$ " + String.format(java.util.Locale.US, "%.2f", subtotalPlatoUsd);
+            ob[4] = "$ " + String.format(java.util.Locale.US, "%.2f", subtotalPlatoUsd) + " (" + subtotalBsStr + ")";
             ob[5] = det.getComentario();
             modelo.addRow(ob);
             monedaFilaFinalizar.put(modelo.getRowCount() - 1, ub(det.getMonedaBase()));

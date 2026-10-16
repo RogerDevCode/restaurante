@@ -115,11 +115,17 @@ public class CierreCaja {
         private final String nombre;
         private final int cantidad;
         private final BigDecimal totalUsd;
+        private final BigDecimal totalBs;
 
         public PlatoVendido(String nombre, int cantidad, BigDecimal totalUsd) {
+            this(nombre, cantidad, totalUsd, BigDecimal.ZERO.setScale(2));
+        }
+
+        public PlatoVendido(String nombre, int cantidad, BigDecimal totalUsd, BigDecimal totalBs) {
             this.nombre = nombre != null ? nombre.trim() : "Plato";
             this.cantidad = cantidad;
             this.totalUsd = totalUsd != null ? totalUsd.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+            this.totalBs = totalBs != null ? totalBs.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
         }
 
         public String getNombre() {
@@ -132,6 +138,10 @@ public class CierreCaja {
 
         public BigDecimal getTotalUsd() {
             return totalUsd;
+        }
+
+        public BigDecimal getTotalBs() {
+            return totalBs;
         }
     }
 

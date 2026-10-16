@@ -257,15 +257,17 @@ public final class GeneradorPdfCierre {
             if (!cierre.getTopPlatos().isEmpty()) {
                 agregarSeparadorSimple(documento);
                 documento.add(new Paragraph("TOP PLATOS VENDIDOS", FONT_SECCION));
-                PdfPTable tblPlatos = crearTabla(3, new float[]{55f, 20f, 25f});
+                PdfPTable tblPlatos = crearTabla(4, new float[]{45f, 15f, 20f, 20f});
                 celda(tblPlatos, "Plato", FONT_REGULAR_BOLD, Element.ALIGN_LEFT);
                 celda(tblPlatos, "Cant", FONT_REGULAR_BOLD, Element.ALIGN_CENTER);
                 celda(tblPlatos, "Total ($)", FONT_REGULAR_BOLD, Element.ALIGN_RIGHT);
+                celda(tblPlatos, "Total (Bs.)", FONT_REGULAR_BOLD, Element.ALIGN_RIGHT);
 
                 for (CierreCaja.PlatoVendido pv : cierre.getTopPlatos()) {
                     celda(tblPlatos, pv.getNombre(), FONT_REGULAR, Element.ALIGN_LEFT);
                     celda(tblPlatos, String.valueOf(pv.getCantidad()), FONT_REGULAR, Element.ALIGN_CENTER);
                     celda(tblPlatos, "$" + String.format(java.util.Locale.US, "%.2f", pv.getTotalUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
+                    celda(tblPlatos, "Bs. " + String.format(java.util.Locale.US, "%.2f", pv.getTotalBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
                 }
                 documento.add(tblPlatos);
             }

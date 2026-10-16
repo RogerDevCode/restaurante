@@ -676,7 +676,7 @@
                                               <Component id="jLabel11" min="-2" max="-2" attributes="0"/>
                                               <Group type="102" alignment="0" attributes="0">
                                                   <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
-                                                  <Component id="totalMenu" min="-2" pref="120" max="-2" attributes="0"/>
+                                                  <Component id="totalMenu" min="-2" pref="260" max="-2" attributes="0"/>
                                               </Group>
                                           </Group>
                                           <Component id="btnGenerarPedido" alignment="1" min="-2" max="-2" attributes="0"/>

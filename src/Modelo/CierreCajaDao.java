@@ -318,7 +318,16 @@ public class CierreCajaDao {
                 String sqlTopPlatos = """
                     SELECT d.nombre,
                            SUM(d.cantidad) AS cant,
-                           COALESCE(SUM(d.precio * d.cantidad), 0) AS total_usd
+                           COALESCE(SUM(CASE
+                               WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES' AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0
+                                   THEN (d.precio * d.cantidad) / p.tasa_cambio
+                               ELSE (d.precio * d.cantidad)
+                           END), 0) AS total_usd,
+                           COALESCE(SUM(CASE
+                               WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES'
+                                   THEN (d.precio * d.cantidad)
+                               ELSE (d.precio * d.cantidad) * COALESCE(p.tasa_cambio, 1)
+                           END), 0) AS total_bs
                     FROM detalle_pedidos d
                     INNER JOIN pedidos p ON d.id_pedido = p.id
                     WHERE p.estado = 'FINALIZADO'
@@ -335,7 +344,8 @@ public class CierreCajaDao {
                             platos.add(new CierreCaja.PlatoVendido(
                                     rs.getString("nombre"),
                                     rs.getInt("cant"),
-                                    rs.getBigDecimal("total_usd")
+                                    rs.getBigDecimal("total_usd"),
+                                    rs.getBigDecimal("total_bs")
                             ));
                         }
                     }
