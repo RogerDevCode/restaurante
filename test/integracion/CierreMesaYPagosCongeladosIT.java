@@ -89,7 +89,6 @@ public class CierreMesaYPagosCongeladosIT {
             st.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-T7-%'");
             st.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-T7-%'");
             st.executeUpdate("DELETE FROM auditoria_cambios_precio WHERE actor='" + USUARIO_PRUEBA + "'");
-            st.executeUpdate("UPDATE pedidos SET cerrada_en = '2022-05-18 23:59:59' WHERE id IN (2, 3, 4) AND cerrada_en IS NULL");
         }
     }
 
@@ -154,7 +153,7 @@ public class CierreMesaYPagosCongeladosIT {
         int idPedido = pedidosDao.registrarPedidoCompleto(p1, List.of(d1));
 
         // 2. Tasa sube a 45.00 -> mesa abierta se recalcula a Bs. 450.00, version_precio = 2
-        tasaDao.actualizarTasaYRecalcularPendientes(new BigDecimal("45.0000"), USUARIO_PRUEBA);
+        tasaDao.actualizarTasaYRecalcularPendientes(new BigDecimal("45.0000"), USUARIO_PRUEBA, null, idSala);
         Pedidos pedPostTasa1 = pedidosDao.verPedido(idPedido);
         assertEquals(new BigDecimal("10.00"), pedPostTasa1.getTotalDecimal());
         assertEquals(new BigDecimal("450.00"), pedPostTasa1.getTotalBs());
@@ -171,7 +170,7 @@ public class CierreMesaYPagosCongeladosIT {
         assertThrows(ErrorAplicacionException.class, () -> pedidosDao.cerrarMesa(idPedido, 1));
 
         // 4. Cambiar tasa nuevamente de 45.00 a 60.00: La mesa cerrada DEBE CONSERVAR Bs. 450.00 y tasa 45.0000
-        tasaDao.actualizarTasaYRecalcularPendientes(new BigDecimal("60.0000"), USUARIO_PRUEBA);
+        tasaDao.actualizarTasaYRecalcularPendientes(new BigDecimal("60.0000"), USUARIO_PRUEBA, null, idSala);
 
         Pedidos pedCerrado = pedidosDao.verPedido(idPedido);
         assertEquals("Total USD debe seguir congelado", new BigDecimal("10.00"), pedCerrado.getTotalDecimal());
@@ -194,7 +193,7 @@ public class CierreMesaYPagosCongeladosIT {
     public void testPagoMixtoConAjusteCambiarioFxExacto() throws Exception {
         int idSala = crearSalaPrueba(1);
         BigDecimal tasaCierre = new BigDecimal("40.0000");
-        tasaDao.actualizarTasaYRecalcularPendientes(tasaCierre, USUARIO_PRUEBA);
+        tasaDao.actualizarTasaYRecalcularPendientes(tasaCierre, USUARIO_PRUEBA, null, idSala);
 
         // Creamos un plato VES con importe impar 100.03 VES
         Platos platoVes = crearPlato("VES-IMPAR", new BigDecimal("2.50"), new BigDecimal("100.03"), "VES", false, false);
@@ -336,7 +335,7 @@ public class CierreMesaYPagosCongeladosIT {
     public void testResumenConciliacionReglaP2D() throws Exception {
         int idSala = crearSalaPrueba(1);
         BigDecimal tasaOriginal = new BigDecimal("40.0000");
-        tasaDao.actualizarTasaYRecalcularPendientes(tasaOriginal, USUARIO_PRUEBA);
+        tasaDao.actualizarTasaYRecalcularPendientes(tasaOriginal, USUARIO_PRUEBA, null, idSala);
 
         Platos plato = crearPlato("USD-CONCIL", new BigDecimal("50.00"), new BigDecimal("2000.00"), "USD", false, false);
 
@@ -379,7 +378,7 @@ public class CierreMesaYPagosCongeladosIT {
         assertEquals(new BigDecimal("1200.00"), r1.saldoBsPendiente());
 
         // Cambiar la tasa global en la base a 60.0000
-        tasaDao.actualizarTasaYRecalcularPendientes(new BigDecimal("60.0000"), USUARIO_PRUEBA);
+        tasaDao.actualizarTasaYRecalcularPendientes(new BigDecimal("60.0000"), USUARIO_PRUEBA, null, idSala);
 
         // Resumen después del cambio de tasa: Demostrar que según P2-D el monto pagado en Bs sigue siendo 800.00
         ResumenConciliacionPedido r2 = pedidosDao.resumenConciliacion(idPedido);
@@ -451,7 +450,7 @@ public class CierreMesaYPagosCongeladosIT {
     public void testReintentoPagoNoDuplicaCobroNiRegistros() throws Exception {
         int idSala = crearSalaPrueba(1);
         BigDecimal tasa = new BigDecimal("40.0000");
-        tasaDao.actualizarTasaYRecalcularPendientes(tasa, USUARIO_PRUEBA);
+        tasaDao.actualizarTasaYRecalcularPendientes(tasa, USUARIO_PRUEBA, null, idSala);
 
         Platos plato = crearPlato("USD-REINTENTO", new BigDecimal("10.00"), new BigDecimal("400.00"), "USD", false, false);
 
@@ -552,7 +551,7 @@ public class CierreMesaYPagosCongeladosIT {
     public void testReintentoPagoConOrdenInvertidoEsIdempotenteYNoDuplica() throws Exception {
         int idSala = crearSalaPrueba(1);
         BigDecimal tasa = new BigDecimal("40.0000");
-        tasaDao.actualizarTasaYRecalcularPendientes(tasa, USUARIO_PRUEBA);
+        tasaDao.actualizarTasaYRecalcularPendientes(tasa, USUARIO_PRUEBA, null, idSala);
 
         Platos plato = crearPlato("USD-REORDEN", new BigDecimal("10.00"), new BigDecimal("400.00"), "USD", false, false);
 

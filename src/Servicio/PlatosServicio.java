@@ -189,8 +189,10 @@ public final class PlatosServicio {
         if (!normalizado.isAplicaIva()) {
             normalizado.setPrecioIncluyeIva(Boolean.FALSE);
         } else {
-            normalizado.setPrecioIncluyeIva(plato.getPrecioIncluyeIva() != null
-                    ? plato.getPrecioIncluyeIva() : Boolean.FALSE);
+            if (plato.getPrecioIncluyeIva() == null) {
+                throw ErrorAplicacionException.validacion("Debe indicar si el precio del plato incluye IVA.");
+            }
+            normalizado.setPrecioIncluyeIva(plato.getPrecioIncluyeIva());
         }
 
         BigDecimal precioPrimario = plato.getPrecioDecimal().setScale(2, java.math.RoundingMode.HALF_UP);

@@ -73,7 +73,6 @@ public class ActualizacionCatalogoPedidosAbiertosIT {
             st.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-PROP-%'");
             st.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-SALA-%'");
             st.executeUpdate("DELETE FROM auditoria_cambios_precio WHERE actor='" + USUARIO_PRUEBA + "'");
-            st.executeUpdate("UPDATE pedidos SET cerrada_en = '2022-05-18 23:59:59' WHERE id IN (2, 3, 4) AND cerrada_en IS NULL");
         }
     }
 

@@ -43,22 +43,36 @@ public class ActualizacionTasaDao {
     }
 
     public int contarPedidosAbiertos() {
-        String sql = "SELECT COUNT(*) FROM pedidos WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL";
+        return contarPedidosAbiertos(null);
+    }
+
+    public int contarPedidosAbiertos(Integer idSalaFiltro) {
+        String sql = (idSalaFiltro != null && idSalaFiltro > 0)
+                ? "SELECT COUNT(*) FROM pedidos WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL AND id_sala = ?"
+                : "SELECT COUNT(*) FROM pedidos WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL";
         try (Connection con = conexiones.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) return rs.getInt(1);
-            return 0;
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            if (idSalaFiltro != null && idSalaFiltro > 0) {
+                ps.setInt(1, idSalaFiltro);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+                return 0;
+            }
         } catch (SQLException ex) {
             throw new DataAccessException("Error al contar pedidos abiertos: " + ex.getMessage(), ex);
         }
     }
 
     public ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario) {
-        return actualizarTasaYRecalcularPendientes(tasaNueva, usuario, null);
+        return actualizarTasaYRecalcularPendientes(tasaNueva, usuario, null, null);
     }
 
     public ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario, String idempotencyKey) {
+        return actualizarTasaYRecalcularPendientes(tasaNueva, usuario, idempotencyKey, null);
+    }
+
+    public ResultadoActualizacionPrecios actualizarTasaYRecalcularPendientes(BigDecimal tasaNueva, String usuario, String idempotencyKey, Integer idSalaFiltro) {
         if (tasaNueva == null || tasaNueva.signum() <= 0) {
             throw ErrorAplicacionException.validacion("La tasa de cambio debe ser positiva.");
         }
@@ -68,7 +82,7 @@ public class ActualizacionTasaDao {
         while (true) {
             intentos++;
             try {
-                return ejecutarTransaccion(tasaNormalizada, usuario, idempotencyKey);
+                return ejecutarTransaccion(tasaNormalizada, usuario, idempotencyKey, idSalaFiltro);
             } catch (SQLException ex) {
                 if (esDeadlock(ex) && intentos < MAX_INTENTOS_DEADLOCK) {
                     LOGGER.log(Level.WARNING, "Deadlock detectado al actualizar tasa; reintentando intento {0}", intentos);
@@ -85,7 +99,7 @@ public class ActualizacionTasaDao {
         }
     }
 
-    private ResultadoActualizacionPrecios ejecutarTransaccion(BigDecimal tasaNueva, String usuario, String idempotencyKey) throws SQLException {
+    private ResultadoActualizacionPrecios ejecutarTransaccion(BigDecimal tasaNueva, String usuario, String idempotencyKey, Integer idSalaFiltro) throws SQLException {
         try (Connection con = conexiones.getConnection()) {
             con.setAutoCommit(false);
             try {
@@ -158,7 +172,15 @@ public class ActualizacionTasaDao {
                 }
 
                 // 3. Bloquear pedidos pendientes y ABIERTOS (cerrada_en IS NULL) en orden anti-deadlock
-                String sqlPedidosAbiertos = """
+                String sqlPedidosAbiertos = (idSalaFiltro != null && idSalaFiltro > 0)
+                    ? """
+                    SELECT id, tasa_cambio, iva_porcentaje, total_bs, version_precio
+                    FROM pedidos
+                    WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL AND id_sala = ?
+                    ORDER BY id ASC
+                    FOR UPDATE
+                    """
+                    : """
                     SELECT id, tasa_cambio, iva_porcentaje, total_bs, version_precio
                     FROM pedidos
                     WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL
@@ -169,12 +191,16 @@ public class ActualizacionTasaDao {
                 List<BigDecimal> totalesAnteriores = new ArrayList<>();
                 List<BigDecimal> ivasPorcentaje = new ArrayList<>();
 
-                try (PreparedStatement ps = con.prepareStatement(sqlPedidosAbiertos);
-                     ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        pedidosAfectados.add(rs.getInt("id"));
-                        totalesAnteriores.add(rs.getBigDecimal("total_bs"));
-                        ivasPorcentaje.add(rs.getBigDecimal("iva_porcentaje"));
+                try (PreparedStatement ps = con.prepareStatement(sqlPedidosAbiertos)) {
+                    if (idSalaFiltro != null && idSalaFiltro > 0) {
+                        ps.setInt(1, idSalaFiltro);
+                    }
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            pedidosAfectados.add(rs.getInt("id"));
+                            totalesAnteriores.add(rs.getBigDecimal("total_bs"));
+                            ivasPorcentaje.add(rs.getBigDecimal("iva_porcentaje"));
+                        }
                     }
                 }
 

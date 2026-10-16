@@ -74,7 +74,6 @@ public class ActualizacionTasaPedidosPendientesIT {
             st.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-TASA-%'");
             st.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-SALA-%'");
             st.executeUpdate("DELETE FROM auditoria_cambios_precio WHERE actor='" + USUARIO_PRUEBA + "'");
-            st.executeUpdate("UPDATE pedidos SET cerrada_en = '2022-05-18 23:59:59' WHERE id IN (2, 3, 4) AND cerrada_en IS NULL");
         }
     }
 
@@ -111,14 +110,8 @@ public class ActualizacionTasaPedidosPendientesIT {
 
     @Test
     public void cambioDeTasaRecalculaSoloMesasAbiertasYConservaCerradasYFinalizadas() throws Exception {
-        int pedidosAbiertosPrevios;
-        try (Connection con = conexion(); Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM pedidos WHERE estado = 'PENDIENTE' AND cerrada_en IS NULL")) {
-            assertTrue(rs.next());
-            pedidosAbiertosPrevios = rs.getInt(1);
-        }
-
         int idSala = crearSalaPrueba(4);
+        int pedidosAbiertosPrevios = tasaDao.contarPedidosAbiertos(idSala);
         BigDecimal tasaInicial = new BigDecimal("40.0000");
 
         // 1. Catálogo inicial:
@@ -223,7 +216,7 @@ public class ActualizacionTasaPedidosPendientesIT {
 
         // 2. Aplicar cambio de tasa global: sube de 40.0000 a 50.0000
         BigDecimal tasaNueva = new BigDecimal("50.0000");
-        ResultadoActualizacionPrecios res = tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA);
+        ResultadoActualizacionPrecios res = tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA, null, idSala);
 
         assertEquals(pedidosAbiertosPrevios + 2, res.pedidosRecalculados());
         assertTrue(res.pedidosAfectados().contains(idPedido1));
@@ -283,7 +276,7 @@ public class ActualizacionTasaPedidosPendientesIT {
         Platos plato = crearPlato("USD-TEST-ABORT", new BigDecimal("10.00"), new BigDecimal("400.00"), "USD", false, false);
 
         BigDecimal tasaInicial = new BigDecimal("40.0000");
-        tasaDao.actualizarTasaYRecalcularPendientes(tasaInicial, USUARIO_PRUEBA);
+        tasaDao.actualizarTasaYRecalcularPendientes(tasaInicial, USUARIO_PRUEBA, null, idSala);
 
         // Crear comanda abierta
         Pedidos p = new Pedidos();
@@ -322,7 +315,7 @@ public class ActualizacionTasaPedidosPendientesIT {
         // Intentar actualizar la tasa global a 50.00
         BigDecimal tasaNueva = new BigDecimal("50.0000");
         ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class,
-                () -> tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA));
+                () -> tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA, null, idSala));
         assertTrue("Debe mencionar sin clasificar", ex.getMessage().contains("sin clasificar"));
         assertTrue("Debe incluir id_pedido", ex.getMessage().contains("pedido #" + idPedido));
         assertTrue("Debe incluir id_detalle", ex.getMessage().contains("detalle #" + idDetalle));

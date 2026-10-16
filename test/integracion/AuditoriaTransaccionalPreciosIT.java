@@ -66,7 +66,6 @@ public class AuditoriaTransaccionalPreciosIT {
             st.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-AUD-%'");
             st.executeUpdate("DELETE FROM salas WHERE nombre LIKE 'IT-SALA-AUD-%'");
             st.executeUpdate("DELETE FROM auditoria_cambios_precio WHERE actor='" + USUARIO_PRUEBA + "'");
-            st.executeUpdate("UPDATE pedidos SET cerrada_en = '2022-05-18 23:59:59' WHERE id IN (2, 3, 4) AND cerrada_en IS NULL");
         }
     }
 
@@ -208,14 +207,15 @@ public class AuditoriaTransaccionalPreciosIT {
 
     @Test
     public void cambioTasaIdempotenteYRollbackSinAuditoriaHuerfana() throws Exception {
+        int idSala = crearSalaPrueba(1);
         String idempotencyKey = "key-tasa-" + UUID.randomUUID();
         BigDecimal tasaNueva = new BigDecimal("44.5000");
 
-        ResultadoActualizacionPrecios res1 = tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA, idempotencyKey);
+        ResultadoActualizacionPrecios res1 = tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA, idempotencyKey, idSala);
         assertNotNull(res1);
 
         // Reintento idempotente con la misma clave
-        ResultadoActualizacionPrecios res2 = tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA, idempotencyKey);
+        ResultadoActualizacionPrecios res2 = tasaDao.actualizarTasaYRecalcularPendientes(tasaNueva, USUARIO_PRUEBA, idempotencyKey, idSala);
         assertNotNull(res2);
 
         // Verificar que se insertó auditoría para esta clave y que el reintento no la duplicó

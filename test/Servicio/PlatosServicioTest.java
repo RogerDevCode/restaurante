@@ -200,6 +200,32 @@ public class PlatosServicioTest {
         assertThrows(ErrorAplicacionException.class, () -> servicio.registrar(plato));
     }
 
+    @Test
+    public void rechazaGravadoSinEspecificarSiIncluyeIva() {
+        FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
+        PlatosServicio servicio = new PlatosServicio(repositorio, politica("Administrador"));
+
+        Platos plato = new Platos(1, "Plato Gravado Indefinido", new BigDecimal("10.00"), "2026-10-05");
+        plato.setAplicaIva(true);
+        plato.setPrecioIncluyeIva(null);
+
+        ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class, () -> servicio.registrar(plato));
+        assertTrue(ex.getMessage().contains("incluye IVA"));
+    }
+
+    @Test
+    public void exentoFuerzaIncluyeIvaFalso() {
+        FakePlatosRepositorio repositorio = new FakePlatosRepositorio();
+        PlatosServicio servicio = new PlatosServicio(repositorio, politica("Administrador"));
+
+        Platos plato = new Platos(1, "Plato Exento", new BigDecimal("10.00"), "2026-10-05");
+        plato.setAplicaIva(false);
+        plato.setPrecioIncluyeIva(null);
+
+        assertTrue(servicio.registrar(plato));
+        assertFalse(repositorio.recibido.get().getPrecioIncluyeIva());
+    }
+
     private PoliticaAcceso politica(String rol) {
         Usuario usuario = new Usuario();
         usuario.setRol(rol);
@@ -211,7 +237,9 @@ public class PlatosServicioTest {
     }
 
     private Platos plato(int id, String nombre, String precio, String fecha) {
-        return new Platos(id, nombre, new BigDecimal(precio), fecha);
+        Platos p = new Platos(id, nombre, new BigDecimal(precio), fecha);
+        p.setPrecioIncluyeIva(false);
+        return p;
     }
 
     private static final class FakePlatosRepositorio implements PlatosRepositorio {
