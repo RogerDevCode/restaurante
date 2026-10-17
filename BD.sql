@@ -194,7 +194,6 @@ CREATE TABLE `pedido_pagos` (
 
 LOCK TABLES `pedidos` WRITE;
 /*!40000 ALTER TABLE `pedidos` DISABLE KEYS */;
-INSERT INTO `pedidos` (`id`,`id_sala`,`num_mesa`,`fecha`,`subtotal`,`iva_porcentaje`,`iva_monto`,`total`,`estado`,`usuario`,`tasa_cambio`,`subtotal_bs`,`iva_bs`,`total_bs`,`cliente_nombre`,`cliente_documento`) VALUES (1,1,2,'2022-05-18 00:31:52',78.00,0.00,0.00,78.00,'FINALIZADO','ANGEL SIFUENTES',36.5000,2847.00,0.00,2847.00,'Consumidor Final','V-00000000'),(2,2,8,'2022-05-18 00:32:20',30.00,0.00,0.00,30.00,'PENDIENTE','ANGEL SIFUENTES',36.5000,1095.00,0.00,1095.00,'Consumidor Final','V-00000000'),(3,1,9,'2022-05-18 00:32:29',28.00,0.00,0.00,28.00,'PENDIENTE','ANGEL SIFUENTES',36.5000,1022.00,0.00,1022.00,'Consumidor Final','V-00000000'),(4,1,11,'2022-05-18 01:04:47',20.00,0.00,0.00,20.00,'PENDIENTE','ANGEL SIFUENTES',36.5000,730.00,0.00,730.00,'Consumidor Final','V-00000000');
 /*!40000 ALTER TABLE `pedidos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -374,7 +373,6 @@ CREATE TABLE `detalle_pedidos` (
 -- Dumping data for table `detalle_pedidos`
 LOCK TABLES `detalle_pedidos` WRITE;
 /*!40000 ALTER TABLE `detalle_pedidos` DISABLE KEYS */;
-INSERT INTO `detalle_pedidos` (`id`, `nombre`, `precio`, `cantidad`, `comentario`, `id_pedido`, `aplica_iva`) VALUES (1,'CHAUFA',20.00,1,'',1,1),(2,'ARROZ CON POLLO',10.00,5,'ARTO MAYONESA',1,1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',1,1),(4,'ARROZ CON POLLO',10.00,1,'',2,1),(5,'CHAUFA',20.00,1,'',2,1),(6,'GASEOSA COCA COLA 1.5 LITROS',8.00,1,'',3,1),(7,'CHAUFA',20.00,1,'',3,1),(8,'ARROZ CON POLLO',10.00,2,'',4,1);
 /*!40000 ALTER TABLE `detalle_pedidos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -384,7 +382,7 @@ UNLOCK TABLES;
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` (`id`, `nombre`, `correo`, `pass`, `rol`, `activo`) VALUES (1,'Administrador','admin','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador',1),(2,'ANGEL SIFUENTES','info@angelsifuentes.com','pbkdf2-sha256$600000$kAoKN9v1KVjpT8qQvuYJFA$Jg2StMqHqNR0L2y94jRioh1DRX0zdH8u2cfulCgjur4','Administrador',1);
+INSERT INTO `usuarios` (`id`, `nombre`, `correo`, `pass`, `rol`, `activo`) VALUES (1,'Administrador','admin','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador',1);
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 
