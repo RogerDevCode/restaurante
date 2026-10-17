@@ -318,11 +318,11 @@ public class PreciosPedidosDao {
                                                     + det.getNombre() + "'). Clasifíquelos en el catálogo o márquelos como congelados antes de continuar.");
                                         }
 
-                                        // Para ítems legados sin idPlato (desvinculados del catálogo), auto-congelar preservando consistencia
+                                        // Para ítems legados sin idPlato (desvinculados del catálogo), auto-congelar preservando valor nominal en moneda local
                                         det.setPrecioCongelado(true);
-                                        if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) det.setMonedaBase("USD");
+                                        if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) det.setMonedaBase("VES");
+                                        if (det.getAplicaIva() == null) det.setAplicaIva(false);
                                         if (det.getPrecioIncluyeIva() == null) det.setPrecioIncluyeIva(false);
-                                        if (det.getAplicaIva() == null) det.setAplicaIva(true);
                                         BigDecimal ivaDet = Boolean.TRUE.equals(det.getAplicaIva()) ? ivaPorcentajeCabecera : BigDecimal.ZERO.setScale(2);
                                         det.setIvaPorcentaje(ivaDet);
 
