@@ -631,8 +631,14 @@ public class CierreCajaDao {
             infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
             try (PreparedStatement ps = con.prepareStatement(sql)) {
                 ps.setString(1, cierre.getTipo() != null ? cierre.getTipo().name() : "TOTAL");
-                ps.setString(2, cierre.getFecha());
-                ps.setString(3, cierre.getFechaHoraEmision());
+                String fechaJornada = (cierre.getFecha() != null && !cierre.getFecha().isBlank())
+                        ? cierre.getFecha()
+                        : java.time.LocalDate.now().toString();
+                ps.setString(2, fechaJornada);
+                String fechaEmision = (cierre.getFechaHoraEmision() != null && !cierre.getFechaHoraEmision().isBlank())
+                        ? cierre.getFechaHoraEmision()
+                        : java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                ps.setString(3, fechaEmision);
                 ps.setString(4, cierre.getUsuarioEmisor());
                 ps.setBigDecimal(5, cierre.getTotalVentasUsd());
                 ps.setBigDecimal(6, cierre.getTotalVentasBs());

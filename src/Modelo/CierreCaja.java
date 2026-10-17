@@ -146,8 +146,9 @@ public class CierreCaja {
     }
 
     private TipoCierre tipo = TipoCierre.PARCIAL;
-    private String fecha = "";
-    private String fechaHoraEmision = "";
+    private String fecha = java.time.LocalDate.now().toString();
+    private String fechaHoraEmision = java.time.LocalDateTime.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     private String usuarioEmisor = "Sistema";
     private BigDecimal totalVentasUsd = BigDecimal.ZERO.setScale(2);
     private BigDecimal totalVentasBs = BigDecimal.ZERO.setScale(2);
