@@ -273,7 +273,8 @@ public final class CalculoMonetarioPedido {
         }
 
         public BigDecimal totalUsd() {
-            return totalUsdReferencia;
+            // Bajo política D8: se prioriza la aditividad de líneas (subtotalUsd + ivaUsd = totalUsd) sobre la división directa.
+            return subtotalUsd().add(ivaUsd()).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
         }
 
         public BigDecimal subtotalVes() {
