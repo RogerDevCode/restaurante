@@ -627,6 +627,9 @@ public class CierreCajaDao {
         if (cierre.getTasaCambioReferencia() == null || cierre.getTasaCambioReferencia().compareTo(BigDecimal.ZERO) <= 0) {
             throw ErrorAplicacionException.validacion("No se puede registrar el cierre de caja: la tasa de cambio de referencia es obligatoria y debe ser mayor a cero.");
         }
+        if (rutaPdf != null && !rutaPdf.isBlank() && !java.nio.file.Files.exists(java.nio.file.Path.of(rutaPdf))) {
+            throw new DataAccessException("El archivo de cierre PDF no existe o es inaccesible: " + rutaPdf);
+        }
         String sql = """
             INSERT INTO cierres_caja (
                 tipo, fecha_jornada, fecha_hora_emision, usuario_emisor,

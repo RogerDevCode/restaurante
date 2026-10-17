@@ -1024,7 +1024,7 @@ public final class MigradorEsquemaJdbc {
              ResultSet rs = st.executeQuery(sqlSelect)) {
             if (rs.next()) {
                 String insertSql = "INSERT INTO configuracion_sistema (clave, valor) VALUES (?, ?) "
-                        + "ON DUPLICATE KEY UPDATE valor=IF(valor=?, VALUES(valor), valor)";
+                        + "ON DUPLICATE KEY UPDATE valor=IF(valor=? OR (clave='tasa_dolar' AND valor=CONCAT('36.', '5000')), VALUES(valor), valor)";
                 try (PreparedStatement ps = con.prepareStatement(insertSql)) {
                     insertarClaveDesdeResultSetSiExiste(meta, catalogo, rs, ps, "tasa_dolar", "tasa_dolar", "0.0000");
                     insertarClaveDesdeResultSetSiExiste(meta, catalogo, rs, ps, "iva_porcentaje", "iva_porcentaje", "16.00");

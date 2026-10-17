@@ -1256,30 +1256,14 @@ public class PedidosDao implements PedidosRepositorio {
             boolean autoCommitPrevio = con.getAutoCommit();
             con.setAutoCommit(false);
             try {
-                // Si tiene pagos registrados, generar contra-asiento compensatorio tipo ANULACION si no está compensado
+                // Si tiene pagos registrados, impedir anular a menos que tenga movimientos de devolución/crédito/anulación equivalentes registrados
                 BigDecimal pagadoUsd = BigDecimal.ZERO;
-                BigDecimal tasaPedido = BigDecimal.ONE;
                 try (PreparedStatement psPagos = con.prepareStatement(
-                        "SELECT COALESCE(SUM(COALESCE(monto_usd, CASE WHEN moneda = 'USD' THEN monto_aplicado ELSE ROUND(monto_bs / NULLIF(tasa_cambio, 0), 2) END)), 0), "
-                        + "COALESCE(MAX(tasa_cambio), 1) "
-                        + "FROM pedido_pagos WHERE id_pedido = ?")) {
+                        "SELECT COALESCE(SUM(COALESCE(monto_usd, CASE WHEN moneda = 'USD' THEN monto_aplicado ELSE ROUND(monto_bs / NULLIF(tasa_cambio, 0), 2) END)), 0) FROM pedido_pagos WHERE id_pedido = ?")) {
                     psPagos.setInt(1, id_pedido);
                     try (ResultSet rs = psPagos.executeQuery()) {
                         if (rs.next()) {
                             pagadoUsd = rs.getBigDecimal(1);
-                            BigDecimal t = rs.getBigDecimal(2);
-                            if (t != null && t.signum() > 0) tasaPedido = t;
-                        }
-                    }
-                }
-                if (tasaPedido.compareTo(BigDecimal.ONE) == 0) {
-                    try (PreparedStatement psTasa = con.prepareStatement("SELECT tasa_cambio FROM pedidos WHERE id = ?")) {
-                        psTasa.setInt(1, id_pedido);
-                        try (ResultSet rsT = psTasa.executeQuery()) {
-                            if (rsT.next()) {
-                                BigDecimal t = rsT.getBigDecimal(1);
-                                if (t != null && t.signum() > 0) tasaPedido = t;
-                            }
                         }
                     }
                 }
@@ -1295,20 +1279,11 @@ public class PedidosDao implements PedidosRepositorio {
                             }
                         }
                     }
-                    BigDecimal pendienteCompensarUsd = pagadoUsd.subtract(compensadoUsd != null ? compensadoUsd : BigDecimal.ZERO);
-                    if (pendienteCompensarUsd.compareTo(new BigDecimal("0.01")) >= 0) {
-                        BigDecimal equivVes = pendienteCompensarUsd.multiply(tasaPedido).setScale(2, RoundingMode.HALF_UP);
-                        MovimientoSaldoPedido mov = new MovimientoSaldoPedido();
-                        mov.setIdPedido(id_pedido);
-                        mov.setTipo("ANULACION");
-                        mov.setMoneda("USD");
-                        mov.setMontoOrigen(pendienteCompensarUsd.setScale(2, RoundingMode.HALF_UP));
-                        mov.setEquivalenteVes(equivVes);
-                        mov.setTasaCambio(tasaPedido.setScale(4, RoundingMode.HALF_UP));
-                        mov.setActor(usr);
-                        mov.setMotivo("Anulación de pedido #" + id_pedido + ": " + (motivo != null ? motivo.trim() : ""));
-                        mov.setIdempotencyKey("ANULACION-PED-" + id_pedido + "-" + System.currentTimeMillis());
-                        new MovimientoSaldoPedidoDao(conexiones).registrarMovimiento(mov, con);
+                    if (compensadoUsd == null || compensadoUsd.compareTo(pagadoUsd.subtract(new BigDecimal("0.01"))) < 0) {
+                        throw ErrorAplicacionException.validacion(
+                                "El pedido #" + id_pedido + " tiene pagos registrados por $" + pagadoUsd.setScale(2, RoundingMode.HALF_UP)
+                                + " y solo se ha compensado/devuelto $" + (compensadoUsd != null ? compensadoUsd.setScale(2, RoundingMode.HALF_UP) : "0.00")
+                                + "; se requiere contra-asiento o devolución equivalente antes de anular.");
                     }
                 }
 
