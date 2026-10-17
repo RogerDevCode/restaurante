@@ -87,6 +87,8 @@ public class PanelAtencionMesasSplit extends JPanel {
     private Integer idMesoneroOriginal = null;
     private String nombreMesoneroOriginal = null;
     private boolean mesoneroQuitadoExplicito = false;
+    private final java.util.concurrent.atomic.AtomicLong tokenRevisionMesas = new java.util.concurrent.atomic.AtomicLong(0);
+    private final java.util.concurrent.atomic.AtomicLong tokenRevisionPedido = new java.util.concurrent.atomic.AtomicLong(0);
 
     // Componentes lado izquierdo (Salas y Mesas)
     private JPanel panelTabsSalas;
@@ -749,19 +751,26 @@ public class PanelAtencionMesasSplit extends JPanel {
         panelGrillaMesas.removeAll();
         lblEstadoSalas.setText("Cargando mesas de " + nombreSalaSeleccionada + "...");
 
+        final long tokenRevision = tokenRevisionMesas.incrementAndGet();
+        final int idSalaPeticion = idSalaSeleccionada;
+        final int cantMesasPeticion = cantMesasSalaSeleccionada;
+
         new javax.swing.SwingWorker<PanelMesasDatos, Void>() {
             @Override
             protected PanelMesasDatos doInBackground() {
                 Map<Integer, Integer> estados = new java.util.LinkedHashMap<>();
-                for (int m = 1; m <= cantMesasSalaSeleccionada; m++) {
-                    estados.put(m, pedidosControlador.buscarPedidoPendiente(m, idSalaSeleccionada));
+                for (int m = 1; m <= cantMesasPeticion; m++) {
+                    estados.put(m, pedidosControlador.buscarPedidoPendiente(m, idSalaPeticion));
                 }
-                Map<Integer, String> mesoneros = pedidosControlador.consultarMesonerosMesasPendientes(idSalaSeleccionada);
+                Map<Integer, String> mesoneros = pedidosControlador.consultarMesonerosMesasPendientes(idSalaPeticion);
                 return new PanelMesasDatos(estados, mesoneros);
             }
 
             @Override
             protected void done() {
+                if (tokenRevision != tokenRevisionMesas.get() || idSalaPeticion != idSalaSeleccionada) {
+                    return; // Callback obsoleto, descartar
+                }
                 try {
                     PanelMesasDatos datos = get();
                     mostrarMesasEnGrilla(datos.estados, datos.mesoneros);
@@ -979,6 +988,7 @@ public class PanelAtencionMesasSplit extends JPanel {
     }
 
     private void cargarDetallesPedidoExistente(int idPedido) {
+        final long tokenRevision = tokenRevisionPedido.incrementAndGet();
         modeloCarrito.setRowCount(0);
         new javax.swing.SwingWorker<List<DetallePedido>, Void>() {
             @Override
@@ -988,6 +998,9 @@ public class PanelAtencionMesasSplit extends JPanel {
 
             @Override
             protected void done() {
+                if (tokenRevision != tokenRevisionPedido.get() || idPedido != idPedidoActivo) {
+                    return; // Callback obsoleto, descartar
+                }
                 try {
                     List<DetallePedido> detalles = get();
                     for (DetallePedido d : detalles) {
