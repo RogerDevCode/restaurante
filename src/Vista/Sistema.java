@@ -882,6 +882,11 @@ public final class Sistema extends javax.swing.JFrame {
         cargarPreferenciaFiltroRapido();
         actualizarEstadoTasaUI();
         configurarTabCategorias();
+        ListarPlatos(TablePlatos, "");
+        ListarPlatos(tblTemPlatos, "");
+        if (panelSplitScreen != null) {
+            panelSplitScreen.refrescarPlatos(null);
+        }
 
         jTabbedPane1.addChangeListener(e -> {
             int idx = jTabbedPane1.getSelectedIndex();

@@ -17,6 +17,17 @@ public class PlatosDao implements PlatosRepositorio {
 
     public PlatosDao() {
         this(new ProveedorConexionJdbc());
+        asegurarCatalogoPlatosVigente();
+    }
+
+    public void asegurarCatalogoPlatosVigente() {
+        String sql = "UPDATE platos SET fecha = CURRENT_DATE() WHERE activo = 1 AND (fecha < CURRENT_DATE() OR fecha IS NULL)";
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.executeUpdate();
+        } catch (SQLException ex) {
+            LOGGER.log(java.util.logging.Level.FINE, "No se pudo sincronizar fecha del catalogo de platos: " + ex.getMessage());
+        }
     }
 
     public PlatosDao(ProveedorConexionJdbc conexiones) {
