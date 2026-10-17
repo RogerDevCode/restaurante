@@ -1004,7 +1004,7 @@ public class PanelAtencionMesasSplit extends JPanel {
                 try {
                     List<DetallePedido> detalles = get();
                     for (DetallePedido d : detalles) {
-                        int idPlato = (d.getIdPlato() != null && d.getIdPlato() > 0) ? d.getIdPlato() : d.getId();
+                        int idPlato = (d.getIdPlato() != null && d.getIdPlato() > 0) ? d.getIdPlato() : (d.getId() > 0 ? -d.getId() : 0);
                         if (!platosPorId.containsKey(idPlato)) {
                             Platos platoDummy = new Platos();
                             platoDummy.setId(idPlato);
@@ -1472,14 +1472,14 @@ public class PanelAtencionMesasSplit extends JPanel {
     }
 
     private void cobrarPedidoDirecto() {
-        if (idPedidoActivo > 0) {
-            sistema.cargarPedidoEnPantallaDesdeSplit(idPedidoActivo);
-        } else if (modeloCarrito.getRowCount() > 0) {
-            // Guardar primero y luego cobrar
+        if (modeloCarrito.getRowCount() > 0) {
+            // Guardar o actualizar cambios locales primero y luego cobrar
             enviarPedidoCocina();
             if (idPedidoActivo > 0) {
                 sistema.cargarPedidoEnPantallaDesdeSplit(idPedidoActivo);
             }
+        } else if (idPedidoActivo > 0) {
+            sistema.cargarPedidoEnPantallaDesdeSplit(idPedidoActivo);
         } else {
             sistema.mostrarAvisoEnBanda("No hay pedido para cobrar en esta mesa");
         }
