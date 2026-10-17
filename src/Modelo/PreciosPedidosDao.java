@@ -111,7 +111,31 @@ public class PreciosPedidosDao {
                     }
                 }
 
-                // 1. Bloquear y verificar el plato actual
+                // 1. ORDEN CANÓNICO DE BLOQUEO: Bloquear primero pedidos pendientes afectados (pedidos -> platos)
+                List<Integer> pedidosAfectados = new ArrayList<>();
+                String sqlBuscarYBloquearPedidos = """
+                    SELECT id FROM pedidos WHERE id IN (
+                        SELECT DISTINCT d.id_pedido
+                        FROM detalle_pedidos d
+                        INNER JOIN pedidos p ON p.id = d.id_pedido
+                        WHERE p.estado = 'PENDIENTE'
+                          AND p.cerrada_en IS NULL
+                          AND d.id_plato = ?
+                          AND (d.precio_congelado = 0 OR d.precio_congelado IS NULL)
+                    )
+                    ORDER BY id ASC
+                    FOR UPDATE
+                    """;
+                try (PreparedStatement ps = con.prepareStatement(sqlBuscarYBloquearPedidos)) {
+                    ps.setInt(1, plato.getId());
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            pedidosAfectados.add(rs.getInt(1));
+                        }
+                    }
+                }
+
+                // 2. Bloquear y verificar el plato actual (después de bloquear pedidos)
                 BigDecimal precioUsdAnt = null;
                 BigDecimal precioVesAnt = null;
                 String monedaAnt = null;
@@ -134,7 +158,7 @@ public class PreciosPedidosDao {
                     }
                 }
 
-                // 2. Actualizar el plato
+                // 3. Actualizar el plato
                 String sqlUpdatePlato = """
                     UPDATE platos
                     SET nombre = ?, precio = ?, aplica_iva = ?, moneda_base = ?,
@@ -163,7 +187,7 @@ public class PreciosPedidosDao {
                     }
                 }
 
-                // 3. Contar líneas no enlazadas con el mismo nombre en pedidos abiertos
+                // 4. Contar líneas no enlazadas con el mismo nombre en pedidos abiertos
                 int lineasNoEnlazadas = 0;
                 String sqlNoEnlazadas = """
                     SELECT COUNT(*)
@@ -179,28 +203,6 @@ public class PreciosPedidosDao {
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             lineasNoEnlazadas = rs.getInt(1);
-                        }
-                    }
-                }
-
-                // 4. Buscar pedidos abiertos que contengan este plato
-                String sqlPedidos = """
-                    SELECT DISTINCT p.id
-                    FROM pedidos p
-                    INNER JOIN detalle_pedidos d ON p.id = d.id_pedido
-                    WHERE p.estado = 'PENDIENTE'
-                      AND p.cerrada_en IS NULL
-                      AND d.id_plato = ?
-                      AND (d.precio_congelado = 0 OR d.precio_congelado IS NULL)
-                    ORDER BY p.id ASC
-                    FOR UPDATE
-                    """;
-                List<Integer> pedidosAfectados = new ArrayList<>();
-                try (PreparedStatement ps = con.prepareStatement(sqlPedidos)) {
-                    ps.setInt(1, plato.getId());
-                    try (ResultSet rs = ps.executeQuery()) {
-                        while (rs.next()) {
-                            pedidosAfectados.add(rs.getInt(1));
                         }
                     }
                 }
