@@ -613,7 +613,10 @@ public class CierreCajaDao {
      */
     public boolean guardarCierre(CierreCaja cierre, String rutaPdf) {
         if (cierre == null) {
-            return false;
+            throw ErrorAplicacionException.validacion("El objeto de cierre de caja no puede ser nulo.");
+        }
+        if (cierre.getTasaCambioReferencia() == null || cierre.getTasaCambioReferencia().compareTo(BigDecimal.ZERO) <= 0) {
+            throw ErrorAplicacionException.validacion("No se puede registrar el cierre de caja: la tasa de cambio de referencia es obligatoria y debe ser mayor a cero.");
         }
         String sql = """
             INSERT INTO cierres_caja (
@@ -624,12 +627,6 @@ public class CierreCajaDao {
                 tasa_cambio, ruta_pdf
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
-        if (cierre == null) {
-            throw ErrorAplicacionException.validacion("El objeto de cierre de caja no puede ser nulo.");
-        }
-        if (cierre.getTasaCambioReferencia() == null || cierre.getTasaCambioReferencia().compareTo(BigDecimal.ZERO) <= 0) {
-            throw ErrorAplicacionException.validacion("No se puede registrar el cierre de caja: la tasa de cambio de referencia es obligatoria y debe ser mayor a cero.");
-        }
         try (Connection con = conexiones.getConnection()) {
             infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
             try (PreparedStatement ps = con.prepareStatement(sql)) {
@@ -653,7 +650,7 @@ public class CierreCajaDao {
             }
         } catch (SQLException ex) {
             LOGGER.log(Level.WARNING, "Error al registrar cierre de caja en base de datos: " + ex.getMessage());
-            return false;
+            throw new DataAccessException("No se pudo registrar el cierre de caja en base de datos: " + ex.getMessage(), ex);
         }
     }
 
