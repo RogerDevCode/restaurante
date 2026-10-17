@@ -312,6 +312,12 @@ public final class UsuariosCrudE2E {
             System.out.println("E2E toca usuarios reales (crea y borra e2e_*@test): relanza con -De2e.permitir=SI");
             System.exit(2);
         }
+        try (java.sql.Connection connCheck = new ProveedorConexionJdbc().getConnection()) {
+            String dbCatalog = connCheck.getCatalog();
+            if (dbCatalog == null || !dbCatalog.toLowerCase().contains("restaurante_test")) {
+                throw new IllegalStateException("Seguridad: UsuariosCrudE2E solo puede ejecutarse contra la BD 'restaurante_test'. Base actual: " + dbCatalog);
+            }
+        }
         String display = System.getenv("DISPLAY");
         if (display == null || (!display.contains(":99") && !display.contains(":98"))) {
             System.err.println("ADVERTENCIA: DISPLAY=" + display + " (se esperaba :99 virtual)");
