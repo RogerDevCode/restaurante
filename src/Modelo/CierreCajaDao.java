@@ -133,7 +133,7 @@ public class CierreCajaDao {
                                    COALESCE(NULLIF(subtotal_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(subtotal * tasa_cambio, 2) ELSE 0.00 END) AS calc_sub_bs
                             FROM pedidos
                             WHERE estado = 'FINALIZADO'
-                              AND (fecha LIKE ? OR DATE(fecha) = ?)
+                              AND (COALESCE(cerrada_en, fecha) LIKE ? OR DATE(COALESCE(cerrada_en, fecha)) = ?)
                         ) sub_pedidos
                     ) calc_pedidos
                     """;
@@ -196,29 +196,27 @@ public class CierreCajaDao {
                         SELECT pp.id_pedido,
                                COALESCE(NULLIF(TRIM(pp.metodo_pago), ''), 'EFECTIVO') AS metodo,
                                COALESCE(pp.monto_usd, CASE WHEN pp.moneda = 'USD' THEN pp.monto_aplicado ELSE ROUND(pp.monto_bs / NULLIF(pp.tasa_cambio, 0), 2) END, 0) AS monto_usd,
-                               COALESCE(pp.monto_bs, CASE WHEN pp.moneda = 'VES' THEN pp.monto_aplicado ELSE ROUND(pp.monto_usd * COALESCE(NULLIF(pp.tasa_cambio, 0), ?), 2) END, 0) AS monto_bs
+                               COALESCE(pp.monto_bs, CASE WHEN pp.moneda = 'VES' THEN pp.monto_aplicado WHEN pp.tasa_cambio IS NOT NULL AND pp.tasa_cambio > 0 THEN ROUND(pp.monto_usd * pp.tasa_cambio, 2) ELSE 0.00 END) AS monto_bs
                         FROM pedido_pagos pp
                         INNER JOIN pedidos p ON p.id = pp.id_pedido
-                        WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                        WHERE p.estado = 'FINALIZADO' AND (COALESCE(p.cerrada_en, p.fecha) LIKE ? OR DATE(COALESCE(p.cerrada_en, p.fecha)) = ?)
                         UNION ALL
                         SELECT p.id AS id_pedido,
                                COALESCE(NULLIF(TRIM(p.metodo_pago), ''), 'EFECTIVO') AS metodo,
                                COALESCE(p.total, 0) AS monto_usd,
-                               COALESCE(NULLIF(p.total_bs, 0), ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0) AS monto_bs
+                               COALESCE(NULLIF(p.total_bs, 0), CASE WHEN p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 THEN ROUND(p.total * p.tasa_cambio, 2) ELSE 0.00 END) AS monto_bs
                         FROM pedidos p
-                        WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                        WHERE p.estado = 'FINALIZADO' AND (COALESCE(p.cerrada_en, p.fecha) LIKE ? OR DATE(COALESCE(p.cerrada_en, p.fecha)) = ?)
                           AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id)
                     ) pagos_desglose
                     GROUP BY metodo
                     ORDER BY total_usd DESC
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlMetodos)) {
-                    ps.setBigDecimal(1, tasaConfig);
-                    ps.setString(2, likeParam);
-                    ps.setString(3, fechaFiltro);
-                    ps.setBigDecimal(4, tasaConfig);
-                    ps.setString(5, likeParam);
-                    ps.setString(6, fechaFiltro);
+                    ps.setString(1, likeParam);
+                    ps.setString(2, fechaFiltro);
+                    ps.setString(3, likeParam);
+                    ps.setString(4, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
                             metodos.add(new CierreCaja.ResumenMetodoPago(
@@ -241,31 +239,30 @@ public class CierreCajaDao {
                         SELECT pp.id_pedido, pp.metodo_pago, pp.monto_bs, pp.monto_usd, 0 AS mixto_sin_desglose
                         FROM pedido_pagos pp
                         INNER JOIN pedidos p ON p.id = pp.id_pedido
-                        WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                        WHERE p.estado = 'FINALIZADO' AND (COALESCE(p.cerrada_en, p.fecha) LIKE ? OR DATE(COALESCE(p.cerrada_en, p.fecha)) = ?)
                         UNION ALL
                         SELECT p.id AS id_pedido, COALESCE(NULLIF(TRIM(p.metodo_pago), ''), 'EFECTIVO') AS metodo_pago,
-                               CASE WHEN p.metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(NULLIF(p.efectivo_bs, 0), NULLIF(p.total_bs, 0), ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0)
+                               CASE WHEN p.metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(NULLIF(p.efectivo_bs, 0), NULLIF(p.total_bs, 0), CASE WHEN p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 THEN ROUND(p.total * p.tasa_cambio, 2) ELSE 0.00 END)
                                     WHEN p.metodo_pago = 'MIXTO' THEN COALESCE(p.efectivo_bs, 0) ELSE 0 END AS monto_bs,
                                CASE WHEN p.metodo_pago = 'EFECTIVO_USD' THEN COALESCE(p.efectivo_usd, p.total, 0)
                                     WHEN p.metodo_pago = 'MIXTO' THEN COALESCE(p.efectivo_usd, 0) ELSE 0 END AS monto_usd,
                                CASE WHEN p.metodo_pago = 'MIXTO' AND (p.efectivo_bs IS NULL OR p.efectivo_usd IS NULL) THEN 1 ELSE 0 END AS mixto_sin_desglose
                         FROM pedidos p
-                        WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                        WHERE p.estado = 'FINALIZADO' AND (COALESCE(p.cerrada_en, p.fecha) LIKE ? OR DATE(COALESCE(p.cerrada_en, p.fecha)) = ?)
                           AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id)
                     ) pagos
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlEfectivo)) {
                     ps.setString(1, likeParam);
                     ps.setString(2, fechaFiltro);
-                    ps.setBigDecimal(3, tasaConfig);
-                    ps.setString(4, likeParam);
-                    ps.setString(5, fechaFiltro);
+                    ps.setString(3, likeParam);
+                    ps.setString(4, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             cierre.setResumenEfectivo(
-                                    rs.getBigDecimal("efectivo_bs"),
-                                    rs.getBigDecimal("efectivo_usd"),
-                                    rs.getInt("mixtos_sin_desglose"));
+                                     rs.getBigDecimal("efectivo_bs"),
+                                     rs.getBigDecimal("efectivo_usd"),
+                                     rs.getInt("mixtos_sin_desglose"));
                         }
                     }
                 }
@@ -276,18 +273,17 @@ public class CierreCajaDao {
                     SELECT COALESCE(s.nombre, 'Sin Sala') AS sala_nombre,
                            COUNT(p.id) AS cant,
                            COALESCE(SUM(p.total), 0) AS total_usd,
-                           COALESCE(SUM(COALESCE(NULLIF(p.total_bs, 0), ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0)), 0) AS total_bs
+                           COALESCE(SUM(COALESCE(NULLIF(p.total_bs, 0), CASE WHEN p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 THEN ROUND(p.total * p.tasa_cambio, 2) ELSE 0.00 END)), 0) AS total_bs
                     FROM pedidos p
                     LEFT JOIN salas s ON p.id_sala = s.id
                     WHERE p.estado = 'FINALIZADO'
-                      AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                      AND (COALESCE(p.cerrada_en, p.fecha) LIKE ? OR DATE(COALESCE(p.cerrada_en, p.fecha)) = ?)
                     GROUP BY s.nombre
                     ORDER BY total_usd DESC
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlSalas)) {
-                    ps.setBigDecimal(1, tasaConfig);
-                    ps.setString(2, likeParam);
-                    ps.setString(3, fechaFiltro);
+                    ps.setString(1, likeParam);
+                    ps.setString(2, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
                             salas.add(new CierreCaja.ResumenSala(
@@ -309,7 +305,7 @@ public class CierreCajaDao {
                            COALESCE(SUM(total), 0) AS total_usd
                     FROM pedidos
                     WHERE estado = 'FINALIZADO'
-                      AND (fecha LIKE ? OR DATE(fecha) = ?)
+                      AND (COALESCE(cerrada_en, fecha) LIKE ? OR DATE(COALESCE(cerrada_en, fecha)) = ?)
                     GROUP BY usuario_nom
                     ORDER BY total_usd DESC
                     """;
@@ -334,7 +330,7 @@ public class CierreCajaDao {
                     FROM detalle_pedidos d
                     INNER JOIN pedidos p ON d.id_pedido = p.id
                     WHERE p.estado = 'FINALIZADO'
-                      AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                      AND (COALESCE(p.cerrada_en, p.fecha) LIKE ? OR DATE(COALESCE(p.cerrada_en, p.fecha)) = ?)
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlTotalArticulos)) {
                     ps.setString(1, likeParam);
@@ -358,20 +354,19 @@ public class CierreCajaDao {
                            COALESCE(SUM(CASE
                                WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES'
                                    THEN ROUND((d.precio * d.cantidad), 2)
-                               ELSE ROUND((d.precio * d.cantidad) * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2)
+                               ELSE CASE WHEN p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 THEN ROUND((d.precio * d.cantidad) * p.tasa_cambio, 2) ELSE 0.00 END
                            END), 0) AS total_bs
                     FROM detalle_pedidos d
                     INNER JOIN pedidos p ON d.id_pedido = p.id
                     WHERE p.estado = 'FINALIZADO'
-                      AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
+                      AND (COALESCE(p.cerrada_en, p.fecha) LIKE ? OR DATE(COALESCE(p.cerrada_en, p.fecha)) = ?)
                     GROUP BY d.nombre
                     ORDER BY cant DESC
                     LIMIT 5
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlTopPlatos)) {
-                    ps.setBigDecimal(1, tasaConfig);
-                    ps.setString(2, likeParam);
-                    ps.setString(3, fechaFiltro);
+                    ps.setString(1, likeParam);
+                    ps.setString(2, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
                             platos.add(new CierreCaja.PlatoVendido(
@@ -649,31 +644,50 @@ public class CierreCajaDao {
         try (Connection con = conexiones.getConnection()) {
             boolean autoCommitPrevio = con.getAutoCommit();
             con.setAutoCommit(false);
-            try (PreparedStatement ps = con.prepareStatement(sql)) {
-                ps.setString(1, tipoCierre);
-                ps.setString(2, fechaJornada);
-                String fechaEmision = (cierre.getFechaHoraEmision() != null && !cierre.getFechaHoraEmision().isBlank())
-                        ? cierre.getFechaHoraEmision()
-                        : java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                ps.setString(3, fechaEmision);
-                ps.setString(4, cierre.getUsuarioEmisor());
-                ps.setBigDecimal(5, cierre.getTotalVentasUsd());
-                ps.setBigDecimal(6, cierre.getTotalVentasBs());
-                ps.setBigDecimal(7, cierre.getTotalEfectivoBs());
-                ps.setBigDecimal(8, cierre.getEfectivoDeclaradoBs());
-                ps.setBigDecimal(9, cierre.tieneConciliacionBs() ? cierre.getDiferenciaEfectivoBs() : null);
-                ps.setString(10, cierre.tieneConciliacionBs() ? cierre.getEstadoConciliacionBs() : null);
-                ps.setBigDecimal(11, cierre.getTotalEfectivoUsd());
-                ps.setBigDecimal(12, cierre.getEfectivoDeclaradoUsd());
-                ps.setBigDecimal(13, cierre.tieneConciliacionUsd() ? cierre.getDiferenciaEfectivoUsd() : null);
-                ps.setString(14, cierre.tieneConciliacionUsd() ? cierre.getEstadoConciliacionUsd() : null);
-                ps.setBigDecimal(15, cierre.getTasaCambioReferencia());
-                ps.setString(16, rutaPdf);
-                boolean exito = ps.executeUpdate() > 0;
+            try {
+                if ("TOTAL".equalsIgnoreCase(tipoCierre)) {
+                    String sqlCheck = "SELECT COUNT(*) FROM cierres_caja WHERE tipo = 'TOTAL' AND fecha_jornada = ? FOR UPDATE";
+                    try (PreparedStatement psCheck = con.prepareStatement(sqlCheck)) {
+                        psCheck.setString(1, fechaJornada);
+                        try (ResultSet rsCheck = psCheck.executeQuery()) {
+                            if (rsCheck.next() && rsCheck.getInt(1) > 0) {
+                                con.rollback();
+                                throw ErrorAplicacionException.validacion("ya existe un cierre Z registrado para la fecha " + fechaJornada + ".");
+                            }
+                        }
+                    }
+                }
+
+                boolean exito;
+                try (PreparedStatement ps = con.prepareStatement(sql)) {
+                    ps.setString(1, tipoCierre);
+                    ps.setString(2, fechaJornada);
+                    String fechaEmision = (cierre.getFechaHoraEmision() != null && !cierre.getFechaHoraEmision().isBlank())
+                            ? cierre.getFechaHoraEmision()
+                            : java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                    ps.setString(3, fechaEmision);
+                    ps.setString(4, cierre.getUsuarioEmisor());
+                    ps.setBigDecimal(5, cierre.getTotalVentasUsd());
+                    ps.setBigDecimal(6, cierre.getTotalVentasBs());
+                    ps.setBigDecimal(7, cierre.getTotalEfectivoBs());
+                    ps.setBigDecimal(8, cierre.getEfectivoDeclaradoBs());
+                    ps.setBigDecimal(9, cierre.tieneConciliacionBs() ? cierre.getDiferenciaEfectivoBs() : null);
+                    ps.setString(10, cierre.tieneConciliacionBs() ? cierre.getEstadoConciliacionBs() : null);
+                    ps.setBigDecimal(11, cierre.getTotalEfectivoUsd());
+                    ps.setBigDecimal(12, cierre.getEfectivoDeclaradoUsd());
+                    ps.setBigDecimal(13, cierre.tieneConciliacionUsd() ? cierre.getDiferenciaEfectivoUsd() : null);
+                    ps.setString(14, cierre.tieneConciliacionUsd() ? cierre.getEstadoConciliacionUsd() : null);
+                    ps.setBigDecimal(15, cierre.getTasaCambioReferencia());
+                    ps.setString(16, rutaPdf);
+                    exito = ps.executeUpdate() > 0;
+                }
                 con.commit();
                 return exito;
             } catch (SQLException ex) {
                 con.rollback();
+                if (ex.getErrorCode() == 1062 || "23000".equals(ex.getSQLState())) {
+                    throw ErrorAplicacionException.validacion("ya existe un cierre Z registrado para la fecha " + fechaJornada + ".");
+                }
                 throw ex;
             } finally {
                 try {

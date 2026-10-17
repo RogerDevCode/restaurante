@@ -163,8 +163,22 @@ public final class CalculoMonetarioPedido {
         validarMontoCalculado(totalVes);
         validarMontoCalculado(totalUsdReferencia);
 
+        BigDecimal subtotalUsdAditivo = CERO;
+        BigDecimal ivaUsdAditivo = CERO;
+        for (CalculoLinea linea : lineas) {
+            if ("VES".equals(linea.monedaBase())) {
+                subtotalUsdAditivo = subtotalUsdAditivo.add(convertirADolaresReferencia(linea.baseImponibleVes().add(linea.exentoVes()), tasaNormalizada));
+                ivaUsdAditivo = ivaUsdAditivo.add(convertirADolaresReferencia(linea.ivaVes(), tasaNormalizada));
+            } else {
+                subtotalUsdAditivo = subtotalUsdAditivo.add(linea.baseImponibleFuente()).add(linea.exentoFuente());
+                ivaUsdAditivo = ivaUsdAditivo.add(linea.ivaFuente());
+            }
+        }
+        BigDecimal totalUsdFinal = subtotalUsdAditivo.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP)
+                .add(ivaUsdAditivo.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP)).setScale(ESCALA_MONEDA);
+
         BigDecimal ajusteCambioBs = totalVes.subtract(
-                totalUsdReferencia.multiply(tasaNormalizada).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP))
+                totalUsdFinal.multiply(tasaNormalizada).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP))
                 .setScale(ESCALA_MONEDA);
 
         return new CalculoPedido(
