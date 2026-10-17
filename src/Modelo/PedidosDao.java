@@ -971,7 +971,7 @@ public class PedidosDao implements PedidosRepositorio {
 
                 String sqlActualizar = """
                     UPDATE pedidos
-                    SET estado = 'FINALIZADO', fecha = CURRENT_TIMESTAMP, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
+                    SET estado = 'FINALIZADO', cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
                         efectivo_bs = ?, efectivo_usd = ?, cerrada_en = COALESCE(cerrada_en, CURRENT_TIMESTAMP)
                     WHERE id = ? AND estado = 'PENDIENTE'
                     """;
