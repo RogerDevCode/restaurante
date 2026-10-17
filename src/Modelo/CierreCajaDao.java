@@ -80,7 +80,7 @@ public class CierreCajaDao {
             // Registrar log si existen pedidos legados que requieran fallback referencial
             try (PreparedStatement psLeg = con.prepareStatement(
                     "SELECT COUNT(*) FROM pedidos p WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?) " +
-                    "AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id) AND (p.tasa_cambio IS NULL OR p.total_bs IS NULL)")) {
+                    "AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id) AND (NULLIF(p.tasa_cambio, 0) IS NULL OR p.total_bs IS NULL)")) {
                 psLeg.setString(1, likeParam);
                 psLeg.setString(2, fechaFiltro);
                 try (ResultSet rsLeg = psLeg.executeQuery()) {
@@ -103,7 +103,7 @@ public class CierreCajaDao {
                 String sqlTotales = """
                     SELECT COUNT(*) AS cant,
                            COALESCE(SUM(total), 0) AS total_usd,
-                           COALESCE(SUM(total_bs), 0) AS total_bs,
+                           COALESCE(SUM(COALESCE(total_bs, ROUND(total * COALESCE(NULLIF(tasa_cambio, 0), ?), 2), 0)), 0) AS total_bs,
                            COALESCE(SUM(subtotal), 0) AS subtotal_usd,
                            COALESCE(SUM(subtotal_bs), 0) AS subtotal_bs,
                            COALESCE(SUM(iva_monto), 0) AS iva_usd,
@@ -113,8 +113,9 @@ public class CierreCajaDao {
                       AND (fecha LIKE ? OR DATE(fecha) = ?)
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlTotales)) {
-                    ps.setString(1, likeParam);
-                    ps.setString(2, fechaFiltro);
+                    ps.setBigDecimal(1, tasaConfig);
+                    ps.setString(2, likeParam);
+                    ps.setString(3, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             int finalizados = rs.getInt("cant");
@@ -163,32 +164,37 @@ public class CierreCajaDao {
                 // 3. Desglose por método de pago
                 List<CierreCaja.ResumenMetodoPago> metodos = new ArrayList<>();
                 String sqlMetodos = """
-                    SELECT metodo, COUNT(DISTINCT id_pedido) AS cant,
-                           COALESCE(SUM(total_usd), 0) AS total_usd,
-                           COALESCE(SUM(total_bs), 0) AS total_bs
+                    SELECT metodo,
+                           COUNT(*) AS cant,
+                           COALESCE(SUM(monto_usd), 0) AS total_usd,
+                           COALESCE(SUM(monto_bs), 0) AS total_bs
                     FROM (
-                        SELECT pp.id_pedido, pp.metodo_pago AS metodo, pp.monto_usd AS total_usd,
-                               pp.monto_bs AS total_bs
+                        SELECT pp.id_pedido,
+                               COALESCE(NULLIF(TRIM(pp.metodo_pago), ''), 'EFECTIVO') AS metodo,
+                               COALESCE(pp.monto_usd, CASE WHEN pp.moneda = 'USD' THEN pp.monto_aplicado ELSE ROUND(pp.monto_bs / NULLIF(pp.tasa_cambio, 0), 2) END, 0) AS monto_usd,
+                               COALESCE(pp.monto_bs, CASE WHEN pp.moneda = 'VES' THEN pp.monto_aplicado ELSE ROUND(pp.monto_usd * COALESCE(NULLIF(pp.tasa_cambio, 0), ?), 2) END, 0) AS monto_bs
                         FROM pedido_pagos pp
                         INNER JOIN pedidos p ON p.id = pp.id_pedido
                         WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
                         UNION ALL
                         SELECT p.id AS id_pedido,
                                COALESCE(NULLIF(TRIM(p.metodo_pago), ''), 'EFECTIVO') AS metodo,
-                               COALESCE(p.total, 0) AS total_usd,
-                               COALESCE(p.total_bs, p.total * COALESCE(NULLIF(p.tasa_cambio, 0), 36.5000), 0) AS total_bs
+                               COALESCE(p.total, 0) AS monto_usd,
+                               COALESCE(p.total_bs, ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0) AS monto_bs
                         FROM pedidos p
                         WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
                           AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id)
-                    ) pagos
+                    ) pagos_desglose
                     GROUP BY metodo
                     ORDER BY total_usd DESC
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlMetodos)) {
-                    ps.setString(1, likeParam);
-                    ps.setString(2, fechaFiltro);
-                    ps.setString(3, likeParam);
-                    ps.setString(4, fechaFiltro);
+                    ps.setBigDecimal(1, tasaConfig);
+                    ps.setString(2, likeParam);
+                    ps.setString(3, fechaFiltro);
+                    ps.setBigDecimal(4, tasaConfig);
+                    ps.setString(5, likeParam);
+                    ps.setString(6, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
                             metodos.add(new CierreCaja.ResumenMetodoPago(
@@ -214,7 +220,7 @@ public class CierreCajaDao {
                         WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
                         UNION ALL
                         SELECT p.id AS id_pedido, COALESCE(NULLIF(TRIM(p.metodo_pago), ''), 'EFECTIVO') AS metodo_pago,
-                               CASE WHEN p.metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(p.efectivo_bs, p.total_bs, 0)
+                               CASE WHEN p.metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(p.efectivo_bs, p.total_bs, ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0)
                                     WHEN p.metodo_pago = 'MIXTO' THEN COALESCE(p.efectivo_bs, 0) ELSE 0 END AS monto_bs,
                                CASE WHEN p.metodo_pago = 'EFECTIVO_USD' THEN COALESCE(p.efectivo_usd, p.total, 0)
                                     WHEN p.metodo_pago = 'MIXTO' THEN COALESCE(p.efectivo_usd, 0) ELSE 0 END AS monto_usd,
@@ -227,8 +233,9 @@ public class CierreCajaDao {
                 try (PreparedStatement ps = con.prepareStatement(sqlEfectivo)) {
                     ps.setString(1, likeParam);
                     ps.setString(2, fechaFiltro);
-                    ps.setString(3, likeParam);
-                    ps.setString(4, fechaFiltro);
+                    ps.setBigDecimal(3, tasaConfig);
+                    ps.setString(4, likeParam);
+                    ps.setString(5, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             cierre.setResumenEfectivo(
@@ -245,7 +252,7 @@ public class CierreCajaDao {
                     SELECT COALESCE(s.nombre, 'Sin Sala') AS sala_nombre,
                            COUNT(p.id) AS cant,
                            COALESCE(SUM(p.total), 0) AS total_usd,
-                           COALESCE(SUM(p.total_bs), 0) AS total_bs
+                           COALESCE(SUM(COALESCE(p.total_bs, ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0)), 0) AS total_bs
                     FROM pedidos p
                     LEFT JOIN salas s ON p.id_sala = s.id
                     WHERE p.estado = 'FINALIZADO'
@@ -254,8 +261,9 @@ public class CierreCajaDao {
                     ORDER BY total_usd DESC
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlSalas)) {
-                    ps.setString(1, likeParam);
-                    ps.setString(2, fechaFiltro);
+                    ps.setBigDecimal(1, tasaConfig);
+                    ps.setString(2, likeParam);
+                    ps.setString(3, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
                             salas.add(new CierreCaja.ResumenSala(
@@ -388,8 +396,8 @@ public class CierreCajaDao {
         BigDecimal tasa = (config != null && config.getTasaDolar() != null && config.getTasaDolar().compareTo(BigDecimal.ZERO) > 0)
                 ? config.getTasaDolar() : null;
         if (tasa == null) {
-            LOGGER.log(Level.WARNING, "CierreCajaDao.calcularDesdeMemoria: Configuración sin tasa válida. Aplicando tasa referencial por defecto 36.5000.");
-            tasa = new BigDecimal("36.5000");
+            throw ErrorAplicacionException.validacion(
+                    "No se puede calcular el cierre de caja: la tasa de cambio del sistema no ha sido configurada o es inválida.");
         }
         cierre.setTasaCambioReferencia(tasa);
 
@@ -409,16 +417,16 @@ public class CierreCajaDao {
         BigDecimal efectivoEsperadoUsd = BigDecimal.ZERO;
         int mixtosSinDesglose = 0;
 
-        Map<String, int[]> metodosMap = new LinkedHashMap<>(); // metodo -> [cant, usdCents, bsCents]
-        Map<String, int[]> salasMap = new LinkedHashMap<>();
-        Map<String, int[]> usuariosMap = new LinkedHashMap<>();
+        Map<String, AcumuladorMetodo> metodosMap = new LinkedHashMap<>();
+        Map<String, AcumuladorSala> salasMap = new LinkedHashMap<>();
+        Map<String, AcumuladorUsuario> usuariosMap = new LinkedHashMap<>();
 
         for (Pedidos p : pedidos) {
             boolean esFin = "FINALIZADO".equalsIgnoreCase(p.getEstado());
             if (esFin) {
                 finalizados++;
                 BigDecimal u = p.getTotalDecimal() != null ? p.getTotalDecimal() : BigDecimal.ZERO;
-                BigDecimal b = p.getTotalBs() != null ? p.getTotalBs() : u.multiply(tasa);
+                BigDecimal b = p.getTotalBs() != null ? p.getTotalBs() : u.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
                 BigDecimal su = p.getSubtotal() != null ? p.getSubtotal() : u;
                 BigDecimal sb = p.getSubtotalBs() != null ? p.getSubtotalBs() : b;
                 BigDecimal iu = p.getIvaMonto() != null ? p.getIvaMonto() : BigDecimal.ZERO;
@@ -447,21 +455,33 @@ public class CierreCajaDao {
                     }
                     default -> { }
                 }
-                metodosMap.computeIfAbsent(met, k -> new int[3]);
-                metodosMap.get(met)[0]++;
-                metodosMap.get(met)[1] += u.multiply(BigDecimal.valueOf(100)).intValue();
-                metodosMap.get(met)[2] += b.multiply(BigDecimal.valueOf(100)).intValue();
+                if (p.getPagos() != null && !p.getPagos().isEmpty()) {
+                    for (PagoPedido pp : p.getPagos()) {
+                        String m = pp.metodo() != null && !pp.metodo().isBlank() ? pp.metodo().trim().toUpperCase() : "EFECTIVO";
+                        BigDecimal pu = "USD".equalsIgnoreCase(pp.moneda()) ? pp.montoAplicado() : (tasa.signum() > 0 ? pp.montoAplicado().divide(tasa, 2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+                        BigDecimal pb = "VES".equalsIgnoreCase(pp.moneda()) ? pp.montoAplicado() : pp.montoAplicado().multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                        AcumuladorMetodo am = metodosMap.computeIfAbsent(m, k -> new AcumuladorMetodo());
+                        am.cant++;
+                        am.usd = am.usd.add(pu);
+                        am.bs = am.bs.add(pb);
+                    }
+                } else {
+                    AcumuladorMetodo am = metodosMap.computeIfAbsent(met, k -> new AcumuladorMetodo());
+                    am.cant++;
+                    am.usd = am.usd.add(u);
+                    am.bs = am.bs.add(b);
+                }
 
                 String sal = p.getSala() != null && !p.getSala().isBlank() ? p.getSala().trim() : "General";
-                salasMap.computeIfAbsent(sal, k -> new int[3]);
-                salasMap.get(sal)[0]++;
-                salasMap.get(sal)[1] += u.multiply(BigDecimal.valueOf(100)).intValue();
-                salasMap.get(sal)[2] += b.multiply(BigDecimal.valueOf(100)).intValue();
+                AcumuladorSala as = salasMap.computeIfAbsent(sal, k -> new AcumuladorSala());
+                as.cant++;
+                as.usd = as.usd.add(u);
+                as.bs = as.bs.add(b);
 
                 String usr = p.getUsuario() != null && !p.getUsuario().isBlank() ? p.getUsuario().trim() : "Operador";
-                usuariosMap.computeIfAbsent(usr, k -> new int[2]);
-                usuariosMap.get(usr)[0]++;
-                usuariosMap.get(usr)[1] += u.multiply(BigDecimal.valueOf(100)).intValue();
+                AcumuladorUsuario au = usuariosMap.computeIfAbsent(usr, k -> new AcumuladorUsuario());
+                au.cant++;
+                au.usd = au.usd.add(u);
             } else {
                 pendientes++;
             }
@@ -484,46 +504,46 @@ public class CierreCajaDao {
 
         List<CierreCaja.ResumenMetodoPago> listaMet = new ArrayList<>();
         metodosMap.forEach((k, v) -> listaMet.add(new CierreCaja.ResumenMetodoPago(
-                k, v[0],
-                BigDecimal.valueOf(v[1]).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP),
-                BigDecimal.valueOf(v[2]).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP))));
+                k, v.cant,
+                v.usd.setScale(2, RoundingMode.HALF_UP),
+                v.bs.setScale(2, RoundingMode.HALF_UP))));
         cierre.setDesgloseMetodos(listaMet);
 
         List<CierreCaja.ResumenSala> listaSal = new ArrayList<>();
         salasMap.forEach((k, v) -> listaSal.add(new CierreCaja.ResumenSala(
-                k, v[0],
-                BigDecimal.valueOf(v[1]).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP),
-                BigDecimal.valueOf(v[2]).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP))));
+                k, v.cant,
+                v.usd.setScale(2, RoundingMode.HALF_UP),
+                v.bs.setScale(2, RoundingMode.HALF_UP))));
         cierre.setDesgloseSalas(listaSal);
 
         List<CierreCaja.ResumenUsuario> listaUsr = new ArrayList<>();
         usuariosMap.forEach((k, v) -> listaUsr.add(new CierreCaja.ResumenUsuario(
-                k, v[0],
-                BigDecimal.valueOf(v[1]).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP))));
+                k, v.cant,
+                v.usd.setScale(2, RoundingMode.HALF_UP))));
         cierre.setDesgloseUsuarios(listaUsr);
 
         if (detalles != null) {
             int arts = 0;
-            Map<String, int[]> platosMap = new HashMap<>();
+            Map<String, AcumuladorPlato> platosMap = new HashMap<>();
             for (DetallePedido d : detalles) {
                 int cant = d.getCantidad();
                 arts += cant;
                 BigDecimal pr = d.getPrecioDecimal() != null ? d.getPrecioDecimal() : BigDecimal.ZERO;
-                int subCents = pr.multiply(BigDecimal.valueOf(cant * 100L)).intValue();
+                BigDecimal sub = pr.multiply(BigDecimal.valueOf(cant));
                 String nom = d.getNombre() != null ? d.getNombre().trim() : "Plato";
-                platosMap.computeIfAbsent(nom, k -> new int[2]);
-                platosMap.get(nom)[0] += cant;
-                platosMap.get(nom)[1] += subCents;
+                AcumuladorPlato ap = platosMap.computeIfAbsent(nom, k -> new AcumuladorPlato());
+                ap.cant += cant;
+                ap.total = ap.total.add(sub);
             }
             cierre.setTotalArticulos(arts);
 
             List<CierreCaja.PlatoVendido> top = new ArrayList<>();
             platosMap.entrySet().stream()
-                    .sorted((e1, e2) -> Integer.compare(e2.getValue()[0], e1.getValue()[0]))
+                    .sorted((e1, e2) -> Integer.compare(e2.getValue().cant, e1.getValue().cant))
                     .limit(5)
                     .forEach(e -> top.add(new CierreCaja.PlatoVendido(
-                            e.getKey(), e.getValue()[0],
-                            BigDecimal.valueOf(e.getValue()[1]).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP))));
+                            e.getKey(), e.getValue().cant,
+                            e.getValue().total.setScale(2, RoundingMode.HALF_UP))));
             cierre.setTopPlatos(top);
         }
 
@@ -577,5 +597,27 @@ public class CierreCajaDao {
             LOGGER.log(Level.WARNING, "Error al registrar cierre de caja en base de datos: " + ex.getMessage());
             return false;
         }
+    }
+
+    private static final class AcumuladorMetodo {
+        int cant = 0;
+        BigDecimal usd = BigDecimal.ZERO;
+        BigDecimal bs = BigDecimal.ZERO;
+    }
+
+    private static final class AcumuladorSala {
+        int cant = 0;
+        BigDecimal usd = BigDecimal.ZERO;
+        BigDecimal bs = BigDecimal.ZERO;
+    }
+
+    private static final class AcumuladorUsuario {
+        int cant = 0;
+        BigDecimal usd = BigDecimal.ZERO;
+    }
+
+    private static final class AcumuladorPlato {
+        int cant = 0;
+        BigDecimal total = BigDecimal.ZERO;
     }
 }
