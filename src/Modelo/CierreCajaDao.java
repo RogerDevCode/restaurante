@@ -630,6 +630,15 @@ public class CierreCajaDao {
         if (rutaPdf != null && !rutaPdf.isBlank() && !java.nio.file.Files.exists(java.nio.file.Path.of(rutaPdf))) {
             throw new DataAccessException("El archivo de cierre PDF no existe o es inaccesible: " + rutaPdf);
         }
+
+        String tipoCierre = cierre.getTipo() != null ? cierre.getTipo().name() : "TOTAL";
+        String fechaJornada = (cierre.getFecha() != null && !cierre.getFecha().isBlank())
+                ? cierre.getFecha()
+                : java.time.LocalDate.now().toString();
+        if ("TOTAL".equalsIgnoreCase(tipoCierre) && existeCierreZ(fechaJornada)) {
+            throw ErrorAplicacionException.validacion("ya existe un cierre Z registrado para la fecha " + fechaJornada + ".");
+        }
+
         String sql = """
             INSERT INTO cierres_caja (
                 tipo, fecha_jornada, fecha_hora_emision, usuario_emisor,
@@ -643,10 +652,7 @@ public class CierreCajaDao {
             boolean autoCommitPrevio = con.getAutoCommit();
             con.setAutoCommit(false);
             try (PreparedStatement ps = con.prepareStatement(sql)) {
-                ps.setString(1, cierre.getTipo() != null ? cierre.getTipo().name() : "TOTAL");
-                String fechaJornada = (cierre.getFecha() != null && !cierre.getFecha().isBlank())
-                        ? cierre.getFecha()
-                        : java.time.LocalDate.now().toString();
+                ps.setString(1, tipoCierre);
                 ps.setString(2, fechaJornada);
                 String fechaEmision = (cierre.getFechaHoraEmision() != null && !cierre.getFechaHoraEmision().isBlank())
                         ? cierre.getFechaHoraEmision()
@@ -680,6 +686,23 @@ public class CierreCajaDao {
         } catch (SQLException ex) {
             LOGGER.log(Level.WARNING, "Error al registrar cierre de caja en base de datos: " + ex.getMessage());
             throw new DataAccessException("No se pudo registrar el cierre de caja en base de datos: " + ex.getMessage(), ex);
+        }
+    }
+
+    public boolean existeCierreZ(String fechaJornada) {
+        if (fechaJornada == null || fechaJornada.isBlank()) {
+            return false;
+        }
+        String sql = "SELECT COUNT(*) FROM cierres_caja WHERE tipo = 'TOTAL' AND fecha_jornada = ?";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, fechaJornada.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(Level.WARNING, "Error al consultar existencia de cierre Z: " + ex.getMessage());
+            return false;
         }
     }
 
