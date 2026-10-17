@@ -399,6 +399,9 @@ public final class Sistema extends javax.swing.JFrame {
         if (tableMenu != null) {
             tableMenu.getSelectionModel().addListSelectionListener(e -> {
                 if (!e.getValueIsAdjusting()) {
+                    if (txtCantidadManual != null && txtCantidadManual.hasFocus()) {
+                        txtCantidadManual.transferFocus();
+                    }
                     actualizarEstadoBotonesCarrito();
                 }
             });
@@ -4458,6 +4461,15 @@ public final class Sistema extends javax.swing.JFrame {
         try {
             int nuevaCant = Integer.parseInt(qtyText.trim());
             if (nuevaCant < 1 || nuevaCant > Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO) {
+                javax.swing.table.DefaultTableModel tmp = (javax.swing.table.DefaultTableModel) tableMenu.getModel();
+                if (fila >= 0 && fila < tmp.getRowCount()) {
+                    Object valOld = tmp.getValueAt(fila, 2);
+                    if (txtCantidadManual != null && valOld != null) {
+                        isUpdatingUI = true;
+                        txtCantidadManual.setText(valOld.toString());
+                        isUpdatingUI = false;
+                    }
+                }
                 actualizarEstadoBotonesCarrito();
                 mostrarAlertaCampo(txtCantidadManual, "La cantidad debe estar entre 1 y "
                         + Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO + ".");
@@ -4600,10 +4612,12 @@ public final class Sistema extends javax.swing.JFrame {
         if (txtCantidadManual != null) {
             txtCantidadManual.setEnabled(haySeleccion);
             if (haySeleccion && !isUpdatingUI) {
-                isUpdatingUI = true;
-                Object val = Tables.valorModelo(tableMenu, tableMenu.getSelectedRow(), 2);
-                txtCantidadManual.setText(val != null ? val.toString() : "1");
-                isUpdatingUI = false;
+                if (!txtCantidadManual.hasFocus()) {
+                    isUpdatingUI = true;
+                    Object val = Tables.valorModelo(tableMenu, tableMenu.getSelectedRow(), 2);
+                    txtCantidadManual.setText(val != null ? val.toString() : "1");
+                    isUpdatingUI = false;
+                }
             } else if (!haySeleccion) {
                 txtCantidadManual.setText("");
             }
