@@ -1672,7 +1672,8 @@ public class PedidosDao implements PedidosRepositorio {
                 LOGGER.log(Level.FINE, "No se pudo auditar pagos legados: " + exCheck.getMessage());
             }
 
-            if (cerrado) {
+            boolean esFinalizado = "FINALIZADO".equalsIgnoreCase(estado);
+            if (esFinalizado) {
                 // Consultar ajuste cambiario de liquidación para que los pagos aplicados cuadren exactamente al total
                 try (PreparedStatement psLiq = con.prepareStatement(
                         "SELECT ajuste_cambio_bs FROM pedido_liquidaciones WHERE id_pedido = ? ORDER BY id DESC LIMIT 1")) {
@@ -1695,7 +1696,7 @@ public class PedidosDao implements PedidosRepositorio {
             BigDecimal saldoUsd = totalUsd.subtract(pagadoUsdAplicado).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
             BigDecimal excedenteUsd = pagadoUsdAplicado.subtract(totalUsd).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
 
-            if (cerrado) {
+            if (esFinalizado) {
                 BigDecimal tolBs = new BigDecimal("0.05");
                 if (tasa != null && tasa.signum() > 0) {
                     BigDecimal tolCalculada = new BigDecimal("0.005").multiply(tasa).setScale(2, RoundingMode.HALF_UP);
