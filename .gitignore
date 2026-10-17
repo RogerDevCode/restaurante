@@ -16,6 +16,7 @@ nbproject/private/
 # Scratch files
 Test*.java
 test_tab*
+scratch*
 *.class
 *.bak
 debug.log
