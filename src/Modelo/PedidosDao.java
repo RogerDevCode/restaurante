@@ -903,10 +903,14 @@ public class PedidosDao implements PedidosRepositorio {
                     recibidoBs = recibidoBs.add(pago.equivalenteBs(tasa));
                     if ("VES".equals(pago.moneda())) {
                         aplicadoVes = aplicadoVes.add(aplicado);
-                        if ("EFECTIVO_BS".equals(pago.metodo())) efectivoBs = efectivoBs.add(aplicado);
+                        if ("EFECTIVO".equals(pago.metodo()) || "EFECTIVO_BS".equals(pago.metodo())) {
+                            efectivoBs = efectivoBs.add(aplicado);
+                        }
                     } else {
                         aplicadoUsd = aplicadoUsd.add(aplicado);
-                        if ("EFECTIVO_USD".equals(pago.metodo())) efectivoUsd = efectivoUsd.add(aplicado);
+                        if ("EFECTIVO".equals(pago.metodo()) || "EFECTIVO_USD".equals(pago.metodo())) {
+                            efectivoUsd = efectivoUsd.add(aplicado);
+                        }
                     }
                 }
                 String metodoResumen = pagos.size() == 1 ? pagos.getFirst().metodo() : "MIXTO";
