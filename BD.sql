@@ -491,9 +491,11 @@ CREATE TABLE `cierres_caja` (
   `tasa_cambio` decimal(12,4) NOT NULL DEFAULT 36.5000,
   `ruta_pdf` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_jornada_z` date GENERATED ALWAYS AS (CASE WHEN `tipo` = 'TOTAL' THEN `fecha_jornada` ELSE NULL END) STORED,
   PRIMARY KEY (`id`),
   KEY `idx_cierres_fecha` (`fecha_jornada`),
-  KEY `idx_cierres_tipo` (`tipo`)
+  KEY `idx_cierres_tipo` (`tipo`),
+  UNIQUE KEY `uq_cierres_caja_z_fecha` (`fecha_jornada_z`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

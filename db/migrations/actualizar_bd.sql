@@ -846,6 +846,14 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage WHERE constraint_schema=DATABASE() AND table_name='pedido_pagos' AND column_name='id_liquidacion' AND referenced_table_name='pedido_liquidaciones') THEN
         ALTER TABLE pedido_pagos ADD CONSTRAINT fk_pedido_pagos_liquidacion FOREIGN KEY(id_liquidacion) REFERENCES pedido_liquidaciones(id) ON DELETE RESTRICT;
     END IF;
+
+    -- F-26: Restricción de unicidad para Cierre Z por fecha de jornada
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='cierres_caja' AND column_name='fecha_jornada_z') THEN
+        ALTER TABLE cierres_caja ADD COLUMN fecha_jornada_z DATE GENERATED ALWAYS AS (CASE WHEN `tipo` = 'TOTAL' THEN `fecha_jornada` ELSE NULL END) STORED;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='cierres_caja' AND index_name='uq_cierres_caja_z_fecha') THEN
+        ALTER TABLE cierres_caja ADD UNIQUE KEY uq_cierres_caja_z_fecha (fecha_jornada_z);
+    END IF;
 END$$
 DELIMITER ;
 

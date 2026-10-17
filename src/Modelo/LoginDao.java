@@ -23,6 +23,8 @@ public class LoginDao implements AutenticacionRepositorio {
     private static final Pattern PATRON_CORREO = Pattern.compile(
             "^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\\.)+[A-Z]{2,63}$",
             Pattern.CASE_INSENSITIVE);
+    private static final String DUMMY_HASH_PBKDF2 =
+            "pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM";
     private final ProveedorConexionJdbc conexiones;
     private final PasswordHasher passwordHasher;
     private final ConfiguracionRepositorio configuracionRepo;
@@ -83,6 +85,8 @@ public class LoginDao implements AutenticacionRepositorio {
         }
 
         if (usuario == null || !rolReconocido(usuario.getRol())) {
+            // F-28: Ejecutar verificación dummy con costo PBKDF2 idéntico para evitar timing attack de enumeración de usuarios
+            verificarClaveEnMemoria(clave != null ? clave : "", DUMMY_HASH_PBKDF2);
             ErrorAplicacionException.registrarAdvertencia("Intento de inicio de sesión rechazado.");
             return Optional.empty();
         }
