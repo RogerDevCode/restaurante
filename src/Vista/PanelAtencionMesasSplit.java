@@ -1330,7 +1330,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             det.setMonedaBase(mb);
             det.setAplicaIva(gravado);
             det.setPrecioIncluyeIva(incIva);
-            det.setIvaPorcentaje(ivaPorcentaje);
+            det.setIvaPorcentaje(gravado ? ivaPorcentaje : BigDecimal.ZERO.setScale(2));
             detalles.add(det);
         }
 
@@ -1407,7 +1407,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             det.setMonedaBase(plato.getMonedaBase());
             det.setAplicaIva(plato.isAplicaIva());
             det.setPrecioIncluyeIva(Boolean.TRUE.equals(plato.getPrecioIncluyeIva()));
-            det.setIvaPorcentaje(ivaPorcentaje);
+            det.setIvaPorcentaje(plato.isAplicaIva() ? ivaPorcentaje : BigDecimal.ZERO.setScale(2));
 
             detalles.add(det);
         }
