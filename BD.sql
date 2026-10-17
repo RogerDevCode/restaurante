@@ -260,7 +260,27 @@ CREATE TABLE `platos` (
 
 LOCK TABLES `platos` WRITE;
 /*!40000 ALTER TABLE `platos` DISABLE KEYS */;
-INSERT INTO `platos` (`id`, `nombre`, `precio`, `moneda_base`, `precio_usd`, `precio_ves`, `precio_clasificado`, `precio_incluye_iva`, `fecha`, `activo`, `desactivado_en`, `aplica_iva`) VALUES (1,'ARROZ CON POLLO',10.00,'USD',10.00,365.00,1,0,CURRENT_DATE(),1,NULL,1),(2,'CHAUFA',20.00,'USD',20.00,730.00,1,0,CURRENT_DATE(),1,NULL,1),(3,'GASEOSA COCA COLA 1.5 LITROS',8.00,'USD',8.00,292.00,1,0,CURRENT_DATE(),1,NULL,1);
+INSERT INTO `platos` (`id`, `nombre`, `precio`, `moneda_base`, `precio_usd`, `precio_ves`, `precio_clasificado`, `precio_incluye_iva`, `fecha`, `activo`, `desactivado_en`, `aplica_iva`) VALUES 
+(1,'POLLO ASADO',45.00,'USD',45.00,45630.00,1,0,CURRENT_DATE(),1,NULL,1),
+(2,'LOMO SALTADO',32.50,'USD',32.50,32955.00,1,0,CURRENT_DATE(),1,NULL,1),
+(3,'PARRILLA MIXTA',55.00,'USD',55.00,55770.00,1,0,CURRENT_DATE(),1,NULL,1),
+(4,'ARROZ CON POLLO',10.00,'USD',10.00,10140.00,1,0,CURRENT_DATE(),1,NULL,1),
+(5,'CHAUFA',20.00,'USD',20.00,20280.00,1,0,CURRENT_DATE(),1,NULL,1),
+(6,'PABELLON CRIOLLO',16.00,'USD',16.00,16224.00,1,0,CURRENT_DATE(),1,NULL,1),
+(7,'AREPA REINA PEPIADA',12.00,'USD',12.00,12168.00,1,0,CURRENT_DATE(),1,NULL,1),
+(8,'CACHAPA CON QUESO',15.00,'USD',15.00,15210.00,1,0,CURRENT_DATE(),1,NULL,1),
+(9,'EMPANADAS (3 UND)',9.00,'USD',9.00,9126.00,1,0,CURRENT_DATE(),1,NULL,1),
+(10,'ENSALADA CESAR',14.00,'USD',14.00,14196.00,1,0,CURRENT_DATE(),1,NULL,0),
+(11,'SOPA DEL DIA',8.00,'USD',8.00,8112.00,1,0,CURRENT_DATE(),1,NULL,0),
+(12,'GASEOSA COCA COLA 1.5 LITROS',8.00,'USD',8.00,8112.00,1,0,CURRENT_DATE(),1,NULL,1),
+(13,'CERVEZA',8.00,'USD',8.00,8112.00,1,0,CURRENT_DATE(),1,NULL,1),
+(14,'CAFE NEGRO',3.00,'USD',3.00,3042.00,1,0,CURRENT_DATE(),1,NULL,0),
+(15,'CAFE CON LECHE',5.00,'USD',5.00,5070.00,1,0,CURRENT_DATE(),1,NULL,0),
+(16,'JUGO DE NARANJA',6.00,'USD',6.00,6084.00,1,0,CURRENT_DATE(),1,NULL,0),
+(17,'JUGO DE MARACUYA',8.00,'USD',8.00,8112.00,1,0,CURRENT_DATE(),1,NULL,0),
+(18,'PAPELON CON LIMON',7.00,'USD',7.00,7098.00,1,0,CURRENT_DATE(),1,NULL,0),
+(19,'TORTA DE CHOCOLATE',10.00,'USD',10.00,10140.00,1,0,CURRENT_DATE(),1,NULL,1),
+(20,'QUESILLO',8.00,'USD',8.00,8112.00,1,0,CURRENT_DATE(),1,NULL,1);
 /*!40000 ALTER TABLE `platos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -277,7 +297,7 @@ CREATE TABLE `salas` (
   `mesas` int(11) NOT NULL,
   `tipo` varchar(20) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'SALON',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -286,7 +306,11 @@ CREATE TABLE `salas` (
 
 LOCK TABLES `salas` WRITE;
 /*!40000 ALTER TABLE `salas` DISABLE KEYS */;
-INSERT INTO `salas` (`id`, `nombre`, `mesas`, `tipo`) VALUES (1,'SALA PRINCIPAL',15,'SALON'),(2,'SEGUNDO PISO',10,'SALON');
+INSERT INTO `salas` (`id`, `nombre`, `mesas`, `tipo`) VALUES 
+(1,'SALON PRINCIPAL',15,'SALON'),
+(2,'TERRAZA',10,'SALON'),
+(3,'SALON VIP',6,'SALON'),
+(4,'BARRA',8,'BARRA');
 /*!40000 ALTER TABLE `salas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -330,7 +354,7 @@ CREATE TABLE `login_intentos` (
 
 LOCK TABLES `config` WRITE;
 /*!40000 ALTER TABLE `config` DISABLE KEYS */;
-INSERT INTO `config` (`id`, `ruc`, `nombre`, `telefono`, `direccion`, `mensaje`, `tasa_dolar`, `iva_porcentaje`, `logo_path`, `cliente_predeterminado_nombre`, `cliente_predeterminado_documento`, `meses_retencion_pedidos`, `imprimir_logo_ticket`, `impresora_tickets`, `modo_salida_tickets`) VALUES (1,'J-12345678-0','Restaurante la Delicia','0414-1234567','Caracas - Venezuela','Gracias por su compra',36.5000,16.00,NULL,'Consumidor Final','V-00000000',24,1,'DEFAULT','TERMICA_DIRECTA');
+INSERT INTO `config` (`id`, `ruc`, `nombre`, `telefono`, `direccion`, `mensaje`, `tasa_dolar`, `iva_porcentaje`, `logo_path`, `cliente_predeterminado_nombre`, `cliente_predeterminado_documento`, `meses_retencion_pedidos`, `imprimir_logo_ticket`, `impresora_tickets`, `modo_salida_tickets`) VALUES (1,'J-12345678-0','Restaurante la Delicia','0414-1234567','Caracas - Venezuela','Gracias por su compra',1014.0000,16.00,NULL,'Consumidor Final','V-00000000',24,1,'DEFAULT','TERMICA_DIRECTA');
 /*!40000 ALTER TABLE `config` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -409,7 +433,7 @@ CREATE TABLE `configuracion_sistema` (
 LOCK TABLES `configuracion_sistema` WRITE;
 /*!40000 ALTER TABLE `configuracion_sistema` DISABLE KEYS */;
 INSERT INTO `configuracion_sistema` (`clave`, `valor`, `descripcion`) VALUES
-('tasa_dolar', '36.5000', 'Tasa de cambio USD / Bs'),
+('tasa_dolar', '1014.00', 'Tasa de cambio USD / Bs'),
 ('iva_porcentaje', '16.00', 'Porcentaje de IVA'),
 ('impresora_tickets', 'DEFAULT', 'Impresora predeterminada para tickets'),
 ('modo_salida_tickets', 'TERMICA_DIRECTA', 'Modo de salida de tickets'),
@@ -417,7 +441,7 @@ INSERT INTO `configuracion_sistema` (`clave`, `valor`, `descripcion`) VALUES
 ('cliente_predeterminado_nombre', 'Consumidor Final', 'Nombre de cliente por defecto en facturación'),
 ('cliente_predeterminado_documento', 'V-00000000', 'Cédula/RIF de cliente por defecto en facturación'),
 ('meses_retencion_pedidos', '24', 'Meses de retención de pedidos'),
-('modo_atencion', 'OPCION_B', 'Modo predeterminado de atención de mesas');
+('modo_atencion', 'OPCION_C', 'Modo predeterminado de atención de mesas');
 /*!40000 ALTER TABLE `configuracion_sistema` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -511,6 +535,22 @@ CREATE TABLE `mesoneros` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Dumping data for table `mesoneros`
+--
+
+LOCK TABLES `mesoneros` WRITE;
+/*!40000 ALTER TABLE `mesoneros` DISABLE KEYS */;
+INSERT INTO `mesoneros` (`id`, `nombre_completo`, `cedula`, `telefono`, `activo`, `eliminado`) VALUES 
+(1,'Juan Pérez','V-20111222','0414-1112233',1,0),
+(2,'Luis García','V-21555666','0412-7778899',1,0),
+(3,'Pedro Sánchez','V-18777888','0424-5556677',1,0),
+(4,'Ana Martínez','V-18987654','0424-4445566',1,0),
+(5,'Carmen Ruiz','V-17666777','0416-0001122',1,0),
+(6,'Lucía Fernández','V-19888777','0414-3334455',1,0);
+/*!40000 ALTER TABLE `mesoneros` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `categorias`
 --
 
@@ -525,7 +565,7 @@ CREATE TABLE `categorias` (
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_categorias_nombre` (`nombre`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -534,7 +574,14 @@ CREATE TABLE `categorias` (
 
 LOCK TABLES `categorias` WRITE;
 /*!40000 ALTER TABLE `categorias` DISABLE KEYS */;
-INSERT INTO `categorias` (`id`, `nombre`, `color`, `orden`) VALUES (1,'General','#6B7280',0);
+INSERT INTO `categorias` (`id`, `nombre`, `color`, `orden`) VALUES 
+(1,'Entradas','#E9B10C',1),
+(2,'Platos Fuertes','#E56F1A',2),
+(3,'Parrilla','#E45A4E',3),
+(4,'Bebidas','#558EDD',4),
+(5,'Jugos Naturales','#2E9E4F',5),
+(6,'Postres','#A270DB',6),
+(7,'General','#6B7280',7);
 /*!40000 ALTER TABLE `categorias` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -555,6 +602,22 @@ CREATE TABLE `plato_categoria` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Dumping data for table `plato_categoria`
+--
+
+LOCK TABLES `plato_categoria` WRITE;
+/*!40000 ALTER TABLE `plato_categoria` DISABLE KEYS */;
+INSERT INTO `plato_categoria` (`nombre_clave`, `id_categoria`) VALUES 
+('pollo asado',3),('lomo saltado',3),('parrilla mixta',3),
+('arroz con pollo',2),('chaufa',2),('pabellon criollo',2),
+('arepa reina pepiada',1),('cachapa con queso',1),('empanadas (3 und)',1),('ensalada cesar',1),('sopa del dia',1),
+('gaseosa coca cola 1.5 litros',4),('cerveza',4),('cafe negro',4),('cafe con leche',4),
+('jugo de naranja',5),('jugo de maracuya',5),('papelon con limon',5),
+('torta de chocolate',6),('quesillo',6);
+/*!40000 ALTER TABLE `plato_categoria` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `plato_favorito`
 --
 
@@ -567,6 +630,17 @@ CREATE TABLE `plato_favorito` (
   PRIMARY KEY (`nombre_clave`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `plato_favorito`
+--
+
+LOCK TABLES `plato_favorito` WRITE;
+/*!40000 ALTER TABLE `plato_favorito` DISABLE KEYS */;
+INSERT INTO `plato_favorito` (`nombre_clave`) VALUES 
+('pollo asado'),('parrilla mixta'),('arepa reina pepiada'),('cafe con leche'),('torta de chocolate');
+/*!40000 ALTER TABLE `plato_favorito` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `restaurante_control`
