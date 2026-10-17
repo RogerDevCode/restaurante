@@ -53,74 +53,113 @@ public class LoginDao implements AutenticacionRepositorio {
         if (correo == null || correo.trim().isEmpty() || clave == null || clave.isEmpty()) {
             throw ErrorAplicacionException.validacion("El correo y la contraseña son obligatorios.");
         }
-        String sql = """
+        String sqlUsuario = """
             SELECT id, nombre, correo, pass, rol
             FROM usuarios
             WHERE (correo = ? OR nombre = ?)
               AND (activo = 1 OR activo IS NULL)
             ORDER BY id ASC
-            LIMIT 1 FOR UPDATE
+            LIMIT 1
             """;
-        try (Connection conexion = conexiones.getConnection()) {
-            boolean autoCommitPrevio = conexion.getAutoCommit();
-            conexion.setAutoCommit(false);
-            try {
-                Usuario usuario = null;
-                String contrasenaGuardada = null;
-                try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-                    String identificador = correo.trim();
-                    sentencia.setString(1, identificador);
-                    sentencia.setString(2, identificador);
-                    try (ResultSet resultados = sentencia.executeQuery()) {
-                        if (resultados.next()) {
-                            usuario = new Usuario();
-                            usuario.setId(resultados.getInt("id"));
-                            usuario.setNombre(resultados.getString("nombre"));
-                            usuario.setCorreo(resultados.getString("correo"));
-                            usuario.setRol(resultados.getString("rol"));
-                            contrasenaGuardada = resultados.getString("pass");
-                        }
-                    }
+        Usuario usuario = null;
+        String contrasenaGuardada = null;
+        try (Connection conLectura = conexiones.getConnection();
+             PreparedStatement psLectura = conLectura.prepareStatement(sqlUsuario)) {
+            String identificador = correo.trim();
+            psLectura.setString(1, identificador);
+            psLectura.setString(2, identificador);
+            try (ResultSet rs = psLectura.executeQuery()) {
+                if (rs.next()) {
+                    usuario = new Usuario();
+                    usuario.setId(rs.getInt("id"));
+                    usuario.setNombre(rs.getString("nombre"));
+                    usuario.setCorreo(rs.getString("correo"));
+                    usuario.setRol(rs.getString("rol"));
+                    contrasenaGuardada = rs.getString("pass");
                 }
-                if (usuario == null || !rolReconocido(usuario.getRol())) {
-                    conexion.commit();
-                    ErrorAplicacionException.registrarAdvertencia("Intento de inicio de sesión rechazado.");
-                    return Optional.empty();
-                }
-
-                long ahora = obtenerAhoraServidorMs(conexion);
-                EstadoIntentosLogin estado = leerEstadoIntentos(conexion, usuario.getId(), true);
-                if (estado.bloqueadoHastaMs() > ahora) {
-                    conexion.commit();
-                    return Optional.empty();
-                }
-                if (estado.bloqueadoHastaMs() > 0) {
-                    borrarEstadoIntentos(conexion, usuario.getId());
-                    estado = new EstadoIntentosLogin(0, 0);
-                }
-
-                boolean claveValida = verificarOCrearHash(conexion, usuario.getId(), clave, contrasenaGuardada);
-                if (!claveValida) {
-                    int fallos = estado.intentos() + 1;
-                    long bloqueoHasta = fallos >= MAX_INTENTOS_LOGIN
-                            ? ahora + DURACION_BLOQUEO_LOGIN_MS : 0;
-                    guardarEstadoIntentos(conexion, usuario.getId(), fallos, bloqueoHasta);
-                    conexion.commit();
-                    ErrorAplicacionException.registrarAdvertencia("Intento de inicio de sesión rechazado.");
-                    return Optional.empty();
-                }
-                borrarEstadoIntentos(conexion, usuario.getId());
-                conexion.commit();
-                return Optional.of(usuario);
-            } catch (SQLException | RuntimeException ex) {
-                try { conexion.rollback(); } catch (SQLException rollback) { ex.addSuppressed(rollback); }
-                throw ex;
-            } finally {
-                try { conexion.setAutoCommit(autoCommitPrevio); } catch (SQLException ignored) { }
             }
-        } catch (SQLException ex) {
-            throw new DataAccessException("No se pudo validar el usuario.", ex);
+        } catch (SQLException exLectura) {
+            throw new DataAccessException("No se pudo validar el usuario.", exLectura);
         }
+
+        if (usuario == null || !rolReconocido(usuario.getRol())) {
+            ErrorAplicacionException.registrarAdvertencia("Intento de inicio de sesión rechazado.");
+            return Optional.empty();
+        }
+
+        // 1. Verificación preliminar de bloqueo sin retener transacciones
+        try (Connection conCheck = conexiones.getConnection()) {
+            long ahora = obtenerAhoraServidorMs(conCheck);
+            EstadoIntentosLogin estado = leerEstadoIntentos(conCheck, usuario.getId(), false);
+            if (estado.bloqueadoHastaMs() > ahora) {
+                return Optional.empty();
+            }
+        } catch (SQLException exCheck) {
+            throw new DataAccessException("No se pudo consultar el estado de intentos.", exCheck);
+        }
+
+        // 2. N-06: Verificación de hash PBKDF2 (600k iteraciones) en memoria FUERA de cualquier transacción o lock
+        boolean claveValida = verificarClaveEnMemoria(clave, contrasenaGuardada);
+
+        // 3. N-07: Actualización transaccional de intentos con reintento acotado ante deadlock (1213 / 1205)
+        int maxReintentos = 3;
+        for (int intento = 1; intento <= maxReintentos; intento++) {
+            try (Connection conexion = conexiones.getConnection()) {
+                boolean autoCommitPrevio = conexion.getAutoCommit();
+                conexion.setAutoCommit(false);
+                try {
+                    long ahora = obtenerAhoraServidorMs(conexion);
+                    EstadoIntentosLogin estado = leerEstadoIntentos(conexion, usuario.getId(), true);
+                    if (estado.bloqueadoHastaMs() > ahora) {
+                        conexion.commit();
+                        return Optional.empty();
+                    }
+                    if (estado.bloqueadoHastaMs() > 0) {
+                        borrarEstadoIntentos(conexion, usuario.getId());
+                        estado = new EstadoIntentosLogin(0, 0);
+                    }
+
+                    if (!claveValida) {
+                        int fallos = estado.intentos() + 1;
+                        long bloqueoHasta = fallos >= MAX_INTENTOS_LOGIN
+                                ? ahora + DURACION_BLOQUEO_LOGIN_MS : 0;
+                        guardarEstadoIntentos(conexion, usuario.getId(), fallos, bloqueoHasta);
+                        conexion.commit();
+                        ErrorAplicacionException.registrarAdvertencia("Intento de inicio de sesión rechazado.");
+                        return Optional.empty();
+                    }
+
+                    borrarEstadoIntentos(conexion, usuario.getId());
+                    migrarHashSiEsNecesario(conexion, usuario.getId(), clave, contrasenaGuardada);
+                    conexion.commit();
+                    return Optional.of(usuario);
+                } catch (SQLException exTx) {
+                    try { conexion.rollback(); } catch (SQLException rollback) { exTx.addSuppressed(rollback); }
+                    if (esDeadlock(exTx) && intento < maxReintentos) {
+                        try {
+                            Thread.sleep(20L * intento);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                        }
+                        continue;
+                    }
+                    throw exTx;
+                } finally {
+                    try { conexion.setAutoCommit(autoCommitPrevio); } catch (SQLException ignored) { }
+                }
+            } catch (SQLException ex) {
+                if (esDeadlock(ex) && intento < maxReintentos) {
+                    continue;
+                }
+                throw new DataAccessException("No se pudo validar el usuario.", ex);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private boolean esDeadlock(SQLException ex) {
+        return ex.getErrorCode() == 1213 || ex.getErrorCode() == 1205
+                || (ex.getMessage() != null && ex.getMessage().contains("Deadlock"));
     }
 
     private static final int MAX_INTENTOS_LOGIN = 5;
@@ -194,6 +233,44 @@ public class LoginDao implements AutenticacionRepositorio {
                 throw new ErrorAplicacionException("El correo electrónico ya está registrado.", ex, Level.WARNING);
             }
             throw new DataAccessException("No se pudo registrar el usuario.", ex);
+        }
+    }
+
+    private boolean verificarClaveEnMemoria(String clave, String guardada) {
+        if (guardada == null) {
+            return false;
+        }
+        char[] contrasena = clave.toCharArray();
+        try {
+            if (passwordHasher.esHash(guardada)) {
+                return passwordHasher.verificar(contrasena, guardada);
+            }
+            return compararEnTiempoConstante(clave, guardada);
+        } finally {
+            Arrays.fill(contrasena, '\0');
+        }
+    }
+
+    private void migrarHashSiEsNecesario(Connection conexion, int id, String clave, String guardada) throws SQLException {
+        if (guardada == null || passwordHasher.esHash(guardada)) {
+            return;
+        }
+        char[] contrasena = clave.toCharArray();
+        try {
+            String hashNuevo = passwordHasher.hash(contrasena);
+            String sql = """
+                UPDATE usuarios
+                SET pass = ?
+                WHERE id = ? AND BINARY pass = BINARY ?
+                """;
+            try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+                sentencia.setString(1, hashNuevo);
+                sentencia.setInt(2, id);
+                sentencia.setString(3, guardada);
+                sentencia.executeUpdate();
+            }
+        } finally {
+            Arrays.fill(contrasena, '\0');
         }
     }
 
