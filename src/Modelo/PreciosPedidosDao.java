@@ -209,7 +209,8 @@ public class PreciosPedidosDao {
                 BigDecimal totalNuevoGlobal = BigDecimal.ZERO.setScale(2);
 
                 BigDecimal nuevoPrecioLinea = "VES".equalsIgnoreCase(plato.getMonedaBase())
-                        ? plato.getPrecioVes() : plato.getPrecioUsd();
+                        ? (plato.getPrecioVes() != null ? plato.getPrecioVes() : plato.getPrecioDecimal())
+                        : (plato.getPrecioUsd() != null ? plato.getPrecioUsd() : plato.getPrecioDecimal());
 
                 // 5. Para cada pedido, recalcular detalles y cabecera
                 for (int idPedido : pedidosAfectados) {
@@ -266,8 +267,7 @@ public class PreciosPedidosDao {
                                 det.setPrecioDecimal(rs.getBigDecimal("precio"));
                                 det.setCantidad(rs.getInt("cantidad"));
                                 det.setComentario(rs.getString("comentario"));
-                                boolean aplIva = rs.getBoolean("aplica_iva");
-                                det.setAplicaIva(rs.wasNull() ? null : aplIva);
+                                det.setAplicaIva(rs.getBoolean("aplica_iva"));
                                 det.setMonedaBase(rs.getString("moneda_base"));
                                 int incIva = rs.getInt("precio_incluye_iva");
                                 det.setPrecioIncluyeIva(rs.wasNull() ? null : (incIva != 0));
@@ -281,7 +281,7 @@ public class PreciosPedidosDao {
                     // Actualizar en BD y memoria las líneas que corresponden al plato actualizado
                     String sqlUpdateDetalle = """
                         UPDATE detalle_pedidos
-                        SET nombre = ?, precio = ?, moneda_base = ?, aplica_iva = ?, precio_incluye_iva = ?
+                        SET nombre = ?, precio = ?, moneda_base = ?, aplica_iva = ?, precio_incluye_iva = ?, iva_porcentaje = ?
                         WHERE id = ?
                         """;
                     try (PreparedStatement ps = con.prepareStatement(sqlUpdateDetalle)) {
@@ -292,26 +292,108 @@ public class PreciosPedidosDao {
                                 det.setMonedaBase(plato.getMonedaBase());
                                 det.setAplicaIva(plato.isAplicaIva());
                                 det.setPrecioIncluyeIva(Boolean.TRUE.equals(plato.getPrecioIncluyeIva()));
-                                if (det.getIvaPorcentaje() == null) {
-                                    det.setIvaPorcentaje(det.getAplicaIva()
-                                            ? ivaPorcentajeCabecera
-                                            : BigDecimal.ZERO.setScale(2));
-                                }
+                                det.setIvaPorcentaje(Boolean.TRUE.equals(det.getAplicaIva())
+                                        ? ivaPorcentajeCabecera
+                                        : BigDecimal.ZERO.setScale(2));
 
                                 ps.setString(1, det.getNombre());
                                 ps.setBigDecimal(2, det.getPrecioDecimal());
                                 ps.setString(3, det.getMonedaBase());
-                                ps.setInt(4, det.getAplicaIva() ? 1 : 0);
-                                ps.setInt(5, det.getPrecioIncluyeIva() ? 1 : 0);
-                                ps.setInt(6, det.getId());
+                                ps.setInt(4, Boolean.TRUE.equals(det.getAplicaIva()) ? 1 : 0);
+                                ps.setInt(5, Boolean.TRUE.equals(det.getPrecioIncluyeIva()) ? 1 : 0);
+                                ps.setBigDecimal(6, det.getIvaPorcentaje());
+                                ps.setInt(7, det.getId());
                                 ps.executeUpdate();
                             } else {
                                 if (!det.isPrecioCongelado()) {
                                     if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()
-                                            || det.getAplicaIva() == null || det.getPrecioIncluyeIva() == null) {
-                                        throw ErrorAplicacionException.validacion("No se puede actualizar el catálogo: el pedido #" + idPedido
-                                                + " contiene productos heredados sin clasificar (detalle #" + det.getId() + ": '"
-                                                + det.getNombre() + "'). Clasifíquelos en el catálogo o márquelos como congelados antes de continuar.");
+                                            || det.getPrecioIncluyeIva() == null) {
+                                        // Intentar auto-sanar consultando la tabla platos por id o nombre
+                                        boolean recuperado = false;
+                                        String sqlPl = "SELECT id, moneda_base, precio_incluye_iva, aplica_iva FROM platos WHERE "
+                                                + (det.getIdPlato() != null && det.getIdPlato() > 0 ? "id = ?" : "nombre = ?");
+                                        try (PreparedStatement psPl = con.prepareStatement(sqlPl)) {
+                                            if (det.getIdPlato() != null && det.getIdPlato() > 0) {
+                                                psPl.setInt(1, det.getIdPlato());
+                                            } else {
+                                                psPl.setString(1, det.getNombre());
+                                            }
+                                            try (ResultSet rsPl = psPl.executeQuery()) {
+                                                if (rsPl.next()) {
+                                                    if (det.getIdPlato() == null || det.getIdPlato() <= 0) {
+                                                        det.setIdPlato(rsPl.getInt("id"));
+                                                    }
+                                                    if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) {
+                                                        det.setMonedaBase(rsPl.getString("moneda_base"));
+                                                    }
+                                                    if (det.getPrecioIncluyeIva() == null) {
+                                                        int inc = rsPl.getInt("precio_incluye_iva");
+                                                        det.setPrecioIncluyeIva(rsPl.wasNull() ? Boolean.FALSE : (inc != 0));
+                                                    }
+                                                    if (det.getAplicaIva() == null) {
+                                                        det.setAplicaIva(rsPl.getInt("aplica_iva") != 0);
+                                                    }
+                                                    recuperado = true;
+                                                }
+                                            }
+                                        }
+
+                                        if (recuperado) {
+                                            String sqlSanar = """
+                                                UPDATE detalle_pedidos
+                                                SET id_plato = ?, moneda_base = ?, precio_incluye_iva = ?, aplica_iva = ?, iva_porcentaje = ?
+                                                WHERE id = ?
+                                                """;
+                                            try (PreparedStatement psSanar = con.prepareStatement(sqlSanar)) {
+                                                if (det.getIdPlato() != null) psSanar.setInt(1, det.getIdPlato()); else psSanar.setNull(1, java.sql.Types.INTEGER);
+                                                psSanar.setString(2, det.getMonedaBase());
+                                                psSanar.setInt(3, Boolean.TRUE.equals(det.getPrecioIncluyeIva()) ? 1 : 0);
+                                                psSanar.setInt(4, Boolean.TRUE.equals(det.getAplicaIva()) ? 1 : 0);
+                                                BigDecimal ivaDet = Boolean.TRUE.equals(det.getAplicaIva()) ? ivaPorcentajeCabecera : BigDecimal.ZERO.setScale(2);
+                                                det.setIvaPorcentaje(ivaDet);
+                                                psSanar.setBigDecimal(5, ivaDet);
+                                                psSanar.setInt(6, det.getId());
+                                                psSanar.executeUpdate();
+                                            }
+                                        } else {
+                                            // Si no existe en el catálogo, congelar su precio para preservar su valor histórico y permitir la actualización
+                                            det.setPrecioCongelado(true);
+                                            if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) {
+                                                det.setMonedaBase("USD");
+                                            }
+                                            if (det.getPrecioIncluyeIva() == null) {
+                                                det.setPrecioIncluyeIva(false);
+                                            }
+                                            if (det.getAplicaIva() == null) {
+                                                det.setAplicaIva(true);
+                                            }
+                                            BigDecimal ivaDet = Boolean.TRUE.equals(det.getAplicaIva()) ? ivaPorcentajeCabecera : BigDecimal.ZERO.setScale(2);
+                                            det.setIvaPorcentaje(ivaDet);
+
+                                            String sqlCong = """
+                                                UPDATE detalle_pedidos
+                                                SET precio_congelado = 1,
+                                                    congelado_motivo = 'Auto-congelado por ítem legado sin clasificación en catálogo',
+                                                    congelado_por = ?,
+                                                    congelado_en = CURRENT_TIMESTAMP,
+                                                    moneda_base = ?,
+                                                    precio_incluye_iva = ?,
+                                                    aplica_iva = ?,
+                                                    iva_porcentaje = ?
+                                                WHERE id = ?
+                                                """;
+                                            try (PreparedStatement psCong = con.prepareStatement(sqlCong)) {
+                                                psCong.setString(1, (usuario != null && !usuario.isBlank()) ? usuario : "SISTEMA");
+                                                psCong.setString(2, det.getMonedaBase());
+                                                psCong.setInt(3, Boolean.TRUE.equals(det.getPrecioIncluyeIva()) ? 1 : 0);
+                                                psCong.setInt(4, Boolean.TRUE.equals(det.getAplicaIva()) ? 1 : 0);
+                                                psCong.setBigDecimal(5, det.getIvaPorcentaje());
+                                                psCong.setInt(6, det.getId());
+                                                psCong.executeUpdate();
+                                            }
+                                            LOGGER.log(Level.WARNING, "PreciosPedidosDao: Detalle legado #{0} (''{1}'') en pedido #{2} congelado automáticamente.",
+                                                    new Object[]{det.getId(), det.getNombre(), idPedido});
+                                        }
                                     }
                                 }
                                 if (det.getIvaPorcentaje() == null) {
