@@ -221,7 +221,7 @@ public class ClienteDao implements ClienteRepositorio {
             try {
                 String sqlHoy = """
                     SELECT COALESCE(SUM(total), 0) AS total_usd,
-                           COALESCE(SUM(total_bs), 0) AS total_bs,
+                           COALESCE(SUM(COALESCE(NULLIF(total_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(total * tasa_cambio, 2) ELSE 0.00 END)), 0) AS total_bs,
                            COUNT(id) AS cant
                     FROM pedidos
                     WHERE estado = 'FINALIZADO'
@@ -256,7 +256,7 @@ public class ClienteDao implements ClienteRepositorio {
             try {
                 String sqlHist = """
                     SELECT COALESCE(SUM(total), 0) AS total_usd,
-                           COALESCE(SUM(total_bs), 0) AS total_bs,
+                           COALESCE(SUM(COALESCE(NULLIF(total_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(total * tasa_cambio, 2) ELSE 0.00 END)), 0) AS total_bs,
                            COUNT(id) AS cant
                     FROM pedidos
                     WHERE estado = 'FINALIZADO'
