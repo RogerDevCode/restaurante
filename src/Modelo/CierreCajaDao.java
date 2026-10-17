@@ -481,22 +481,6 @@ public class CierreCajaDao {
                 ivUsd = ivUsd.add(iu);
                 ivBs = ivBs.add(ib);
 
-                String met = p.getMetodoPago() != null && !p.getMetodoPago().isBlank() ? p.getMetodoPago().trim().toUpperCase() : "EFECTIVO";
-                switch (met) {
-                    case "EFECTIVO", "EFECTIVO_BS" -> efectivoEsperadoBs = efectivoEsperadoBs.add(
-                            p.getEfectivoBs() != null ? p.getEfectivoBs() : b);
-                    case "EFECTIVO_USD" -> efectivoEsperadoUsd = efectivoEsperadoUsd.add(
-                            p.getEfectivoUsd() != null ? p.getEfectivoUsd() : u);
-                    case "MIXTO" -> {
-                        if (p.getEfectivoBs() == null || p.getEfectivoUsd() == null) {
-                            mixtosSinDesglose++;
-                        } else {
-                            efectivoEsperadoBs = efectivoEsperadoBs.add(p.getEfectivoBs());
-                            efectivoEsperadoUsd = efectivoEsperadoUsd.add(p.getEfectivoUsd());
-                        }
-                    }
-                    default -> { }
-                }
                 if (p.getPagos() != null && !p.getPagos().isEmpty()) {
                     for (PagoPedido pp : p.getPagos()) {
                         String m = pp.metodo() != null && !pp.metodo().isBlank() ? pp.metodo().trim().toUpperCase() : "EFECTIVO";
@@ -506,8 +490,33 @@ public class CierreCajaDao {
                         am.cant++;
                         am.usd = am.usd.add(pu);
                         am.bs = am.bs.add(pb);
+
+                        if ("EFECTIVO".equals(m) || "EFECTIVO_BS".equals(m) || "EFECTIVO_USD".equals(m)) {
+                            BigDecimal apl = pp.montoAplicado() != null ? pp.montoAplicado() : BigDecimal.ZERO;
+                            if ("VES".equalsIgnoreCase(pp.moneda()) || "EFECTIVO_BS".equals(m)) {
+                                efectivoEsperadoBs = efectivoEsperadoBs.add(apl);
+                            } else {
+                                efectivoEsperadoUsd = efectivoEsperadoUsd.add(apl);
+                            }
+                        }
                     }
                 } else {
+                    String met = p.getMetodoPago() != null && !p.getMetodoPago().isBlank() ? p.getMetodoPago().trim().toUpperCase() : "EFECTIVO";
+                    switch (met) {
+                        case "EFECTIVO", "EFECTIVO_BS" -> efectivoEsperadoBs = efectivoEsperadoBs.add(
+                                p.getEfectivoBs() != null ? p.getEfectivoBs() : b);
+                        case "EFECTIVO_USD" -> efectivoEsperadoUsd = efectivoEsperadoUsd.add(
+                                p.getEfectivoUsd() != null ? p.getEfectivoUsd() : u);
+                        case "MIXTO" -> {
+                            if (p.getEfectivoBs() == null || p.getEfectivoUsd() == null) {
+                                mixtosSinDesglose++;
+                            } else {
+                                efectivoEsperadoBs = efectivoEsperadoBs.add(p.getEfectivoBs());
+                                efectivoEsperadoUsd = efectivoEsperadoUsd.add(p.getEfectivoUsd());
+                            }
+                        }
+                        default -> { }
+                    }
                     AcumuladorMetodo am = metodosMap.computeIfAbsent(met, k -> new AcumuladorMetodo());
                     am.cant++;
                     am.usd = am.usd.add(u);
