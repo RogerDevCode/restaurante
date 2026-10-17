@@ -392,9 +392,29 @@ public class PedidosDao implements PedidosRepositorio {
      * Regla de negocio: la mesa debe existir en la sala (1..salas.mesas).
      * Si la sala no se puede leer (mocks/tests), no bloquea: el INSERT o la FK decidirán.
      */
-    private void validarMesaEnSala(int idSala, int numMesa) {
-        try (Connection conexion = conexiones.getConnection();
-             PreparedStatement st = conexion.prepareStatement("SELECT mesas FROM salas WHERE id = ?")) {
+    private void validarMesaEnSala(Connection conexion, int idSala, int numMesa) {
+        if (conexion != null) {
+            try (PreparedStatement st = conexion.prepareStatement("SELECT mesas FROM salas WHERE id = ?")) {
+                st.setInt(1, idSala);
+                try (ResultSet rs = st.executeQuery()) {
+                    if (rs.next()) {
+                        int max = rs.getInt(1);
+                        if (!rs.wasNull() && (numMesa < 1 || numMesa > max)) {
+                            throw ErrorAplicacionException.validacion(
+                                    "La mesa " + numMesa + " no existe en la sala seleccionada (1.." + max + ").");
+                        }
+                    }
+                }
+            } catch (ErrorAplicacionException ex) {
+                throw ex;
+            } catch (Exception ex) {
+                Logger.getLogger(PedidosDao.class.getName())
+                        .log(java.util.logging.Level.FINE, "Sin validar rango de mesa: " + ex.getMessage());
+            }
+            return;
+        }
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement st = con.prepareStatement("SELECT mesas FROM salas WHERE id = ?")) {
             st.setInt(1, idSala);
             try (ResultSet rs = st.executeQuery()) {
                 if (rs.next()) {
@@ -413,7 +433,11 @@ public class PedidosDao implements PedidosRepositorio {
         }
     }
 
-    private void validarEstructuraPedido(Pedidos pedido, List<DetallePedido> detalles) {
+    private void validarMesaEnSala(int idSala, int numMesa) {
+        validarMesaEnSala(null, idSala, numMesa);
+    }
+
+    private void validarEstructuraPedido(Connection conexion, Pedidos pedido, List<DetallePedido> detalles) {
         if (pedido == null) {
             throw ErrorAplicacionException.validacion("El pedido es obligatorio.");
         }
@@ -482,12 +506,16 @@ public class PedidosDao implements PedidosRepositorio {
             throw ErrorAplicacionException.validacion("El total del pedido no coincide con el subtotal más IVA ni con sus detalles.");
         }
 
-        validarMesaEnSala(pedido.getId_sala(), pedido.getNum_mesa());
+        validarMesaEnSala(conexion, pedido.getId_sala(), pedido.getNum_mesa());
+    }
+
+    private void validarEstructuraPedido(Pedidos pedido, List<DetallePedido> detalles) {
+        validarEstructuraPedido(null, pedido, detalles);
     }
 
     private CalculoPedido calcularYConsolidarSnapshot(
             Connection conexion, Pedidos pedido, List<DetallePedido> detalles) throws SQLException {
-        validarEstructuraPedido(pedido, detalles);
+        validarEstructuraPedido(conexion, pedido, detalles);
 
         // Si la conexión está disponible y hay id_plato, fijar datos oficiales desde el catálogo
         if (conexion != null) {
@@ -1252,7 +1280,6 @@ public class PedidosDao implements PedidosRepositorio {
             """;
 
         try (Connection con = conexiones.getConnection()) {
-            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
             boolean autoCommitPrevio = con.getAutoCommit();
             con.setAutoCommit(false);
             try {
