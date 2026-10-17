@@ -103,19 +103,45 @@ public class CierreCajaDao {
                 String sqlTotales = """
                     SELECT COUNT(*) AS cant,
                            COALESCE(SUM(total), 0) AS total_usd,
-                           COALESCE(SUM(COALESCE(total_bs, ROUND(total * COALESCE(NULLIF(tasa_cambio, 0), ?), 2), 0)), 0) AS total_bs,
+                           COALESCE(SUM(tot_bs), 0) AS total_bs,
                            COALESCE(SUM(subtotal), 0) AS subtotal_usd,
-                           COALESCE(SUM(subtotal_bs), 0) AS subtotal_bs,
+                           COALESCE(SUM(sub_bs), 0) AS subtotal_bs,
                            COALESCE(SUM(iva_monto), 0) AS iva_usd,
-                           COALESCE(SUM(iva_bs), 0) AS iva_bs
-                    FROM pedidos
-                    WHERE estado = 'FINALIZADO'
-                      AND (fecha LIKE ? OR DATE(fecha) = ?)
+                           COALESCE(SUM(iv_bs), 0) AS iva_bs
+                    FROM (
+                        SELECT total,
+                               subtotal,
+                               iva_monto,
+                               calc_tot_bs AS tot_bs,
+                               CASE
+                                   WHEN NULLIF(subtotal_bs, 0) IS NOT NULL THEN subtotal_bs
+                                   WHEN COALESCE(iva_monto, 0) > 0 THEN calc_sub_bs
+                                   ELSE calc_tot_bs
+                               END AS sub_bs,
+                               CASE
+                                   WHEN NULLIF(iva_bs, 0) IS NOT NULL THEN iva_bs
+                                   WHEN COALESCE(iva_monto, 0) > 0 THEN (calc_tot_bs - calc_sub_bs)
+                                   ELSE 0
+                               END AS iv_bs
+                        FROM (
+                            SELECT total,
+                                   subtotal,
+                                   iva_monto,
+                                   subtotal_bs,
+                                   iva_bs,
+                                   COALESCE(NULLIF(total_bs, 0), ROUND(total * COALESCE(NULLIF(tasa_cambio, 0), ?), 2), 0) AS calc_tot_bs,
+                                   ROUND(subtotal * COALESCE(NULLIF(tasa_cambio, 0), ?), 2) AS calc_sub_bs
+                            FROM pedidos
+                            WHERE estado = 'FINALIZADO'
+                              AND (fecha LIKE ? OR DATE(fecha) = ?)
+                        ) sub_pedidos
+                    ) calc_pedidos
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlTotales)) {
                     ps.setBigDecimal(1, tasaConfig);
-                    ps.setString(2, likeParam);
-                    ps.setString(3, fechaFiltro);
+                    ps.setBigDecimal(2, tasaConfig);
+                    ps.setString(3, likeParam);
+                    ps.setString(4, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             int finalizados = rs.getInt("cant");
@@ -426,11 +452,26 @@ public class CierreCajaDao {
             if (esFin) {
                 finalizados++;
                 BigDecimal u = p.getTotalDecimal() != null ? p.getTotalDecimal() : BigDecimal.ZERO;
-                BigDecimal b = p.getTotalBs() != null ? p.getTotalBs() : u.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal b = (p.getTotalBs() != null && p.getTotalBs().signum() > 0)
+                        ? p.getTotalBs()
+                        : u.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
                 BigDecimal su = p.getSubtotal() != null ? p.getSubtotal() : u;
-                BigDecimal sb = p.getSubtotalBs() != null ? p.getSubtotalBs() : b;
                 BigDecimal iu = p.getIvaMonto() != null ? p.getIvaMonto() : BigDecimal.ZERO;
-                BigDecimal ib = p.getIvaBs() != null ? p.getIvaBs() : BigDecimal.ZERO;
+
+                BigDecimal sb;
+                BigDecimal ib;
+                if (p.getSubtotalBs() != null && p.getSubtotalBs().signum() > 0) {
+                    sb = p.getSubtotalBs();
+                    ib = (p.getIvaBs() != null && p.getIvaBs().signum() > 0)
+                            ? p.getIvaBs()
+                            : b.subtract(sb);
+                } else if (iu.signum() > 0) {
+                    sb = su.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    ib = b.subtract(sb);
+                } else {
+                    sb = b;
+                    ib = BigDecimal.ZERO;
+                }
 
                 totUsd = totUsd.add(u);
                 totBs = totBs.add(b);
