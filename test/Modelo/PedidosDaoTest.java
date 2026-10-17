@@ -300,4 +300,175 @@ public class PedidosDaoTest {
         assertEquals(new BigDecimal("16.00"), calculo.ivaUsd());
         assertEquals(new BigDecimal("116.00"), calculo.totalUsd());
     }
+
+    @Test
+    public void anulacionConPagosSinDevolucionEsBloqueadaYConDevolucionAnulaSinSaldosFantasmas() throws Exception {
+        ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc();
+        PedidosDao dao = new PedidosDao(proveedor);
+
+        try (Connection conn = proveedor.getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM pedidos WHERE id_sala = 1 AND num_mesa = 4 AND estado = 'PENDIENTE'")) {
+            ps.executeUpdate();
+        }
+
+        Pedidos pedido = new Pedidos();
+        pedido.setId_sala(1);
+        pedido.setNum_mesa(4);
+        pedido.setUsuario("TEST_USER");
+        pedido.setTasaCambio(new BigDecimal("40.0000"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO);
+        pedido.setSubtotal(new BigDecimal("20.00"));
+        pedido.setIvaMonto(BigDecimal.ZERO);
+        pedido.setTotalDecimal(new BigDecimal("20.00"));
+        pedido.setSubtotalBs(new BigDecimal("800.00"));
+        pedido.setIvaBs(BigDecimal.ZERO);
+        pedido.setTotalBs(new BigDecimal("800.00"));
+
+        DetallePedido det = new DetallePedido(0, "Plato Test", new BigDecimal("20.00"), 1, "", 0);
+        det.setMonedaBase("USD");
+        det.setAplicaIva(false);
+        det.setPrecioIncluyeIva(false);
+        det.setIvaPorcentaje(BigDecimal.ZERO);
+
+        int idPedido = dao.registrarPedidoCompleto(pedido, List.of(det));
+        assertTrue(idPedido > 0);
+
+        try {
+            // Insertar pago en pedido_pagos
+            try (Connection conn = proveedor.getConnection();
+                 PreparedStatement psPago = conn.prepareStatement("""
+                    INSERT INTO pedido_pagos (id_pedido, metodo_pago, moneda, monto, tasa_cambio, monto_bs, monto_usd, es_legado)
+                    VALUES (?, 'EFECTIVO_BS', 'VES', 800.00, 40.0000, 800.00, 20.00, 1)
+                    """)) {
+                psPago.setInt(1, idPedido);
+                assertEquals(1, psPago.executeUpdate());
+            }
+
+            // 1. Debe rechazar la anulación directa porque tiene pagos no compensados
+            org.junit.Assert.assertThrows(ErrorAplicacionException.class,
+                    () -> dao.anularPedidoConAuditoria(idPedido, "Cliente se fue", "TEST_USER"));
+
+            // 2. Registrar movimiento formal de devolución
+            try (Connection conn = proveedor.getConnection();
+                 PreparedStatement psMov = conn.prepareStatement("""
+                    INSERT INTO pedido_saldos_movimientos
+                        (id_pedido, tipo, moneda, monto_origen, equivalente_ves, tasa_cambio, actor, motivo, idempotency_key)
+                    VALUES (?, 'DEVOLUCION', 'VES', 800.00, 800.00, 40.0000, 'TEST_USER', 'Devolución formal', ?)
+                    """)) {
+                psMov.setInt(1, idPedido);
+                psMov.setString(2, "DEV-TEST-" + idPedido);
+                assertEquals(1, psMov.executeUpdate());
+            }
+
+            // 3. Ahora la anulación debe proceder
+            boolean anulado = dao.anularPedidoConAuditoria(idPedido, "Anulado tras devolucion", "TEST_USER");
+            assertTrue("La comanda debe poder anularse tras compensación", anulado);
+
+            // 4. El resumen de conciliación de la comanda ANULADA debe reportar saldos y cobros en CERO
+            ResumenConciliacionPedido resumen = dao.resumenConciliacion(idPedido);
+            assertEquals(new BigDecimal("0.00"), resumen.saldoBsPendiente());
+            assertEquals(new BigDecimal("0.00"), resumen.saldoUsdPendiente());
+            assertEquals(new BigDecimal("0.00"), resumen.pagadoBsAplicado());
+            assertEquals(new BigDecimal("0.00"), resumen.pagadoUsdAplicado());
+            assertEquals(new BigDecimal("0.00"), resumen.excedenteBs());
+            assertEquals(new BigDecimal("0.00"), resumen.excedenteUsd());
+        } finally {
+            // Cleanup
+            try (Connection conn = proveedor.getConnection()) {
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM pedido_saldos_movimientos WHERE id_pedido = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM pedido_pagos WHERE id_pedido = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM auditoria_pedidos WHERE id_pedido = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM detalle_pedidos WHERE id_pedido = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM pedidos WHERE id = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+            } catch (SQLException ignore) {}
+        }
+    }
+
+    @Test
+    public void testPedidoFinalizadoConAjusteCambiarioLiquidaSinDeudaFantasma() throws Exception {
+        org.junit.Assume.assumeTrue("Test con escrituras reales requiere BD restaurante_test local en puerto Compose 3307",
+                infraestructura.ProteccionEntornoBaseDatos.permiteEscriturasDestructivas());
+
+        ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc();
+        PedidosDao dao = new PedidosDao(proveedor);
+
+        int idPedido;
+        try (Connection conn = proveedor.getConnection();
+             PreparedStatement ps = conn.prepareStatement("""
+                INSERT INTO pedidos (id_sala, num_mesa, subtotal, iva_porcentaje, iva_monto, total, usuario,
+                                     tasa_cambio, subtotal_bs, iva_bs, total_bs, estado, fecha)
+                VALUES (1, 99, 10.00, 0.00, 0.00, 10.00, 'TEST_USER', 36.5000, 365.02, 0.00, 365.02, 'FINALIZADO', CURRENT_TIMESTAMP)
+                """, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            ps.executeUpdate();
+            try (java.sql.ResultSet rs = ps.getGeneratedKeys()) {
+                assertTrue(rs.next());
+                idPedido = rs.getInt(1);
+            }
+        }
+
+        try {
+            // Se pagaron 365.00 Bs (diferencia de 0.02 dentro de tolerancia registrada en pedido_liquidaciones)
+            try (Connection conn = proveedor.getConnection()) {
+                try (PreparedStatement psLiq = conn.prepareStatement("""
+                    INSERT INTO pedido_liquidaciones
+                        (id_pedido, version_precio, saldo_restante_ves, aplicado_ves, aplicado_usd, tasa_cambio,
+                         ajuste_cambio_bs, diferencia_usd, version_regla, actor, idempotency_key)
+                    VALUES (?, 1, 0.00, 365.00, 10.00, 36.5000, 0.02, 0.00, 'V5_PAGO_CONGELADO', 'TEST_USER', ?)
+                    """)) {
+                    psLiq.setInt(1, idPedido);
+                    psLiq.setString(2, "LIQ-TEST-TOL-" + idPedido);
+                    assertEquals(1, psLiq.executeUpdate());
+                }
+
+                try (PreparedStatement psPago = conn.prepareStatement("""
+                    INSERT INTO pedido_pagos
+                        (id_pedido, metodo_pago, moneda, monto, tasa_cambio, monto_bs, monto_usd,
+                         monto_recibido, monto_aplicado, cambio_devuelto, es_legado, idempotency_key)
+                    VALUES (?, 'EFECTIVO_BS', 'VES', 365.00, 36.5000, 365.00, 10.00, 365.00, 365.00, 0.00, 0, ?)
+                    """)) {
+                    psPago.setInt(1, idPedido);
+                    psPago.setString(2, "PAGO-TEST-TOL-" + idPedido);
+                    assertEquals(1, psPago.executeUpdate());
+                }
+            }
+
+            // Resumen de conciliación debe reconocer el ajuste y reportar saldos en CERO exacto (cero deuda fantasma)
+            ResumenConciliacionPedido resumen = dao.resumenConciliacion(idPedido);
+            assertEquals(new BigDecimal("0.00"), resumen.saldoBsPendiente());
+            assertEquals(new BigDecimal("0.00"), resumen.saldoUsdPendiente());
+            assertEquals(new BigDecimal("365.02"), resumen.pagadoBsAplicado());
+            assertEquals(new BigDecimal("0.00"), resumen.excedenteBs());
+            assertEquals(new BigDecimal("0.00"), resumen.excedenteUsd());
+        } finally {
+            try (Connection conn = proveedor.getConnection()) {
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM pedido_pagos WHERE id_pedido = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM pedido_liquidaciones WHERE id_pedido = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM pedidos WHERE id = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+            } catch (SQLException ignore) {}
+        }
+    }
 }

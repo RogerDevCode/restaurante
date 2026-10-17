@@ -158,7 +158,23 @@ public class AdversarialFallbacksFiscalesTest {
                 () -> dao.guardarCierre(cierreSinTasa, "cierre.pdf"));
     }
 
-    // 6. Legitimate fallbacks generan log
+    // 6. LoginDao.ModificarDatos exige tasa e IVA válidos
+    @Test
+    public void loginDaoModificarDatosExigeTasaEIvaValidos() {
+        Modelo.LoginDao loginDao = new Modelo.LoginDao();
+
+        Config cfgSinTasa = new Config();
+        cfgSinTasa.setIvaPorcentaje(new BigDecimal("16.00"));
+        assertThrows("ModificarDatos sin tasa debe fallar", ErrorAplicacionException.class,
+                () -> loginDao.ModificarDatos(cfgSinTasa));
+
+        Config cfgSinIva = new Config();
+        cfgSinIva.setTasaDolar(new BigDecimal("36.5000"));
+        assertThrows("ModificarDatos sin IVA debe fallar", ErrorAplicacionException.class,
+                () -> loginDao.ModificarDatos(cfgSinIva));
+    }
+
+    // 7. Legitimate fallbacks generan log
     @Test
     public void fallbacksLegitimosGeneranLogs() {
         capturador.registros.clear();
@@ -173,12 +189,8 @@ public class AdversarialFallbacksFiscalesTest {
 
         capturador.registros.clear();
         Config cfgVacio = new Config();
-        CierreCaja cierreMem = CierreCajaDao.calcularDesdeMemoria("2026-10-15", CierreCaja.TipoCierre.TOTAL, "Admin", cfgVacio, List.of(), List.of());
-        assertEquals(new BigDecimal("36.5000"), cierreMem.getTasaCambioReferencia());
-
-        boolean huboLogCierre = capturador.registros.stream()
-                .anyMatch(r -> r.getLevel() == Level.WARNING && r.getMessage().contains("referencial"));
-        assertTrue("CierreCajaDao.calcularDesdeMemoria debe haber emitido un log de advertencia", huboLogCierre);
+        assertThrows("calcularDesdeMemoria sin tasa debe fallar", ErrorAplicacionException.class,
+                () -> CierreCajaDao.calcularDesdeMemoria("2026-10-15", CierreCaja.TipoCierre.TOTAL, "Admin", cfgVacio, List.of(), List.of()));
     }
 
     private static final class FakeRepo implements PlatosRepositorio {

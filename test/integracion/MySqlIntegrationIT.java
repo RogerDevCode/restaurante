@@ -1088,6 +1088,51 @@ public class MySqlIntegrationIT {
         assertTrue(stats.getVentasHistoricasDolares().compareTo(BigDecimal.ZERO) > 0);
     }
 
+    @Test
+    public void cierreCuadraDesgloseConCabeceraYUsaTasaDeBdParaPedidoLegado() throws Exception {
+        int idSala = crearSalaPrueba(4);
+        PedidosDao pedidosDao = new PedidosDao();
+        List<Integer> ids = new ArrayList<>();
+        String[] metodos = {"EFECTIVO_BS", "EFECTIVO_USD", "EFECTIVO_BS", "EFECTIVO_USD"};
+        for (int i = 0; i < metodos.length; i++) {
+            int id = pedidosDao.registrarPedidoCompleto(pedido(idSala, i + 1), detallesValidos());
+            assertTrue(id > 0);
+            assertTrue(pedidosDao.actualizarEstadoConCliente(id, "Cliente IT", "V-95" + i, metodos[i]));
+            ids.add(id);
+        }
+
+        // Pedido legado: sin total_bs y tasa_cambio=0 -> el cierre debe usar la tasa de la BD (config) redondeada por pedido
+        try (Connection con = conexion();
+             PreparedStatement ps = con.prepareStatement("UPDATE pedidos SET total_bs=NULL, tasa_cambio=0 WHERE id=?")) {
+            ps.setInt(1, ids.get(0));
+            assertEquals(1, ps.executeUpdate());
+        }
+
+        Config config = new Config();
+        config.setTasaDolar(new BigDecimal("36.5000"));
+        String fechaCierre = pedidosDao.verPedido(ids.get(0)).getFecha().substring(0, 10);
+        CierreCaja cierre = new CierreCajaDao().consultarCierre(fechaCierre, CierreCaja.TipoCierre.TOTAL, "Admin", config);
+
+        BigDecimal metUsd = BigDecimal.ZERO;
+        BigDecimal metBs = BigDecimal.ZERO;
+        for (CierreCaja.ResumenMetodoPago r : cierre.getDesgloseMetodos()) {
+            metUsd = metUsd.add(r.getMontoUsd());
+            metBs = metBs.add(r.getMontoBs());
+        }
+        BigDecimal salUsd = BigDecimal.ZERO;
+        BigDecimal salBs = BigDecimal.ZERO;
+        for (CierreCaja.ResumenSala r : cierre.getDesgloseSalas()) {
+            salUsd = salUsd.add(r.getMontoUsd());
+            salBs = salBs.add(r.getMontoBs());
+        }
+
+        assertEquals("Suma de metodos USD debe igualar la cabecera", 0, cierre.getTotalVentasUsd().compareTo(metUsd));
+        assertEquals("Suma de metodos Bs debe igualar la cabecera", 0, cierre.getTotalVentasBs().compareTo(metBs));
+        assertEquals("Suma de salas USD debe igualar la cabecera", 0, cierre.getTotalVentasUsd().compareTo(salUsd));
+        assertEquals("Suma de salas Bs debe igualar la cabecera", 0, cierre.getTotalVentasBs().compareTo(salBs));
+        assertTrue("El cierre debe incluir ventas en Bs positivas", cierre.getTotalVentasBs().compareTo(BigDecimal.ZERO) > 0);
+    }
+
     private static Connection conexion() throws SQLException {
         return DriverManager.getConnection(System.getProperty("DB_URL"),
                 System.getProperty("DB_USER"), System.getProperty("DB_PASSWORD"));

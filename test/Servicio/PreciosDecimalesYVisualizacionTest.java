@@ -126,6 +126,8 @@ public class PreciosDecimalesYVisualizacionTest {
     @Test
     public void testPlatoEntidadYServicioValidacionDecimales() {
         Platos platoValido = new Platos(1, "Pasticho", new BigDecimal("12.25"), "2026-10-08");
+        platoValido.setMonedaBase("USD");
+        platoValido.setPrecioIncluyeIva(false);
         assertEquals(new BigDecimal("12.25"), platoValido.getPrecioDecimal());
         assertEquals(2, platoValido.getPrecioDecimal().scale());
 
@@ -240,5 +242,221 @@ public class PreciosDecimalesYVisualizacionTest {
         assertNotNull(pdfCierre);
         assertTrue(pdfCierre.toFile().exists());
         assertTrue(pdfCierre.toFile().length() > 0);
+    }
+
+    @Test
+    public void testTicketLineaHeredadaVesNoRotulaBolivaresComoDolares() throws Exception {
+        GeneradorPdfPedido generador = new GeneradorPdfPedido(tempDir);
+
+        Config empresa = new Config(1, "J-12345678-9", "Restaurante Gourmet", "0212-5555555", "Caracas", "Gracias");
+        empresa.setTasaDolar(new BigDecimal("36.5000"));
+        empresa.setIvaPorcentaje(BigDecimal.ZERO);
+        empresa.setImprimirLogoTicket(false);
+
+        Pedidos pedido = new Pedidos();
+        pedido.setId(7002);
+        pedido.setId_sala(1);
+        pedido.setSala("Principal");
+        pedido.setNum_mesa(2);
+        pedido.setFecha(LocalDate.now().toString());
+        pedido.setSubtotal(new BigDecimal("13.70"));
+        pedido.setSubtotalBs(new BigDecimal("500.00"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO);
+        pedido.setIvaMonto(BigDecimal.ZERO);
+        pedido.setIvaBs(BigDecimal.ZERO);
+        pedido.setTotalDecimal(new BigDecimal("13.70"));
+        pedido.setTotalBs(new BigDecimal("500.00"));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+
+        DetallePedido heredado = new DetallePedido();
+        heredado.setId(2);
+        heredado.setNombre("Sopa Criolla");
+        heredado.setCantidad(1);
+        heredado.setPrecioDecimal(new BigDecimal("500.00"));
+        heredado.setMonedaBase("VES");
+        heredado.setAplicaIva(null);
+        heredado.setPrecioIncluyeIva(null);
+
+        Path ticket = generador.generar(pedido, empresa, Collections.singletonList(heredado));
+        String texto = extraerTextoPdf(ticket);
+
+        assertTrue("El ticket debe mostrar el monto en Bs.: " + texto, texto.contains("Bs. 500.00"));
+        assertFalse("No debe rotular 500 Bs como $500.00", texto.contains("$500.00"));
+        assertTrue("Debe mostrar el equivalente en USD ~13.70", texto.contains("13.70"));
+    }
+
+    @Test
+    public void testTicketBaseImponibleNuncaExcedeSubtotalConItemsVesMultiples() throws Exception {
+        GeneradorPdfPedido generador = new GeneradorPdfPedido(tempDir);
+
+        Config empresa = new Config(1, "J-12345678-9", "Restaurante Gourmet", "0212-5555555", "Caracas", "Gracias");
+        empresa.setTasaDolar(new BigDecimal("36.5000"));
+        empresa.setIvaPorcentaje(new BigDecimal("16.00"));
+        empresa.setImprimirLogoTicket(false);
+
+        // 3 items de 10.00 VES (exentos) para verificar que la Base/Exento nunca exceda el Subtotal ($0.81)
+        List<DetallePedido> detalles = new ArrayList<>();
+        for (int i = 1; i <= 3; i++) {
+            DetallePedido d = new DetallePedido();
+            d.setId(i);
+            d.setNombre("Arepa " + i);
+            d.setCantidad(1);
+            d.setPrecioDecimal(new BigDecimal("10.00"));
+            d.setMonedaBase("VES");
+            d.setAplicaIva(false);
+            d.setPrecioIncluyeIva(false);
+            d.setIvaPorcentaje(BigDecimal.ZERO);
+            detalles.add(d);
+        }
+
+        CalculoMonetarioPedido.CalculoPedido calc = CalculoMonetarioPedido.calcularPedido(detalles, new BigDecimal("36.5000"));
+
+        Pedidos pedido = new Pedidos();
+        pedido.setId(7003);
+        pedido.setId_sala(1);
+        pedido.setSala("Principal");
+        pedido.setNum_mesa(3);
+        pedido.setFecha(LocalDate.now().toString());
+        pedido.setSubtotal(calc.subtotalUsd());
+        pedido.setSubtotalBs(calc.subtotalVes());
+        pedido.setIvaPorcentaje(new BigDecimal("16.00"));
+        pedido.setIvaMonto(calc.ivaUsd());
+        pedido.setIvaBs(calc.ivaVes());
+        pedido.setTotalDecimal(calc.totalUsd());
+        pedido.setTotalBs(calc.totalVes());
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+
+        Path ticket = generador.generar(pedido, empresa, detalles);
+        String texto = extraerTextoPdf(ticket);
+
+        // Subtotal debe ser $0.81 y Monto Exento no debe exceder $0.81 (antes daba $0.82)
+        assertTrue("Debe mostrar Subtotal $0.81: " + texto, texto.contains("Subtotal: $0.81"));
+        assertTrue("Monto Exento no debe exceder subtotal: " + texto, texto.contains("Monto Exento: $0.81"));
+        assertFalse("Monto Exento no debe ser $0.82", texto.contains("Monto Exento: $0.82"));
+    }
+
+    @Test
+    public void testTicketPedidoHeredadoConIvaIncluidoNoBloqueaImpresion() throws Exception {
+        GeneradorPdfPedido generador = new GeneradorPdfPedido(tempDir);
+
+        Config empresa = new Config(1, "J-12345678-9", "Restaurante Gourmet", "0212-5555555", "Caracas", "Gracias");
+        empresa.setTasaDolar(new BigDecimal("36.5000"));
+        empresa.setIvaPorcentaje(new BigDecimal("16.00"));
+        empresa.setImprimirLogoTicket(false);
+
+        Pedidos pedido = new Pedidos();
+        pedido.setId(7004);
+        pedido.setId_sala(1);
+        pedido.setSala("Principal");
+        pedido.setNum_mesa(4);
+        pedido.setFecha(LocalDate.now().toString());
+        // Plato con IVA incluido de $11.60 -> base $10.00, IVA $1.60, total $11.60
+        pedido.setSubtotal(new BigDecimal("10.00"));
+        pedido.setSubtotalBs(new BigDecimal("365.00"));
+        pedido.setIvaPorcentaje(new BigDecimal("16.00"));
+        pedido.setIvaMonto(new BigDecimal("1.60"));
+        pedido.setIvaBs(new BigDecimal("58.40"));
+        pedido.setTotalDecimal(new BigDecimal("11.60"));
+        pedido.setTotalBs(new BigDecimal("423.40"));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+
+        DetallePedido d1 = new DetallePedido();
+        d1.setId(10);
+        d1.setNombre("Hamburguesa Especial");
+        d1.setCantidad(1);
+        d1.setPrecioDecimal(new BigDecimal("11.60"));
+        d1.setMonedaBase("USD");
+        d1.setAplicaIva(true);
+        d1.setPrecioIncluyeIva(true);
+        d1.setIvaPorcentaje(new BigDecimal("16.00"));
+
+        DetallePedido d2Heredado = new DetallePedido();
+        d2Heredado.setId(11);
+        d2Heredado.setNombre("Agua Mineral");
+        d2Heredado.setCantidad(1);
+        d2Heredado.setPrecioDecimal(BigDecimal.ZERO);
+        d2Heredado.setMonedaBase(null); // Provoca que el pedido sea esLegacy
+        d2Heredado.setAplicaIva(null);
+        d2Heredado.setPrecioIncluyeIva(null);
+
+        // No debe lanzar ErrorAplicacionException por validación de subtotal o total
+        Path ticket = generador.generar(pedido, empresa, List.of(d1, d2Heredado));
+        assertNotNull(ticket);
+        assertTrue(Files.exists(ticket));
+    }
+
+    @Test
+    public void testModificarProductoYRecalcularPendientesNoBloqueaConDetallesLegados() throws Exception {
+        org.junit.Assume.assumeTrue("Test con escrituras reales requiere BD restaurante_test local en puerto Compose 3307",
+                infraestructura.ProteccionEntornoBaseDatos.permiteEscriturasDestructivas());
+
+        infraestructura.ProveedorConexionJdbc proveedor = new infraestructura.ProveedorConexionJdbc();
+        Modelo.PreciosPedidosDao dao = new Modelo.PreciosPedidosDao(proveedor);
+        Modelo.PlatosDao platosDao = new Modelo.PlatosDao();
+
+        // 1. Crear un plato en el catalogo
+        Platos platoPrueba = new Platos(0, "Plato Test Autoheal", new BigDecimal("10.00"), LocalDate.now().toString());
+        platoPrueba.setMonedaBase("USD");
+        platoPrueba.setAplicaIva(true);
+        platoPrueba.setPrecioIncluyeIva(false);
+        platosDao.registrar(platoPrueba);
+        int idPlato = platosDao.buscarActivoPorNombre("Plato Test Autoheal").get().getId();
+
+        // 2. Crear un pedido pendiente con un detalle legado sin clasificar
+        int idPedido;
+        try (java.sql.Connection conn = proveedor.getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement("""
+                INSERT INTO pedidos (id_sala, num_mesa, subtotal, iva_porcentaje, iva_monto, total, usuario,
+                                     tasa_cambio, subtotal_bs, iva_bs, total_bs, estado, fecha)
+                VALUES (1, 98, 10.00, 16.00, 1.60, 11.60, 'TEST_USER', 36.5000, 365.00, 58.40, 423.40, 'PENDIENTE', CURRENT_TIMESTAMP)
+                """, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            ps.executeUpdate();
+            try (java.sql.ResultSet rs = ps.getGeneratedKeys()) {
+                assertTrue(rs.next());
+                idPedido = rs.getInt(1);
+            }
+        }
+
+        try {
+            try (java.sql.Connection conn = proveedor.getConnection();
+                 java.sql.PreparedStatement psDet = conn.prepareStatement("""
+                    INSERT INTO detalle_pedidos (id_pedido, id_plato, nombre, precio, cantidad, comentario, aplica_iva,
+                                                 moneda_base, precio_incluye_iva, iva_porcentaje, precio_congelado)
+                    VALUES (?, ?, 'Plato Test Autoheal', 10.00, 1, '', 1, NULL, NULL, NULL, 0)
+                    """)) {
+                psDet.setInt(1, idPedido);
+                psDet.setInt(2, idPlato);
+                psDet.executeUpdate();
+            }
+
+            // 3. Modificar el plato y recalcular pendientes: NO DEBE LANZAR ErrorAplicacionException
+            Platos platoModificado = new Platos(idPlato, "Plato Test Autoheal", new BigDecimal("12.00"), LocalDate.now().toString());
+            platoModificado.setMonedaBase("USD");
+            platoModificado.setAplicaIva(true);
+            platoModificado.setPrecioIncluyeIva(false);
+
+            Modelo.ResultadoActualizacionPrecios resultado = dao.modificarProductoYRecalcularPendientes(platoModificado, "TEST_USER");
+            assertNotNull(resultado);
+            assertEquals(1, resultado.pedidosRecalculados());
+        } finally {
+            try (java.sql.Connection conn = proveedor.getConnection()) {
+                try (java.sql.PreparedStatement ps = conn.prepareStatement("DELETE FROM detalle_pedidos WHERE id_pedido = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+                try (java.sql.PreparedStatement ps = conn.prepareStatement("DELETE FROM pedidos WHERE id = ?")) {
+                    ps.setInt(1, idPedido);
+                    ps.executeUpdate();
+                }
+            } catch (java.sql.SQLException ignore) {}
+            platosDao.eliminar(idPlato);
+        }
+    }
+
+    private static String extraerTextoPdf(Path pdf) throws Exception {
+        try (org.apache.pdfbox.pdmodel.PDDocument doc =
+                     org.apache.pdfbox.pdmodel.PDDocument.load(pdf.toFile())) {
+            return new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+        }
     }
 }

@@ -385,4 +385,97 @@ public class CierreCajaExhaustivoTest {
         assertTrue("Debe mostrar nombre de fallback 'RESTAURANTE'", texto.contains("RESTAURANTE"));
         assertTrue("Debe mostrar 'Sistema'", texto.contains("Sistema"));
     }
+
+    @Test
+    public void cierreCajaPreservaCentavosSinTruncamientoYCuadraConDesglose() {
+        Config config = new Config(1, "J-12345678-0", "Restaurante Gourmet", "0212", "Caracas", "Gracias");
+        config.setTasaDolar(new BigDecimal("36.5000"));
+
+        List<Pedidos> pedidos = new ArrayList<>();
+        // 10 pedidos con montos fraccionarios de centavo para estresar truncamientos
+        for (int i = 1; i <= 10; i++) {
+            Pedidos p = new Pedidos();
+            p.setId(i);
+            p.setEstado("FINALIZADO");
+            p.setTotalDecimal(new BigDecimal("10.25"));
+            p.setTotalBs(new BigDecimal("374.125")); // Fracción .125 Bs
+            p.setSubtotal(new BigDecimal("10.25"));
+            p.setSubtotalBs(new BigDecimal("374.125"));
+            p.setMetodoPago(i % 2 == 0 ? "TARJETA" : "EFECTIVO");
+            p.setSala(i % 2 == 0 ? "Terraza" : "Principal");
+            p.setUsuario("Cajero");
+            pedidos.add(p);
+        }
+
+        CierreCaja cierre = Modelo.CierreCajaDao.calcularDesdeMemoria(
+                "2026-10-16",
+                CierreCaja.TipoCierre.TOTAL,
+                "Cajero",
+                config,
+                pedidos,
+                Collections.emptyList()
+        );
+
+        BigDecimal sumaMetodosBs = cierre.getDesgloseMetodos().stream()
+                .map(CierreCaja.ResumenMetodoPago::getMontoBs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal sumaMetodosUsd = cierre.getDesgloseMetodos().stream()
+                .map(CierreCaja.ResumenMetodoPago::getMontoUsd)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Sin truncamiento destructivo hacia cero: los montos deben cuadrar al centavo
+        assertEquals(new BigDecimal("102.50"), cierre.getTotalVentasUsd());
+        assertEquals(new BigDecimal("102.50"), sumaMetodosUsd);
+
+        assertEquals(new BigDecimal("3741.30"), cierre.getTotalVentasBs());
+        assertEquals(new BigDecimal("3741.30"), sumaMetodosBs);
+
+        // Desglose de salas también suma exactamente el total
+        BigDecimal sumaSalasBs = cierre.getDesgloseSalas().stream()
+                .map(CierreCaja.ResumenSala::getMontoBs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertEquals(new BigDecimal("3741.30"), sumaSalasBs);
+    }
+
+    @Test
+    public void desgloseMetodosYSalasCuadranConLaCabeceraIncluyendoPedidoLegado() {
+        Config config = new Config(1, "J-1", "Restaurante", "0000", "Caracas", "Gracias");
+        config.setTasaDolar(new BigDecimal("36.5000"));
+
+        String[] metodos = {"EFECTIVO", "TARJETA", "PAGO_MOVIL", "MIXTO"};
+        String[] salas = {"Principal", "Terraza"};
+        List<Pedidos> pedidos = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            Pedidos p = new Pedidos();
+            p.setId(i + 1);
+            p.setEstado("FINALIZADO");
+            p.setTotalDecimal(new BigDecimal("10.25"));
+            // Mitad con totalBs explícito; la otra mitad legada (null) -> debe caer a la tasa del sistema
+            if (i % 2 == 0) {
+                p.setTotalBs(new BigDecimal("374.13"));
+            }
+            p.setSubtotal(new BigDecimal("10.25"));
+            p.setMetodoPago(metodos[i % metodos.length]);
+            p.setSala(salas[i % salas.length]);
+            p.setUsuario("Cajero");
+            pedidos.add(p);
+        }
+
+        CierreCaja cierre = Modelo.CierreCajaDao.calcularDesdeMemoria(
+                "2026-10-16", CierreCaja.TipoCierre.TOTAL, "Cajero", config, pedidos, Collections.emptyList());
+
+        BigDecimal metUsd = cierre.getDesgloseMetodos().stream()
+                .map(CierreCaja.ResumenMetodoPago::getMontoUsd).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal metBs = cierre.getDesgloseMetodos().stream()
+                .map(CierreCaja.ResumenMetodoPago::getMontoBs).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal salUsd = cierre.getDesgloseSalas().stream()
+                .map(CierreCaja.ResumenSala::getMontoUsd).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal salBs = cierre.getDesgloseSalas().stream()
+                .map(CierreCaja.ResumenSala::getMontoBs).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        assertEquals("Suma de metodos USD debe igualar la cabecera", 0, cierre.getTotalVentasUsd().compareTo(metUsd));
+        assertEquals("Suma de metodos Bs debe igualar la cabecera", 0, cierre.getTotalVentasBs().compareTo(metBs));
+        assertEquals("Suma de salas USD debe igualar la cabecera", 0, cierre.getTotalVentasUsd().compareTo(salUsd));
+        assertEquals("Suma de salas Bs debe igualar la cabecera", 0, cierre.getTotalVentasBs().compareTo(salBs));
+    }
 }
