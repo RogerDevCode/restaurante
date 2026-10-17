@@ -267,7 +267,8 @@ public class PreciosPedidosDao {
                                 det.setPrecioDecimal(rs.getBigDecimal("precio"));
                                 det.setCantidad(rs.getInt("cantidad"));
                                 det.setComentario(rs.getString("comentario"));
-                                det.setAplicaIva(rs.getBoolean("aplica_iva"));
+                                int aplIva = rs.getInt("aplica_iva");
+                                det.setAplicaIva(rs.wasNull() ? null : (aplIva != 0));
                                 det.setMonedaBase(rs.getString("moneda_base"));
                                 int incIva = rs.getInt("precio_incluye_iva");
                                 det.setPrecioIncluyeIva(rs.wasNull() ? null : (incIva != 0));
@@ -307,7 +308,8 @@ public class PreciosPedidosDao {
                             } else {
                                 if (!det.isPrecioCongelado()) {
                                     if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()
-                                            || det.getPrecioIncluyeIva() == null) {
+                                            || det.getPrecioIncluyeIva() == null
+                                            || det.getAplicaIva() == null) {
                                         // Intentar auto-sanar consultando la tabla platos por id o nombre
                                         boolean recuperado = false;
                                         String sqlPl = "SELECT id, moneda_base, precio_incluye_iva, aplica_iva FROM platos WHERE "
