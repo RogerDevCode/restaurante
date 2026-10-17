@@ -76,7 +76,7 @@ public final class PedidoServicio {
                 throw ErrorAplicacionException.validacion("El producto '" + detalle.getNombre() + "' debe tener asignada su moneda base (USD o VES).");
             }
             if (detalle.getAplicaIva() == null) {
-                throw ErrorAplicacionException.validacion("El producto '" + detalle.getNombre() + "' debe indicar si aplica IVA.");
+                throw ErrorAplicacionException.validacion("El producto '" + detalle.getNombre() + "' debe indicar si aplica IVA o es exento (fiscalidad incompleta).");
             }
             if (detalle.getPrecioIncluyeIva() == null) {
                 throw ErrorAplicacionException.validacion("El producto '" + detalle.getNombre() + "' debe indicar si el precio incluye IVA.");

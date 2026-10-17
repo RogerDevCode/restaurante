@@ -29,7 +29,7 @@ public final class CalculoMonetarioPedido {
             BigDecimal precioBase,
             int cantidad,
             String monedaBase,
-            boolean aplicaIva,
+            Boolean aplicaIva,
             Boolean precioIncluyeIva,
             BigDecimal ivaPorcentaje,
             BigDecimal tasa) {
@@ -39,6 +39,10 @@ public final class CalculoMonetarioPedido {
         BigDecimal tasaNormalizada = validarTasa(tasa);
         BigDecimal porcentaje = validarIva(ivaPorcentaje);
 
+        if (aplicaIva == null) {
+            throw ErrorAplicacionException.validacion(
+                    "No se puede calcular: la condición de aplicación de IVA de la línea no está clasificada.");
+        }
         if (precioIncluyeIva == null) {
             throw ErrorAplicacionException.validacion(
                     "No se puede calcular: la condición de IVA incluido de la línea no está clasificada.");
@@ -131,10 +135,6 @@ public final class CalculoMonetarioPedido {
         for (DetallePedido detalle : detalles) {
             if (detalle == null) {
                 throw ErrorAplicacionException.validacion("El pedido contiene una línea nula.");
-            }
-            if (detalle.getAplicaIva() == null) {
-                throw ErrorAplicacionException.validacion(
-                        "No se puede calcular: la condición fiscal de una línea histórica no está clasificada.");
             }
             CalculoLinea linea = calcularLinea(
                     detalle.getPrecioDecimal(),
