@@ -2810,19 +2810,36 @@ public final class Sistema extends javax.swing.JFrame {
         txtCantidadManual.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         txtCantidadManual.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
         txtCantidadManual.addFocusListener(new java.awt.event.FocusAdapter() {
+            private Object platoIdFoco = null;
+
             @Override
             public void focusGained(java.awt.event.FocusEvent evt) {
                 javax.swing.SwingUtilities.invokeLater(() -> txtCantidadManual.selectAll());
-                if (tableMenu.getSelectedRow() >= 0) {
-                    platoSeleccionadoFilaFoco = tableMenu.getSelectedRow();
+                int selRow = tableMenu.getSelectedRow();
+                if (selRow >= 0 && selRow < tableMenu.getRowCount()) {
+                    platoSeleccionadoFilaFoco = selRow;
+                    platoIdFoco = tableMenu.getModel().getValueAt(selRow, 0);
                 } else {
                     platoSeleccionadoFilaFoco = -1;
+                    platoIdFoco = null;
                 }
                 ultimoTextoIngresado = txtCantidadManual.getText();
             }
             @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
-                aplicarCantidadManual(ultimoTextoIngresado, platoSeleccionadoFilaFoco);
+                int filaObjetivo = -1;
+                if (platoIdFoco != null) {
+                    for (int i = 0; i < tableMenu.getRowCount(); i++) {
+                        if (platoIdFoco.equals(tableMenu.getModel().getValueAt(i, 0))) {
+                            filaObjetivo = i;
+                            break;
+                        }
+                    }
+                }
+                if (filaObjetivo != -1) {
+                    String texto = txtCantidadManual.getText();
+                    aplicarCantidadManual(texto != null && !texto.trim().isEmpty() ? texto.trim() : ultimoTextoIngresado, filaObjetivo);
+                }
             }
         });
         txtCantidadManual.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
@@ -2842,6 +2859,7 @@ public final class Sistema extends javax.swing.JFrame {
                     if (tableMenu.getSelectedRow() >= 0) {
                         int currentRow = tableMenu.getSelectedRow();
                         aplicarCantidadManual(txtCantidadManual.getText(), currentRow);
+                        tableMenu.requestFocusInWindow();
                     }
                 }
             }
@@ -3704,31 +3722,35 @@ public final class Sistema extends javax.swing.JFrame {
             candidata.setTelefono(txtTelefonoConfig.getText().trim());
             candidata.setDireccion(txtDireccionConfig.getText().trim());
             candidata.setMensaje(txtMensaje.getText().trim());
-            if (txtTasaConfig != null && !txtTasaConfig.getText().trim().isEmpty()) {
-                try {
-                    BigDecimal tasa = new BigDecimal(txtTasaConfig.getText().trim());
-                    if (tasa.compareTo(BigDecimal.ZERO) <= 0 || tasa.scale() > 4 || tasa.precision() - tasa.scale() > 8) {
-                        mostrarAlertaCampo(txtTasaConfig, "La tasa debe ser positiva y tener hasta cuatro decimales.");
-                        return;
-                    }
-                    candidata.setTasaDolar(tasa);
-                } catch (NumberFormatException ex) {
-                    mostrarAlertaCampo(txtTasaConfig, "Ingresa una tasa de cambio numérica válida.");
-                    return;
-                }
+            if (txtTasaConfig == null || txtTasaConfig.getText().trim().isEmpty()) {
+                mostrarAlertaCampo(txtTasaConfig, "La tasa de cambio oficial es obligatoria.");
+                return;
             }
-            if (txtIvaConfig != null && !txtIvaConfig.getText().trim().isEmpty()) {
-                try {
-                    BigDecimal iva = new BigDecimal(txtIvaConfig.getText().trim());
-                    if (iva.compareTo(BigDecimal.ZERO) < 0 || iva.compareTo(new BigDecimal("100.00")) > 0 || iva.scale() > 2) {
-                        mostrarAlertaCampo(txtIvaConfig, "El IVA debe estar entre 0 y 100%, con hasta dos decimales.");
-                        return;
-                    }
-                    candidata.setIvaPorcentaje(iva);
-                } catch (NumberFormatException ex) {
-                    mostrarAlertaCampo(txtIvaConfig, "Ingresa un porcentaje de IVA numérico válido.");
+            try {
+                BigDecimal tasa = new BigDecimal(txtTasaConfig.getText().trim());
+                if (tasa.compareTo(BigDecimal.ZERO) <= 0 || tasa.scale() > 4 || tasa.precision() - tasa.scale() > 8) {
+                    mostrarAlertaCampo(txtTasaConfig, "La tasa debe ser positiva y tener hasta cuatro decimales.");
                     return;
                 }
+                candidata.setTasaDolar(tasa);
+            } catch (NumberFormatException ex) {
+                mostrarAlertaCampo(txtTasaConfig, "Ingresa una tasa de cambio numérica válida.");
+                return;
+            }
+            if (txtIvaConfig == null || txtIvaConfig.getText().trim().isEmpty()) {
+                mostrarAlertaCampo(txtIvaConfig, "El porcentaje de IVA es obligatorio.");
+                return;
+            }
+            try {
+                BigDecimal iva = new BigDecimal(txtIvaConfig.getText().trim());
+                if (iva.compareTo(BigDecimal.ZERO) < 0 || iva.compareTo(new BigDecimal("100.00")) > 0 || iva.scale() > 2) {
+                    mostrarAlertaCampo(txtIvaConfig, "El IVA debe estar entre 0 y 100%, con hasta dos decimales.");
+                    return;
+                }
+                candidata.setIvaPorcentaje(iva);
+            } catch (NumberFormatException ex) {
+                mostrarAlertaCampo(txtIvaConfig, "Ingresa un porcentaje de IVA numérico válido.");
+                return;
             }
             if (txtRutaLogo != null) {
                 String rutaLogo = txtRutaLogo.getText().trim();
@@ -3771,9 +3793,10 @@ public final class Sistema extends javax.swing.JFrame {
             }
             candidata.setModoAtencion(modoAtencionActual);
             try {
-                boolean tasaCambio = conf != null && conf.getTasaDolar() != null
-                        && candidata.getTasaDolar() != null
-                        && conf.getTasaDolar().compareTo(candidata.getTasaDolar()) != 0;
+                boolean tasaCambio = candidata.getTasaDolar() != null && (
+                        conf == null || conf.getTasaDolar() == null
+                        || conf.getTasaDolar().compareTo(candidata.getTasaDolar()) != 0
+                );
                 Modelo.ResultadoActualizacionPrecios resTasa = null;
                 if (tasaCambio) {
                     int estimados = configServicio.contarPedidosAbiertosAfectadosPorTasa();
@@ -4442,7 +4465,16 @@ public final class Sistema extends javax.swing.JFrame {
             }
             setCantidadPlatoPorFila(fila, nuevaCant);
         } catch (NumberFormatException e) {
-            // Revert to old value
+            // Revertir en UI al valor numérico válido previo de la fila
+            javax.swing.table.DefaultTableModel tmp = (javax.swing.table.DefaultTableModel) tableMenu.getModel();
+            if (fila >= 0 && fila < tmp.getRowCount()) {
+                Object valOld = tmp.getValueAt(fila, 2);
+                if (txtCantidadManual != null && valOld != null) {
+                    isUpdatingUI = true;
+                    txtCantidadManual.setText(valOld.toString());
+                    isUpdatingUI = false;
+                }
+            }
             actualizarEstadoBotonesCarrito();
         }
     }
@@ -4461,7 +4493,11 @@ public final class Sistema extends javax.swing.JFrame {
             tmp.setValueAt(nuevaCant, fila, 2);
             tmp.setValueAt(formatearMontoCelda(nuevoSub, monedaFila, getTasaActual()), fila, 4);
             TotalPagar(tableMenu, totalMenu);
-            tableMenu.setRowSelectionInterval(fila, fila);
+            // Solo sincronizar selección si la fila era la seleccionada o no había selección,
+            // evitando secuestrar la selección cuando el usuario hizo clic sobre otra fila de la tabla.
+            if (tableMenu.getSelectedRow() == -1 || tableMenu.getSelectedRow() == fila) {
+                tableMenu.setRowSelectionInterval(fila, fila);
+            }
             if (tableMenu.getSelectedRow() == fila) {
                 isUpdatingUI = true;
                 if(txtCantidadManual != null) txtCantidadManual.setText(String.valueOf(nuevaCant));
@@ -4613,7 +4649,7 @@ public final class Sistema extends javax.swing.JFrame {
         // La tasa de cobro corresponde al pedido ya persistido en la BD.
         if (configServicio != null && configServicio.esTasaDolarDesactualizada()) {
             mostrarAvisoEnBanda("⚠ Tasa desactualizada: se factura con Bs. "
-                    + (conf != null && conf.getTasaDolar() != null ? conf.getTasaDolar().toPlainString() : "36.50"));
+                    + (conf != null && conf.getTasaDolar() != null ? conf.getTasaDolar().toPlainString() : "no configurada"));
         }
         if (cbModoSalidaFinalizar.getSelectedItem() instanceof Modelo.ModoSalidaTicket m) {
             cambiarModoSalidaGlobal(m);
@@ -4737,11 +4773,26 @@ public final class Sistema extends javax.swing.JFrame {
             }
         }
         sumaBs = sumaBs.setScale(2, RoundingMode.HALF_UP);
-        int comparacion = sumaBs.compareTo(totalPagoBsFac.setScale(2, RoundingMode.HALF_UP));
-        if (comparacion != 0) {
-            BigDecimal diferencia = totalPagoBsFac.subtract(sumaBs).abs().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal targetBs = totalPagoBsFac.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal ajusteCambioBs = targetBs.subtract(sumaBs);
+        boolean tieneUsd = pagos.stream().anyMatch(p -> "USD".equalsIgnoreCase(p.moneda()));
+        boolean descuadrado;
+        if (ajusteCambioBs.signum() == 0) {
+            descuadrado = false;
+        } else if (!tieneUsd) {
+            descuadrado = true;
+        } else {
+            BigDecimal maxTolBs = new BigDecimal("0.005").multiply(tasaPagoFac).setScale(2, RoundingMode.HALF_UP);
+            if (maxTolBs.compareTo(new BigDecimal("0.05")) < 0) {
+                maxTolBs = new BigDecimal("0.05");
+            }
+            descuadrado = ajusteCambioBs.abs().compareTo(maxTolBs) > 0;
+        }
+        if (descuadrado) {
+            int comparacion = sumaBs.compareTo(targetBs);
+            BigDecimal diferencia = ajusteCambioBs.abs().setScale(2, RoundingMode.HALF_UP);
             BigDecimal diferenciaUsd = diferencia.divide(tasaPagoFac, 2, RoundingMode.HALF_UP);
-            lblAlertaPagosFac.setText((comparacion > 0 ? "Falta " : "Excede ") + "Bs. "
+            lblAlertaPagosFac.setText((comparacion < 0 ? "Falta " : "Excede ") + "Bs. "
                     + diferencia.toPlainString() + " (USD " + diferenciaUsd.toPlainString() + "). Ajuste los pagos al total.");
             lblResumenPagosFac.setForeground(COLOR_PELIGRO);
             return null;
@@ -5726,10 +5777,10 @@ public final class Sistema extends javax.swing.JFrame {
     private static Config nuevoConfigPorDefecto() {
         java.util.logging.Logger.getLogger(Sistema.class.getName()).log(
                 java.util.logging.Level.WARNING,
-                "nuevoConfigPorDefecto: Instanciando configuración referencial por defecto para arranque UI (36.5000 / 16.00%).");
+                "nuevoConfigPorDefecto: Instanciando configuración referencial por defecto para arranque UI.");
         Config c = new Config();
         c.setId(1);
-        c.setTasaDolar(new BigDecimal("36.5000"));
+        c.setTasaDolar(null);
         c.setIvaPorcentaje(new BigDecimal("16.00"));
         return c;
     }
@@ -5765,10 +5816,10 @@ public final class Sistema extends javax.swing.JFrame {
         txtDireccionConfig.setText(conf.getDireccion() != null ? conf.getDireccion() : "");
         txtMensaje.setText(conf.getMensaje() != null ? conf.getMensaje() : "");
         if (txtTasaConfig != null) {
-            txtTasaConfig.setText(conf.getTasaDolar() != null ? conf.getTasaDolar().toPlainString() : "36.5000");
+            txtTasaConfig.setText(conf.getTasaDolar() != null ? conf.getTasaDolar().toPlainString() : "");
         }
         if (txtIvaConfig != null) {
-            txtIvaConfig.setText(conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje().toPlainString() : "16.00");
+            txtIvaConfig.setText(conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje().toPlainString() : "");
             actualizarTextoCheckboxIvaPlato();
         }
         if (txtRutaLogo != null) {
@@ -7284,7 +7335,19 @@ public final class Sistema extends javax.swing.JFrame {
     public void actualizarEstadoTasaUI() {
         try {
             configServicio.recargar();
-            BigDecimal tasa = configServicio.getDecimal(Modelo.ConfigClaves.TASA_DOLAR, new BigDecimal("36.5000"));
+            BigDecimal tasa = configServicio.getDecimal(Modelo.ConfigClaves.TASA_DOLAR, null);
+            if (tasa == null || tasa.compareTo(BigDecimal.ZERO) <= 0) {
+                if (lblBannerTasa != null) {
+                    lblBannerTasa.setBackground(new java.awt.Color(248, 215, 218));
+                    lblBannerTasa.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                            javax.swing.BorderFactory.createLineBorder(new java.awt.Color(220, 53, 69), 1),
+                            javax.swing.BorderFactory.createEmptyBorder(6, 10, 6, 10)
+                    ));
+                    lblBannerTasa.setText("<html><b style='color:#721c24;font-size:11px;'>⚠️ TASA NO CONFIGURADA</b><br>"
+                            + "<span style='font-size:12px;font-weight:bold;color:#721c24;'>Configure la tasa en Ajustes</span></html>");
+                }
+                return;
+            }
             java.sql.Timestamp ts = configServicio.getFechaActualizacionTasaDolar();
             boolean desactualizada = configServicio.esTasaDolarDesactualizada();
             String tasaStr = String.format(java.util.Locale.US, "%.2f", tasa);
@@ -8186,7 +8249,10 @@ public final class Sistema extends javax.swing.JFrame {
             return "Exento (0%)";
         }
         BigDecimal pct = ivaPorcentaje != null ? ivaPorcentaje
-                : (conf != null && conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new BigDecimal("16.00"));
+                : (conf != null && conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : null);
+        if (pct == null) {
+            return "Sí";
+        }
         String pctStr = (pct.scale() <= 0 || pct.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0)
                 ? String.valueOf(pct.intValue())
                 : pct.stripTrailingZeros().toPlainString();
@@ -8198,7 +8264,10 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     public String textoCheckboxIvaPlato() {
-        BigDecimal pct = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : new BigDecimal("16.00");
+        BigDecimal pct = (conf != null && conf.getIvaPorcentaje() != null) ? conf.getIvaPorcentaje() : null;
+        if (pct == null) {
+            return "Aplica IVA";
+        }
         String pctStr = (pct.scale() <= 0 || pct.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0)
                 ? String.valueOf(pct.intValue())
                 : pct.stripTrailingZeros().toPlainString();

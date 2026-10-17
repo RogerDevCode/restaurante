@@ -407,7 +407,7 @@ public final class MigradorEsquemaJdbc {
         asegurarColumna(con, meta, catalogo, "config", "logo_path", "VARCHAR(255) NULL DEFAULT NULL");
         asegurarLongitudColumna(con, meta, catalogo, "config", "ruc", 30);
         asegurarLongitudColumna(con, meta, catalogo, "config", "telefono", 30);
-        asegurarColumna(con, meta, catalogo, "config", "tasa_dolar", "DECIMAL(12,4) NOT NULL DEFAULT 36.5000");
+        asegurarColumna(con, meta, catalogo, "config", "tasa_dolar", "DECIMAL(12,4) NOT NULL DEFAULT 0.0000");
         asegurarColumna(con, meta, catalogo, "config", "iva_porcentaje", "DECIMAL(5,2) NOT NULL DEFAULT 16.00");
         asegurarColumna(con, meta, catalogo, "config", "cliente_predeterminado_nombre", "VARCHAR(150) NOT NULL DEFAULT 'Consumidor Final'");
         asegurarColumna(con, meta, catalogo, "config", "cliente_predeterminado_documento", "VARCHAR(30) NOT NULL DEFAULT 'V-00000000'");
@@ -1026,7 +1026,7 @@ public final class MigradorEsquemaJdbc {
                 String insertSql = "INSERT INTO configuracion_sistema (clave, valor) VALUES (?, ?) "
                         + "ON DUPLICATE KEY UPDATE valor=IF(valor=?, VALUES(valor), valor)";
                 try (PreparedStatement ps = con.prepareStatement(insertSql)) {
-                    insertarClaveDesdeResultSetSiExiste(meta, catalogo, rs, ps, "tasa_dolar", "tasa_dolar", "36.5000");
+                    insertarClaveDesdeResultSetSiExiste(meta, catalogo, rs, ps, "tasa_dolar", "tasa_dolar", "0.0000");
                     insertarClaveDesdeResultSetSiExiste(meta, catalogo, rs, ps, "iva_porcentaje", "iva_porcentaje", "16.00");
                     insertarClaveDesdeResultSetSiExiste(meta, catalogo, rs, ps, "impresora_tickets", "impresora_tickets", "DEFAULT");
                     insertarClaveDesdeResultSetSiExiste(meta, catalogo, rs, ps, "modo_salida_tickets", "modo_salida_tickets", "TERMICA_DIRECTA");
@@ -1038,7 +1038,7 @@ public final class MigradorEsquemaJdbc {
             } else {
                 String insertDefaults = """
                     INSERT IGNORE INTO configuracion_sistema (clave, valor) VALUES
-                    ('tasa_dolar', '36.5000'),
+                    ('tasa_dolar', '0.0000'),
                     ('iva_porcentaje', '16.00'),
                     ('impresora_tickets', 'DEFAULT'),
                     ('modo_salida_tickets', 'TERMICA_DIRECTA'),
@@ -1105,7 +1105,7 @@ public final class MigradorEsquemaJdbc {
                     efectivo_declarado_usd DECIMAL(12,2) NULL DEFAULT NULL,
                     diferencia_usd DECIMAL(12,2) NULL DEFAULT NULL,
                     estado_conciliacion_usd VARCHAR(20) NULL DEFAULT NULL,
-                    tasa_cambio DECIMAL(12,4) NOT NULL DEFAULT 36.5000,
+                    tasa_cambio DECIMAL(12,4) NOT NULL,
                     ruta_pdf VARCHAR(255) NULL,
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_cierres_fecha (fecha_jornada),

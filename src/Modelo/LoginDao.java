@@ -2,6 +2,7 @@ package Modelo;
 
 import infraestructura.PasswordHasher;
 import infraestructura.ProveedorConexionJdbc;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -546,6 +547,12 @@ public class LoginDao implements AutenticacionRepositorio {
         if (conf == null) {
             throw ErrorAplicacionException.validacion("Los datos de configuración son obligatorios.");
         }
+        if (conf.getTasaDolar() == null || conf.getTasaDolar().compareTo(BigDecimal.ZERO) <= 0) {
+            throw ErrorAplicacionException.validacion("La tasa de cambio oficial es obligatoria y debe ser mayor a cero.");
+        }
+        if (conf.getIvaPorcentaje() == null || conf.getIvaPorcentaje().compareTo(BigDecimal.ZERO) < 0 || conf.getIvaPorcentaje().compareTo(new BigDecimal("100.00")) > 0) {
+            throw ErrorAplicacionException.validacion("El porcentaje de IVA es obligatorio y debe estar entre 0.00% y 100.00%.");
+        }
         String sqlCompleto = """
             UPDATE config
             SET ruc = ?, nombre = ?, telefono = ?, direccion = ?, mensaje = ?, tasa_dolar = ?, iva_porcentaje = ?, logo_path = ?, cliente_predeterminado_nombre = ?, cliente_predeterminado_documento = ?, meses_retencion_pedidos = ?, imprimir_logo_ticket = ?, impresora_tickets = ?, modo_salida_tickets = ?
@@ -563,7 +570,7 @@ public class LoginDao implements AutenticacionRepositorio {
                     sentencia.setString(4, conf.getDireccion());
                     sentencia.setString(5, conf.getMensaje());
                     sentencia.setBigDecimal(6, conf.getTasaDolar());
-                    sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
+                    sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
                     sentencia.setString(8, conf.getLogoPath());
                     sentencia.setString(9, conf.getClienteDefaultNombre());
                     sentencia.setString(10, conf.getClienteDefaultDocumento());
@@ -650,7 +657,7 @@ public class LoginDao implements AutenticacionRepositorio {
             sentencia.setString(4, conf.getDireccion());
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
-            sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
+            sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
             sentencia.setString(8, conf.getLogoPath());
             sentencia.setString(9, conf.getClienteDefaultNombre());
             sentencia.setString(10, conf.getClienteDefaultDocumento());
@@ -679,7 +686,7 @@ public class LoginDao implements AutenticacionRepositorio {
             sentencia.setString(4, conf.getDireccion());
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
-            sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
+            sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
             sentencia.setString(8, conf.getLogoPath());
             sentencia.setString(9, conf.getClienteDefaultNombre());
             sentencia.setString(10, conf.getClienteDefaultDocumento());
@@ -707,7 +714,7 @@ public class LoginDao implements AutenticacionRepositorio {
             sentencia.setString(4, conf.getDireccion());
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
-            sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
+            sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
             sentencia.setString(8, conf.getLogoPath());
             sentencia.setString(9, conf.getClienteDefaultNombre());
             sentencia.setString(10, conf.getClienteDefaultDocumento());
@@ -734,7 +741,7 @@ public class LoginDao implements AutenticacionRepositorio {
             sentencia.setString(4, conf.getDireccion());
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
-            sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
+            sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
             sentencia.setInt(8, conf.getId());
             return sentencia.executeUpdate();
         }
@@ -754,7 +761,7 @@ public class LoginDao implements AutenticacionRepositorio {
             sentencia.setString(4, conf.getDireccion());
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
-            sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
+            sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
             int filas = sentencia.executeUpdate();
             if (filas > 0) {
                 return filas;
@@ -773,7 +780,7 @@ public class LoginDao implements AutenticacionRepositorio {
             sentencia.setString(4, conf.getDireccion());
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
-            sentencia.setBigDecimal(7, conf.getIvaPorcentaje() != null ? conf.getIvaPorcentaje() : new java.math.BigDecimal("16.00"));
+            sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
             int filas = sentencia.executeUpdate();
             if (filas > 0) {
                 try (ResultSet rs = sentencia.getGeneratedKeys()) {
@@ -1039,9 +1046,9 @@ public class LoginDao implements AutenticacionRepositorio {
                 configuracion.setTelefono(resultados.getString("telefono"));
                 configuracion.setDireccion(resultados.getString("direccion"));
                 configuracion.setMensaje(resultados.getString("mensaje"));
-                configuracion.setTasaDolar(new java.math.BigDecimal("36.5000"));
+                configuracion.setTasaDolar(null);
                 configuracion.setIvaPorcentaje(new java.math.BigDecimal("16.00"));
-                LOGGER.log(Level.WARNING, "datosEmpresaLegacy: Columnas tasa_dolar/iva_porcentaje no existen en tabla config. Aplicando fallback referencial (36.5000 / 16.00%).");
+                LOGGER.log(Level.WARNING, "datosEmpresaLegacy: Columnas tasa_dolar/iva_porcentaje no existen en tabla config.");
             }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo consultar la configuración.", ex);

@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -256,45 +257,63 @@ public final class GeneradorPdfPedido {
             }
         }
 
-        boolean esLegacy = detalles.stream().anyMatch(d -> d.getAplicaIva() == null || d.getMonedaBase() == null || d.getPrecioIncluyeIva() == null);
+        boolean esLegacy = detalles.stream().anyMatch(d -> d == null || d.getAplicaIva() == null || d.getMonedaBase() == null || d.getPrecioIncluyeIva() == null);
+        BigDecimal tol = new BigDecimal("0.05");
+        // Rama moderna (fiscalidad clasificada): el recibo debe cuadrar exacto al centavo.
+        BigDecimal tolEstricta = new BigDecimal("0.001");
         if (esLegacy) {
+            BigDecimal tasa = null;
+            try {
+                tasa = obtenerTasa(pedido, configuracion);
+            } catch (Exception ignored) {
+            }
+
             BigDecimal totalDetalles = BigDecimal.ZERO.setScale(2);
             for (DetallePedido detalle : detalles) {
-                totalDetalles = totalDetalles.add(detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(detalle.getCantidad())));
+                if (detalle == null) continue;
+                BigDecimal precio = detalle.getPrecioDecimal() != null ? detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                BigDecimal sub = precio.multiply(BigDecimal.valueOf(detalle.getCantidad()));
+                if (Boolean.TRUE.equals(detalle.getPrecioIncluyeIva()) && detalle.getIvaPorcentaje() != null && detalle.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal factor = BigDecimal.ONE.add(detalle.getIvaPorcentaje().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+                    sub = sub.divide(factor, 2, RoundingMode.HALF_UP);
+                }
+                if ("VES".equalsIgnoreCase(detalle.getMonedaBase()) && tasa != null && tasa.signum() > 0) {
+                    sub = sub.divide(tasa, 2, RoundingMode.HALF_UP);
+                }
+                totalDetalles = totalDetalles.add(sub);
             }
             BigDecimal subtotalEsperado = totalDetalles;
-            boolean fiscalidadCompleta = detalles.stream().allMatch(d -> d.getAplicaIva() != null);
-            BigDecimal baseImponible = fiscalidadCompleta ? calcularBaseImponible(detalles) : subtotalEsperado;
+            boolean fiscalidadCompleta = detalles.stream().allMatch(d -> d != null && d.getAplicaIva() != null);
+            BigDecimal baseImponible = fiscalidadCompleta ? calcularBaseImponible(detalles, tasa) : subtotalEsperado;
             BigDecimal ivaEsperado = (pedido.getIvaPorcentaje() != null && pedido.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0)
                     ? baseImponible.multiply(pedido.getIvaPorcentaje()).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
                     : BigDecimal.ZERO.setScale(2);
 
-            if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP).compareTo(subtotalEsperado) != 0) {
+            if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP).subtract(subtotalEsperado).abs().compareTo(tol) > 0) {
                 throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
             }
             if (pedido.getIvaMonto() != null && (pedido.getIvaMonto().compareTo(BigDecimal.ZERO) < 0
-                    || (fiscalidadCompleta && pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP).compareTo(ivaEsperado) != 0)
-                    || (!fiscalidadCompleta && pedido.getIvaMonto().compareTo(ivaEsperado) > 0))) {
+                    || (fiscalidadCompleta && pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP).subtract(ivaEsperado).abs().compareTo(tol) > 0)
+                    || (!fiscalidadCompleta && pedido.getIvaMonto().subtract(ivaEsperado).compareTo(tol) > 0))) {
                 throw ErrorAplicacionException.validacion("El monto del IVA no coincide con la condición fiscal de los detalles.");
             }
             BigDecimal ivaEfectivo = pedido.getIvaMonto() != null ? pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP) : ivaEsperado;
             BigDecimal totalEsperado = subtotalEsperado.add(ivaEfectivo).setScale(2, RoundingMode.HALF_UP);
             if (!importeValido(pedido.getTotalDecimal())
-                    || pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP).compareTo(totalEsperado) != 0) {
+                    || pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP).subtract(totalEsperado).abs().compareTo(tol) > 0) {
                 throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles y cálculo de IVA.");
             }
         } else {
             BigDecimal tasa = obtenerTasa(pedido, configuracion);
             CalculoMonetarioPedido.CalculoPedido calc = CalculoMonetarioPedido.calcularPedido(detalles, tasa);
-            if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP).compareTo(calc.subtotalUsd()) != 0) {
+            if (pedido.getSubtotal() != null && pedido.getSubtotal().setScale(2, RoundingMode.HALF_UP).subtract(calc.subtotalUsd()).abs().compareTo(tolEstricta) > 0) {
                 throw ErrorAplicacionException.validacion("El subtotal del pedido no coincide con sus detalles.");
             }
-            if (pedido.getIvaMonto() != null && pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP).compareTo(calc.ivaUsd()) != 0) {
+            if (pedido.getIvaMonto() != null && pedido.getIvaMonto().setScale(2, RoundingMode.HALF_UP).subtract(calc.ivaUsd()).abs().compareTo(tolEstricta) > 0) {
                 throw ErrorAplicacionException.validacion("El monto del IVA no coincide con la condición fiscal de los detalles.");
             }
             if (!importeValido(pedido.getTotalDecimal())
-                    || pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP).compareTo(calc.totalUsd()) != 0) {
+                    || pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP).subtract(calc.totalUsd()).abs().compareTo(tolEstricta) > 0) {
                 throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles y cálculo de IVA.");
             }
         }
@@ -304,20 +323,29 @@ public final class GeneradorPdfPedido {
         return detalles != null && detalles.stream().allMatch(d -> d != null && d.getAplicaIva() != null);
     }
 
-    private BigDecimal calcularBaseImponible(List<DetallePedido> detalles) {
-        return calcularImporteFiscal(detalles, true);
+    private BigDecimal calcularBaseImponible(List<DetallePedido> detalles, BigDecimal tasa) {
+        return calcularImporteFiscal(detalles, true, tasa);
     }
 
-    private BigDecimal calcularExento(List<DetallePedido> detalles) {
-        return calcularImporteFiscal(detalles, false);
+    private BigDecimal calcularExento(List<DetallePedido> detalles, BigDecimal tasa) {
+        return calcularImporteFiscal(detalles, false, tasa);
     }
 
-    private BigDecimal calcularImporteFiscal(List<DetallePedido> detalles, boolean gravado) {
+    private BigDecimal calcularImporteFiscal(List<DetallePedido> detalles, boolean gravado, BigDecimal tasa) {
         BigDecimal importe = BigDecimal.ZERO.setScale(2);
         for (DetallePedido detalle : detalles) {
+            if (detalle == null) continue;
             if (Boolean.valueOf(gravado).equals(detalle.getAplicaIva())) {
-                importe = importe.add(detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(detalle.getCantidad())));
+                BigDecimal sub = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(detalle.getCantidad()));
+                if (gravado && Boolean.TRUE.equals(detalle.getPrecioIncluyeIva()) && detalle.getIvaPorcentaje() != null && detalle.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal factor = BigDecimal.ONE.add(detalle.getIvaPorcentaje().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+                    sub = sub.divide(factor, 2, RoundingMode.HALF_UP);
+                }
+                if ("VES".equalsIgnoreCase(detalle.getMonedaBase()) && tasa != null && tasa.signum() > 0) {
+                    sub = sub.divide(tasa, 2, RoundingMode.HALF_UP);
+                }
+                importe = importe.add(sub);
             }
         }
         return importe.setScale(2, RoundingMode.HALF_UP);
@@ -419,10 +447,17 @@ public final class GeneradorPdfPedido {
             BigDecimal subtotalBs;
 
             if (esLegacy || calc == null) {
-                precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
-                subtotalUsd = precioUsd.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
-                precioBs = precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                subtotalBs = subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                if ("VES".equalsIgnoreCase(detalle.getMonedaBase())) {
+                    precioBs = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    subtotalBs = precioBs.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
+                    precioUsd = (tasa != null && tasa.signum() > 0) ? precioBs.divide(tasa, 2, RoundingMode.HALF_UP) : precioBs;
+                    subtotalUsd = (tasa != null && tasa.signum() > 0) ? subtotalBs.divide(tasa, 2, RoundingMode.HALF_UP) : subtotalBs;
+                } else {
+                    precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    subtotalUsd = precioUsd.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
+                    precioBs = (tasa != null && tasa.signum() > 0) ? precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP) : precioUsd;
+                    subtotalBs = (tasa != null && tasa.signum() > 0) ? subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP) : subtotalUsd;
+                }
             } else {
                 CalculoMonetarioPedido.CalculoLinea linea = calc.lineas().get(i);
                 if ("VES".equalsIgnoreCase(linea.monedaBase())) {
@@ -484,7 +519,7 @@ public final class GeneradorPdfPedido {
 
         if (esLegacy || calc == null) {
             BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
-                    ? calcularExento(detalles)
+                    ? calcularExento(detalles, tasa)
                     : BigDecimal.ZERO.setScale(2);
             boolean tieneExento = exentoUsd.compareTo(BigDecimal.ZERO) > 0;
 
@@ -499,7 +534,7 @@ public final class GeneradorPdfPedido {
 
                 if (tieneIva) {
                     BigDecimal baseImpUsd = tieneFiscalidadCompleta(detalles)
-                            ? calcularBaseImponible(detalles)
+                            ? calcularBaseImponible(detalles, tasa)
                             : ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
                     BigDecimal exentoCalculado = tieneFiscalidadCompleta(detalles)
                             ? exentoUsd : subtotalUsd.subtract(baseImpUsd);
@@ -532,8 +567,10 @@ public final class GeneradorPdfPedido {
             BigDecimal baseImpUsd = BigDecimal.ZERO.setScale(2);
             for (CalculoMonetarioPedido.CalculoLinea linea : calc.lineas()) {
                 if ("VES".equalsIgnoreCase(linea.monedaBase())) {
-                    exentoUsd = exentoUsd.add(linea.exentoVes().divide(tasa, 8, RoundingMode.HALF_UP));
-                    baseImpUsd = baseImpUsd.add(linea.baseImponibleVes().divide(tasa, 8, RoundingMode.HALF_UP));
+                    BigDecimal e = linea.exentoVes().divide(tasa, 8, RoundingMode.HALF_UP).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal b = linea.baseImponibleVes().divide(tasa, 8, RoundingMode.HALF_UP).setScale(2, RoundingMode.HALF_UP);
+                    exentoUsd = exentoUsd.add(e);
+                    baseImpUsd = baseImpUsd.add(b);
                 } else {
                     exentoUsd = exentoUsd.add(linea.exentoFuente());
                     baseImpUsd = baseImpUsd.add(linea.baseImponibleFuente());
@@ -541,6 +578,12 @@ public final class GeneradorPdfPedido {
             }
             exentoUsd = exentoUsd.setScale(2, RoundingMode.HALF_UP);
             baseImpUsd = baseImpUsd.setScale(2, RoundingMode.HALF_UP);
+            if (exentoBs.compareTo(BigDecimal.ZERO) == 0) {
+                baseImpUsd = subtotalUsd;
+                exentoUsd = BigDecimal.ZERO.setScale(2);
+            } else if (baseImpUsd.add(exentoUsd).compareTo(subtotalUsd) != 0) {
+                baseImpUsd = subtotalUsd.subtract(exentoUsd).max(BigDecimal.ZERO);
+            }
 
             boolean tieneExento = exentoBs.compareTo(BigDecimal.ZERO) > 0;
             boolean aplicaIvaEnTotales = tieneIva && ivaBs.compareTo(BigDecimal.ZERO) > 0;
@@ -656,10 +699,17 @@ public final class GeneradorPdfPedido {
             BigDecimal subtotalBs;
 
             if (esLegacy || calc == null) {
-                precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
-                subtotalUsd = precioUsd.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
-                precioBs = precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                subtotalBs = subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                if ("VES".equalsIgnoreCase(detalle.getMonedaBase())) {
+                    precioBs = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    subtotalBs = precioBs.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
+                    precioUsd = (tasa != null && tasa.signum() > 0) ? precioBs.divide(tasa, 2, RoundingMode.HALF_UP) : precioBs;
+                    subtotalUsd = (tasa != null && tasa.signum() > 0) ? subtotalBs.divide(tasa, 2, RoundingMode.HALF_UP) : subtotalBs;
+                } else {
+                    precioUsd = detalle.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
+                    subtotalUsd = precioUsd.multiply(BigDecimal.valueOf(detalle.getCantidad())).setScale(2, RoundingMode.HALF_UP);
+                    precioBs = (tasa != null && tasa.signum() > 0) ? precioUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP) : precioUsd;
+                    subtotalBs = (tasa != null && tasa.signum() > 0) ? subtotalUsd.multiply(tasa).setScale(2, RoundingMode.HALF_UP) : subtotalUsd;
+                }
             } else {
                 CalculoMonetarioPedido.CalculoLinea linea = calc.lineas().get(i);
                 if ("VES".equalsIgnoreCase(linea.monedaBase())) {
@@ -700,7 +750,7 @@ public final class GeneradorPdfPedido {
 
         if (esLegacy || calc == null) {
             BigDecimal exentoUsd = tieneFiscalidadCompleta(detalles)
-                    ? calcularExento(detalles)
+                    ? calcularExento(detalles, tasa)
                     : BigDecimal.ZERO.setScale(2);
             boolean tieneExento = exentoUsd.compareTo(BigDecimal.ZERO) > 0;
 
@@ -715,7 +765,7 @@ public final class GeneradorPdfPedido {
 
                 if (tieneIva) {
                     BigDecimal baseImpUsd = tieneFiscalidadCompleta(detalles)
-                            ? calcularBaseImponible(detalles)
+                            ? calcularBaseImponible(detalles, tasa)
                             : ivaUsd.multiply(new BigDecimal("100")).divide(ivaPorcentaje, 2, RoundingMode.HALF_UP);
                     BigDecimal exentoCalculado = tieneFiscalidadCompleta(detalles)
                             ? exentoUsd : subtotalUsd.subtract(baseImpUsd);
@@ -748,8 +798,10 @@ public final class GeneradorPdfPedido {
             BigDecimal baseImpUsd = BigDecimal.ZERO.setScale(2);
             for (CalculoMonetarioPedido.CalculoLinea linea : calc.lineas()) {
                 if ("VES".equalsIgnoreCase(linea.monedaBase())) {
-                    exentoUsd = exentoUsd.add(linea.exentoVes().divide(tasa, 8, RoundingMode.HALF_UP));
-                    baseImpUsd = baseImpUsd.add(linea.baseImponibleVes().divide(tasa, 8, RoundingMode.HALF_UP));
+                    BigDecimal e = linea.exentoVes().divide(tasa, 8, RoundingMode.HALF_UP).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal b = linea.baseImponibleVes().divide(tasa, 8, RoundingMode.HALF_UP).setScale(2, RoundingMode.HALF_UP);
+                    exentoUsd = exentoUsd.add(e);
+                    baseImpUsd = baseImpUsd.add(b);
                 } else {
                     exentoUsd = exentoUsd.add(linea.exentoFuente());
                     baseImpUsd = baseImpUsd.add(linea.baseImponibleFuente());
@@ -757,6 +809,12 @@ public final class GeneradorPdfPedido {
             }
             exentoUsd = exentoUsd.setScale(2, RoundingMode.HALF_UP);
             baseImpUsd = baseImpUsd.setScale(2, RoundingMode.HALF_UP);
+            if (exentoBs.compareTo(BigDecimal.ZERO) == 0) {
+                baseImpUsd = subtotalUsd;
+                exentoUsd = BigDecimal.ZERO.setScale(2);
+            } else if (baseImpUsd.add(exentoUsd).compareTo(subtotalUsd) != 0) {
+                baseImpUsd = subtotalUsd.subtract(exentoUsd).max(BigDecimal.ZERO);
+            }
 
             boolean tieneExento = exentoBs.compareTo(BigDecimal.ZERO) > 0;
             boolean aplicaIvaEnTotales = tieneIva && ivaBs.compareTo(BigDecimal.ZERO) > 0;
@@ -888,7 +946,7 @@ public final class GeneradorPdfPedido {
                             + "Para preservar la integridad contable y fiscal, no se permite conjeturar la tasa a partir de otros pedidos ni aplicar la tasa actual a pedidos cerrados.");
         }
 
-        // Falla total de resolución
+        // Si no hay tasa válida en pedido ni en configuración, no se permite inventar un fallback
         throw ErrorAplicacionException.validacion(
                 "No se puede generar la factura: no hay una tasa de cambio válida guardada en el pedido ni configurada en el sistema.");
     }
