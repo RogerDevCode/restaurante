@@ -403,6 +403,7 @@ public final class Sistema extends javax.swing.JFrame {
                         txtCantidadManual.transferFocus();
                     }
                     actualizarEstadoBotonesCarrito();
+                    javax.swing.SwingUtilities.invokeLater(this::actualizarEstadoBotonesCarrito);
                 }
             });
         }
@@ -2843,6 +2844,9 @@ public final class Sistema extends javax.swing.JFrame {
                     String texto = txtCantidadManual.getText();
                     aplicarCantidadManual(texto != null && !texto.trim().isEmpty() ? texto.trim() : ultimoTextoIngresado, filaObjetivo);
                 }
+                platoIdFoco = null;
+                platoSeleccionadoFilaFoco = -1;
+                actualizarEstadoBotonesCarrito();
             }
         });
         txtCantidadManual.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
