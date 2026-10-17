@@ -453,9 +453,6 @@ public class PedidosDao implements PedidosRepositorio {
             if (d.getMonedaBase() == null || d.getMonedaBase().isBlank()) {
                 throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' debe tener asignada su moneda base (USD o VES).");
             }
-            if (d.getAplicaIva() == null) {
-                throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' debe indicar si aplica IVA.");
-            }
             if (d.getPrecioIncluyeIva() == null) {
                 throw ErrorAplicacionException.validacion("El producto '" + d.getNombre() + "' debe indicar si el precio incluye IVA.");
             }
@@ -535,10 +532,6 @@ public class PedidosDao implements PedidosRepositorio {
                             throw ErrorAplicacionException.validacion(
                                     "El producto '" + det.getNombre() + "' no tiene moneda base asignada (requiere clasificación).");
                         }
-                        if (det.getAplicaIva() == null) {
-                            throw ErrorAplicacionException.validacion(
-                                    "El producto '" + det.getNombre() + "' no tiene condición fiscal de IVA definida.");
-                        }
                         if (det.getPrecioIncluyeIva() == null) {
                             throw ErrorAplicacionException.validacion(
                                     "El producto '" + det.getNombre() + "' no tiene clasificada la condición de IVA incluido.");
@@ -560,10 +553,6 @@ public class PedidosDao implements PedidosRepositorio {
             if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) {
                 throw ErrorAplicacionException.validacion(
                         "El producto '" + det.getNombre() + "' no tiene moneda base asignada.");
-            }
-            if (det.getAplicaIva() == null) {
-                throw ErrorAplicacionException.validacion(
-                        "El producto '" + det.getNombre() + "' no tiene condición fiscal de IVA definida.");
             }
             if (det.getPrecioIncluyeIva() == null) {
                 throw ErrorAplicacionException.validacion(
@@ -1263,24 +1252,34 @@ public class PedidosDao implements PedidosRepositorio {
             boolean autoCommitPrevio = con.getAutoCommit();
             con.setAutoCommit(false);
             try {
-                // Si tiene pagos registrados, impedir anular a menos que tenga movimientos de devolución/crédito registrados
+                // Si tiene pagos registrados, impedir anular a menos que tenga movimientos de devolución/crédito/anulación equivalentes registrados
+                BigDecimal pagadoUsd = BigDecimal.ZERO;
                 try (PreparedStatement psPagos = con.prepareStatement(
-                        "SELECT COUNT(*) FROM pedido_pagos WHERE id_pedido = ?")) {
+                        "SELECT COALESCE(SUM(COALESCE(monto_usd, CASE WHEN moneda = 'USD' THEN monto_aplicado ELSE ROUND(monto_bs / NULLIF(tasa_cambio, 0), 2) END)), 0) FROM pedido_pagos WHERE id_pedido = ?")) {
                     psPagos.setInt(1, id_pedido);
                     try (ResultSet rs = psPagos.executeQuery()) {
-                        if (rs.next() && rs.getInt(1) > 0) {
-                            try (PreparedStatement psMov = con.prepareStatement(
-                                    "SELECT COUNT(*) FROM pedido_saldos_movimientos WHERE id_pedido = ? AND tipo IN ('DEVOLUCION','CREDITO','ANULACION')")) {
-                                psMov.setInt(1, id_pedido);
-                                try (ResultSet rsMov = psMov.executeQuery()) {
-                                    int cantMov = rsMov.next() ? rsMov.getInt(1) : 0;
-                                    if (cantMov == 0) {
-                                        throw ErrorAplicacionException.validacion(
-                                                "El pedido #" + id_pedido + " tiene pagos registrados; se requiere conciliación o devolución trazable antes de anular.");
-                                    }
-                                }
+                        if (rs.next()) {
+                            pagadoUsd = rs.getBigDecimal(1);
+                        }
+                    }
+                }
+
+                if (pagadoUsd != null && pagadoUsd.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal compensadoUsd = BigDecimal.ZERO;
+                    try (PreparedStatement psMov = con.prepareStatement(
+                            "SELECT COALESCE(SUM(CASE WHEN moneda = 'USD' THEN monto_origen ELSE ROUND(equivalente_ves / NULLIF(tasa_cambio, 0), 2) END), 0) FROM pedido_saldos_movimientos WHERE id_pedido = ? AND tipo IN ('DEVOLUCION','CREDITO','ANULACION')")) {
+                        psMov.setInt(1, id_pedido);
+                        try (ResultSet rsMov = psMov.executeQuery()) {
+                            if (rsMov.next()) {
+                                compensadoUsd = rsMov.getBigDecimal(1);
                             }
                         }
+                    }
+                    if (compensadoUsd == null || compensadoUsd.compareTo(pagadoUsd.subtract(new BigDecimal("0.01"))) < 0) {
+                        throw ErrorAplicacionException.validacion(
+                                "El pedido #" + id_pedido + " tiene pagos registrados por $" + pagadoUsd.setScale(2, RoundingMode.HALF_UP)
+                                + " y solo se ha compensado/devuelto $" + (compensadoUsd != null ? compensadoUsd.setScale(2, RoundingMode.HALF_UP) : "0.00")
+                                + "; se requiere contra-asiento o devolución equivalente antes de anular.");
                     }
                 }
 
@@ -1431,10 +1430,6 @@ public class PedidosDao implements PedidosRepositorio {
                             throw ErrorAplicacionException.validacion("La comanda #" + idPedido
                                     + " contiene productos heredados sin clasificar; asígneles moneda base antes de cerrar.");
                         }
-                        if (d.getAplicaIva() == null) {
-                            throw ErrorAplicacionException.validacion("La comanda #" + idPedido
-                                    + " contiene productos sin condición de IVA definida antes de cerrar.");
-                        }
                         if (d.getPrecioIncluyeIva() == null) {
                             throw ErrorAplicacionException.validacion("La comanda #" + idPedido
                                     + " contiene productos sin condición de precio con IVA incluido definida antes de cerrar.");
@@ -1566,13 +1561,15 @@ public class PedidosDao implements PedidosRepositorio {
             BigDecimal totalUsd = BigDecimal.ZERO;
             BigDecimal totalBs = BigDecimal.ZERO;
 
+            String estado = "PENDIENTE";
             try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT total, total_bs, tasa_cambio, cerrada_en, version_precio FROM pedidos WHERE id = ?")) {
+                    "SELECT estado, total, total_bs, tasa_cambio, cerrada_en, version_precio FROM pedidos WHERE id = ?")) {
                 ps.setInt(1, idPedido);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) {
                         throw ErrorAplicacionException.validacion("No existe el pedido #" + idPedido + ".");
                     }
+                    estado = rs.getString("estado");
                     totalUsd = rs.getBigDecimal("total");
                     tasa = rs.getBigDecimal("tasa_cambio");
                     totalBs = rs.getBigDecimal("total_bs");
@@ -1587,23 +1584,80 @@ public class PedidosDao implements PedidosRepositorio {
                 }
             }
 
-            // P2-D: montos aplicados por moneda de origen. monto_aplicado está en la
-            // moneda del tramo (mezclarlo como Bs. descuadra el saldo en pagos mixtos);
+            // Si el pedido está anulado, no hay cobranza activa exigible ni deuda pendiente
+            if ("ANULADO".equalsIgnoreCase(estado)) {
+                return new ResumenConciliacionPedido(
+                        idPedido, cerrado, versionPrecio, tasa,
+                        totalUsd != null ? totalUsd.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2),
+                        totalBs != null ? totalBs.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2),
+                        BigDecimal.ZERO.setScale(2), BigDecimal.ZERO.setScale(2),
+                        BigDecimal.ZERO.setScale(2), BigDecimal.ZERO.setScale(2),
+                        BigDecimal.ZERO.setScale(2), BigDecimal.ZERO.setScale(2));
+            }
+
+            // P2-D: montos aplicados por moneda de origen con redondeo exacto individual por abono.
             // monto_bs / monto_usd guardan el equivalente aplicado a tasa del pago.
             // Legado: sin monto_aplicado se usa monto_bs (importe aplicado histórico).
             BigDecimal pagadoBsAplicado = BigDecimal.ZERO.setScale(2);
             BigDecimal pagadoUsdAplicado = BigDecimal.ZERO.setScale(2);
             try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT COALESCE(SUM(COALESCE(monto_bs, monto_aplicado)), 0) AS total_bs, " +
-                    "       COALESCE(SUM(CASE WHEN moneda = 'USD' THEN COALESCE(monto_aplicado, monto_usd) ELSE 0 END), 0) AS total_usd " +
-                    "FROM pedido_pagos WHERE id_pedido = ?")) {
+                    "SELECT moneda, monto_aplicado, monto_bs, monto_usd, tasa_cambio FROM pedido_pagos WHERE id_pedido = ?")) {
                 ps.setInt(1, idPedido);
                 try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        pagadoBsAplicado = rs.getBigDecimal("total_bs").setScale(2, RoundingMode.HALF_UP);
-                        pagadoUsdAplicado = rs.getBigDecimal("total_usd").setScale(2, RoundingMode.HALF_UP);
+                    while (rs.next()) {
+                        String mon = rs.getString("moneda");
+                        BigDecimal mAplicado = rs.getBigDecimal("monto_aplicado");
+                        BigDecimal mBs = rs.getBigDecimal("monto_bs");
+                        BigDecimal mUsd = rs.getBigDecimal("monto_usd");
+                        BigDecimal tCam = rs.getBigDecimal("tasa_cambio");
+
+                        // Bolívares aplicados
+                        BigDecimal bsFila = mBs != null ? mBs : (mAplicado != null ? mAplicado : BigDecimal.ZERO);
+                        pagadoBsAplicado = pagadoBsAplicado.add(bsFila.setScale(2, RoundingMode.HALF_UP));
+
+                        // USD aplicados con redondeo individual por abono (idéntico a PagoPedido.equivalenteUsd)
+                        BigDecimal usdFila;
+                        if (mUsd != null) {
+                            usdFila = mUsd.setScale(2, RoundingMode.HALF_UP);
+                        } else if ("USD".equalsIgnoreCase(mon)) {
+                            usdFila = (mAplicado != null ? mAplicado : bsFila).setScale(2, RoundingMode.HALF_UP);
+                        } else if (tCam != null && tCam.signum() > 0) {
+                            usdFila = bsFila.divide(tCam, 2, RoundingMode.HALF_UP);
+                        } else {
+                            usdFila = BigDecimal.ZERO.setScale(2);
+                        }
+                        pagadoUsdAplicado = pagadoUsdAplicado.add(usdFila);
                     }
                 }
+            }
+
+            // Deducir movimientos de compensación / devolución registrados en pedido_saldos_movimientos
+            try (PreparedStatement psMov = con.prepareStatement(
+                    "SELECT tipo, moneda, monto_origen, equivalente_ves, tasa_cambio FROM pedido_saldos_movimientos WHERE id_pedido = ? AND tipo IN ('DEVOLUCION','CREDITO','ANULACION')")) {
+                psMov.setInt(1, idPedido);
+                try (ResultSet rsMov = psMov.executeQuery()) {
+                    while (rsMov.next()) {
+                        String mon = rsMov.getString("moneda");
+                        BigDecimal eqVes = rsMov.getBigDecimal("equivalente_ves");
+                        BigDecimal mOrigen = rsMov.getBigDecimal("monto_origen");
+                        BigDecimal tCam = rsMov.getBigDecimal("tasa_cambio");
+
+                        BigDecimal devBs = eqVes != null ? eqVes : BigDecimal.ZERO;
+                        BigDecimal devUsd;
+                        if ("USD".equalsIgnoreCase(mon)) {
+                            devUsd = mOrigen != null ? mOrigen : BigDecimal.ZERO;
+                        } else if (tCam != null && tCam.signum() > 0) {
+                            devUsd = devBs.divide(tCam, 2, RoundingMode.HALF_UP);
+                        } else {
+                            devUsd = BigDecimal.ZERO;
+                        }
+
+                        pagadoBsAplicado = pagadoBsAplicado.subtract(devBs.setScale(2, RoundingMode.HALF_UP)).max(BigDecimal.ZERO);
+                        pagadoUsdAplicado = pagadoUsdAplicado.subtract(devUsd.setScale(2, RoundingMode.HALF_UP)).max(BigDecimal.ZERO);
+                    }
+                }
+            } catch (SQLException exMov) {
+                LOGGER.log(Level.FINE, "No se pudieron deducir movimientos de compensación para pedido #" + idPedido, exMov);
             }
 
             try (PreparedStatement psCheck = con.prepareStatement(
@@ -1618,11 +1672,46 @@ public class PedidosDao implements PedidosRepositorio {
                 LOGGER.log(Level.FINE, "No se pudo auditar pagos legados: " + exCheck.getMessage());
             }
 
+            if (cerrado) {
+                // Consultar ajuste cambiario de liquidación para que los pagos aplicados cuadren exactamente al total
+                try (PreparedStatement psLiq = con.prepareStatement(
+                        "SELECT ajuste_cambio_bs FROM pedido_liquidaciones WHERE id_pedido = ? ORDER BY id DESC LIMIT 1")) {
+                    psLiq.setInt(1, idPedido);
+                    try (ResultSet rsLiq = psLiq.executeQuery()) {
+                        if (rsLiq.next()) {
+                            BigDecimal aj = rsLiq.getBigDecimal("ajuste_cambio_bs");
+                            if (aj != null && aj.signum() != 0) {
+                                pagadoBsAplicado = pagadoBsAplicado.add(aj);
+                            }
+                        }
+                    }
+                } catch (SQLException ign) {
+                }
+            }
+
             BigDecimal saldoBs = totalBs.subtract(pagadoBsAplicado).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
             BigDecimal excedenteBs = pagadoBsAplicado.subtract(totalBs).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
 
             BigDecimal saldoUsd = totalUsd.subtract(pagadoUsdAplicado).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
             BigDecimal excedenteUsd = pagadoUsdAplicado.subtract(totalUsd).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+
+            if (cerrado) {
+                BigDecimal tolBs = new BigDecimal("0.05");
+                if (tasa != null && tasa.signum() > 0) {
+                    BigDecimal tolCalculada = new BigDecimal("0.005").multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    if (tolCalculada.compareTo(tolBs) > 0) {
+                        tolBs = tolCalculada;
+                    }
+                }
+                if (saldoBs.compareTo(tolBs) <= 0) {
+                    saldoBs = BigDecimal.ZERO.setScale(2);
+                    saldoUsd = BigDecimal.ZERO.setScale(2);
+                }
+                if (excedenteBs.compareTo(tolBs) <= 0) {
+                    excedenteBs = BigDecimal.ZERO.setScale(2);
+                    excedenteUsd = BigDecimal.ZERO.setScale(2);
+                }
+            }
 
             return new ResumenConciliacionPedido(
                     idPedido, cerrado, versionPrecio, tasa, totalUsd, totalBs,
