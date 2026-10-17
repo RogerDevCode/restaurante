@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 11;
+    private static final int VERSION_ESQUEMA = 12;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
@@ -46,7 +46,9 @@ public final class MigradorEsquemaJdbc {
     private static final String CHECKSUM_MIGRACION_V10 = calcularChecksum(DEFINICION_MIGRACION_V10);
     private static final String DEFINICION_MIGRACION_V11 = "v11:precios_duales,snapshot_fiscal,cierre_mesa,liquidaciones,auditoria_precios,pagos_inmutables";
     private static final String CHECKSUM_MIGRACION_V11 = calcularChecksum(DEFINICION_MIGRACION_V11);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v11";
+    private static final String DEFINICION_MIGRACION_V12 = "v12:detalle_pedidos_aplica_iva_not_null";
+    private static final String CHECKSUM_MIGRACION_V12 = calcularChecksum(DEFINICION_MIGRACION_V12);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v12";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
@@ -184,7 +186,7 @@ public final class MigradorEsquemaJdbc {
             if (!rs.next()) return false;
             String checksum = rs.getString("checksum");
             String estado = rs.getString("estado");
-            if (!CHECKSUM_MIGRACION_V11.equals(checksum)) {
+            if (!CHECKSUM_MIGRACION_V12.equals(checksum)) {
                 throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
             }
             return "APLICADA".equalsIgnoreCase(estado);
@@ -221,7 +223,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V11 + "','EN_CURSO','asegurar_esquema') "
+                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V12 + "','EN_CURSO','asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -323,6 +325,18 @@ public final class MigradorEsquemaJdbc {
                 }
             }
         }
+        for (String[] par : new String[][] { {"platos", "aplica_iva"}, {"detalle_pedidos", "aplica_iva"} }) {
+            try (PreparedStatement ps = con.prepareStatement("SELECT IS_NULLABLE FROM information_schema.columns "
+                    + "WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?")) {
+                ps.setString(1, par[0]);
+                ps.setString(2, par[1]);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next() || !"NO".equalsIgnoreCase(rs.getString(1))) {
+                        throw new SQLException("Postcondición no cumplida: " + par[0] + "." + par[1] + " debe ser NOT NULL.");
+                    }
+                }
+            }
+        }
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery("SELECT COUNT(DISTINCT clave) FROM configuracion_sistema WHERE clave IN "
                      + "('tasa_dolar','iva_porcentaje','impresora_tickets','modo_salida_tickets','imprimir_logo_ticket',"
@@ -414,6 +428,7 @@ public final class MigradorEsquemaJdbc {
         asegurarColumna(con, meta, catalogo, "platos", "activo", "TINYINT(1) NOT NULL DEFAULT 1");
         asegurarColumna(con, meta, catalogo, "platos", "desactivado_en", "DATETIME NULL DEFAULT NULL");
         asegurarColumna(con, meta, catalogo, "platos", "aplica_iva", "TINYINT(1) NOT NULL DEFAULT 1");
+        asegurarColumnaNoNula(con, "platos", "aplica_iva", "TINYINT(1) NOT NULL DEFAULT 1");
 
         // 5. Columnas en salas (soporte para Salón vs Barra)
         asegurarColumna(con, meta, catalogo, "salas", "tipo", "VARCHAR(20) NOT NULL DEFAULT 'SALON'");
@@ -453,12 +468,16 @@ public final class MigradorEsquemaJdbc {
         asegurarColumna(con, meta, catalogo, "detalle_pedidos", "nombre_clave",
                 "VARCHAR(200) GENERATED ALWAYS AS (LOWER(TRIM(nombre))) STORED");
         asegurarIndice(con, meta, catalogo, "detalle_pedidos", "idx_detalle_pedidos_nombre_clave", "(nombre_clave)");
-        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "aplica_iva", "TINYINT(1) NULL DEFAULT NULL");
-        asegurarCheck(con, "detalle_pedidos", "chk_detalle_aplica_iva",
-                "((aplica_iva IS NULL) OR (aplica_iva IN (0,1)))");
+        asegurarColumna(con, meta, catalogo, "detalle_pedidos", "aplica_iva", "TINYINT(1) NOT NULL DEFAULT 1");
+        asegurarColumnaNoNula(con, "detalle_pedidos", "aplica_iva", "TINYINT(1) NOT NULL DEFAULT 1");
+        if (checkExiste(con, "detalle_pedidos", "chk_detalle_aplica_iva")) {
+            try (Statement st = con.createStatement()) {
+                st.executeUpdate("ALTER TABLE detalle_pedidos DROP CHECK chk_detalle_aplica_iva");
+            }
+        }
+        asegurarCheck(con, "detalle_pedidos", "chk_detalle_aplica_iva", "(aplica_iva IN (0,1))");
         asegurarNombreUsuario(con, meta, catalogo);
-        // Los NULL históricos expresan una clasificación fiscal desconocida. No inferirlos
-        // del catálogo actual ni forzarlos a gravado/exento durante la migración.
+        // La condición fiscal por línea es obligatoria (0/1) desde v12; ya no se admiten NULL.
 
         // 12. Asegurar tabla de categorías con paleta de colores (semilla: General)
         asegurarTablaCategorias(con, meta, catalogo);
@@ -791,6 +810,36 @@ public final class MigradorEsquemaJdbc {
         }
     }
 
+    private static void asegurarColumnaNoNula(Connection con, String tabla, String columna,
+            String definicionNoNula) throws SQLException {
+        String nullable;
+        try (PreparedStatement ps = con.prepareStatement("SELECT IS_NULLABLE FROM information_schema.columns "
+                + "WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?")) {
+            ps.setString(1, tabla);
+            ps.setString(2, columna);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("Falta columna requerida para migrar: " + tabla + "." + columna);
+                }
+                nullable = rs.getString(1);
+            }
+        }
+        if ("NO".equalsIgnoreCase(nullable)) {
+            return;
+        }
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT 1 FROM `" + tabla + "` WHERE `" + columna + "` IS NULL LIMIT 1")) {
+            if (rs.next()) {
+                LOGGER.log(Level.WARNING, "No se puede convertir a NOT NULL: {0}.{1} contiene registros con NULL. Se preserva como nullable para no abortar el inicio ni alterar históricos.",
+                        new Object[]{tabla, columna});
+                return;
+            }
+        }
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("ALTER TABLE `" + tabla + "` MODIFY COLUMN `" + columna + "` " + definicionNoNula);
+        }
+    }
+
     private static void asegurarPermiteNulos(Connection con, DatabaseMetaData meta, String catalogo,
             String tabla, String columna, String definicionNullable) throws SQLException {
         try (ResultSet rs = meta.getColumns(catalogo, null, tabla, columna)) {
@@ -897,42 +946,6 @@ public final class MigradorEsquemaJdbc {
             ps.setString(2, nombre);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
-            }
-        }
-    }
-
-    static void recalcularFiscalidadHistorica(Connection con) throws SQLException {
-        try (Statement st = con.createStatement()) {
-            st.executeUpdate("UPDATE detalle_pedidos d LEFT JOIN platos p ON p.nombre_clave = d.nombre_clave "
-                    + "SET d.aplica_iva = COALESCE(p.aplica_iva, 0) WHERE d.aplica_iva IS NULL");
-            st.executeUpdate("UPDATE detalle_pedidos SET aplica_iva = 0 WHERE aplica_iva IS NULL");
-
-            // Recalcular pedidos con tasa propia (no estimada)
-            st.executeUpdate("UPDATE pedidos p LEFT JOIN (SELECT id_pedido, "
-                    + "SUM(precio * cantidad) subtotal, "
-                    + "SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) base_imponible "
-                    + "FROM detalle_pedidos GROUP BY id_pedido) d ON d.id_pedido = p.id "
-                    + "SET p.subtotal = COALESCE(d.subtotal, p.subtotal), "
-                    + "p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2), "
-                    + "p.total = COALESCE(d.subtotal, p.subtotal) + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2), "
-                    + "p.subtotal_bs = ROUND(COALESCE(d.subtotal, p.subtotal) * p.tasa_cambio, 2), "
-                    + "p.iva_bs = ROUND(ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2) * p.tasa_cambio, 2), "
-                    + "p.total_bs = ROUND((COALESCE(d.subtotal, p.subtotal) + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2)) * p.tasa_cambio, 2) "
-                    + "WHERE d.id_pedido IS NOT NULL AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 AND COALESCE(p.tasa_es_estimada, 0) = 0");
-
-            // Pedidos sin tasa: marcar tasa_es_estimada = 1 y asignar 36.5000, PRESERVANDO montos en Bs existentes
-            int filasEstimadas = st.executeUpdate("UPDATE pedidos p LEFT JOIN (SELECT id_pedido, "
-                    + "SUM(precio * cantidad) subtotal, "
-                    + "SUM(CASE WHEN aplica_iva = 1 THEN precio * cantidad ELSE 0 END) base_imponible "
-                    + "FROM detalle_pedidos GROUP BY id_pedido) d ON d.id_pedido = p.id "
-                    + "SET p.tasa_cambio = 36.5000, "
-                    + "p.tasa_es_estimada = 1, "
-                    + "p.subtotal = COALESCE(d.subtotal, p.subtotal), "
-                    + "p.iva_monto = ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2), "
-                    + "p.total = COALESCE(d.subtotal, p.subtotal) + ROUND(COALESCE(d.base_imponible, 0) * COALESCE(p.iva_porcentaje, 0) / 100, 2) "
-                    + "WHERE d.id_pedido IS NOT NULL AND (p.tasa_cambio IS NULL OR p.tasa_cambio = 0)");
-            if (filasEstimadas > 0) {
-                LOGGER.log(Level.WARNING, "Migración de esquema: Se asignó tasa estimada 36.5000 (tasa_es_estimada=1) a {0} pedidos históricos sin tasa registrada.", filasEstimadas);
             }
         }
     }

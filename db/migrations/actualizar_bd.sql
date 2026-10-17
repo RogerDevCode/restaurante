@@ -438,6 +438,18 @@ BEGIN
         ALTER TABLE platos ADD COLUMN aplica_iva TINYINT(1) NOT NULL DEFAULT 1;
     END IF;
 
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'platos'
+          AND column_name = 'aplica_iva' AND is_nullable = 'YES'
+    ) THEN
+        IF EXISTS (SELECT 1 FROM platos WHERE aplica_iva IS NULL) THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'platos.aplica_iva contiene NULL: clasifique esos platos antes de actualizar.';
+        END IF;
+        ALTER TABLE platos MODIFY COLUMN aplica_iva TINYINT(1) NOT NULL DEFAULT 1;
+    END IF;
+
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'salas' AND column_name = 'tipo'
@@ -544,7 +556,18 @@ BEGIN
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'detalle_pedidos' AND column_name = 'aplica_iva'
     ) THEN
-        ALTER TABLE detalle_pedidos ADD COLUMN aplica_iva TINYINT(1) NULL DEFAULT NULL;
+        ALTER TABLE detalle_pedidos ADD COLUMN aplica_iva TINYINT(1) NOT NULL DEFAULT 1;
+    END IF;
+
+    -- Endurecer detalle_pedidos.aplica_iva en instalaciones heredadas (solo si no hay NULL históricos).
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'detalle_pedidos'
+          AND column_name = 'aplica_iva' AND is_nullable = 'YES'
+    ) THEN
+        IF NOT EXISTS (SELECT 1 FROM detalle_pedidos WHERE aplica_iva IS NULL) THEN
+            ALTER TABLE detalle_pedidos MODIFY COLUMN aplica_iva TINYINT(1) NOT NULL DEFAULT 1;
+        END IF;
     END IF;
 
     IF NOT EXISTS (
@@ -578,13 +601,14 @@ BEGIN
       (CHAR_LENGTH(nombre) BETWEEN 3 AND 60 AND LOWER(TRIM(nombre)) <> 'admin'
        AND REGEXP_LIKE(nombre, '^[[:alnum:]][[:alnum:] ._-]{1,58}[[:alnum:]]$'));
 
-    IF NOT EXISTS (
+    IF EXISTS (
         SELECT 1 FROM information_schema.table_constraints
         WHERE table_schema = DATABASE() AND table_name = 'detalle_pedidos' AND constraint_name = 'chk_detalle_aplica_iva'
     ) THEN
-        ALTER TABLE detalle_pedidos ADD CONSTRAINT chk_detalle_aplica_iva
-          CHECK ((aplica_iva IS NULL) OR (aplica_iva IN (0,1)));
+        ALTER TABLE detalle_pedidos DROP CHECK chk_detalle_aplica_iva;
     END IF;
+    ALTER TABLE detalle_pedidos ADD CONSTRAINT chk_detalle_aplica_iva
+      CHECK (aplica_iva IN (0,1));
 
     -- No se completan campos fiscales heredados desde el catálogo actual y no se
     -- recalculan total/subtotal/IVA ni equivalentes de pedidos ya registrados.
