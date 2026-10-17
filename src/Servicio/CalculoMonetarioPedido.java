@@ -91,8 +91,8 @@ public final class CalculoMonetarioPedido {
             baseVes = convertirABolivares(baseFuente, tasaNormalizada);
             exentoVes = convertirABolivares(exentoFuente, tasaNormalizada);
             totalVes = convertirABolivares(totalFuente, tasaNormalizada);
-            // Derivar el IVA del total redondeado mantiene la identidad base + IVA = total en VES.
-            ivaVes = totalVes.subtract(baseVes).setScale(ESCALA_MONEDA);
+            // Derivar el IVA del total redondeado manteniendo la identidad base + exento + IVA = total en VES.
+            ivaVes = totalVes.subtract(baseVes).subtract(exentoVes).setScale(ESCALA_MONEDA);
             totalUsdReferencia = totalFuente;
         }
 
