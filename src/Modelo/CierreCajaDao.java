@@ -354,13 +354,13 @@ public class CierreCajaDao {
                            SUM(d.cantidad) AS cant,
                            COALESCE(SUM(CASE
                                WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES' AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0
-                                   THEN (d.precio * d.cantidad) / p.tasa_cambio
-                               ELSE (d.precio * d.cantidad)
+                                   THEN ROUND((d.precio * d.cantidad) / p.tasa_cambio, 2)
+                               ELSE ROUND((d.precio * d.cantidad), 2)
                            END), 0) AS total_usd,
                            COALESCE(SUM(CASE
                                WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES'
-                                   THEN (d.precio * d.cantidad)
-                               ELSE (d.precio * d.cantidad) * COALESCE(p.tasa_cambio, 1)
+                                   THEN ROUND((d.precio * d.cantidad), 2)
+                               ELSE ROUND((d.precio * d.cantidad) * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2)
                            END), 0) AS total_bs
                     FROM detalle_pedidos d
                     INNER JOIN pedidos p ON d.id_pedido = p.id
@@ -371,8 +371,9 @@ public class CierreCajaDao {
                     LIMIT 5
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlTopPlatos)) {
-                    ps.setString(1, likeParam);
-                    ps.setString(2, fechaFiltro);
+                    ps.setBigDecimal(1, tasaConfig);
+                    ps.setString(2, likeParam);
+                    ps.setString(3, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
                             platos.add(new CierreCaja.PlatoVendido(
@@ -574,7 +575,22 @@ public class CierreCajaDao {
                 String nom = d.getNombre() != null ? d.getNombre().trim() : "Plato";
                 AcumuladorPlato ap = platosMap.computeIfAbsent(nom, k -> new AcumuladorPlato());
                 ap.cant += cant;
-                ap.total = ap.total.add(sub);
+
+                BigDecimal itemUsd;
+                BigDecimal itemBs;
+                if ("VES".equalsIgnoreCase(d.getMonedaBase())) {
+                    itemBs = sub.setScale(2, RoundingMode.HALF_UP);
+                    itemUsd = (tasa != null && tasa.signum() > 0)
+                            ? sub.divide(tasa, 2, RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO.setScale(2);
+                } else {
+                    itemUsd = sub.setScale(2, RoundingMode.HALF_UP);
+                    itemBs = (tasa != null && tasa.signum() > 0)
+                            ? sub.multiply(tasa).setScale(2, RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO.setScale(2);
+                }
+                ap.total = ap.total.add(itemUsd);
+                ap.totalBs = ap.totalBs.add(itemBs);
             }
             cierre.setTotalArticulos(arts);
 
@@ -584,7 +600,8 @@ public class CierreCajaDao {
                     .limit(5)
                     .forEach(e -> top.add(new CierreCaja.PlatoVendido(
                             e.getKey(), e.getValue().cant,
-                            e.getValue().total.setScale(2, RoundingMode.HALF_UP))));
+                            e.getValue().total.setScale(2, RoundingMode.HALF_UP),
+                            e.getValue().totalBs.setScale(2, RoundingMode.HALF_UP))));
             cierre.setTopPlatos(top);
         }
 
@@ -660,5 +677,6 @@ public class CierreCajaDao {
     private static final class AcumuladorPlato {
         int cant = 0;
         BigDecimal total = BigDecimal.ZERO;
+        BigDecimal totalBs = BigDecimal.ZERO;
     }
 }
