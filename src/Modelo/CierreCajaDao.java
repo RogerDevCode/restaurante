@@ -206,7 +206,7 @@ public class CierreCajaDao {
                         SELECT p.id AS id_pedido,
                                COALESCE(NULLIF(TRIM(p.metodo_pago), ''), 'EFECTIVO') AS metodo,
                                COALESCE(p.total, 0) AS monto_usd,
-                               COALESCE(p.total_bs, ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0) AS monto_bs
+                               COALESCE(NULLIF(p.total_bs, 0), ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0) AS monto_bs
                         FROM pedidos p
                         WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
                           AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id)
@@ -246,7 +246,7 @@ public class CierreCajaDao {
                         WHERE p.estado = 'FINALIZADO' AND (p.fecha LIKE ? OR DATE(p.fecha) = ?)
                         UNION ALL
                         SELECT p.id AS id_pedido, COALESCE(NULLIF(TRIM(p.metodo_pago), ''), 'EFECTIVO') AS metodo_pago,
-                               CASE WHEN p.metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(p.efectivo_bs, p.total_bs, ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0)
+                               CASE WHEN p.metodo_pago IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(NULLIF(p.efectivo_bs, 0), NULLIF(p.total_bs, 0), ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0)
                                     WHEN p.metodo_pago = 'MIXTO' THEN COALESCE(p.efectivo_bs, 0) ELSE 0 END AS monto_bs,
                                CASE WHEN p.metodo_pago = 'EFECTIVO_USD' THEN COALESCE(p.efectivo_usd, p.total, 0)
                                     WHEN p.metodo_pago = 'MIXTO' THEN COALESCE(p.efectivo_usd, 0) ELSE 0 END AS monto_usd,
@@ -278,7 +278,7 @@ public class CierreCajaDao {
                     SELECT COALESCE(s.nombre, 'Sin Sala') AS sala_nombre,
                            COUNT(p.id) AS cant,
                            COALESCE(SUM(p.total), 0) AS total_usd,
-                           COALESCE(SUM(COALESCE(p.total_bs, ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0)), 0) AS total_bs
+                           COALESCE(SUM(COALESCE(NULLIF(p.total_bs, 0), ROUND(p.total * COALESCE(NULLIF(p.tasa_cambio, 0), ?), 2), 0)), 0) AS total_bs
                     FROM pedidos p
                     LEFT JOIN salas s ON p.id_sala = s.id
                     WHERE p.estado = 'FINALIZADO'
