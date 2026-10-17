@@ -993,32 +993,28 @@ public class PedidosDao implements PedidosRepositorio {
 
                 long idLiquidacion = 0;
                 String idempLiq = "LIQ-" + id_pedido + "-V" + versionPrecio;
-                try {
-                    String sqlLiq = """
-                        INSERT INTO pedido_liquidaciones
-                            (id_pedido, version_precio, saldo_restante_ves, aplicado_ves, aplicado_usd, tasa_cambio,
-                             ajuste_cambio_bs, diferencia_usd, version_regla, actor, idempotency_key)
-                        VALUES (?, ?, 0.00, ?, ?, ?, ?, 0.00, 'V5_PAGO_CONGELADO', ?, ?)
-                        ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
-                        """;
-                    try (PreparedStatement psLiq = conexion.prepareStatement(sqlLiq, Statement.RETURN_GENERATED_KEYS)) {
-                        psLiq.setInt(1, id_pedido);
-                        psLiq.setInt(2, versionPrecio);
-                        psLiq.setBigDecimal(3, aplicadoVes);
-                        psLiq.setBigDecimal(4, aplicadoUsd);
-                        psLiq.setBigDecimal(5, tasa);
-                        psLiq.setBigDecimal(6, ajusteCambioBs);
-                        psLiq.setString(7, nom);
-                        psLiq.setString(8, idempLiq);
-                        psLiq.executeUpdate();
-                        try (ResultSet rsLiq = psLiq.getGeneratedKeys()) {
-                            if (rsLiq.next()) {
-                                idLiquidacion = rsLiq.getLong(1);
-                            }
+                String sqlLiq = """
+                    INSERT INTO pedido_liquidaciones
+                        (id_pedido, version_precio, saldo_restante_ves, aplicado_ves, aplicado_usd, tasa_cambio,
+                         ajuste_cambio_bs, diferencia_usd, version_regla, actor, idempotency_key)
+                    VALUES (?, ?, 0.00, ?, ?, ?, ?, 0.00, 'V5_PAGO_CONGELADO', ?, ?)
+                    ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
+                    """;
+                try (PreparedStatement psLiq = conexion.prepareStatement(sqlLiq, Statement.RETURN_GENERATED_KEYS)) {
+                    psLiq.setInt(1, id_pedido);
+                    psLiq.setInt(2, versionPrecio);
+                    psLiq.setBigDecimal(3, aplicadoVes);
+                    psLiq.setBigDecimal(4, aplicadoUsd);
+                    psLiq.setBigDecimal(5, tasa);
+                    psLiq.setBigDecimal(6, ajusteCambioBs);
+                    psLiq.setString(7, nom);
+                    psLiq.setString(8, idempLiq);
+                    psLiq.executeUpdate();
+                    try (ResultSet rsLiq = psLiq.getGeneratedKeys()) {
+                        if (rsLiq.next()) {
+                            idLiquidacion = rsLiq.getLong(1);
                         }
                     }
-                } catch (SQLException exLiq) {
-                    LOGGER.fine("Tabla pedido_liquidaciones no disponible o ya registrada: " + exLiq.getMessage());
                 }
 
                 Map<String, Integer> contadorOcurrencias = new HashMap<>();
