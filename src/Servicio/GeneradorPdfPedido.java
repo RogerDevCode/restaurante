@@ -258,7 +258,7 @@ public final class GeneradorPdfPedido {
         }
 
         boolean esLegacy = detalles.stream().anyMatch(d -> d == null || d.getAplicaIva() == null || d.getMonedaBase() == null || d.getPrecioIncluyeIva() == null);
-        BigDecimal tol = new BigDecimal("0.05");
+        BigDecimal tol = new BigDecimal("0.01");
         // Rama moderna (fiscalidad clasificada): el recibo debe cuadrar exacto al centavo.
         BigDecimal tolEstricta = new BigDecimal("0.001");
         if (esLegacy) {
