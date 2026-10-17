@@ -640,7 +640,8 @@ public class CierreCajaDao {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         try (Connection con = conexiones.getConnection()) {
-            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
+            boolean autoCommitPrevio = con.getAutoCommit();
+            con.setAutoCommit(false);
             try (PreparedStatement ps = con.prepareStatement(sql)) {
                 ps.setString(1, cierre.getTipo() != null ? cierre.getTipo().name() : "TOTAL");
                 String fechaJornada = (cierre.getFecha() != null && !cierre.getFecha().isBlank())
@@ -664,7 +665,17 @@ public class CierreCajaDao {
                 ps.setString(14, cierre.tieneConciliacionUsd() ? cierre.getEstadoConciliacionUsd() : null);
                 ps.setBigDecimal(15, cierre.getTasaCambioReferencia());
                 ps.setString(16, rutaPdf);
-                return ps.executeUpdate() > 0;
+                boolean exito = ps.executeUpdate() > 0;
+                con.commit();
+                return exito;
+            } catch (SQLException ex) {
+                con.rollback();
+                throw ex;
+            } finally {
+                try {
+                    con.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException ignored) {
+                }
             }
         } catch (SQLException ex) {
             LOGGER.log(Level.WARNING, "Error al registrar cierre de caja en base de datos: " + ex.getMessage());
