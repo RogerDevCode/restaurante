@@ -129,8 +129,8 @@ public class CierreCajaDao {
                                    iva_monto,
                                    subtotal_bs,
                                    iva_bs,
-                                   COALESCE(NULLIF(total_bs, 0), ROUND(total * COALESCE(NULLIF(tasa_cambio, 0), ?), 2), 0) AS calc_tot_bs,
-                                   ROUND(subtotal * COALESCE(NULLIF(tasa_cambio, 0), ?), 2) AS calc_sub_bs
+                                   COALESCE(NULLIF(total_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(total * tasa_cambio, 2) ELSE 0.00 END) AS calc_tot_bs,
+                                   COALESCE(NULLIF(subtotal_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(subtotal * tasa_cambio, 2) ELSE 0.00 END) AS calc_sub_bs
                             FROM pedidos
                             WHERE estado = 'FINALIZADO'
                               AND (fecha LIKE ? OR DATE(fecha) = ?)
@@ -138,10 +138,8 @@ public class CierreCajaDao {
                     ) calc_pedidos
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlTotales)) {
-                    ps.setBigDecimal(1, tasaConfig);
-                    ps.setBigDecimal(2, tasaConfig);
-                    ps.setString(3, likeParam);
-                    ps.setString(4, fechaFiltro);
+                    ps.setString(1, likeParam);
+                    ps.setString(2, fechaFiltro);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             int finalizados = rs.getInt("cant");
