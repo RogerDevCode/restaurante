@@ -111,7 +111,7 @@ public final class PedidoServicio {
         }
 
         BigDecimal totalPedido = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
-        if (totalPedido.compareTo(totalEsperadoExacto) != 0 && totalPedido.compareTo(subtotalEsperado) != 0) {
+        if (totalPedido.compareTo(totalEsperadoExacto) != 0) {
             throw ErrorAplicacionException.validacion("El total del pedido no coincide con sus detalles.");
         }
     }
