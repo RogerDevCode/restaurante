@@ -358,43 +358,10 @@ public class PreciosPedidosDao {
                                                 psSanar.executeUpdate();
                                             }
                                         } else {
-                                            // Si no existe en el catálogo, congelar su precio para preservar su valor histórico y permitir la actualización
-                                            det.setPrecioCongelado(true);
-                                            if (det.getMonedaBase() == null || det.getMonedaBase().isBlank()) {
-                                                det.setMonedaBase("USD");
-                                            }
-                                            if (det.getPrecioIncluyeIva() == null) {
-                                                det.setPrecioIncluyeIva(false);
-                                            }
-                                            if (det.getAplicaIva() == null) {
-                                                det.setAplicaIva(true);
-                                            }
-                                            BigDecimal ivaDet = Boolean.TRUE.equals(det.getAplicaIva()) ? ivaPorcentajeCabecera : BigDecimal.ZERO.setScale(2);
-                                            det.setIvaPorcentaje(ivaDet);
-
-                                            String sqlCong = """
-                                                UPDATE detalle_pedidos
-                                                SET precio_congelado = 1,
-                                                    congelado_motivo = 'Auto-congelado por ítem legado sin clasificación en catálogo',
-                                                    congelado_por = ?,
-                                                    congelado_en = CURRENT_TIMESTAMP,
-                                                    moneda_base = ?,
-                                                    precio_incluye_iva = ?,
-                                                    aplica_iva = ?,
-                                                    iva_porcentaje = ?
-                                                WHERE id = ?
-                                                """;
-                                            try (PreparedStatement psCong = con.prepareStatement(sqlCong)) {
-                                                psCong.setString(1, (usuario != null && !usuario.isBlank()) ? usuario : "SISTEMA");
-                                                psCong.setString(2, det.getMonedaBase());
-                                                psCong.setInt(3, Boolean.TRUE.equals(det.getPrecioIncluyeIva()) ? 1 : 0);
-                                                psCong.setInt(4, Boolean.TRUE.equals(det.getAplicaIva()) ? 1 : 0);
-                                                psCong.setBigDecimal(5, det.getIvaPorcentaje());
-                                                psCong.setInt(6, det.getId());
-                                                psCong.executeUpdate();
-                                            }
-                                            LOGGER.log(Level.WARNING, "PreciosPedidosDao: Detalle legado #{0} (''{1}'') en pedido #{2} congelado automáticamente.",
-                                                    new Object[]{det.getId(), det.getNombre(), idPedido});
+                                            throw ErrorAplicacionException.validacion(
+                                                    "El ítem #" + det.getId() + " ('" + det.getNombre() + "') del pedido #" + idPedido
+                                                    + " no se encuentra en el catálogo y carece de clasificación fiscal (moneda/IVA). "
+                                                    + "Clasifique el plato en catálogo o congele la línea explícitamente antes de recalcular.");
                                         }
                                     }
                                 }
