@@ -4,6 +4,7 @@ import Modelo.ErrorAplicacionException;
 import Modelo.Usuario;
 import org.junit.Test;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -23,12 +24,24 @@ public class PoliticaAccesoTest {
         assertTrue(politica.permite(PoliticaAcceso.Accion.CONSULTAR_SALAS));
         assertTrue(politica.permite(PoliticaAcceso.Accion.CONSULTAR_PLATOS));
         assertTrue(politica.permite(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS));
-        assertFalse(politica.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS));
+        assertFalse(politica.permite(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES));
+        assertFalse(politica.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS));
+        assertFalse(politica.permite(PoliticaAcceso.Accion.COBRAR_PEDIDOS));
         assertFalse(politica.permite(PoliticaAcceso.Accion.GESTIONAR_SALAS));
         assertFalse(politica.permite(PoliticaAcceso.Accion.GESTIONAR_PLATOS));
         assertFalse(politica.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS));
         assertFalse(politica.permite(PoliticaAcceso.Accion.EDITAR_CONFIGURACION));
         assertFalse(politica.esAdministrador());
+    }
+
+    @Test
+    public void rolesNuevosSonReconocidosYAceptados() {
+        String[] rolesNuevos = {"Mesonero", "Cocinero", "Cajero", "Maitre", "Host"};
+        for (String rol : rolesNuevos) {
+            PoliticaAcceso politica = new PoliticaAcceso(usuario(rol));
+            assertNotNull("El rol reconocido '" + rol + "' debe ser aceptado", politica);
+            assertFalse("El rol '" + rol + "' no es administrador", politica.esAdministrador());
+        }
     }
 
     @Test

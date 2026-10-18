@@ -32,7 +32,8 @@ public class ProveedorConexionJdbc {
     private static final ConcurrentHashMap<String, AtomicInteger> CONEXIONES_ACTIVAS = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Integer> NIVELES_AISLAMIENTO_DEFAULT = new ConcurrentHashMap<>();
     /** Conexiones entregadas a los clientes y aún no devueltas al pool. */
-    private static final java.util.Set<Connection> CONEXIONES_EN_USO = ConcurrentHashMap.newKeySet();
+    private static final java.util.Set<Connection> CONEXIONES_EN_USO = java.util.Collections
+            .synchronizedSet(java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(ProveedorConexionJdbc::limpiarPool, "conexion-pool-shutdown"));
@@ -476,10 +477,12 @@ public class ProveedorConexionJdbc {
                 cerrarSilenciosamente(conn);
             }
         }
-        for (Connection enUso : CONEXIONES_EN_USO) {
-            cerrarSilenciosamente(enUso);
+        synchronized (CONEXIONES_EN_USO) {
+            for (Connection enUso : CONEXIONES_EN_USO) {
+                cerrarSilenciosamente(enUso);
+            }
+            CONEXIONES_EN_USO.clear();
         }
-        CONEXIONES_EN_USO.clear();
         POOL_DISPONIBLES.clear();
         CONEXIONES_ACTIVAS.clear();
     }

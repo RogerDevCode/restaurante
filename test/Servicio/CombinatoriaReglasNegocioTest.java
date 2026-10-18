@@ -51,18 +51,31 @@ public class CombinatoriaReglasNegocioTest {
 
         assertFalse(rbacAsistente.permite(PoliticaAcceso.Accion.GESTIONAR_SALAS));
         assertFalse(rbacAsistente.permite(PoliticaAcceso.Accion.GESTIONAR_PLATOS));
-        assertFalse(rbacAsistente.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS));
+        assertFalse(rbacAsistente.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS));
+        assertFalse(rbacAsistente.permite(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES));
+        assertFalse(rbacAsistente.permite(PoliticaAcceso.Accion.COBRAR_PEDIDOS));
         assertFalse(rbacAsistente.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS));
         assertFalse(rbacAsistente.permite(PoliticaAcceso.Accion.EDITAR_CONFIGURACION));
     }
 
     @Test
     public void matrizRolesInvalidosRechazoInmediato() {
-        String[] rolesInvalidos = {null, "", "  ", "Root", "Superuser", "Cajero", "Invitado", "ADMIN", "administrador"};
+        String[] rolesInvalidos = {null, "", "  ", "Root", "Superuser", "Invitado", "ADMIN", "administrador"};
         for (String rol : rolesInvalidos) {
             assertThrows("El rol '" + rol + "' debe ser rechazado",
                     ErrorAplicacionException.class,
                     () -> new PoliticaAcceso(new Usuario(99, "Test", "t@t.com", "pass", rol)));
+        }
+    }
+
+    @Test
+    public void rolesNuevosReconocidosYAceptados() {
+        String[] rolesNuevos = {"Mesonero", "Cocinero", "Cajero", "Maitre", "Host"};
+        for (String rol : rolesNuevos) {
+            PoliticaAcceso politica = new PoliticaAcceso(
+                    new Usuario(99, "Test", "t@t.com", "pass", rol));
+            assertNotNull("El rol reconocido '" + rol + "' debe ser aceptado", politica);
+            assertFalse("El rol '" + rol + "' no es administrador", politica.esAdministrador());
         }
     }
 

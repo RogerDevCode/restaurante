@@ -279,6 +279,10 @@ public class PlatosDaoTest {
         java.util.concurrent.atomic.AtomicReference<String> sqlCapturado = new java.util.concurrent.atomic.AtomicReference<>();
         java.util.Map<Integer, Object> parametros = new java.util.HashMap<>();
 
+        java.sql.ResultSet rsVacio = (java.sql.ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{java.sql.ResultSet.class},
+                (proxy, method, args) -> "next".equals(method.getName()) ? Boolean.FALSE : null);
         java.lang.reflect.InvocationHandler psHandler = (proxy, method, args) -> {
             if (method.getName().startsWith("set") && args != null && args.length >= 2) {
                 parametros.put((Integer) args[0], args[1]);
@@ -286,6 +290,9 @@ public class PlatosDaoTest {
             }
             if ("executeUpdate".equals(method.getName())) {
                 return 1;
+            }
+            if ("executeQuery".equals(method.getName())) {
+                return rsVacio;
             }
             return null;
         };
@@ -296,7 +303,10 @@ public class PlatosDaoTest {
 
         java.lang.reflect.InvocationHandler connHandler = (proxy, method, args) -> {
             if ("prepareStatement".equals(method.getName()) && args != null && args.length > 0) {
-                sqlCapturado.set((String) args[0]);
+                String sql = (String) args[0];
+                if (sql != null && sql.trim().toUpperCase().startsWith("UPDATE")) {
+                    sqlCapturado.set(sql);
+                }
                 return psMock;
             }
             return null;

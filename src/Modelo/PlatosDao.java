@@ -518,7 +518,12 @@ public class PlatosDao implements PlatosRepositorio {
 
     private boolean eliminarFisico(int id) {
         try (Connection conexion = conexiones.getConnection()) {
-            boolean autoCommitPrevio = conexion.getAutoCommit();
+            boolean autoCommitPrevio;
+            try {
+                autoCommitPrevio = conexion.getAutoCommit();
+            } catch (SQLException | RuntimeException sinSoporteAutoCommit) {
+                autoCommitPrevio = true;
+            }
             conexion.setAutoCommit(false);
             try {
                 String clave = PlatoIdentidadMapeos.claveDePlato(conexion, id);
@@ -637,7 +642,12 @@ public class PlatosDao implements PlatosRepositorio {
      */
     private int ejecutarModificacionAtomica(Platos pla, String sql, Binder binder) throws SQLException {
         try (Connection conexion = conexiones.getConnection()) {
-            boolean autoCommitPrevio = conexion.getAutoCommit();
+            boolean autoCommitPrevio;
+            try {
+                autoCommitPrevio = conexion.getAutoCommit();
+            } catch (SQLException | RuntimeException sinSoporteAutoCommit) {
+                autoCommitPrevio = true;
+            }
             conexion.setAutoCommit(false);
             try {
                 String claveAnterior = PlatoIdentidadMapeos.claveDePlato(conexion, pla.getId());
