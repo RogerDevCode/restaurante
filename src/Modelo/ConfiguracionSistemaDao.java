@@ -107,6 +107,26 @@ public class ConfiguracionSistemaDao implements ConfiguracionRepositorio {
         return resultado;
     }
 
+    /** Lectura estricta para decisiones de seguridad: nunca confunde error con ausencia de claves. */
+    public Map<String, String> obtenerTodosEstrictamente() {
+        Map<String, String> resultado = new HashMap<>();
+        String sql = "SELECT clave, valor FROM configuracion_sistema";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                String clave = rs.getString("clave");
+                String valor = rs.getString("valor");
+                if (clave != null) {
+                    resultado.put(clave, valor != null ? valor : "");
+                }
+            }
+            return Collections.unmodifiableMap(resultado);
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo cargar la configuración de accesos.", ex);
+        }
+    }
+
     @Override
     public void guardarVarios(Map<String, String> configuraciones) {
         if (configuraciones == null || configuraciones.isEmpty()) {

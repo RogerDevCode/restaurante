@@ -9,7 +9,7 @@ Incorporar los roles Mesonero, Cocinero, Cajero, Maitre y Host, y permitir que u
 - El alta de usuarios ofrece Administrador y Asistente.
 - `PoliticaAcceso` reconoce esos dos roles y define sus permisos en código.
 - La ventana principal verifica permisos para algunas acciones y servicios; no existe una grilla de permisos.
-- La aplicación imprime comandas para cocina, pero no tiene una vista de cocina de solo lectura.
+- La aplicación imprime comandas para cocina, pero no conserva en BD los incrementos de cada ronda ni un estado de preparación.
 - `configuracion_sistema` ofrece persistencia clave/valor, que permite guardar permisos sin cambios DDL.
 
 ## Diseño
@@ -23,7 +23,7 @@ Se conservará Asistente para mantener compatibilidad con cuentas existentes. Ad
 | Administrador | Todos los permisos; acceso fijo y no editable. |
 | Asistente | Conserva el acceso actual: consultar salas y platos, registrar pedidos. |
 | Mesonero | Consultar salas y platos; registrar y actualizar pedidos abiertos para atención de mesas. |
-| Cocinero | Consultar una nueva vista de comandas pendientes y sus detalles; solo lectura. |
+| Cocinero | Rol creado sin permisos iniciales hasta que exista una consulta fiel de rondas de cocina. El Administrador puede asignarle permisos disponibles en otras pantallas. |
 | Cajero | Consultar pedidos pendientes, cobrar/finalizar y consultar historial de ventas; sin editar pedidos ni configuración. |
 | Maitre | Consultar salas/platos; registrar y gestionar pedidos abiertos, incluida la asignación de mesonero y cancelación de cuentas pendientes. No puede anular facturas cobradas. |
 | Host | Consultar salas y disponibilidad/ocupación de mesas; sin pedidos ni edición. |
@@ -44,9 +44,9 @@ El acceso de Administrador se mostrará completo y bloqueado. El sistema no perm
 - Las claves inexistentes usarán los valores predeterminados del rol. Permisos desconocidos o roles no reconocidos se denegarán.
 - Los cambios se aplicarán desde el próximo inicio de sesión para evitar estados de permiso inconsistentes durante una operación abierta.
 
-### Vista de cocina
+### Límite del rol Cocinero
 
-Se añadirá una pestaña de consulta para Cocinero que muestre comandas pendientes con mesa, hora, mesonero y detalles/observaciones disponibles. La pantalla será de solo lectura y no cambiará el ciclo operativo ni contable del pedido; las comandas seguirán registrándose desde el flujo actual de atención. Si el modelo no conserva un estado de preparación por ítem, la vista no ofrecerá botones para marcar platos como listos.
+No se mostrará `detalle_pedidos` como una lista de comandas: esa tabla acumula todas las rondas de la mesa y no distingue los ítems ya marchados. Hacerlo podría duplicar platos en cocina. Para activar una pantalla de cocina se necesita una futura cola persistente de rondas con estado de preparación y registro atómico al enviar la comanda. Esa ampliación requiere un diseño separado y cambios de esquema, por lo que queda fuera de esta entrega.
 
 ## Alternativas consideradas
 
@@ -59,7 +59,7 @@ Se añadirá una pestaña de consulta para Cocinero que muestre comandas pendien
 - Crear usuarios con cualquiera de los roles conservados y nuevos.
 - Mostrar y guardar la matriz para todos los roles excepto que Administrador permanece bloqueado y con acceso total.
 - Aplicar los permisos configurados tanto al navegar/usar controles como al invocar operaciones protegidas.
-- Permitir que Cocinero consulte comandas sin modificarlas.
+- Crear Cocinero como rol válido sin conceder acceso a datos que no representan fielmente las comandas.
 - Mantener el comportamiento actual de cuentas Asistente y Administrador.
 - Persistir configuración sin cambios de esquema de base de datos.
 
@@ -67,5 +67,6 @@ Se añadirá una pestaña de consulta para Cocinero que muestre comandas pendien
 
 - Reservas para Host.
 - Flujo de estados de preparación (en preparación/listo/entregado) para cocina.
+- Cola persistente de rondas de cocina y pantalla de seguimiento para Cocinero.
 - Anulación de factura para roles distintos de Administrador.
 - Asignación de usuarios a mesoneros o restricción de un Mesonero a sus propias mesas; el sistema actual no tiene ese vínculo.

@@ -306,9 +306,18 @@ public class FrmLogin extends javax.swing.JFrame {
             if (contador == 100) {
                 tiempo.stop();
                 if (barra.getValue() == 100) {
-                    Sistema sis = crearSistema.apply(usuarioAutenticado);
-                    sis.setVisible(true);
-                    dispose();
+                    try {
+                        Sistema sis = crearSistema.apply(usuarioAutenticado);
+                        sis.setVisible(true);
+                        dispose();
+                    } catch (RuntimeException ex) {
+                        usuarioAutenticado = null;
+                        cambiarEstadoFormulario(true);
+                        JOptionPane.showMessageDialog(FrmLogin.this,
+                                "No se pudo cargar la configuración de accesos. Por seguridad, no se inició la sesión. "
+                                        + "Verifica la conexión con la base de datos.",
+                                "Acceso no disponible", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             }
         }

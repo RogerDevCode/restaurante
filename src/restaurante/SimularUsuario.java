@@ -65,7 +65,7 @@ public class SimularUsuario {
 
             ConsultaPedidosServicio consultaPedidos = new ConsultaPedidosServicio(pedidosDao, politicaAdmin);
             PedidosControlador pedidosCtrl = new PedidosControlador(
-                    new PedidoServicio(pedidosDao),
+                    new PedidoServicio(pedidosDao, politicaAdmin),
                     pdfServicio,
                     politicaAdmin,
                     consultaPedidos

@@ -27,6 +27,26 @@ public final class CategoriaServicio {
         return repositorio.listar();
     }
 
+    public List<Categoria> listarTodas() {
+        exigir(PoliticaAcceso.Accion.CONSULTAR_PLATOS);
+        return repositorio.listarTodas();
+    }
+
+    public Categoria obtenerGeneral() {
+        exigir(PoliticaAcceso.Accion.CONSULTAR_PLATOS);
+        return repositorio.obtenerGeneral();
+    }
+
+    public int contarPlatosEnCategoria(int id) {
+        exigir(PoliticaAcceso.Accion.CONSULTAR_PLATOS);
+        return repositorio.contarPlatosEnCategoria(id);
+    }
+
+    public boolean categoriaEnUso(int id) {
+        exigir(PoliticaAcceso.Accion.CONSULTAR_PLATOS);
+        return repositorio.categoriaEnUso(id);
+    }
+
     public int registrar(Categoria categoria) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         validar(categoria);
@@ -39,20 +59,86 @@ public final class CategoriaServicio {
         if (categoria == null || categoria.getId() <= 0) {
             throw ErrorAplicacionException.validacion("Selecciona una categoría válida para modificar.");
         }
+        Categoria actual = buscar(categoria.getId());
+        if (actual != null && actual.isGeneral()) {
+            if (!categoria.isGeneral()) {
+                throw ErrorAplicacionException.validacion("La categoría 'General' es la categoría canónica del sistema y no se puede renombrar.");
+            }
+            if (!categoria.isActivo()) {
+                throw ErrorAplicacionException.validacion("La categoría 'General' es obligatoria y no se puede desactivar.");
+            }
+        }
         validar(categoria);
         verificarColorUnico(categoria, false);
         return repositorio.modificar(categoria);
     }
 
+    /**
+     * Soft-delete: Da de baja la categoría sin platos asociados.
+     */
     public boolean eliminar(int id) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         if (id <= 0) {
             throw ErrorAplicacionException.validacion("Selecciona una categoría válida para eliminar.");
         }
+        Categoria cat = buscar(id);
+        if (cat != null && cat.isGeneral()) {
+            throw ErrorAplicacionException.validacion("La categoría 'General' no se puede eliminar ni dar de baja.");
+        }
         if (repositorio.categoriaEnUso(id)) {
-            throw ErrorAplicacionException.validacion("No se puede eliminar una categoría que ya tiene platos asignados.");
+            throw ErrorAplicacionException.validacion("No se puede eliminar una categoría que ya tiene platos asignados. Reasigna los platos primero.");
         }
         return repositorio.eliminar(id);
+    }
+
+    /**
+     * Reasigna atómicamente todos los platos asociados a la categoría destino y da de baja la categoría origen.
+     */
+    public boolean desactivarConReasignacion(int idOrigen, int idDestino) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        if (idOrigen <= 0 || idDestino <= 0) {
+            throw ErrorAplicacionException.validacion("Selecciona categorías válidas para la reasignación.");
+        }
+        if (idOrigen == idDestino) {
+            throw ErrorAplicacionException.validacion("La categoría destino debe ser diferente a la categoría que se desea dar de baja.");
+        }
+        Categoria origen = buscar(idOrigen);
+        if (origen != null && origen.isGeneral()) {
+            throw ErrorAplicacionException.validacion("La categoría 'General' no se puede eliminar ni dar de baja.");
+        }
+        Categoria destino = buscar(idDestino);
+        if (destino == null || !destino.isActivo()) {
+            throw ErrorAplicacionException.validacion("La categoría destino seleccionada debe estar activa.");
+        }
+        return repositorio.desactivarConReasignacion(idOrigen, idDestino);
+    }
+
+    /**
+     * Reactiva una categoría previamente dada de baja (undelete).
+     */
+    public boolean reactivar(int id) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        if (id <= 0) {
+            throw ErrorAplicacionException.validacion("Selecciona una categoría válida para reactivar.");
+        }
+        return repositorio.cambiarEstadoActivo(id, true);
+    }
+
+    /**
+     * Cambia el estado activo/inactivo de una categoría.
+     */
+    public boolean cambiarEstadoActivo(int id, boolean activo) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        if (id <= 0) {
+            throw ErrorAplicacionException.validacion("Selecciona una categoría válida.");
+        }
+        if (!activo) {
+            Categoria cat = buscar(id);
+            if (cat != null && cat.isGeneral()) {
+                throw ErrorAplicacionException.validacion("La categoría 'General' no se puede desactivar.");
+            }
+        }
+        return repositorio.cambiarEstadoActivo(id, activo);
     }
 
     public Categoria buscar(int id) {
@@ -100,7 +186,7 @@ public final class CategoriaServicio {
 
     private void verificarColorUnico(Categoria categoria, boolean alCrear) {
         String color = categoria.getColor();
-        for (Categoria existente : repositorio.listar()) {
+        for (Categoria existente : repositorio.listarTodas()) {
             boolean esLaMisma = !alCrear && existente.getId() == categoria.getId();
             if (!esLaMisma && color.equalsIgnoreCase(existente.getColor())) {
                 throw ErrorAplicacionException.validacion(

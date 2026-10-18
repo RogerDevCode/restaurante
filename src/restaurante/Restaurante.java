@@ -111,16 +111,18 @@ public class Restaurante {
                 new AutenticacionServicio(new LoginDao()));
         Function<Usuario, Sistema> crearSistema = usuario -> {
             LoginDao loginDao = new LoginDao();
+            java.util.Set<PoliticaAcceso.Accion> permisos = new Servicio.ConfiguracionAccesosServicio()
+                    .cargarPermisos(usuario != null ? usuario.getRol() : null);
             PoliticaAcceso politica = new PoliticaAcceso(usuario, () -> {
-                if (usuario == null || usuario.getId() <= 0) return true;
+                if (usuario == null || usuario.getId() <= 0) return false;
                 try {
-                    return loginDao.esUsuarioActivo(usuario.getId());
+                    return loginDao.esUsuarioActivoConRol(usuario.getId(), usuario.getRol());
                 } catch (Exception ex) {
                     java.util.logging.Logger.getLogger(Restaurante.class.getName())
                             .warning("No se pudo verificar el estado activo del usuario #" + usuario.getId() + " en la BD; acceso denegado por seguridad: " + ex.getMessage());
                     return false;
                 }
-            });
+            }, permisos);
             PedidosDao pedidosDao = new PedidosDao();
             LoginDao empresaDao = new LoginDao();
             PedidoPdfServicio pdfServicio = new PedidoPdfServicio(
@@ -134,7 +136,7 @@ public class Restaurante {
                     empresaDao::datosEmpresa,
                     new Servicio.GeneradorPdfCierre());
             PedidosControlador pedidosControlador = new PedidosControlador(
-                    new PedidoServicio(pedidosDao), pdfServicio, politica,
+                    new PedidoServicio(pedidosDao, politica), pdfServicio, politica,
                     new ConsultaPedidosServicio(pedidosDao, politica),
                     cierreServicio);
             return new Sistema(usuario,

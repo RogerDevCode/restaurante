@@ -308,7 +308,7 @@ public class LoginDao implements AutenticacionRepositorio {
     }
 
     private boolean rolReconocido(String rol) {
-        return "Administrador".equals(rol) || "Asistente".equals(rol);
+        return Servicio.RolesSistema.reconocido(rol);
     }
 
     private boolean compararEnTiempoConstante(String primera, String segunda) {
@@ -375,7 +375,7 @@ public class LoginDao implements AutenticacionRepositorio {
             throw ErrorAplicacionException.validacion("Todos los datos del usuario son obligatorios.");
         }
         validarLongitudContrasena(reg.getPassword());
-        if (!"Administrador".equals(reg.getRol()) && !"Asistente".equals(reg.getRol())) {
+        if (!Servicio.RolesSistema.reconocido(reg.getRol())) {
             throw ErrorAplicacionException.validacion("El rol del usuario no es válido.");
         }
         reg.setNombre(NombreUsuario.normalizar(reg.getNombre()));
@@ -547,6 +547,22 @@ public class LoginDao implements AutenticacionRepositorio {
             throw new DataAccessException("No se pudo verificar el estado del usuario.", ex);
         }
         return false;
+    }
+
+    /** Revalida cuenta y rol durante la sesión para revocar accesos tras un cambio de rol. */
+    public boolean esUsuarioActivoConRol(int idUsuario, String rolEsperado) {
+        if (idUsuario <= 0 || !Servicio.RolesSistema.reconocido(rolEsperado)) return false;
+        String sql = "SELECT rol, activo FROM usuarios WHERE id = ?";
+        try (Connection conexion = conexiones.getConnection();
+             PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setInt(1, idUsuario);
+            try (ResultSet rs = sentencia.executeQuery()) {
+                if (!rs.next()) return false;
+                return rs.getBoolean("activo") && rolEsperado.equals(rs.getString("rol"));
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo revalidar el rol de la sesión.", ex);
+        }
     }
 
     private boolean ejecutarMutacionUsuarioProtegida(int idUsuario, String accion) {

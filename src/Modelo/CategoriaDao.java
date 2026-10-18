@@ -40,12 +40,13 @@ public class CategoriaDao implements CategoriaRepositorio {
     @Override
     public int registrar(Categoria categoria) {
         validarCategoria(categoria);
-        String sql = "INSERT INTO categorias (nombre, color, orden) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO categorias (nombre, color, orden, activo) VALUES (?, ?, ?, ?)";
         try (Connection con = conexiones.getConnection();
              PreparedStatement st = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             st.setString(1, categoria.getNombre());
             st.setString(2, categoria.getColor());
             st.setInt(3, categoria.getOrden());
+            st.setInt(4, categoria.isActivo() ? 1 : 0);
             st.executeUpdate();
             try (ResultSet rs = st.getGeneratedKeys()) {
                 if (rs.next()) {
@@ -69,13 +70,23 @@ public class CategoriaDao implements CategoriaRepositorio {
             throw ErrorAplicacionException.validacion("ID de categoría no válido para modificar.");
         }
         validarCategoria(categoria);
-        String sql = "UPDATE categorias SET nombre = ?, color = ?, orden = ? WHERE id = ?";
+        Categoria actual = buscar(categoria.getId());
+        if (actual != null && actual.isGeneral()) {
+            if (!categoria.isGeneral()) {
+                throw ErrorAplicacionException.validacion("La categoría 'General' es la categoría canónica del sistema y no se puede renombrar.");
+            }
+            if (!categoria.isActivo()) {
+                throw ErrorAplicacionException.validacion("La categoría 'General' es obligatoria y no se puede desactivar.");
+            }
+        }
+        String sql = "UPDATE categorias SET nombre = ?, color = ?, orden = ?, activo = ? WHERE id = ?";
         try (Connection con = conexiones.getConnection();
              PreparedStatement st = con.prepareStatement(sql)) {
             st.setString(1, categoria.getNombre());
             st.setString(2, categoria.getColor());
             st.setInt(3, categoria.getOrden());
-            st.setInt(4, categoria.getId());
+            st.setInt(4, categoria.isActivo() ? 1 : 0);
+            st.setInt(5, categoria.getId());
             return st.executeUpdate() > 0;
         } catch (SQLException ex) {
             if (ex.getErrorCode() == 1062) {
@@ -90,13 +101,87 @@ public class CategoriaDao implements CategoriaRepositorio {
         if (id <= 0) {
             return false;
         }
-        String sql = "DELETE FROM categorias WHERE id = ?";
+        Categoria c = buscar(id);
+        if (c != null && c.isGeneral()) {
+            throw ErrorAplicacionException.validacion("La categoría 'General' no se puede eliminar ni dar de baja.");
+        }
+        // Soft delete: activo = 0
+        String sql = "UPDATE categorias SET activo = 0 WHERE id = ?";
         try (Connection con = conexiones.getConnection();
              PreparedStatement st = con.prepareStatement(sql)) {
             st.setInt(1, id);
             return st.executeUpdate() > 0;
         } catch (SQLException ex) {
-            throw new DataAccessException("No se pudo eliminar la categoría: " + ex.getMessage(), ex);
+            throw new DataAccessException("No se pudo dar de baja la categoría: " + ex.getMessage(), ex);
+        }
+    }
+
+    @Override
+    public boolean cambiarEstadoActivo(int id, boolean activo) {
+        if (id <= 0) {
+            return false;
+        }
+        if (!activo) {
+            Categoria c = buscar(id);
+            if (c != null && c.isGeneral()) {
+                throw ErrorAplicacionException.validacion("La categoría 'General' no se puede desactivar.");
+            }
+        }
+        String sql = "UPDATE categorias SET activo = ? WHERE id = ?";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement st = con.prepareStatement(sql)) {
+            st.setInt(1, activo ? 1 : 0);
+            st.setInt(2, id);
+            return st.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo actualizar el estado de la categoría: " + ex.getMessage(), ex);
+        }
+    }
+
+    @Override
+    public boolean desactivarConReasignacion(int idCategoriaADesactivar, int idCategoriaDestino) {
+        if (idCategoriaADesactivar <= 0 || idCategoriaDestino <= 0) {
+            throw ErrorAplicacionException.validacion("Identificadores de categoría no válidos para reasignar.");
+        }
+        if (idCategoriaADesactivar == idCategoriaDestino) {
+            throw ErrorAplicacionException.validacion("La categoría destino debe ser distinta a la categoría que se desea dar de baja.");
+        }
+        Categoria origen = buscar(idCategoriaADesactivar);
+        if (origen != null && origen.isGeneral()) {
+            throw ErrorAplicacionException.validacion("La categoría 'General' es canónica y no se puede dar de baja.");
+        }
+        Categoria destino = buscar(idCategoriaDestino);
+        if (destino == null || !destino.isActivo()) {
+            throw ErrorAplicacionException.validacion("La categoría destino debe existir y estar activa.");
+        }
+
+        try (Connection con = conexiones.getConnection()) {
+            boolean autoCommitOriginal = con.getAutoCommit();
+            con.setAutoCommit(false);
+            try {
+                // 1. Reasignar platos en plato_categoria
+                String sqlReasignar = "UPDATE plato_categoria SET id_categoria = ? WHERE id_categoria = ?";
+                try (PreparedStatement st = con.prepareStatement(sqlReasignar)) {
+                    st.setInt(1, idCategoriaDestino);
+                    st.setInt(2, idCategoriaADesactivar);
+                    st.executeUpdate();
+                }
+                // 2. Dar de baja categoría origen (soft-delete)
+                String sqlBaja = "UPDATE categorias SET activo = 0 WHERE id = ?";
+                try (PreparedStatement st = con.prepareStatement(sqlBaja)) {
+                    st.setInt(1, idCategoriaADesactivar);
+                    st.executeUpdate();
+                }
+                con.commit();
+                return true;
+            } catch (SQLException ex) {
+                con.rollback();
+                throw new DataAccessException("Error transaccional al reasignar platos y dar de baja categoría: " + ex.getMessage(), ex);
+            } finally {
+                con.setAutoCommit(autoCommitOriginal);
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("Error de conexión al reasignar y dar de baja categoría: " + ex.getMessage(), ex);
         }
     }
 
@@ -105,7 +190,7 @@ public class CategoriaDao implements CategoriaRepositorio {
         if (id <= 0) {
             return null;
         }
-        String sql = "SELECT id, nombre, color, orden FROM categorias WHERE id = ?";
+        String sql = "SELECT id, nombre, color, orden, activo FROM categorias WHERE id = ?";
         try (Connection con = conexiones.getConnection();
              PreparedStatement st = con.prepareStatement(sql)) {
             st.setInt(1, id);
@@ -121,9 +206,51 @@ public class CategoriaDao implements CategoriaRepositorio {
     }
 
     @Override
+    public Categoria buscarPorNombre(String nombre) {
+        if (nombre == null || nombre.trim().isEmpty()) {
+            return null;
+        }
+        String sql = "SELECT id, nombre, color, orden, activo FROM categorias WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) LIMIT 1";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement st = con.prepareStatement(sql)) {
+            st.setString(1, nombre.trim());
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    return mapearCategoria(rs);
+                }
+            }
+            return null;
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo buscar la categoría por nombre: " + ex.getMessage(), ex);
+        }
+    }
+
+    @Override
+    public Categoria obtenerGeneral() {
+        Categoria general = buscarPorNombre("General");
+        if (general != null) {
+            if (!general.isActivo()) {
+                cambiarEstadoActivo(general.getId(), true);
+                general.setActivo(true);
+            }
+            return general;
+        }
+        // Si no existe, crearla canónicamente
+        try (Connection con = conexiones.getConnection()) {
+            String sqlInsert = "INSERT IGNORE INTO categorias (nombre, color, orden, activo) VALUES ('General', '#6B7280', 0, 1)";
+            try (Statement st = con.createStatement()) {
+                st.executeUpdate(sqlInsert);
+            }
+            return buscarPorNombre("General");
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo asegurar la categoría canónica 'General': " + ex.getMessage(), ex);
+        }
+    }
+
+    @Override
     public List<Categoria> listar() {
         List<Categoria> lista = new ArrayList<>();
-        String sql = "SELECT id, nombre, color, orden FROM categorias ORDER BY orden ASC, nombre ASC";
+        String sql = "SELECT id, nombre, color, orden, activo FROM categorias WHERE activo = 1 ORDER BY orden ASC, nombre ASC";
         try (Connection con = conexiones.getConnection();
              PreparedStatement st = con.prepareStatement(sql);
              ResultSet rs = st.executeQuery()) {
@@ -131,11 +258,30 @@ public class CategoriaDao implements CategoriaRepositorio {
                 lista.add(mapearCategoria(rs));
             }
             if (lista.isEmpty()) {
-                LOGGER.log(Level.INFO, "[CARGA_DATOS] Carga de categorías retornó 0 items.");
+                LOGGER.log(Level.INFO, "[CARGA_DATOS] Carga de categorías activas retornó 0 items.");
             }
             return lista;
         } catch (SQLException ex) {
-            throw new DataAccessException("No se pudieron listar las categorías: " + ex.getMessage(), ex);
+            throw new DataAccessException("No se pudieron listar las categorías activas: " + ex.getMessage(), ex);
+        }
+    }
+
+    @Override
+    public List<Categoria> listarTodas() {
+        List<Categoria> lista = new ArrayList<>();
+        String sql = "SELECT id, nombre, color, orden, activo FROM categorias ORDER BY orden ASC, nombre ASC";
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement st = con.prepareStatement(sql);
+             ResultSet rs = st.executeQuery()) {
+            while (rs.next()) {
+                lista.add(mapearCategoria(rs));
+            }
+            if (lista.isEmpty()) {
+                LOGGER.log(Level.INFO, "[CARGA_DATOS] Carga total de categorías retornó 0 items.");
+            }
+            return lista;
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron listar todas las categorías: " + ex.getMessage(), ex);
         }
     }
 
@@ -173,8 +319,13 @@ public class CategoriaDao implements CategoriaRepositorio {
 
     @Override
     public boolean categoriaEnUso(int idCategoria) {
+        return contarPlatosEnCategoria(idCategoria) > 0;
+    }
+
+    @Override
+    public int contarPlatosEnCategoria(int idCategoria) {
         if (idCategoria <= 0) {
-            return false;
+            return 0;
         }
         String sql = "SELECT COUNT(*) FROM plato_categoria WHERE id_categoria = ?";
         try (Connection con = conexiones.getConnection();
@@ -182,21 +333,28 @@ public class CategoriaDao implements CategoriaRepositorio {
             st.setInt(1, idCategoria);
             try (ResultSet rs = st.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getInt(1) > 0;
+                    return rs.getInt(1);
                 }
             }
-            return false;
+            return 0;
         } catch (SQLException ex) {
-            throw new DataAccessException("No se pudo comprobar el uso de la categoría: " + ex.getMessage(), ex);
+            throw new DataAccessException("No se pudo contar el uso de la categoría: " + ex.getMessage(), ex);
         }
     }
 
     private Categoria mapearCategoria(ResultSet rs) throws SQLException {
+        boolean activo = true;
+        try {
+            activo = rs.getInt("activo") == 1;
+        } catch (SQLException ignored) {
+            // si la consulta no incluye activo, asume activo por defecto
+        }
         return new Categoria(
                 rs.getInt("id"),
                 rs.getString("nombre"),
                 rs.getString("color"),
-                rs.getInt("orden"));
+                rs.getInt("orden"),
+                activo);
     }
 
     private void validarCategoria(Categoria categoria) {

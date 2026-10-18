@@ -27,7 +27,7 @@ public final class ConsultaPedidosServicio {
     }
 
     public int buscarPedidoPendiente(int mesa, int idSala) {
-        exigir(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.CONSULTAR_OCUPACION_MESAS);
         if (mesa <= 0 || idSala <= 0) {
             throw ErrorAplicacionException.validacion("La sala y mesa deben ser válidas para buscar pedidos.");
         }
@@ -41,12 +41,12 @@ public final class ConsultaPedidosServicio {
     }
 
     public List<Pedidos> listarHistorial() {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
         return repositorio.listarPedidos();
     }
 
     public Pedidos obtenerPedido(int idPedido) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES);
         validarId(idPedido);
         Pedidos pedido = repositorio.verPedido(idPedido);
         if (pedido == null) {
@@ -58,7 +58,7 @@ public final class ConsultaPedidosServicio {
     }
 
     public List<DetallePedido> obtenerDetalles(int idPedido) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES);
         validarId(idPedido);
         List<DetallePedido> detalles = repositorio.verPedidoDetalle(idPedido);
         if (detalles == null) {
@@ -71,7 +71,7 @@ public final class ConsultaPedidosServicio {
     }
 
     public boolean finalizar(int idPedido) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         validarId(idPedido);
         return repositorio.actualizarEstado(idPedido);
     }
@@ -86,7 +86,7 @@ public final class ConsultaPedidosServicio {
 
     public boolean finalizarConCliente(int idPedido, String clienteNombre, String clienteDocumento,
             String metodoPago, java.math.BigDecimal efectivoBs, java.math.BigDecimal efectivoUsd) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         validarId(idPedido);
         return repositorio.actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento,
                 metodoPago, efectivoBs, efectivoUsd);
@@ -94,13 +94,13 @@ public final class ConsultaPedidosServicio {
 
     public boolean finalizarConCliente(int idPedido, String clienteNombre, String clienteDocumento,
             String metodoPago, java.util.List<Modelo.PagoPedido> pagos) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         validarId(idPedido);
         return repositorio.actualizarEstadoConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago, pagos);
     }
 
     public boolean cerrarMesa(int idPedido, int versionEsperada) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         validarId(idPedido);
         return repositorio.cerrarMesa(idPedido, versionEsperada);
     }
@@ -110,13 +110,13 @@ public final class ConsultaPedidosServicio {
     }
 
     public Modelo.ResumenConciliacionPedido resumenConciliacion(int idPedido) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         validarId(idPedido);
         return repositorio.resumenConciliacion(idPedido);
     }
 
     public boolean anular(int idPedido, String motivo, String usuario) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE);
         validarId(idPedido);
         if (motivo == null || motivo.trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("Debe indicar el motivo de la anulación del pedido.");
@@ -126,7 +126,7 @@ public final class ConsultaPedidosServicio {
     }
 
     public boolean anularFacturaCobradaConDevolucion(int idPedido, String motivo, String usuario) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.ANULAR_FACTURA_COBRADA);
         validarId(idPedido);
         if (motivo == null || motivo.trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("Debe indicar el motivo de la anulación de la factura.");
@@ -136,7 +136,7 @@ public final class ConsultaPedidosServicio {
     }
 
     public void registrarAuditoria(int idPedido, String accion, String motivo, String usuario) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
         validarId(idPedido);
         if (motivo == null || motivo.trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("Debe indicar el motivo de la acción a registrar.");
@@ -150,7 +150,7 @@ public final class ConsultaPedidosServicio {
     }
 
     public List<Modelo.AuditoriaPedido> obtenerAuditoriaPedido(int idPedido) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
         validarId(idPedido);
         return auditoriaDao != null ? auditoriaDao.listarPorPedido(idPedido) : List.of();
     }
@@ -166,7 +166,7 @@ public final class ConsultaPedidosServicio {
     }
 
     public int purgarPedidosFinalizados(int mesesAnteriores) {
-        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigir(PoliticaAcceso.Accion.PURGAR_HISTORIAL);
         if (!politica.esAdministrador()) {
             throw ErrorAplicacionException.validacion("Solo los administradores pueden purgar el historial.");
         }

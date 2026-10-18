@@ -21,6 +21,22 @@ public final class CategoriaControlador {
         return servicio.listar();
     }
 
+    public List<Categoria> listarTodas() {
+        return servicio.listarTodas();
+    }
+
+    public Categoria obtenerGeneral() {
+        return servicio.obtenerGeneral();
+    }
+
+    public int contarPlatosEnCategoria(int id) {
+        return servicio.contarPlatosEnCategoria(id);
+    }
+
+    public boolean categoriaEnUso(int id) {
+        return servicio.categoriaEnUso(id);
+    }
+
     public int registrar(Categoria categoria) {
         return servicio.registrar(categoria);
     }
@@ -31,6 +47,18 @@ public final class CategoriaControlador {
 
     public boolean eliminar(int id) {
         return servicio.eliminar(id);
+    }
+
+    public boolean desactivarConReasignacion(int idOrigen, int idDestino) {
+        return servicio.desactivarConReasignacion(idOrigen, idDestino);
+    }
+
+    public boolean reactivar(int id) {
+        return servicio.reactivar(id);
+    }
+
+    public boolean cambiarEstadoActivo(int id, boolean activo) {
+        return servicio.cambiarEstadoActivo(id, activo);
     }
 
     public Categoria buscar(int id) {

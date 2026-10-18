@@ -610,6 +610,7 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         cargarMesoneros();
         cargarCatalogoPlatosInicial();
+        actualizarPermisosControles();
 
         RefrescoVistas.suscribir(RefrescoVistas.PLATOS, this::refrescarPlatos);
         RefrescoVistas.suscribir(RefrescoVistas.PEDIDOS, this::refrescarPedidos);
@@ -953,7 +954,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         }
 
         if (idPedidoExistente > 0) {
-            if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+            if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES)) {
                 JOptionPane.showMessageDialog(this,
                         "Este espacio tiene un pedido pendiente (#" + idPedidoExistente + "). Solicita a un administrador que lo gestione.",
                         "Pedido pendiente", JOptionPane.WARNING_MESSAGE);
@@ -971,6 +972,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             cbMesonero.setSelectedIndex(0);
             preseleccionarMesoneroDelPedido(idPedidoExistente);
             cargarDetallesPedidoExistente(idPedidoExistente);
+            actualizarPermisosControles();
         } else {
             // Mesa disponible: Comanda en blanco lista para agregar platos
             lblCabeceraMesa.setText("MESA: " + codigoMesa + " (" + nombreSalaSeleccionada + ") — DISPONIBLE (Nuevo Pedido)");
@@ -987,7 +989,33 @@ public class PanelAtencionMesasSplit extends JPanel {
             modeloCarrito.setRowCount(0);
             recalcularTotales();
             txtBuscarPlato.requestFocusInWindow();
+            actualizarPermisosControles();
         }
+    }
+
+    private void actualizarPermisosControles() {
+        if (politicaAcceso == null) return;
+        boolean puedeRegistrar = politicaAcceso.permite(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
+        boolean puedeEditar = politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS);
+        boolean puedeCobrar = politicaAcceso.permite(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
+        boolean puedeConsultar = politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES);
+        boolean puedeMutar = idPedidoActivo > 0 ? puedeEditar : puedeRegistrar;
+        if (tblCatalogoPlatos != null) tblCatalogoPlatos.setEnabled(puedeMutar);
+        if (tblCarrito != null) tblCarrito.setEnabled(puedeMutar);
+        if (txtBuscarPlato != null) txtBuscarPlato.setEnabled(puedeMutar);
+        if (txtCantManual != null) txtCantManual.setEnabled(puedeMutar);
+        if (btnMenosCant != null) btnMenosCant.setEnabled(puedeMutar);
+        if (btnMasCant != null) btnMasCant.setEnabled(puedeMutar);
+        if (cbMesonero != null) cbMesonero.setEnabled(puedeMutar);
+        if (chkImprimirComanda != null) chkImprimirComanda.setEnabled(puedeMutar && politicaAcceso.esAdministrador());
+        if (btnLimpiar != null) btnLimpiar.setEnabled(puedeMutar);
+        if (btnEnviarCocina != null) btnEnviarCocina.setEnabled(puedeMutar);
+        if (btnPreFactura != null) btnPreFactura.setEnabled(idPedidoActivo > 0 && puedeConsultar);
+        if (btnCobrar != null) btnCobrar.setEnabled(idPedidoActivo > 0 && puedeCobrar);
+        if (btnCortesia != null) btnCortesia.setEnabled(idPedidoActivo > 0
+                && politicaAcceso.permite(PoliticaAcceso.Accion.APLICAR_CORTESIA));
+        if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0
+                && politicaAcceso.permite(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE));
     }
 
     /** Acción explícita para dejar el pedido sin mesonero (con confirmación). */
@@ -1567,7 +1595,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             boolean eraEdicion = idPedidoActivo > 0;
             int idPedidoFinal;
             if (eraEdicion) {
-                if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+                if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) {
                     JOptionPane.showMessageDialog(this,
                             "Tu rol no permite modificar pedidos existentes.",
                             "Acceso Denegado", JOptionPane.WARNING_MESSAGE);

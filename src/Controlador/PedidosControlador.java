@@ -41,18 +41,22 @@ public final class PedidosControlador {
         return cierreServicio;
     }
 
+    public PoliticaAcceso getPoliticaAcceso() {
+        return politicaAcceso;
+    }
+
     public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) {
         exigirPermiso(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
         return servicio.registrarPedidoCompleto(pedido, detalles);
     }
 
     public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedido, List<DetallePedido> detalles) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS);
         return servicio.actualizarPedidoCompleto(idPedido, pedido, detalles);
     }
 
     public boolean generarPdfPedido(int idPedido) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
         return servicioPdf.generar(idPedido);
     }
 
@@ -61,7 +65,7 @@ public final class PedidosControlador {
     }
 
     public boolean reimprimirPdfPedido(int idPedido, String motivo, String usuario) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
         if (motivo == null || motivo.trim().isEmpty()) {
             throw ErrorAplicacionException.validacion("Debe indicar el motivo de la reimpresión.");
         }
@@ -80,27 +84,27 @@ public final class PedidosControlador {
     }
 
     public boolean anularPedido(int idPedido, String motivo, String usuario) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE);
         return consultas.anular(idPedido, motivo, usuario);
     }
 
     public boolean anularFacturaCobradaConDevolucion(int idPedido, String motivo, String usuario) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.ANULAR_FACTURA_COBRADA);
         return consultas.anularFacturaCobradaConDevolucion(idPedido, motivo, usuario);
     }
 
     public List<Modelo.AuditoriaPedido> obtenerAuditoriaPedido(int idPedido) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
         return consultas.obtenerAuditoriaPedido(idPedido);
     }
 
     public void previsualizarPdfPedido(int idPedido) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
         servicioPdf.previsualizar(idPedido);
     }
 
     public boolean emitirPreFactura(int idPedido) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES);
         return servicioPdf.emitirPreFactura(idPedido);
     }
 
@@ -109,7 +113,7 @@ public final class PedidosControlador {
     }
 
     public Servicio.CierreCajaServicio.ResultadoCierre imprimirCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efBs, java.math.BigDecimal efUsd) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_CIERRE_CAJA);
         if (cierreServicio == null) {
             throw new IllegalStateException("El servicio de cierre de caja no está configurado.");
         }
@@ -121,7 +125,7 @@ public final class PedidosControlador {
     }
 
     public Servicio.CierreCajaServicio.ResultadoCierre previsualizarCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor, java.math.BigDecimal efBs, java.math.BigDecimal efUsd) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_CIERRE_CAJA);
         if (cierreServicio == null) {
             throw new IllegalStateException("El servicio de cierre de caja no está configurado.");
         }
@@ -145,7 +149,7 @@ public final class PedidosControlador {
     }
 
     public boolean finalizarPedido(int idPedido) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         return consultas.finalizar(idPedido);
     }
 
@@ -159,14 +163,14 @@ public final class PedidosControlador {
 
     public boolean finalizarPedidoConCliente(int idPedido, String clienteNombre, String clienteDocumento,
             String metodoPago, java.math.BigDecimal efectivoBs, java.math.BigDecimal efectivoUsd) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         return consultas.finalizarConCliente(idPedido, clienteNombre, clienteDocumento,
                 metodoPago, efectivoBs, efectivoUsd);
     }
 
     public boolean finalizarPedidoConCliente(int idPedido, String clienteNombre, String clienteDocumento,
             String metodoPago, List<Modelo.PagoPedido> pagos) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         return consultas.finalizarConCliente(idPedido, clienteNombre, clienteDocumento, metodoPago, pagos);
     }
 
@@ -196,14 +200,14 @@ public final class PedidosControlador {
     }
 
     public int purgarPedidosFinalizados(int meses) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.PURGAR_HISTORIAL);
         int eliminados = consultas.purgarPedidosFinalizados(meses);
         LOGGER.info("PURGA: " + eliminados + " pedidos finalizados eliminados (retención: " + meses + " meses)");
         return eliminados;
     }
 
     public boolean congelarLinea(int idDetalle, String motivo, String actor, String idempotencyKey) {
-        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        exigirPermiso(PoliticaAcceso.Accion.CONGELAR_LINEA_PEDIDO);
         return servicio.congelarLinea(idDetalle, motivo, actor, idempotencyKey);
     }
 

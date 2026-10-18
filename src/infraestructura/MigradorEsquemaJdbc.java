@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 13;
+    private static final int VERSION_ESQUEMA = 14;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
@@ -50,7 +50,9 @@ public final class MigradorEsquemaJdbc {
     private static final String CHECKSUM_MIGRACION_V12 = calcularChecksum(DEFINICION_MIGRACION_V12);
     private static final String DEFINICION_MIGRACION_V13 = "v13:cierres_caja_unicidad_z_por_fecha";
     private static final String CHECKSUM_MIGRACION_V13 = calcularChecksum(DEFINICION_MIGRACION_V13);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v13";
+    private static final String DEFINICION_MIGRACION_V14 = "v14:categorias_activo_soft_delete";
+    private static final String CHECKSUM_MIGRACION_V14 = calcularChecksum(DEFINICION_MIGRACION_V14);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v14";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
@@ -188,7 +190,7 @@ public final class MigradorEsquemaJdbc {
             if (!rs.next()) return false;
             String checksum = rs.getString("checksum");
             String estado = rs.getString("estado");
-            if (!CHECKSUM_MIGRACION_V13.equals(checksum)) {
+            if (!CHECKSUM_MIGRACION_V14.equals(checksum)) {
                 throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
             }
             return "APLICADA".equalsIgnoreCase(estado);
@@ -225,7 +227,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V13 + "','EN_CURSO','asegurar_esquema') "
+                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V14 + "','EN_CURSO','asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -270,7 +272,8 @@ public final class MigradorEsquemaJdbc {
                 {"login_intentos", "usuario_id"},
                 {"login_intentos", "intentos"},
                 {"login_intentos", "bloqueado_hasta_ms"},
-                {"cierres_caja", "fecha_jornada_z"}
+                {"cierres_caja", "fecha_jornada_z"},
+                {"categorias", "activo"}
         }) {
             if (!columnaExiste(meta, catalogo, par[0], par[1])) {
                 throw new SQLException("Postcondición no cumplida: falta columna " + par[0] + "." + par[1]);
@@ -1211,12 +1214,17 @@ public final class MigradorEsquemaJdbc {
                     nombre VARCHAR(60) NOT NULL UNIQUE,
                     color CHAR(7) NOT NULL DEFAULT '#6B7280',
                     orden INT NOT NULL DEFAULT 0,
+                    activo TINYINT(1) NOT NULL DEFAULT 1,
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
                 """);
-            st.executeUpdate("INSERT IGNORE INTO categorias (nombre, color, orden) VALUES ('General', '#6B7280', 0)");
         }
-        LOGGER.info("Tabla categorias verificada.");
+        asegurarColumna(con, meta, catalogo, "categorias", "activo", "TINYINT(1) NOT NULL DEFAULT 1");
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("INSERT IGNORE INTO categorias (nombre, color, orden, activo) VALUES ('General', '#6B7280', 0, 1)");
+            st.executeUpdate("UPDATE categorias SET activo = 1 WHERE LOWER(TRIM(nombre)) = 'general'");
+        }
+        LOGGER.info("Tabla categorias verificada (soft-delete activo soportado).");
     }
 
     private static void asegurarTablaPlatoCategoria(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {

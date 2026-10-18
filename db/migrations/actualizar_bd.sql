@@ -854,6 +854,15 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='cierres_caja' AND index_name='uq_cierres_caja_z_fecha') THEN
         ALTER TABLE cierres_caja ADD UNIQUE KEY uq_cierres_caja_z_fecha (fecha_jornada_z);
     END IF;
+
+    -- 35. Soft-delete de categorias (columna activo) y salvaguarda de categoria General
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'categorias' AND column_name = 'activo'
+    ) THEN
+        ALTER TABLE categorias ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1 AFTER orden;
+    END IF;
+    UPDATE categorias SET activo = 1 WHERE LOWER(TRIM(nombre)) = 'general';
 END$$
 DELIMITER ;
 

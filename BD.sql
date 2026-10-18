@@ -634,6 +634,7 @@ CREATE TABLE `categorias` (
   `nombre` varchar(60) COLLATE utf8_spanish_ci NOT NULL,
   `color` char(7) COLLATE utf8_spanish_ci NOT NULL DEFAULT '#6B7280',
   `orden` int(11) NOT NULL DEFAULT 0,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_categorias_nombre` (`nombre`)

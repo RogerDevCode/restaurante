@@ -236,10 +236,19 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnGuardarCategoria;
     private javax.swing.JButton btnEditarCategoria;
     private javax.swing.JButton btnEliminarCategoria;
+    private javax.swing.JButton btnReactivarCategoria;
     private javax.swing.JComboBox<Platos> cbPlatoAsignacion;
     private javax.swing.JComboBox<Modelo.Categoria> cbCategoriaPlato;
     private javax.swing.JCheckBox chkFavoritoPlato;
     private javax.swing.JButton btnAsignarCategoria;
+    private final Servicio.ConfiguracionAccesosServicio configuracionAccesos =
+            new Servicio.ConfiguracionAccesosServicio();
+    private javax.swing.JComboBox<String> cbRolAccesos;
+    private javax.swing.JPanel pnlListaPermisosRol;
+    private javax.swing.JLabel lblEstadoPermisosRol;
+    private javax.swing.JButton btnGuardarPermisosRol;
+    private final java.util.Map<PoliticaAcceso.Accion, javax.swing.JCheckBox> checksPermisosRol =
+            new java.util.EnumMap<>(PoliticaAcceso.Accion.class);
 
     // --- Modalidad de Atención Directa de Mesas y Prefijos ---
     private List<Salas> salasCache = new ArrayList<>();
@@ -310,16 +319,7 @@ public final class Sistema extends javax.swing.JFrame {
         tableMenu.setRowHeight(25);
         tblTemPlatos.setRowHeight(30);
         tblTemPlatos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        politicaAcceso = new PoliticaAcceso(priv, () -> {
-            if (priv == null || priv.getId() <= 0) return true;
-            try {
-                return lgDao.esUsuarioActivo(priv.getId());
-            } catch (Exception ex) {
-                java.util.logging.Logger.getLogger(Sistema.class.getName())
-                        .warning("No se pudo verificar el estado activo del usuario #" + priv.getId() + " en la BD; acceso denegado por seguridad: " + ex.getMessage());
-                return false;
-            }
-        });
+        politicaAcceso = pedidosControlador.getPoliticaAcceso();
         this.categoriaControlador = categoriaControlador;
         this.favoritoControlador = favoritoControlador;
         this.cierreCajaServicio = (pedidosControlador != null && pedidosControlador.getCierreServicio() != null)
@@ -336,32 +336,7 @@ public final class Sistema extends javax.swing.JFrame {
         this.setLocationRelativeTo(null);
         txtIdHistorialPedido.setVisible(false);
         txtIdConfig.setVisible(false);
-        if (!politicaAcceso.esAdministrador()) {
-            btnConfig.setEnabled(false);
-            btnUsuarios.setEnabled(false);
-            btnPlatos.setEnabled(false);
-            btnRegistrarSala.setEnabled(false);
-            btnActualizarSala.setEnabled(false);
-            btnNuevoSala.setEnabled(false);
-            btnEliminarSala.setEnabled(false);
-            btnActualizarConfig.setEnabled(false);
-            btnIniciar.setEnabled(false);
-            btnGuardarPlato.setEnabled(false);
-            btnEditarPlato.setEnabled(false);
-            btnEliminarPlato.setEnabled(false);
-            btnNuevoPlato.setEnabled(false);
-            txtNombreSala.setEnabled(false);
-            txtMesas.setEnabled(false);
-            txtNombre.setEnabled(false);
-            txtCorreo.setEnabled(false);
-            txtPass.setEnabled(false);
-            cbxRol.setEnabled(false);
-            txtNombrePlato.setEnabled(false);
-            txtPrecioPlato.setEnabled(false);
-            LabelVendedor.setText(priv.getNombre());
-        } else {
-            LabelVendedor.setText(priv.getNombre());
-        }
+        LabelVendedor.setText(priv != null && priv.getNombre() != null ? priv.getNombre() : "Usuario");
         txtIdConfig.setVisible(false);
         txtIdHistorialPedido.setVisible(false);
         txtIdPedido.setVisible(false);
@@ -454,9 +429,9 @@ public final class Sistema extends javax.swing.JFrame {
         btnReactivarPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnReactivarPlato.setToolTipText("Ver y reactivar platos inactivos");
         btnReactivarPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        boolean esAdminPlatos = politicaAcceso.esAdministrador();
-        btnReactivarPlato.setVisible(esAdminPlatos);
-        btnReactivarPlato.setEnabled(esAdminPlatos);
+        boolean puedeGestionarPlatos = politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        btnReactivarPlato.setVisible(puedeGestionarPlatos);
+        btnReactivarPlato.setEnabled(puedeGestionarPlatos);
         btnReactivarPlato.addActionListener(e -> mostrarDialogoReactivarPlatos());
         jPanel11.add(btnReactivarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(15, 380, 258, 35));
 
@@ -477,7 +452,8 @@ public final class Sistema extends javax.swing.JFrame {
         btnAnularPedido.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 12, 6, 12));
         btnAnularPedido.setToolTipText("Anular factura/pedido seleccionado o ingresar directamente su número");
         btnAnularPedido.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS));
+        btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE)
+                || politicaAcceso.permite(PoliticaAcceso.Accion.ANULAR_FACTURA_COBRADA));
         btnAnularPedido.addActionListener(e -> anularPedidoSeleccionado());
         jPanel6.add(btnAnularPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(225, 10, 120, 32));
 
@@ -602,7 +578,7 @@ public final class Sistema extends javax.swing.JFrame {
             btnReimprimirHistorial.setIcon(new javax.swing.ImageIcon(urlPdfHist));
         }
         btnReimprimirHistorial.addActionListener(e -> {
-            if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+            if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
             if (txtIdHistorialPedido.getText().isBlank()) {
                 mostrarAvisoEnBanda("Seleccione un pedido finalizado de la tabla para reimprimir");
                 return;
@@ -634,7 +610,7 @@ public final class Sistema extends javax.swing.JFrame {
             btnPrevisualizarHistorial.setIcon(new javax.swing.ImageIcon(urlLupa));
         }
         btnPrevisualizarHistorial.addActionListener(e -> {
-            if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+            if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
             if (txtIdHistorialPedido.getText().isBlank()) {
                 mostrarAvisoEnBanda("Seleccione un pedido de la tabla para previsualizar");
                 return;
@@ -698,7 +674,7 @@ public final class Sistema extends javax.swing.JFrame {
                         btnPrevisualizarPedido.setEnabled(finalizado);
                     }
                     if (btnAnularPedido != null) {
-                        btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS) && !esAnulado);
+                        btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL) && !esAnulado);
                     }
                     if (btnAuditoriaPedido != null) {
                         btnAuditoriaPedido.setEnabled(true);
@@ -712,7 +688,7 @@ public final class Sistema extends javax.swing.JFrame {
                         btnPrevisualizarHistorial.setEnabled(false);
                     }
                     if (btnAnularPedido != null) {
-                        btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS));
+                        btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL));
                     }
                     if (btnAuditoriaPedido != null) {
                         btnAuditoriaPedido.setEnabled(false);
@@ -723,7 +699,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         jTabbedPane1.addChangeListener(e -> {
             if (jTabbedPane1.getSelectedIndex() == 5) {
-                if (politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+                if (politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) {
                     ListarPedidos();
                 }
             }
@@ -856,6 +832,8 @@ public final class Sistema extends javax.swing.JFrame {
         tabConfigDerecha.addTab("Logo e Ícono", panelLogoConfig);
         tabConfigDerecha.addTab("Base de Datos y Respaldos", crearPanelRespaldoConfig());
         tabConfigDerecha.addTab("Mesoneros", crearPanelMesonerosConfig());
+        tabConfigDerecha.addTab("Roles y accesos", crearPanelRolesAccesos());
+        tabConfigDerecha.setEnabledAt(4, politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_ROLES_ACCESOS));
 
         jPanel7.add(tabConfigDerecha, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 60, 580, 490));
 
@@ -1000,6 +978,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (panelSplitScreen != null) {
             panelSplitScreen.refrescarPlatos(null);
         }
+        aplicarAccesosInterfaz();
     }
 
     /**
@@ -1030,6 +1009,89 @@ public final class Sistema extends javax.swing.JFrame {
             lbl.setText(titulo);
             lbl.setForeground(new java.awt.Color(i == sel ? 0x00_66_66 : 0x21_21_21));
         }
+    }
+
+    private void aplicarAccesosInterfaz() {
+        if (jTabbedPane1 == null || politicaAcceso == null) return;
+        jTabbedPane1.setEnabled(true);
+        habilitarTab("Panel", PoliticaAcceso.Accion.CONSULTAR_SALAS);
+        habilitarTab("Salas", PoliticaAcceso.Accion.CONSULTAR_SALAS);
+        habilitarTab("Mesas", PoliticaAcceso.Accion.CONSULTAR_SALAS);
+        habilitarTab("Platos", PoliticaAcceso.Accion.CONSULTAR_PLATOS);
+        habilitarTab("Finalizar Pedido", PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES,
+                PoliticaAcceso.Accion.COBRAR_PEDIDOS, PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
+        habilitarTab("Historial Pedidos", PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
+        habilitarTab("Datos de la Empresa", PoliticaAcceso.Accion.EDITAR_CONFIGURACION);
+        habilitarTab("Usuarios", PoliticaAcceso.Accion.GESTIONAR_USUARIOS);
+        habilitarTab("Dashboard", PoliticaAcceso.Accion.EDITAR_CONFIGURACION);
+        habilitarTab("Atención Directa (Split)", PoliticaAcceso.Accion.REGISTRAR_PEDIDOS,
+                PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES,
+                PoliticaAcceso.Accion.COBRAR_PEDIDOS, PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS);
+        habilitarTab("Categorías", PoliticaAcceso.Accion.CONSULTAR_PLATOS);
+
+        if (btnSala != null) btnSala.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_SALAS));
+        if (btnPlatos != null) btnPlatos.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PLATOS));
+        if (btnVentas != null) btnVentas.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL));
+        if (btnUsuarios != null) btnUsuarios.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS));
+        if (btnConfig != null) btnConfig.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)
+                || politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_ROLES_ACCESOS));
+        if (btnCategorias != null) btnCategorias.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PLATOS));
+        if (btnAtencionDirecta != null) btnAtencionDirecta.setEnabled(algunaPermite(
+                PoliticaAcceso.Accion.REGISTRAR_PEDIDOS, PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES,
+                PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS, PoliticaAcceso.Accion.COBRAR_PEDIDOS));
+        if (btnPedidoRapido != null) btnPedidoRapido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS));
+
+        boolean gestionarSalas = politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_SALAS);
+        for (javax.swing.JButton boton : new javax.swing.JButton[]{btnRegistrarSala, btnActualizarSala, btnNuevoSala, btnEliminarSala}) {
+            if (boton != null) boton.setEnabled(gestionarSalas);
+        }
+        if (txtNombreSala != null) txtNombreSala.setEnabled(gestionarSalas);
+        if (txtMesas != null) txtMesas.setEnabled(gestionarSalas);
+
+        boolean gestionarPlatos = politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
+        for (javax.swing.JButton boton : new javax.swing.JButton[]{btnGuardarPlato, btnEditarPlato, btnEliminarPlato, btnNuevoPlato}) {
+            if (boton != null) boton.setEnabled(gestionarPlatos);
+        }
+        if (btnReactivarPlato != null) btnReactivarPlato.setEnabled(gestionarPlatos);
+        if (txtNombrePlato != null) txtNombrePlato.setEnabled(gestionarPlatos);
+        if (txtPrecioPlato != null) txtPrecioPlato.setEnabled(gestionarPlatos);
+
+        boolean gestionarUsuarios = politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS);
+        for (javax.swing.JButton boton : new javax.swing.JButton[]{btnIniciar, btnLimpiarUsuario, btnEstadoUsuario, btnEliminarUsuario}) {
+            if (boton != null) boton.setEnabled(gestionarUsuarios);
+        }
+        for (javax.swing.JTextField campo : new javax.swing.JTextField[]{txtNombre, txtCorreo, txtPass}) {
+            if (campo != null) campo.setEnabled(gestionarUsuarios);
+        }
+        if (cbxRol != null) cbxRol.setEnabled(gestionarUsuarios);
+
+        if (btnFinalizar != null) btnFinalizar.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.COBRAR_PEDIDOS));
+        if (btnCierreParcial != null) btnCierreParcial.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_CIERRE_CAJA));
+        if (btnCierreTotal != null) btnCierreTotal.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_CIERRE_CAJA));
+        if (btnPurgarHistorial != null) btnPurgarHistorial.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.PURGAR_HISTORIAL));
+
+        if (jTabbedPane1.getSelectedIndex() < 0 || !jTabbedPane1.isEnabledAt(jTabbedPane1.getSelectedIndex())) {
+            for (int i = 0; i < jTabbedPane1.getTabCount(); i++) {
+                if (jTabbedPane1.isEnabledAt(i)) {
+                    jTabbedPane1.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void habilitarTab(String titulo, PoliticaAcceso.Accion... acciones) {
+        boolean permitido = algunaPermite(acciones);
+        for (int i = 0; i < jTabbedPane1.getTabCount(); i++) {
+            if (titulo.equals(jTabbedPane1.getTitleAt(i))) jTabbedPane1.setEnabledAt(i, permitido);
+        }
+    }
+
+    private boolean algunaPermite(PoliticaAcceso.Accion... acciones) {
+        for (PoliticaAcceso.Accion accion : acciones) {
+            if (politicaAcceso.permite(accion)) return true;
+        }
+        return false;
     }
 
     /** Fuente base Segoe UI para los componentes que no traen fuente explicita (tablas, campos, combos). */
@@ -2101,7 +2163,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (usuarioActual != null && usuarioActual.getId() > 0) {
             boolean activo;
             try {
-                activo = lgDao.esUsuarioActivo(usuarioActual.getId());
+                activo = lgDao.esUsuarioActivoConRol(usuarioActual.getId(), usuarioActual.getRol());
             } catch (Exception ex) {
                 java.util.logging.Logger.getLogger(Sistema.class.getName())
                         .warning("No se pudo verificar el estado activo del usuario #" + usuarioActual.getId() + " en la BD; acceso denegado por seguridad: " + ex.getMessage());
@@ -2113,7 +2175,7 @@ public final class Sistema extends javax.swing.JFrame {
             if (!activo) {
                 usuarioActual.setActivo(false);
                 JOptionPane.showMessageDialog(this,
-                        "Tu cuenta ha sido desactivada por un administrador. La sesión ha sido revocada.",
+                        "Tu cuenta fue desactivada o cambió de rol. La sesión ha sido revocada.",
                         "Acceso revocado", JOptionPane.ERROR_MESSAGE);
                 this.dispose();
                 restaurante.Restaurante.lanzarLogin();
@@ -2127,6 +2189,107 @@ public final class Sistema extends javax.swing.JFrame {
                 "Tu rol no permite realizar esta acción.",
                 "Acceso restringido", JOptionPane.WARNING_MESSAGE);
         return false;
+    }
+
+    private javax.swing.JPanel crearPanelRolesAccesos() {
+        javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(8, 8));
+        panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        javax.swing.JPanel norte = new javax.swing.JPanel(new java.awt.BorderLayout(8, 4));
+        norte.add(new javax.swing.JLabel("Rol:"), java.awt.BorderLayout.WEST);
+        cbRolAccesos = new javax.swing.JComboBox<>(Servicio.RolesSistema.todos().toArray(String[]::new));
+        norte.add(cbRolAccesos, java.awt.BorderLayout.CENTER);
+        javax.swing.JLabel avisoAdmin = new javax.swing.JLabel(
+                "Administrador conserva todos los permisos y no puede modificarse.");
+        avisoAdmin.setForeground(new java.awt.Color(0, 90, 90));
+        norte.add(avisoAdmin, java.awt.BorderLayout.SOUTH);
+        panel.add(norte, java.awt.BorderLayout.NORTH);
+
+        pnlListaPermisosRol = new javax.swing.JPanel();
+        pnlListaPermisosRol.setLayout(new javax.swing.BoxLayout(pnlListaPermisosRol, javax.swing.BoxLayout.Y_AXIS));
+        java.util.Map<String, java.util.List<PoliticaAcceso.Accion>> grupos = new java.util.LinkedHashMap<>();
+        for (PoliticaAcceso.Accion accion : PoliticaAcceso.Accion.values()) {
+            grupos.computeIfAbsent(accion.grupo(), ignorado -> new java.util.ArrayList<>()).add(accion);
+        }
+        for (var grupo : grupos.entrySet()) {
+            javax.swing.JLabel titulo = new javax.swing.JLabel(grupo.getKey());
+            titulo.setFont(titulo.getFont().deriveFont(java.awt.Font.BOLD, 13f));
+            titulo.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 0, 3, 0));
+            pnlListaPermisosRol.add(titulo);
+            for (PoliticaAcceso.Accion accion : grupo.getValue()) {
+                javax.swing.JCheckBox check = new javax.swing.JCheckBox(accion.etiqueta());
+                if (accion.soloAdministrador()) {
+                    check.setToolTipText("Permiso reservado al Administrador por seguridad.");
+                }
+                checksPermisosRol.put(accion, check);
+                pnlListaPermisosRol.add(check);
+            }
+        }
+        panel.add(new javax.swing.JScrollPane(pnlListaPermisosRol), java.awt.BorderLayout.CENTER);
+
+        javax.swing.JPanel sur = new javax.swing.JPanel(new java.awt.BorderLayout(8, 4));
+        lblEstadoPermisosRol = new javax.swing.JLabel(" ");
+        sur.add(lblEstadoPermisosRol, java.awt.BorderLayout.CENTER);
+        btnGuardarPermisosRol = new javax.swing.JButton("Guardar permisos");
+        btnGuardarPermisosRol.addActionListener(e -> guardarPermisosRolSeleccionado());
+        sur.add(btnGuardarPermisosRol, java.awt.BorderLayout.EAST);
+        panel.add(sur, java.awt.BorderLayout.SOUTH);
+        cbRolAccesos.addActionListener(e -> cargarPermisosRolSeleccionado());
+        cargarPermisosRolSeleccionado();
+        return panel;
+    }
+
+    private void cargarPermisosRolSeleccionado() {
+        if (cbRolAccesos == null || pnlListaPermisosRol == null) return;
+        String rol = (String) cbRolAccesos.getSelectedItem();
+        boolean administrador = Servicio.RolesSistema.ADMINISTRADOR.equals(rol);
+        boolean puedeEditar = politicaAcceso.esAdministrador()
+                && politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_ROLES_ACCESOS);
+        try {
+            java.util.Set<PoliticaAcceso.Accion> permisos = configuracionAccesos.cargarPermisos(rol);
+            for (var entrada : checksPermisosRol.entrySet()) {
+                PoliticaAcceso.Accion accion = entrada.getKey();
+                javax.swing.JCheckBox check = entrada.getValue();
+                check.setSelected(administrador || permisos.contains(accion));
+                check.setEnabled(puedeEditar && !administrador && !accion.soloAdministrador());
+            }
+            lblEstadoPermisosRol.setText(administrador
+                    ? "Acceso total fijo." : "Los cambios se aplican en el próximo inicio de sesión.");
+            btnGuardarPermisosRol.setEnabled(puedeEditar && !administrador);
+        } catch (RuntimeException ex) {
+            for (javax.swing.JCheckBox check : checksPermisosRol.values()) {
+                check.setSelected(false);
+                check.setEnabled(false);
+            }
+            btnGuardarPermisosRol.setEnabled(false);
+            lblEstadoPermisosRol.setText("No se pudieron leer permisos; edición bloqueada por seguridad.");
+        }
+    }
+
+    private void guardarPermisosRolSeleccionado() {
+        String rol = cbRolAccesos != null ? (String) cbRolAccesos.getSelectedItem() : null;
+        if (!politicaAcceso.esAdministrador()
+                || !politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_ROLES_ACCESOS)
+                || Servicio.RolesSistema.ADMINISTRADOR.equals(rol)) {
+            JOptionPane.showMessageDialog(this, "Solo un Administrador activo puede modificar permisos de otros roles.",
+                    "Acceso restringido", JOptionPane.WARNING_MESSAGE);
+            cargarPermisosRolSeleccionado();
+            return;
+        }
+        java.util.Map<PoliticaAcceso.Accion, Boolean> cambios = new java.util.EnumMap<>(PoliticaAcceso.Accion.class);
+        for (var entrada : checksPermisosRol.entrySet()) {
+            cambios.put(entrada.getKey(), entrada.getValue().isSelected());
+        }
+        try {
+            configuracionAccesos.guardarPermisos(rol, cambios, politicaAcceso,
+                    usuarioActual != null ? usuarioActual.getId() : 0);
+            lblEstadoPermisosRol.setText("Permisos guardados; se aplicarán en el próximo inicio de sesión.");
+            JOptionPane.showMessageDialog(this, "Permisos del rol " + rol + " guardados.",
+                    "Accesos actualizados", JOptionPane.INFORMATION_MESSAGE);
+        } catch (RuntimeException ex) {
+            lblEstadoPermisosRol.setText("No se pudieron guardar los permisos.");
+            JOptionPane.showMessageDialog(this, "No se pudieron guardar los permisos. No se aplicaron cambios.",
+                    "Error al guardar", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -3582,7 +3745,7 @@ public final class Sistema extends javax.swing.JFrame {
         jLabel37.setText("Rol:");
         jPanel15.add(jLabel37, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 360, 90, -1));
 
-        cbxRol.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Administrador", "Asistente" }));
+        cbxRol.setModel(new javax.swing.DefaultComboBoxModel<>(Servicio.RolesSistema.todos().toArray(String[]::new)));
         jPanel15.add(cbxRol, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 380, 300, 30));
 
         jPanel16.setBackground(new java.awt.Color(0, 0, 0));
@@ -3821,7 +3984,7 @@ public final class Sistema extends javax.swing.JFrame {
     }//GEN-LAST:event_btnConfigActionPerformed
 
     private void btnVentasActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnVentasActionPerformed
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
         ListarPedidos();
         jTabbedPane1.setSelectedIndex(5);
     }//GEN-LAST:event_btnVentasActionPerformed
@@ -3997,7 +4160,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void btnPdfPedidoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnPdfPedidoActionPerformed
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
 
         String idStr = txtIdHistorialPedido.getText().trim();
         if (idStr.isEmpty()) {
@@ -4024,7 +4187,7 @@ public final class Sistema extends javax.swing.JFrame {
     }//GEN-LAST:event_btnPdfPedidoActionPerformed
 
     public void emitirPreFacturaActual() {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES)) return;
         String idStr = txtIdPedido.getText().trim();
         if (idStr.isEmpty()) {
             idStr = txtIdHistorialPedido.getText().trim();
@@ -4048,7 +4211,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     public void anularPorFugaActual() {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE)) return;
         String idStr = txtIdPedido.getText().trim();
         if (idStr.isEmpty()) {
             idStr = txtIdHistorialPedido.getText().trim();
@@ -4104,7 +4267,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     public void aplicarCortesiaActual() {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.APLICAR_CORTESIA)) return;
         String idStr = txtIdPedido.getText().trim();
         if (idStr.isEmpty()) {
             mostrarAvisoEnBanda("Seleccione un pedido para aplicar cortesía");
@@ -4253,7 +4416,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void btnModificarPedidoActionPerformed(java.awt.event.ActionEvent evt) {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return;
         if (ped == null || ped.getId() <= 0) {
             mostrarAvisoEnBanda("Selecciona un pedido para modificar");
             return;
@@ -4366,7 +4529,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void btnPrevisualizarPedidoActionPerformed(java.awt.event.ActionEvent evt) {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
 
         String idStr = txtIdHistorialPedido.getText().trim();
         if (idStr.isEmpty()) {
@@ -4386,7 +4549,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void TablePedidosMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_TablePedidosMouseClicked
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
         int fila = TablePedidos.rowAtPoint(evt.getPoint());
         if (fila < 0) {
             return;
@@ -4775,7 +4938,7 @@ public final class Sistema extends javax.swing.JFrame {
                 RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
                 RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
                 if (esPedidoRapido && idPedidoRegistrado > 0
-                        && politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+                        && politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES)) {
                     modoPedidoRapido = false;
                     cargarPedidoEnPantalla(idPedidoRegistrado, true);
                     mostrarAvisoEnBanda("Pedido rápido listo para cobrar");
@@ -5026,7 +5189,7 @@ public final class Sistema extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void btnFinalizarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnFinalizarActionPerformed
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.COBRAR_PEDIDOS)) return;
         if (txtIdPedido.getText().trim().isEmpty()) {
             mostrarAvisoEnBanda("Selecciona un pedido antes de finalizarlo");
             return;
@@ -7062,6 +7225,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void ListarPedidos() {
+        if (!politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
         long version = ++versionHistorialPedidos;
         new ListaPedidosSwingWorker(pedidosControlador,
                 pedidos -> {
@@ -7424,7 +7588,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     public void solicitarCierreCaja(Modelo.CierreCaja.TipoCierre tipo) {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_CIERRE_CAJA)) return;
 
         String fechaDefecto = java.time.LocalDate.now().toString();
         javax.swing.JTextField txtFecha = new javax.swing.JTextField(fechaDefecto, 10);
@@ -8442,7 +8606,6 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     void anularPedidoSeleccionado() {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
         String idStr = (txtIdHistorialPedido != null) ? txtIdHistorialPedido.getText().trim() : "";
         if (idStr.isEmpty()) {
             String input = JOptionPane.showInputDialog(this,
@@ -8482,6 +8645,11 @@ public final class Sistema extends javax.swing.JFrame {
                     "Factura No Encontrada", JOptionPane.WARNING_MESSAGE);
             return;
         }
+
+        PoliticaAcceso.Accion permisoAnulacion = "FINALIZADO".equalsIgnoreCase(pedido.getEstado())
+                ? PoliticaAcceso.Accion.ANULAR_FACTURA_COBRADA
+                : PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE;
+        if (!autorizar(permisoAnulacion)) return;
 
         if ("ANULADO".equalsIgnoreCase(pedido.getEstado())) {
             JOptionPane.showMessageDialog(this,
@@ -8580,7 +8748,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     void mostrarAuditoriaPedidoSeleccionado() {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
         String idStr = txtIdHistorialPedido.getText().trim();
         if (idStr.isEmpty()) {
             mostrarAvisoEnBanda("Seleccione un pedido de la tabla para ver su auditoría");
@@ -9452,7 +9620,7 @@ public final class Sistema extends javax.swing.JFrame {
                 javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                 javax.swing.border.TitledBorder.DEFAULT_POSITION,
                 new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14), COLOR_CABECERA));
-        btnGenerarPedido.setText(politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)
+        btnGenerarPedido.setText(politicaAcceso.permite(PoliticaAcceso.Accion.COBRAR_PEDIDOS)
                 ? "Cobrar y finalizar" : "Enviar a cocina");
         cargarComboMesoneros();
         ListarPlatos(tblTemPlatos, "");
@@ -10112,7 +10280,7 @@ public final class Sistema extends javax.swing.JFrame {
             botonesMesa.add(boton);
             boton.addActionListener((ActionEvent e) -> {
                 if (verificar > 0) {
-                    if (!politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+                    if (!politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES)) {
                         JOptionPane.showMessageDialog(this,
                                 "Este espacio tiene un pedido pendiente. Solicita a un administrador que lo gestione.",
                                 "Pedido pendiente", JOptionPane.WARNING_MESSAGE);
@@ -10518,7 +10686,7 @@ public final class Sistema extends javax.swing.JFrame {
         idSalaActualMesas = idSala;
         nombreSalaActualMesas = nombreSala;
         if (idPedidoExistente > 0) {
-            if (!politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+            if (!politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES)) {
                 JOptionPane.showMessageDialog(this,
                         "Este espacio tiene un pedido pendiente (#" + idPedidoExistente + ").",
                         "Pedido pendiente", JOptionPane.WARNING_MESSAGE);
@@ -10844,9 +11012,13 @@ public final class Sistema extends javax.swing.JFrame {
         btnGuardarCategoria = new JButton("Agregar");
         btnEditarCategoria = new JButton("Guardar cambios");
         btnEliminarCategoria = new JButton("Eliminar");
+        btnReactivarCategoria = new JButton("Reactivar");
+        btnReactivarCategoria.setToolTipText("Reactivar la categoría seleccionada (undelete)");
+        btnReactivarCategoria.setEnabled(false);
         btnGuardarCategoria.addActionListener(e -> registrarCategoria());
         btnEditarCategoria.addActionListener(e -> modificarCategoria());
         btnEliminarCategoria.addActionListener(e -> eliminarCategoria());
+        btnReactivarCategoria.addActionListener(e -> reactivarCategoria());
 
         boolean puedeGestionar = politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         btnGuardarCategoria.setEnabled(puedeGestionar);
@@ -10889,6 +11061,7 @@ public final class Sistema extends javax.swing.JFrame {
         accionesCrud.add(btnGuardarCategoria);
         accionesCrud.add(btnEditarCategoria);
         accionesCrud.add(btnEliminarCategoria);
+        accionesCrud.add(btnReactivarCategoria);
         accionesCrud.add(btnLimpiarCategoria);
         gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
         panelCrud.add(accionesCrud, gbc);
@@ -10939,7 +11112,7 @@ public final class Sistema extends javax.swing.JFrame {
         final Modelo.Categoria seleccionada = listaCategorias != null ? listaCategorias.getSelectedValue() : null;
         final long miVersion = ++versionCargaCategorias;
         Servicio.ConcurrenciaServicio.ejecutarAsync(
-                () -> categoriaControlador().listar(),
+                () -> categoriaControlador().listarTodas(),
                 categorias -> { if (miVersion == versionCargaCategorias) mostrarCategoriasEnLista(categorias, seleccionada); },
                 ex -> { if (miVersion == versionCargaCategorias) mostrarErrorCategorias(ex); });
     }
@@ -10951,7 +11124,14 @@ public final class Sistema extends javax.swing.JFrame {
             for (Modelo.Categoria c : categorias) {
                 modeloListaCategorias.addElement(c);
             }
-            poblarComboCategorias(categorias);
+            List<Modelo.Categoria> activas = new ArrayList<>();
+            for (Modelo.Categoria c : categorias) {
+                if (c.isActivo()) {
+                    activas.add(c);
+                }
+            }
+            poblarComboCategorias(activas);
+            cargarCategoriasFicha();
             if (seleccionada != null) {
                 for (Modelo.Categoria c : categorias) {
                     if (c.getId() == seleccionada.getId()) {
@@ -10961,6 +11141,7 @@ public final class Sistema extends javax.swing.JFrame {
                 }
             }
             refrescarColoresDisponibles();
+            cargarCategoriaSeleccionadaEnFormulario();
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }
@@ -11019,14 +11200,44 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void cargarCategoriaSeleccionadaEnFormulario() {
-        Modelo.Categoria c = listaCategorias.getSelectedValue();
+        Modelo.Categoria c = listaCategorias != null ? listaCategorias.getSelectedValue() : null;
+        boolean puedeGestionar = politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PLATOS);
         if (c == null) {
+            if (btnEliminarCategoria != null) btnEliminarCategoria.setEnabled(puedeGestionar);
+            if (btnReactivarCategoria != null) btnReactivarCategoria.setEnabled(false);
             return;
         }
         txtNombreCategoria.setText(c.getNombre());
         refrescarColoresDisponibles();
         if (c.getColor() != null) {
             cbColorCategoria.setSelectedItem(c.getColor());
+        }
+        boolean esGeneral = c.isGeneral() || "General".equalsIgnoreCase(c.getNombre().trim());
+        if (esGeneral) {
+            if (btnEliminarCategoria != null) {
+                btnEliminarCategoria.setEnabled(false);
+                btnEliminarCategoria.setToolTipText("La categoría 'General' es la categoría canónica y no se puede eliminar ni desactivar.");
+            }
+            if (btnReactivarCategoria != null) {
+                btnReactivarCategoria.setEnabled(false);
+            }
+        } else if (!c.isActivo()) {
+            if (btnEliminarCategoria != null) {
+                btnEliminarCategoria.setEnabled(false);
+                btnEliminarCategoria.setToolTipText("La categoría ya se encuentra inactiva.");
+            }
+            if (btnReactivarCategoria != null) {
+                btnReactivarCategoria.setEnabled(puedeGestionar);
+                btnReactivarCategoria.setToolTipText("Reactivar esta categoría para que vuelva a estar disponible en el menú.");
+            }
+        } else {
+            if (btnEliminarCategoria != null) {
+                btnEliminarCategoria.setEnabled(puedeGestionar);
+                btnEliminarCategoria.setToolTipText("Dar de baja o eliminar esta categoría.");
+            }
+            if (btnReactivarCategoria != null) {
+                btnReactivarCategoria.setEnabled(false);
+            }
         }
     }
 
@@ -11119,17 +11330,116 @@ public final class Sistema extends javax.swing.JFrame {
             mostrarAvisoEnBanda("Selecciona una categoría para eliminar");
             return;
         }
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "¿Eliminar la categoría \"" + seleccionada.getNombre() + "\"?",
-                "Confirmar eliminación", JOptionPane.YES_NO_OPTION);
-        if (confirm != JOptionPane.YES_OPTION) {
+        if (seleccionada.isGeneral() || "General".equalsIgnoreCase(seleccionada.getNombre().trim())) {
+            mostrarAvisoEnBanda("La categoría 'General' es la categoría canónica y no se puede eliminar.");
+            JOptionPane.showMessageDialog(this,
+                    "La categoría 'General' es la categoría canónica del sistema y no se puede eliminar ni dar de baja.",
+                    "Acción no permitida", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int platosAsociados = categoriaControlador().contarPlatosEnCategoria(seleccionada.getId());
+        if (platosAsociados > 0) {
+            // Presentar diálogo interactivo al usuario con combo de categorías activas preseleccionado en 'General'
+            List<Modelo.Categoria> activas = categoriaControlador().listar();
+            List<Modelo.Categoria> opciones = new ArrayList<>();
+            Modelo.Categoria catGeneral = null;
+            for (Modelo.Categoria c : activas) {
+                if (c.getId() != seleccionada.getId()) {
+                    opciones.add(c);
+                    if (c.isGeneral() || "General".equalsIgnoreCase(c.getNombre().trim())) {
+                        catGeneral = c;
+                    }
+                }
+            }
+            if (catGeneral == null) {
+                catGeneral = categoriaControlador().obtenerGeneral();
+                if (catGeneral != null && !opciones.contains(catGeneral)) {
+                    opciones.add(0, catGeneral);
+                }
+            }
+
+            JComboBox<Modelo.Categoria> cbDestino = new JComboBox<>(opciones.toArray(new Modelo.Categoria[0]));
+            cbDestino.setRenderer(new RendererCategoria());
+            if (catGeneral != null) {
+                cbDestino.setSelectedItem(catGeneral);
+            }
+
+            JPanel pnlReasignacion = new JPanel(new BorderLayout(8, 10));
+            pnlReasignacion.add(new JLabel("<html><b>La categoría \"" + seleccionada.getNombre() + "\" tiene "
+                    + platosAsociados + " plato(s) asociado(s).</b><br><br>"
+                    + "¿A qué categoría deseas reasignar los platos antes de darla de baja?</html>"),
+                    BorderLayout.NORTH);
+            pnlReasignacion.add(cbDestino, BorderLayout.CENTER);
+
+            int opcion = JOptionPane.showConfirmDialog(this, pnlReasignacion,
+                    "Reasignar platos asociados",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+            if (opcion != JOptionPane.OK_OPTION) {
+                mostrarAvisoEnBanda("Operación cancelada: La categoría '" + seleccionada.getNombre() + "' no se puede eliminar.");
+                JOptionPane.showMessageDialog(this,
+                        "La categoría '" + seleccionada.getNombre() + "' no se puede eliminar.",
+                        "Operación cancelada", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            Modelo.Categoria destino = (Modelo.Categoria) cbDestino.getSelectedItem();
+            if (destino == null) {
+                destino = catGeneral;
+            }
+
+            try {
+                categoriaControlador().desactivarConReasignacion(seleccionada.getId(), destino.getId());
+                limpiarFormularioCategoria();
+                cargarCategorias();
+                RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
+                RefrescoVistas.notificar(RefrescoVistas.PLATOS);
+                mostrarAvisoEnBanda("Categoría \"" + seleccionada.getNombre() + "\" dada de baja. Platos reasignados a \"" + destino.getNombre() + "\".");
+            } catch (Exception ex) {
+                mostrarErrorCategorias(ex);
+            }
+        } else {
+            // Sin platos asociados: soft-delete directo tras confirmación
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "¿Dar de baja la categoría \"" + seleccionada.getNombre() + "\"?",
+                    "Confirmar baja", JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION) {
+                mostrarAvisoEnBanda("Operación cancelada: La categoría '" + seleccionada.getNombre() + "' no se puede eliminar.");
+                JOptionPane.showMessageDialog(this,
+                        "La categoría '" + seleccionada.getNombre() + "' no se puede eliminar.",
+                        "Operación cancelada", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            try {
+                categoriaControlador().eliminar(seleccionada.getId());
+                limpiarFormularioCategoria();
+                cargarCategorias();
+                RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
+                RefrescoVistas.notificar(RefrescoVistas.PLATOS);
+                mostrarAvisoEnBanda("Categoría \"" + seleccionada.getNombre() + "\" dada de baja.");
+            } catch (Exception ex) {
+                mostrarErrorCategorias(ex);
+            }
+        }
+    }
+
+    private void reactivarCategoria() {
+        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PLATOS)) {
+            return;
+        }
+        Modelo.Categoria seleccionada = listaCategorias.getSelectedValue();
+        if (seleccionada == null) {
+            mostrarAvisoEnBanda("Selecciona una categoría para reactivar");
             return;
         }
         try {
-            categoriaControlador().eliminar(seleccionada.getId());
+            categoriaControlador().reactivar(seleccionada.getId());
             limpiarFormularioCategoria();
             cargarCategorias();
             RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
+            RefrescoVistas.notificar(RefrescoVistas.PLATOS);
+            mostrarAvisoEnBanda("Categoría \"" + seleccionada.getNombre() + "\" reactivada con éxito.");
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }
@@ -11139,6 +11449,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtNombreCategoria.setText("");
         listaCategorias.clearSelection();
         refrescarColoresDisponibles();
+        cargarCategoriaSeleccionadaEnFormulario();
     }
 
     private void cargarPlatosAsignacion() {
@@ -11219,8 +11530,12 @@ public final class Sistema extends javax.swing.JFrame {
                 boolean isSelected, boolean cellHasFocus) {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             if (value instanceof Modelo.Categoria c) {
-                setText(c.getNombre() + (c.getId() == 0 ? "" : "  " + (c.getColor() != null ? c.getColor() : "")));
+                String sufijoEstado = !c.isActivo() ? " [INACTIVA]" : "";
+                setText(c.getNombre() + sufijoEstado + (c.getId() == 0 ? "" : "  " + (c.getColor() != null ? c.getColor() : "")));
                 setIcon(new IconoColor(c.getColor()));
+                if (!c.isActivo() && !isSelected) {
+                    setForeground(java.awt.Color.GRAY);
+                }
             }
             return this;
         }
@@ -11336,7 +11651,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void actualizarPedidoEnEdicion() {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return;
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
         BigDecimal tasa = getTasaActual();
@@ -11527,7 +11842,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void cargarPedidoEnPantalla(int id_pedido, boolean permitirFinalizar) {
-        if (!autorizar(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) return;
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES)) return;
         long version = ++versionPedidoPantalla;
         btnFinalizar.setEnabled(false);
         new PedidoEnPantallaSwingWorker(pedidosControlador, id_pedido,

@@ -11,34 +11,51 @@ import java.util.List;
 /** Reglas de aplicación para registrar un pedido completo. */
 public final class PedidoServicio {
     private final PedidosRepositorio repositorio;
+    private final PoliticaAcceso politica;
 
     public PedidoServicio(PedidosRepositorio repositorio) {
-        if (repositorio == null) {
-            throw ErrorAplicacionException.validacion("El repositorio de pedidos es obligatorio.");
+        this(repositorio, PoliticaAcceso.denegada());
+    }
+
+    public PedidoServicio(PedidosRepositorio repositorio, PoliticaAcceso politica) {
+        if (repositorio == null || politica == null) {
+            throw ErrorAplicacionException.validacion("El repositorio y la política de pedidos son obligatorios.");
         }
         this.repositorio = repositorio;
+        this.politica = politica;
     }
 
     public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) {
+        exigir(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
         validar(pedido, detalles);
         return repositorio.registrarPedidoCompleto(pedido, detalles);
     }
 
     public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedido, List<DetallePedido> detalles) {
+        exigir(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS);
         validar(pedido, detalles);
         return repositorio.actualizarPedidoCompleto(idPedido, pedido, detalles);
     }
 
     public boolean cerrarMesa(int idPedido, int versionEsperada) {
+        exigir(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         return repositorio.cerrarMesa(idPedido, versionEsperada);
     }
 
     public boolean cerrarMesa(int idPedido) {
+        exigir(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         return repositorio.cerrarMesa(idPedido, 0);
     }
 
     public Modelo.ResumenConciliacionPedido resumenConciliacion(int idPedido) {
+        exigir(PoliticaAcceso.Accion.COBRAR_PEDIDOS);
         return repositorio.resumenConciliacion(idPedido);
+    }
+
+    private void exigir(PoliticaAcceso.Accion accion) {
+        if (!politica.permite(accion)) {
+            throw ErrorAplicacionException.validacion("Tu rol no permite realizar esta acción.");
+        }
     }
 
     private void validar(Pedidos pedido, List<DetallePedido> detalles) {
