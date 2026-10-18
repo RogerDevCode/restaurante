@@ -61,7 +61,7 @@ import static org.junit.Assert.assertTrue;
  * - Concurrencia de mesas y liberación tras finalización
  * - Generación de PDF bimonetario verificado
  */
-public class CombinatoriaUsuarioE2EIT {
+public class CombinatoriaUsuarioIT {
 
     private static final String TEST_URL = "jdbc:mysql://127.0.0.1:3307/restaurante_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
     private static final String TEST_USER = "restaurante_test_app";

@@ -40,6 +40,8 @@ public final class ControlMantenimientoBD {
     }
 
     public static void activar() {
+        // Habilita la barrera de comprobación para este proceso; no cambia el
+        // estado persistido de restaurante_control (que puede seguir OPERATIVO).
         activa = true;
     }
 
@@ -159,7 +161,11 @@ public final class ControlMantenimientoBD {
         }
     }
 
-    /** Mantiene el snapshot bajo bloqueo compartido para que el mantenimiento espere al backup. */
+    /**
+     * Mantiene la transacción bajo bloqueo compartido para que el mantenimiento
+     * espere a que termine. Los bloqueos compartidos se permiten entre sí; la
+     * barrera no serializa por sí sola las escrituras normales.
+     */
     public static void bloquearSnapshot(Connection conexion) throws SQLException {
         if (!activa || bypassActivo()) return;
         try (PreparedStatement ps = conexion.prepareStatement(
@@ -171,7 +177,7 @@ public final class ControlMantenimientoBD {
         }
     }
 
-    private static boolean esEscritura(String sql) {
+    static boolean esEscritura(String sql) {
         if (sql == null) return false;
         String limpio = sql.stripLeading();
         if (limpio.startsWith("/*!") || limpio.indexOf(';') >= 0) return true;

@@ -480,7 +480,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         pnlMesonero.add(lblMesoneroPrompt);
         cbMesonero = new JComboBox<>();
         cbMesonero.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        cbMesonero.setPreferredSize(new Dimension(180, 26));
+        cbMesonero.setPreferredSize(new Dimension(140, 26));
         cbMesonero.setRenderer(new DefaultListCellRenderer() {
             @Override
             public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -497,6 +497,26 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnQuitarMesonero.setToolTipText("Quitar la asignación del mesonero (se guarda sin mesonero)");
         btnQuitarMesonero.addActionListener(e -> quitarMesoneroAsignado());
         pnlMesonero.add(btnQuitarMesonero);
+
+        chkImprimirComanda = new JCheckBox("Imprimir Comanda", true);
+        chkImprimirComanda.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        chkImprimirComanda.setForeground(new Color(0, 102, 102));
+        chkImprimirComanda.setOpaque(false);
+        chkImprimirComanda.setFocusable(false);
+        chkImprimirComanda.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        chkImprimirComanda.setToolTipText("Habilita o deshabilita la emisión automática de la comanda de cocina al enviar el pedido");
+        String confComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
+        chkImprimirComanda.setSelected(!"0".equals(confComanda) && !"false".equalsIgnoreCase(confComanda));
+        chkImprimirComanda.addActionListener(e -> {
+            String val = chkImprimirComanda.isSelected() ? "1" : "0";
+            new Thread(() -> {
+                try {
+                    new Modelo.ConfiguracionSistemaDao().guardar(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, val);
+                } catch (Exception ignored) {}
+            }).start();
+        });
+        pnlMesonero.add(chkImprimirComanda);
+
         cbMesonero.addItemListener(e -> {
             if (e.getStateChange() == java.awt.event.ItemEvent.SELECTED && e.getItem() instanceof Mesonero) {
                 mesoneroQuitadoExplicito = false;
@@ -520,41 +540,22 @@ public class PanelAtencionMesasSplit extends JPanel {
         pnlAcciones.add(pnlFilaTotales);
 
         // Fila 2: Botones de Acción
-        JPanel pnlBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
+        JPanel pnlBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         pnlBotones.setOpaque(false);
 
-        btnLimpiar = new JButton("Limpiar Comanda");
+        btnLimpiar = new JButton("Limpiar");
         btnLimpiar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        btnLimpiar.setPreferredSize(new Dimension(130, 28));
+        btnLimpiar.setPreferredSize(new Dimension(80, 28));
         btnLimpiar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnLimpiar.setToolTipText("Vaciar la comanda actual sin guardar");
         btnLimpiar.addActionListener(e -> limpiarComanda());
         pnlBotones.add(btnLimpiar);
 
-        chkImprimirComanda = new JCheckBox("Imprimir Comanda", true);
-        chkImprimirComanda.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        chkImprimirComanda.setForeground(new Color(0, 102, 102));
-        chkImprimirComanda.setOpaque(false);
-        chkImprimirComanda.setFocusable(false);
-        chkImprimirComanda.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        chkImprimirComanda.setToolTipText("Habilita o deshabilita la emisión automática de la comanda de cocina al enviar el pedido");
-        String confComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
-        chkImprimirComanda.setSelected(!"0".equals(confComanda) && !"false".equalsIgnoreCase(confComanda));
-        chkImprimirComanda.addActionListener(e -> {
-            String val = chkImprimirComanda.isSelected() ? "1" : "0";
-            new Thread(() -> {
-                try {
-                    new Modelo.ConfiguracionSistemaDao().guardar(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, val);
-                } catch (Exception ignored) {}
-            }).start();
-        });
-        pnlBotones.add(chkImprimirComanda);
-
         btnEnviarCocina = new JButton("Enviar a Cocina");
         btnEnviarCocina.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnEnviarCocina.setBackground(new Color(0, 102, 102));
         btnEnviarCocina.setForeground(Color.WHITE);
-        btnEnviarCocina.setPreferredSize(new Dimension(140, 28));
+        btnEnviarCocina.setPreferredSize(new Dimension(130, 28));
         btnEnviarCocina.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnEnviarCocina.setToolTipText("Guardar la comanda y enviarla a cocina");
         btnEnviarCocina.addActionListener(e -> enviarPedidoCocina());
@@ -564,27 +565,17 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnPreFactura.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnPreFactura.setBackground(new Color(39, 174, 96));
         btnPreFactura.setForeground(Color.WHITE);
-        btnPreFactura.setPreferredSize(new Dimension(110, 28));
+        btnPreFactura.setPreferredSize(new Dimension(95, 28));
         btnPreFactura.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnPreFactura.setToolTipText("Emitir la cuenta / pre-factura para el cliente sin cerrar la mesa");
         btnPreFactura.addActionListener(e -> emitirPreFacturaDirecta());
         pnlBotones.add(btnPreFactura);
 
-        btnCobrar = new JButton("Cobrar");
-        btnCobrar.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnCobrar.setBackground(new Color(40, 116, 166));
-        btnCobrar.setForeground(Color.WHITE);
-        btnCobrar.setPreferredSize(new Dimension(95, 28));
-        btnCobrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnCobrar.setToolTipText("Cobrar y facturar la comanda de la mesa");
-        btnCobrar.addActionListener(e -> cobrarPedidoDirecto());
-        pnlBotones.add(btnCobrar);
-
         btnCortesia = new JButton("Cortesía");
         btnCortesia.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnCortesia.setBackground(new Color(142, 68, 173));
         btnCortesia.setForeground(Color.WHITE);
-        btnCortesia.setPreferredSize(new Dimension(95, 28));
+        btnCortesia.setPreferredSize(new Dimension(80, 28));
         btnCortesia.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCortesia.setToolTipText("Registrar como consumo de la casa / cortesía autorizada");
         btnCortesia.addActionListener(e -> aplicarCortesiaDirecto());
@@ -594,11 +585,21 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnFuga.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnFuga.setBackground(new Color(192, 57, 43));
         btnFuga.setForeground(Color.WHITE);
-        btnFuga.setPreferredSize(new Dimension(95, 28));
+        btnFuga.setPreferredSize(new Dimension(80, 28));
         btnFuga.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnFuga.setToolTipText("Liberar la mesa anulando el pedido por retiro sin pago (Fuga / Incobrable)");
         btnFuga.addActionListener(e -> anularPedidoPorFugaDirecto());
         pnlBotones.add(btnFuga);
+
+        btnCobrar = new JButton("Cobrar");
+        btnCobrar.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnCobrar.setBackground(new Color(40, 116, 166));
+        btnCobrar.setForeground(Color.WHITE);
+        btnCobrar.setPreferredSize(new Dimension(80, 28));
+        btnCobrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCobrar.setToolTipText("Cobrar y facturar la comanda de la mesa");
+        btnCobrar.addActionListener(e -> cobrarPedidoDirecto());
+        pnlBotones.add(btnCobrar);
 
         pnlAcciones.add(pnlBotones);
         pnlDerecho.add(pnlAcciones, BorderLayout.SOUTH);
@@ -1824,11 +1825,27 @@ public class PanelAtencionMesasSplit extends JPanel {
         agregarPlatoSeleccionadoAlCarrito();
     }
 
+    public JButton getBtnLimpiar() {
+        return btnLimpiar;
+    }
+
     public JButton getBtnCortesia() {
         return btnCortesia;
     }
 
     public JButton getBtnFuga() {
         return btnFuga;
+    }
+
+    public JButton getBtnEnviarCocina() {
+        return btnEnviarCocina;
+    }
+
+    public JButton getBtnCobrar() {
+        return btnCobrar;
+    }
+
+    public int getIdPedidoActivo() {
+        return idPedidoActivo;
     }
 }

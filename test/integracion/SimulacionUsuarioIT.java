@@ -43,7 +43,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /** Prueba de integración E2E que simula el recorrido completo de un usuario con soporte bimonetario. */
-public class SimulacionUsuarioE2EIT {
+public class SimulacionUsuarioIT {
 
     @Test
     public void simulaRecorridoCompletoDeUsuarioE2E() throws Exception {

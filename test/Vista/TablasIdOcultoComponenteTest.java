@@ -41,7 +41,7 @@ import javax.swing.table.TableRowSorter;
  * Toca la BD real solo en {@code preferencias_tabla} (respalda y restaura
  * los pesos previos del mismo usuario/clave). Exige {@code -De2e.permitir=SI}.
  */
-public final class TablasIdOcultoE2E {
+public final class TablasIdOcultoComponenteTest {
 
     private static int fallos = 0;
     private static Robot robot;

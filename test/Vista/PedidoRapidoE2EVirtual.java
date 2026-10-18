@@ -1,262 +1,197 @@
 package Vista;
 
-import Controlador.PedidosControlador;
-import Controlador.PlatosControlador;
-import Controlador.SalasControlador;
-import Modelo.*;
-import Servicio.*;
 import java.awt.Component;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.Robot;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
-import java.math.BigDecimal;
-import java.nio.file.Files;
+import java.awt.Window;
 import java.nio.file.Path;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.Callable;
-import javax.swing.*;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
-/** Prueba visual real de Pedido rápido sobre Xvfb con Robot (mouse y teclado propios). */
-public final class PedidoRapidoE2EVirtual {
-    private static final class SalasMemoria implements SalasRepositorio {
-        @Override public List<Salas> listar() { return List.of(new Salas(1, "Sala demo", 4)); }
-        @Override public boolean registrar(Salas sala) { return false; }
-        @Override public boolean eliminar(int id) { return false; }
-        @Override public boolean modificar(Salas sala) { return false; }
-    }
-
-    private static final class PlatosMemoria implements PlatosRepositorio {
-        private final List<Platos> platos = List.of(
-                new Platos(11, "Arepa de prueba", new BigDecimal("10.00"), LocalDate.now().toString(), true),
-                new Platos(12, "Jugo exento", new BigDecimal("2.50"), LocalDate.now().toString(), false));
-        @Override public List<Platos> listarPorFecha(String desde, String hasta) {
-            String criterio = desde == null ? "" : desde.trim().toLowerCase(java.util.Locale.ROOT);
-            if (criterio.isEmpty()) return platos;
-            return platos.stream().filter(p -> p.getNombre().toLowerCase(java.util.Locale.ROOT).contains(criterio)).toList();
-        }
-        @Override public boolean registrar(Platos plato) { return false; }
-        @Override public boolean eliminar(int id) { return false; }
-        @Override public boolean modificar(Platos plato) { return false; }
-    }
-
-    private static final class PedidosMemoria implements PedidosRepositorio {
-        private int siguienteId = 70;
-        private Pedidos pedido;
-        private List<DetallePedido> detalles = List.of();
-        @Override public int registrarPedidoCompleto(Pedidos p, List<DetallePedido> ds) {
-            pedido = p;
-            detalles = new ArrayList<>(ds);
-            pedido.setId(++siguienteId);
-            pedido.setSala("Pedido rápido");
-            pedido.setEstado("PENDIENTE");
-            return pedido.getId();
-        }
-        @Override public boolean actualizarPedidoCompleto(int id, Pedidos p, List<DetallePedido> ds) { return false; }
-        @Override public int verificarStado(int mesa, int sala) { return 0; }
-        @Override public Pedidos verPedido(int id) {
-            if (pedido == null || pedido.getId() != id) throw new IllegalArgumentException("Pedido no encontrado");
-            return pedido;
-        }
-        @Override public List<DetallePedido> verPedidoDetalle(int id) { return List.copyOf(detalles); }
-        @Override public List<DetallePedido> finalizarPedido(int id) { return verPedidoDetalle(id); }
-        @Override public boolean actualizarEstado(int id) { return false; }
-        @Override public List<Pedidos> listarPedidos() { return pedido == null ? List.of() : List.of(pedido); }
-        @Override public java.util.Map<Integer, Integer> contarMesasOcupadasPorSala() { return Collections.emptyMap(); }
-    }
-
-    private static <T> T edt(Callable<T> tarea) throws Exception {
-        Object[] resultado = new Object[1];
-        Throwable[] error = new Throwable[1];
-        SwingUtilities.invokeAndWait(() -> {
-            try { resultado[0] = tarea.call(); } catch (Throwable ex) { error[0] = ex; }
-        });
-        if (error[0] != null) throw new RuntimeException(error[0]);
-        @SuppressWarnings("unchecked") T valor = (T) resultado[0];
-        return valor;
-    }
-
-    private static Object campo(Sistema sistema, String nombre) throws Exception {
-        var field = Sistema.class.getDeclaredField(nombre);
-        field.setAccessible(true);
-        return field.get(sistema);
-    }
-
-    private static void clic(Robot robot, Component componente) throws Exception {
-        Point p = edt(componente::getLocationOnScreen);
-        java.awt.Dimension d = edt(componente::getSize);
-        robot.mouseMove(p.x + d.width / 2, p.y + d.height / 2);
-        robot.delay(100);
-        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        robot.delay(70);
-        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-        robot.delay(250);
-    }
-
-    private static void escribir(Robot robot, String valor) {
-        for (char c : valor.toCharArray()) {
-            int key = KeyEvent.getExtendedKeyCodeForChar(Character.toUpperCase(c));
-            robot.keyPress(key);
-            robot.keyRelease(key);
-            robot.delay(45);
-        }
-    }
-
-    private static void esperar(boolean condicion, String mensaje) {
-        if (!condicion) throw new AssertionError(mensaje);
-        System.out.println("OK   " + mensaje);
-    }
-
-    private static void esperarFilas(Robot robot, JTable tabla, int filas) throws Exception {
-        long hasta = System.currentTimeMillis() + 10000;
-        while (System.currentTimeMillis() < hasta) {
-            if (edt(tabla::getRowCount) == filas) return;
-            robot.delay(100);
-        }
-        throw new AssertionError("La tabla quedó con " + edt(tabla::getRowCount) + " filas; se esperaban " + filas);
-    }
+/**
+ * E2E Virtual de Pedido Rápido (Xvfb :99) operado 100% mediante UI con Robot.
+ *
+ * Flujo:
+ * 1. Login interactivo en FrmLogin ("admin" / "admin").
+ * 2. Clic en botón lateral "Pedido rápido".
+ * 3. Verificación de apertura directa en pestaña 3 (Toma de Pedidos) en modalidad "Cobrar y finalizar".
+ * 4. Validación de que con carrito vacío no avanza ni genera pedidos.
+ * 5. Búsqueda de plato en el catálogo y adición al carrito.
+ * 6. Ajuste reactivo de cantidad mediante botón de incremento rápido (+).
+ * 7. Envío a cobro ("Cobrar y finalizar") -> Navegación automática a pestaña 4 (Caja / Finalizar).
+ * 8. Verificación en pantalla de pago: modalidad "Para llevar", mesa "—", ítems y totales.
+ * 9. Verificación de interactividad de la tabla de pagos (agregar y quitar medios de pago).
+ * 10. Cancelación / anulación limpia del pedido rápido por UI (btnAnularFuga) confirmando diálogos.
+ * 11. Verificación del retorno a la vista inicial sin pedidos huérfanos.
+ *
+ * Cumple estrictamente con las reglas de AGENTS.md:
+ * - Cero DAOs, cero repositorios o servicios en memoria, cero queries SQL directas.
+ * - Toda la interacción y verificación se realiza a través de componentes observables de Swing.
+ */
+public class PedidoRapidoE2EVirtual {
 
     public static void main(String[] args) throws Exception {
-        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        Path pdfTemp = Files.createTempDirectory("pedido-rapido-e2e-");
-        Usuario admin = new Usuario(1, "Admin E2E", "admin-e2e", "admin", "Administrador");
-        PoliticaAcceso permisos = new PoliticaAcceso(admin);
-        SalasControlador salas = new SalasControlador(new SalasServicio(new SalasMemoria(), permisos));
-        PlatosControlador platos = new PlatosControlador(new PlatosServicio(new PlatosMemoria(), permisos));
-        PedidosMemoria repo = new PedidosMemoria();
-        PedidoPdfServicio pdf = new PedidoPdfServicio(repo::verPedido, repo::verPedidoDetalle,
-                Config::new, new GeneradorPdfPedido(pdfTemp), archivo -> true);
-        PedidosControlador pedidos = new PedidosControlador(new PedidoServicio(repo), pdf, permisos,
-                new ConsultaPedidosServicio(repo, permisos));
-        LoginDao empresa = new LoginDao() {
-            private final Config config = configDemo();
-            @Override public Config datosEmpresa() { return config; }
-            @Override public List<Usuario> ListarUsuarios() { return List.of(); }
-        };
-        Sistema sistema = edt(() -> new Sistema(admin, salas, platos, pedidos, empresa));
-        Robot robot = new Robot();
-        robot.setAutoDelay(35);
-        try {
-            edt(() -> { sistema.setExtendedState(JFrame.MAXIMIZED_BOTH); sistema.setVisible(true); return null; });
-            robot.delay(1800);
-
-            JButton acceso = (JButton) campo(sistema, "btnPedidoRapido");
-            clic(robot, acceso);
-            JTabbedPane tabs = (JTabbedPane) campo(sistema, "jTabbedPane1");
-            JTable menu = (JTable) campo(sistema, "tblTemPlatos");
-            JTable carrito = (JTable) campo(sistema, "tableMenu");
-            JTextField buscar = (JTextField) campo(sistema, "txtBuscarPlato");
-            JButton registrar = (JButton) campo(sistema, "btnGenerarPedido");
-            long hastaInicio = System.currentTimeMillis() + 5000;
-            while (System.currentTimeMillis() < hastaInicio && edt(tabs::getSelectedIndex) != 3) {
-                robot.delay(100);
-            }
-            esperar(edt(tabs::getSelectedIndex) == 3, "acceso lateral abre el formulario de Pedido rápido (actual=" + edt(tabs::getSelectedIndex) + ")");
-            esperar(edt(() -> registrar.getText().equals("Cobrar y finalizar")), "acción principal indica el paso de cobro");
-            esperarFilas(robot, menu, 2);
-
-            clic(robot, registrar);
-            esperar(repo.pedido == null, "carrito vacío no registra ni cobra pedidos");
-
-            clic(robot, buscar);
-            escribir(robot, "xyz");
-            esperarFilas(robot, menu, 0);
-            JButton limpiarBusqueda = (JButton) campo(sistema, "btnLimpiarBuscar");
-            clic(robot, limpiarBusqueda);
-            esperarFilas(robot, menu, 2);
-
-            clic(robot, buscar);
-            robot.keyPress(KeyEvent.VK_CONTROL); robot.keyPress(KeyEvent.VK_A);
-            robot.keyRelease(KeyEvent.VK_A); robot.keyRelease(KeyEvent.VK_CONTROL);
-            escribir(robot, "arepa");
-            esperarFilas(robot, menu, 1);
-            Rectangle celda = edt(() -> menu.getCellRect(0, 0, true));
-            Point origen = edt(menu::getLocationOnScreen);
-            robot.mouseMove(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK); robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK); robot.delay(200);
-            clic(robot, (JButton) campo(sistema, "btnAddPlato"));
-            esperar(edt(carrito::getRowCount) == 1, "producto gravado se añade al carrito");
-            JButton mas = (JButton) campo(sistema, "btnMasCantidad");
-            clic(robot, mas);
-            esperar("2".equals(String.valueOf(edt(() -> carrito.getModel().getValueAt(carrito.convertRowIndexToModel(0), 2)))), "cantidad se incrementa desde el control rápido");
-            celda = edt(() -> menu.getCellRect(0, 0, true));
-            origen = edt(menu::getLocationOnScreen);
-            robot.mouseMove(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK); robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK); robot.delay(250);
-            esperar("3".equals(String.valueOf(edt(() -> carrito.getModel().getValueAt(carrito.convertRowIndexToModel(0), 2)))), "repetir un producto suma cantidad en la misma línea");
-
-            clic(robot, buscar);
-            robot.keyPress(KeyEvent.VK_CONTROL); robot.keyPress(KeyEvent.VK_A);
-            robot.keyRelease(KeyEvent.VK_A); robot.keyRelease(KeyEvent.VK_CONTROL);
-            escribir(robot, "jugo");
-            esperarFilas(robot, menu, 1);
-            celda = edt(() -> menu.getCellRect(0, 0, true));
-            origen = edt(menu::getLocationOnScreen);
-            robot.mouseMove(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK); robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK); robot.delay(200);
-            clic(robot, (JButton) campo(sistema, "btnAddPlato"));
-            esperar(edt(carrito::getRowCount) == 2, "segundo producto exento se combina con el gravado");
-            celda = edt(() -> carrito.getCellRect(1, 1, true));
-            origen = edt(carrito::getLocationOnScreen);
-            robot.mouseMove(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK); robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK); robot.delay(150);
-            clic(robot, (JButton) campo(sistema, "btnEliminarTempPlato"));
-            esperar(edt(carrito::getRowCount) == 1, "eliminar línea actualiza carrito");
-
-            clic(robot, buscar);
-            robot.keyPress(KeyEvent.VK_CONTROL); robot.keyPress(KeyEvent.VK_A);
-            robot.keyRelease(KeyEvent.VK_A); robot.keyRelease(KeyEvent.VK_CONTROL);
-            escribir(robot, "jugo");
-            esperarFilas(robot, menu, 1);
-            celda = edt(() -> menu.getCellRect(0, 0, true));
-            origen = edt(menu::getLocationOnScreen);
-            robot.mouseMove(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
-            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK); robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK); robot.delay(200);
-            clic(robot, (JButton) campo(sistema, "btnAddPlato"));
-            clic(robot, registrar);
-            long hasta = System.currentTimeMillis() + 10000;
-            while (System.currentTimeMillis() < hasta && repo.pedido == null) robot.delay(100);
-            esperar(repo.pedido != null && repo.pedido.esPedidoRapido(), "guardar crea pedido RAPIDO sin sala ni mesa");
-            esperar(repo.detalles.size() == 2, "pedido combinado conserva dos productos");
-            esperar(new BigDecimal("37.30").compareTo(repo.pedido.getTotalDecimal()) == 0,
-                    "IVA se calcula solo sobre el producto gravado");
-            hasta = System.currentTimeMillis() + 10000;
-            while (System.currentTimeMillis() < hasta && edt(tabs::getSelectedIndex) != 4) robot.delay(100);
-            esperar(edt(tabs::getSelectedIndex) == 4, "pedido rápido pasa directamente a la pantalla de pago");
-            JTextField salaFinalizar = (JTextField) campo(sistema, "txtSalaFinalizar");
-            JTextField mesaFinalizar = (JTextField) campo(sistema, "txtNumMesaFinalizar");
-            esperar("Para llevar".equals(edt(salaFinalizar::getText)), "pantalla de pago identifica modalidad para llevar");
-            esperar("—".equals(edt(mesaFinalizar::getText)), "pantalla de pago no presenta mesa ficticia");
-            JTable tablaPagos = (JTable) campo(sistema, "tablaPagosFac");
-            JButton btnAgregarPago = (JButton) campo(sistema, "btnAgregarPagoFac");
-            JButton btnQuitarPago = (JButton) campo(sistema, "btnQuitarPagoFac");
-            esperar(edt(tablaPagos::isShowing), "tabla de pagos se muestra para pedido rápido");
-            esperar(edt(tablaPagos::getRowCount) >= 1, "tabla de pagos inicia con al menos 1 fila");
-            esperar("EFECTIVO_BS".equals(edt(() -> String.valueOf(tablaPagos.getValueAt(0, 0)))),
-                    "medio de pago por defecto es EFECTIVO_BS");
-            esperar("VES".equals(edt(() -> String.valueOf(tablaPagos.getValueAt(0, 1)))),
-                    "moneda por defecto es VES");
-            clic(robot, btnAgregarPago);
-            esperar(edt(tablaPagos::getRowCount) == 2, "botón + Medio agrega fila de pago");
-            clic(robot, btnQuitarPago);
-            esperar(edt(tablaPagos::getRowCount) == 1, "botón − Medio quita fila de pago");
-        } finally {
-            edt(() -> { sistema.dispose(); return null; });
-            try (var files = Files.list(pdfTemp)) { files.forEach(f -> { try { Files.deleteIfExists(f); } catch (Exception ignored) {} }); }
-            Files.deleteIfExists(pdfTemp);
+        if (!"SI".equals(System.getProperty("e2e.permitir"))) {
+            System.err.println("E2E requiere autorización: relanza con -De2e.permitir=SI");
+            System.exit(2);
         }
-    }
 
-    private static Config configDemo() {
-        Config config = new Config();
-        config.setNombre("Restaurante E2E");
-        config.setRuc("J-12345678-9");
-        config.setTasaDolar(new BigDecimal("36.5000"));
-        config.setIvaPorcentaje(new BigDecimal("16.00"));
-        return config;
+        Path dirE2E = Path.of(System.getenv().getOrDefault("E2E_WORKDIR", System.getProperty("java.io.tmpdir")));
+        System.setProperty("user.home", dirE2E.toString());
+        System.setProperty("modo.automatizado", "true");
+        System.setProperty("PDF_FACTURAS_DIR", dirE2E.resolve("facturas").toString());
+
+        Throwable fallo = null;
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            DiaE2ERobot robot = new DiaE2ERobot();
+
+            System.out.println("== [Pedido Rápido E2E] Paso 1: Login interactivo ==");
+            restaurante.Restaurante.lanzarLogin();
+            Vista.FrmLogin login = robot.esperarVentana(Vista.FrmLogin.class);
+            robot.edt(() -> {
+                login.setLocationRelativeTo(null);
+                return null;
+            });
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), "admin");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), "admin");
+            robot.clic((Component) robot.campo(login, "btnIniciar"));
+
+            System.out.println("== [Pedido Rápido E2E] Paso 2: Esperar ventana principal Sistema ==");
+            Sistema sistema = robot.esperarVentana(Sistema.class);
+            robot.edt(() -> {
+                sistema.setExtendedState(JFrame.MAXIMIZED_BOTH);
+                sistema.setVisible(true);
+                return null;
+            });
+            Component btnPedidoRapido = (Component) robot.campo(sistema, "btnPedidoRapido");
+            robot.esperar(() -> sistema.isShowing() && btnPedidoRapido.isShowing(),
+                    "Ventana Sistema autenticada y botón Pedido Rápido visible");
+
+            System.out.println("== [Pedido Rápido E2E] Paso 3: Clic en 'Pedido rápido' ==");
+            robot.clic(btnPedidoRapido);
+            JTabbedPane tabs = sistema.getJTabbedPane1();
+            robot.esperar(() -> tabs.getSelectedIndex() == 3,
+                    "Pestaña 3 (Toma de Pedidos) abierta para Pedido Rápido");
+
+            JButton btnGenerar = (JButton) robot.campo(sistema, "btnGenerarPedido");
+            robot.esperar(() -> "Cobrar y finalizar".equals(btnGenerar.getText()),
+                    "Botón principal indica 'Cobrar y finalizar'");
+
+            System.out.println("== [Pedido Rápido E2E] Paso 4: Carrito vacío no avanza ==");
+            robot.clic(btnGenerar);
+            robot.esperar(() -> tabs.getSelectedIndex() == 3,
+                    "Pestaña permanece en 3 con carrito vacío");
+
+            System.out.println("== [Pedido Rápido E2E] Paso 5: Buscar plato y agregar al carrito ==");
+            JTextField txtBuscar = (JTextField) robot.campo(sistema, "txtBuscarPlato");
+            JTable tblMenu = (JTable) robot.campo(sistema, "tblTemPlatos");
+            JTable tblCarro = (JTable) robot.campo(sistema, "tableMenu");
+
+            robot.reemplazarTexto(txtBuscar, "pollo");
+            robot.esperar(() -> {
+                for (int i = 0; i < tblMenu.getRowCount(); i++) {
+                    Object v = tblMenu.getModel().getValueAt(tblMenu.convertRowIndexToModel(i), 1);
+                    if (v != null && v.toString().toUpperCase().contains("POLLO")) return true;
+                }
+                return false;
+            }, "Catálogo muestra resultados para 'pollo'");
+
+            int filaPollo = robot.edt(() -> {
+                for (int i = 0; i < tblMenu.getRowCount(); i++) {
+                    Object v = tblMenu.getModel().getValueAt(tblMenu.convertRowIndexToModel(i), 1);
+                    if (v != null && v.toString().toUpperCase().contains("POLLO")) return i;
+                }
+                return -1;
+            });
+            // Clic en la celda del plato para agregarlo al carrito
+            robot.clicCelda(tblMenu, filaPollo, 0);
+            robot.esperar(() -> tblCarro.getRowCount() >= 1, "Carrito tiene al menos 1 fila");
+
+            int cant1 = robot.edt(() -> Integer.parseInt(tblCarro.getModel().getValueAt(0, 2).toString()));
+            if (cant1 != 1) {
+                throw new AssertionError("Se esperaba cantidad 1 en el carrito pero fue " + cant1);
+            }
+            System.out.println("OK   Plato agregado al carrito (1 unidad)");
+
+            System.out.println("== [Pedido Rápido E2E] Paso 6: Incrementar cantidad con btnMasCantidad ==");
+            JButton btnMas = (JButton) robot.campo(sistema, "btnMasCantidad");
+            robot.clic(btnMas);
+            robot.esperar(() -> {
+                Object v = tblCarro.getModel().getValueAt(0, 2);
+                return v != null && "2".equals(v.toString());
+            }, "Cantidad en carrito se incrementa a 2");
+            System.out.println("OK   Cantidad incrementada a 2");
+
+            System.out.println("== [Pedido Rápido E2E] Paso 7: Cobrar y finalizar -> Pasa a Caja ==");
+            robot.clic(btnGenerar);
+            robot.esperar(() -> tabs.getSelectedIndex() == 4,
+                    "Navega a pestaña 4 (Finalizar / Caja)");
+
+            JTextField txtSala = (JTextField) robot.campo(sistema, "txtSalaFinalizar");
+            JTextField txtMesa = (JTextField) robot.campo(sistema, "txtNumMesaFinalizar");
+            robot.esperar(() -> "Para llevar".equals(txtSala.getText()),
+                    "Sala muestra 'Para llevar'");
+            robot.esperar(() -> "—".equals(txtMesa.getText()),
+                    "Mesa muestra '—'");
+
+            JTable tblFinalizar = (JTable) robot.campo(sistema, "tableFinalizar");
+            robot.esperar(() -> tblFinalizar.getRowCount() >= 1,
+                    "Tabla finalizar muestra los productos");
+
+            System.out.println("== [Pedido Rápido E2E] Paso 8: Probar tabla de pagos en Caja ==");
+            JTable tablaPagos = sistema.getTablaPagosFac();
+            JButton btnAgregarPago = (JButton) robot.campo(sistema, "btnAgregarPagoFac");
+            JButton btnQuitarPago = (JButton) robot.campo(sistema, "btnQuitarPagoFac");
+
+            robot.esperar(() -> tablaPagos.isShowing() && tablaPagos.getRowCount() >= 1,
+                    "Tabla de pagos visible con al menos 1 fila");
+            int filasIniciales = robot.edt(tablaPagos::getRowCount);
+
+            robot.clic(btnAgregarPago);
+            robot.esperar(() -> tablaPagos.getRowCount() == filasIniciales + 1,
+                    "Botón '+ Medio' agrega una fila de pago");
+
+            robot.clic(btnQuitarPago);
+            robot.esperar(() -> tablaPagos.getRowCount() == filasIniciales,
+                    "Botón '− Medio' remueve la fila de pago agregada");
+            System.out.println("OK   Tabla de pagos interactiva probada");
+
+            System.out.println("== [Pedido Rápido E2E] Paso 9: Cancelar / anular cuenta rápida por UI ==");
+            JButton btnAnularFuga = (JButton) robot.campo(sistema, "btnAnularFuga");
+            robot.clic(btnAnularFuga);
+            robot.llenarDialogoInput("Anular por Fuga / No Pagó", "Cancelación Pedido Rápido E2E");
+            robot.confirmarDialogo("Confirmar No-Pago (Fuga)");
+
+            robot.esperar(() -> tabs.getSelectedIndex() != 4,
+                    "Tras anular, el sistema sale de la pantalla de cobro");
+            System.out.println("OK   Pedido rápido cancelado limpiamente por UI");
+
+        } catch (Throwable error) {
+            fallo = error;
+        } finally {
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    for (Window w : Window.getWindows()) {
+                        w.dispose();
+                    }
+                });
+            } catch (Throwable errorLimpieza) {
+                if (fallo == null) fallo = errorLimpieza;
+                else fallo.addSuppressed(errorLimpieza);
+            }
+        }
+
+        if (fallo != null) {
+            System.err.println("E2E_PEDIDO_RAPIDO_FALLO: " + fallo.getMessage());
+            fallo.printStackTrace(System.err);
+            System.exit(1);
+        }
+
+        System.out.println("E2E_PEDIDO_RAPIDO_OK");
+        System.exit(0);
     }
 }

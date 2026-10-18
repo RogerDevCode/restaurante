@@ -1180,7 +1180,6 @@ public final class Sistema extends javax.swing.JFrame {
         if (jPanel6 == null || jScrollPane5 == null) {
             return;
         }
-        jPanel6.setLayout(null);
         jPanel6.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentResized(java.awt.event.ComponentEvent e) {
@@ -1196,8 +1195,11 @@ public final class Sistema extends javax.swing.JFrame {
         if (w <= 0 || h <= 0) {
             return;
         }
-        jScrollPane5.setBounds(40, 90, Math.max(300, w - 80), Math.max(200, h - 120));
-        jScrollPane5.validate();
+        if (jPanel6.getLayout() instanceof org.netbeans.lib.awtextra.AbsoluteLayout al) {
+            al.addLayoutComponent(jScrollPane5, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 90, Math.max(300, w - 80), Math.max(200, h - 120)));
+        } else {
+            jScrollPane5.setBounds(40, 90, Math.max(300, w - 80), Math.max(200, h - 120));
+        }
         jPanel6.setPreferredSize(new java.awt.Dimension(w, h));
         jPanel6.revalidate();
     }
@@ -10659,6 +10661,26 @@ public final class Sistema extends javax.swing.JFrame {
 
     public PanelAtencionMesasSplit getPanelSplitScreen() {
         return panelSplitScreen;
+    }
+
+    public javax.swing.JButton getBtnSala() {
+        return btnSala;
+    }
+
+    public javax.swing.JButton getBtnConfig() {
+        return btnConfig;
+    }
+
+    public javax.swing.JPanel getPanelSalas() {
+        return PanelSalas;
+    }
+
+    public javax.swing.JPanel getPanelTabsSalasDirecto() {
+        return panelTabsSalasDirecto;
+    }
+
+    public javax.swing.JPanel getPanelConmutadorModoGlobal() {
+        return panelConmutadorModoGlobal;
     }
 
     /** Id del usuario autenticado (0 si no hay); usado para preferencias por usuario. */

@@ -26,7 +26,7 @@ import javax.swing.table.DefaultTableModel;
  * Prueba de verificación integral para la visualización dual de totales
  * (Bolívares y Dólares) cuando intervienen platos con moneda principal en Bolívares (VES).
  */
-public class TotalesPlatosBolivaresE2E {
+public class TotalesPlatosBolivaresTest {
 
     public static void main(String[] args) {
         if (!"SI".equalsIgnoreCase(System.getProperty("e2e.permitir"))) {

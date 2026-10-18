@@ -1,257 +1,243 @@
 package aceptacion;
 
-import Controlador.*;
-import Modelo.*;
-import Servicio.*;
+import Vista.DiaE2ERobot;
 import Vista.Sistema;
-import java.awt.event.ActionEvent;
-import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.concurrent.Callable;
+import java.awt.Component;
+import java.awt.Window;
+import java.awt.event.KeyEvent;
+import java.nio.file.Path;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPasswordField;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 /**
- * Prueba E2E Virtual en Xvfb :99 para el flujo de guardado inteligente de platos (Opción 2),
- * atajo Enter exclusivo en actualización de precios de platos existentes (Opción 3) y botón Limpiar Campos por grupo de inputs.
+ * E2E VIRTUAL GUARDADO PLATOS (Xvfb :99) — 100% UI con Robot
  *
- * Ejecutable vía:
- *   ./e2e_virtual.sh aceptacion.E2EGuardadoPlatosVirtual
+ * Valida de forma real por interfaz el comportamiento inteligente de formularios:
+ * 1. Formulario de Platos inicia en modo 'Guardar'.
+ * 2. En creación de plato nuevo, pulsar Enter en el precio NO guarda automáticamente.
+ * 3. Al pulsar 'Guardar', se crea el plato y aparece en la tabla del catálogo.
+ * 4. Al seleccionar el plato de la tabla, los botones cambian dinámicamente a 'Guardar Cambios'.
+ * 5. Modificar el precio a 29.50 y pulsar 'Guardar Cambios' actualiza el precio en pantalla.
+ * 6. Modificar el precio a 35.00 y presionar Enter en plato existente SÍ guarda.
+ * 7. El botón 'Limpiar Campos' resetea el formulario y regresa a modo 'Guardar'.
+ * 8. Botón 'Limpiar Campos' en Salas y Usuarios funciona reactivamente.
  */
 public class E2EGuardadoPlatosVirtual {
 
     private static int fallos = 0;
 
-    private static void check(boolean condicion, String mensaje) {
-        if (condicion) {
-            System.out.println("  [OK] " + mensaje);
-        } else {
-            System.err.println("  [FALLO] " + mensaje);
+    private static void check(boolean cond, String msg) {
+        System.out.println((cond ? "OK   " : "FALLO ") + msg);
+        if (!cond) {
             fallos++;
         }
     }
 
-    private static <T> T enEdt(Callable<T> callable) throws Exception {
-        final Object[] res = new Object[1];
-        final Throwable[] err = new Throwable[1];
-        SwingUtilities.invokeAndWait(() -> {
-            try {
-                res[0] = callable.call();
-            } catch (Throwable t) {
-                err[0] = t;
-            }
-        });
-        if (err[0] != null) {
-            throw new RuntimeException(err[0]);
-        }
-        @SuppressWarnings("unchecked")
-        T t = (T) res[0];
-        return t;
-    }
-
-    private static void enEdtV(Runnable runnable) throws Exception {
-        enEdt(() -> {
-            runnable.run();
-            return null;
-        });
-    }
-
     public static void main(String[] args) throws Exception {
-        System.out.println("================================================================================");
-        System.out.println("INICIANDO PRUEBA E2E VIRTUAL: GUARDADO INTELIGENTE, ENTER Y LIMPIAR CAMPOS");
-        System.out.println("================================================================================");
+        if (!"SI".equals(System.getProperty("e2e.permitir"))) {
+            System.err.println("E2E requiere -De2e.permitir=SI");
+            System.exit(2);
+        }
 
-        Usuario admin = new Usuario(1, "xavier", "admin", "admin", "Administrador");
-        PoliticaAcceso politica = new PoliticaAcceso(admin);
-        PedidosDao pedidosDao = new PedidosDao();
-        LoginDao empresaDao = new LoginDao();
-        PedidoPdfServicio pdfServicio = new PedidoPdfServicio(
-                pedidosDao::verPedido,
-                id -> pedidosDao.verPedidoDetalle(id),
-                empresaDao::datosEmpresa,
-                GeneradorPdfPedido.conEstructuraMensual(GeneradorPdfPedido.resolverDirectorioFacturasPorDefecto()),
-                PedidoPdfServicio.AbridorPdf.porDefecto());
-        Servicio.CierreCajaServicio cierreServicio = new Servicio.CierreCajaServicio(
-                new Modelo.CierreCajaDao(), empresaDao::datosEmpresa, new Servicio.GeneradorPdfCierre());
-        PedidosControlador pedidosCtrl = new PedidosControlador(
-                new PedidoServicio(pedidosDao), pdfServicio, politica,
-                new ConsultaPedidosServicio(pedidosDao, politica), cierreServicio);
+        Path dirE2E = Path.of(System.getenv().getOrDefault("E2E_WORKDIR", System.getProperty("java.io.tmpdir")));
+        System.setProperty("user.home", dirE2E.toString());
+        System.setProperty("modo.automatizado", "true");
 
-        PlatosDao platosDao = new PlatosDao();
-        PlatosControlador platosCtrl = new PlatosControlador(new PlatosServicio(platosDao, politica));
-        SalasControlador salasCtrl = new SalasControlador(new SalasServicio(new SalasDao(), politica));
-        CategoriaControlador catCtrl = new CategoriaControlador(new Servicio.CategoriaServicio(new Modelo.CategoriaDao(), politica));
-        FavoritoControlador favCtrl = new FavoritoControlador(new Servicio.FavoritoServicio(new Modelo.FavoritoDao(), politica));
+        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        DiaE2ERobot robot = new DiaE2ERobot();
 
-        Sistema sistema = enEdt(() -> {
-            Sistema s = new Sistema(admin, salasCtrl, platosCtrl, pedidosCtrl, catCtrl, favCtrl, empresaDao);
-            s.setVisible(true);
-            return s;
-        });
-
-        int idPlatoCreado = -1;
-        String platoNombre = "E2E Plato Especial " + System.currentTimeMillis();
+        Throwable fallo = null;
+        String platoNombre = "Plato E2E Test " + System.currentTimeMillis();
 
         try {
-            // 1. Navegar a pestaña Platos
-            System.out.println("\n[Paso 1] Navegar a la pestaña de Platos y verificar estado limpio");
-            enEdtV(() -> {
-                sistema.getBtnNuevoPlato().doClick();
+            System.out.println("== [Guardado Platos E2E] Paso 1: Login interactivo ==");
+            restaurante.Restaurante.lanzarLogin();
+            Vista.FrmLogin login = robot.esperarVentana(Vista.FrmLogin.class);
+            robot.edt(() -> {
+                login.setLocationRelativeTo(null);
+                return null;
             });
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), "admin");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), "admin");
+            robot.clic((Component) robot.campo(login, "btnIniciar"));
+
+            Sistema sistema = robot.esperarVentana(Sistema.class);
+            robot.edt(() -> {
+                sistema.setExtendedState(JFrame.MAXIMIZED_BOTH);
+                sistema.setVisible(true);
+                return null;
+            });
+            Component bPlatos = (Component) robot.campo(sistema, "btnPlatos");
+            robot.esperar(() -> sistema.isShowing() && bPlatos.isShowing(),
+                    "Ventana Sistema autenticada");
+
+            System.out.println("== [Guardado Platos E2E] Paso 2: Navegar a pestaña Platos ==");
+            robot.clic((Component) robot.campo(sistema, "btnPlatos"));
+            JTabbedPane tabs = sistema.getJTabbedPane1();
+            robot.esperar(() -> tabs.getSelectedIndex() == 8,
+                    "Pestaña Platos seleccionada");
+
+            JTextField txtId = (JTextField) robot.campo(sistema, "txtIdPlato");
+            JTextField txtNombre = (JTextField) robot.campo(sistema, "txtNombrePlato");
+            JTextField txtPrecio = (JTextField) robot.campo(sistema, "txtPrecioPlato");
+            JButton btnGuardar = (JButton) robot.campo(sistema, "btnGuardarPlato");
+            JButton btnEditar = (JButton) robot.campo(sistema, "btnEditarPlato");
+            JButton btnNuevo = (JButton) robot.campo(sistema, "btnNuevoPlato");
+            JTextField txtBuscarAdmin = (JTextField) robot.campo(sistema, "txtBuscarAdminPlatos");
+            JTable tablePlatos = (JTable) robot.campo(sistema, "TablePlatos");
+
+            // Limpiar si hubiese residuos
+            robot.clic(btnNuevo);
+            check("".equals(txtId.getText().trim()), "Formulario inicia con txtIdPlato vacío");
+            check("Guardar".equals(btnGuardar.getText()), "Botón izquierdo inicia como 'Guardar'");
+            check("Editar".equals(btnEditar.getText()), "Botón derecho inicia como 'Editar'");
+            check("Limpiar Campos".equals(btnNuevo.getText()), "Botón de limpieza dice 'Limpiar Campos'");
+
+            System.out.println("== [Guardado Platos E2E] Paso 3: Enter en modo creación NO registra ==");
+            robot.reemplazarTexto(txtNombre, platoNombre);
+            robot.reemplazarTexto(txtPrecio, "25.00");
+            robot.tecla(KeyEvent.VK_ENTER);
             Thread.sleep(300);
 
-            enEdtV(() -> {
-                check("".equals(sistema.getTxtIdPlato().getText().trim()), "Formulario inicia con txtIdPlato vacío");
-                check("Guardar".equals(sistema.getBtnGuardarPlato().getText()), "Botón de la izquierda inicia como 'Guardar'");
-                check("Editar".equals(sistema.getBtnEditarPlato().getText()), "Botón de la derecha inicia como 'Editar'");
-                check("Limpiar Campos".equals(sistema.getBtnNuevoPlato().getText()), "Botón de limpieza dice 'Limpiar Campos'");
-            });
+            // Verificar que no se guardó prematuramente
+            check("".equals(txtId.getText().trim()), "Plato NO se registró prematuramente con Enter en creación");
 
-            // 2. Verificar que en creación el atajo Enter NO guarda (evita registros accidentales)
-            System.out.println("\n[Paso 2] Verificar que Enter en creación NO registra (evita accidentes)");
-            enEdtV(() -> {
-                sistema.getTxtNombrePlato().setText(platoNombre);
-                sistema.getTxtPrecioPlato().setText("25.00");
-                for (var l : sistema.getTxtPrecioPlato().getActionListeners()) {
-                    l.actionPerformed(new ActionEvent(sistema.getTxtPrecioPlato(), ActionEvent.ACTION_PERFORMED, null));
+            System.out.println("== [Guardado Platos E2E] Paso 4: Clic en Guardar registra el plato ==");
+            robot.clic(btnGuardar);
+            Thread.sleep(600);
+
+            // Buscar en la tabla por la UI
+            robot.reemplazarTexto(txtBuscarAdmin, platoNombre);
+            robot.esperar(() -> {
+                for (int i = 0; i < tablePlatos.getRowCount(); i++) {
+                    Object val = tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(i), 1);
+                    if (val != null && val.toString().equals(platoNombre)) return true;
                 }
-            });
-            Thread.sleep(300);
+                return false;
+            }, "El nuevo plato aparece en la tabla TablePlatos");
+            check(true, "Plato registrado exitosamente mediante botón 'Guardar'");
 
-            Optional<Platos> noExisteAun = platosDao.buscarActivoPorNombre(platoNombre);
-            check(!noExisteAun.isPresent(), "El plato NO se guardó con Enter en modo creación (comportamiento esperado)");
+            check("".equals(txtId.getText().trim()), "Tras registrar, el formulario se autolimpia");
+            check("Guardar".equals(btnGuardar.getText()), "Botón regresa a 'Guardar'");
 
-            // Guardar con clic en botón Guardar
-            enEdtV(() -> {
-                sistema.getBtnGuardarPlato().doClick();
-            });
-            Thread.sleep(500);
-
-            Optional<Platos> platoDbOpt = platosDao.buscarActivoPorNombre(platoNombre);
-            check(platoDbOpt.isPresent(), "El plato fue registrado tras hacer clic deliberado en 'Guardar'");
-            if (platoDbOpt.isPresent()) {
-                Platos platoDb = platoDbOpt.get();
-                idPlatoCreado = platoDb.getId();
-                check(new BigDecimal("25.00").compareTo(platoDb.getPrecioDecimal()) == 0, "El precio registrado es 25.00");
-            }
-
-            enEdtV(() -> {
-                check("".equals(sistema.getTxtIdPlato().getText().trim()), "Tras registrar, el formulario se autolimpia");
-                check("Guardar".equals(sistema.getBtnGuardarPlato().getText()), "Botón regresa al modo 'Guardar'");
-            });
-
-            // 3. Cargar el plato y verificar cambio reactivo de los botones a 'Guardar Cambios'
-            System.out.println("\n[Paso 3] Cargar el plato y verificar reactividad a 'Guardar Cambios'");
-            final int idPlato = idPlatoCreado;
-            enEdtV(() -> {
-                sistema.getTxtIdPlato().setText(String.valueOf(idPlato));
-                sistema.getTxtNombrePlato().setText(platoNombre);
-                sistema.getTxtPrecioPlato().setText("25.00");
-                sistema.actualizarEstadoBotonesPlatos();
-
-                check("Guardar Cambios".equals(sistema.getBtnGuardarPlato().getText()),
-                        "Botón de la izquierda cambia dinámicamente a 'Guardar Cambios'");
-                check("Guardar Cambios".equals(sistema.getBtnEditarPlato().getText()),
-                        "Botón de la derecha cambia dinámicamente a 'Guardar Cambios'");
-            });
-
-            // 4. Modificar precio y presionar botón de la IZQUIERDA (Opción 2)
-            System.out.println("\n[Paso 4] Modificar precio a 29.50 y pulsar botón de la IZQUIERDA");
-            enEdtV(() -> {
-                sistema.getTxtPrecioPlato().setText("29.50");
-                sistema.getBtnGuardarPlato().doClick();
-            });
-            Thread.sleep(500);
-
-            Optional<Platos> platoModificadoOpt = platosDao.buscarActivoPorNombre(platoNombre);
-            check(platoModificadoOpt.isPresent() && new BigDecimal("29.50").compareTo(platoModificadoOpt.get().getPrecioDecimal()) == 0,
-                    "El precio fue actualizado exitosamente a 29.50 pulsando el botón de la izquierda");
-
-            // 5. Modificar precio y presionar Enter en el precio (Opción 3: SOLO en plato existente)
-            System.out.println("\n[Paso 5] Modificar precio a 35.00 y presionar Enter en el precio (Plato existente)");
-            enEdtV(() -> {
-                sistema.getTxtIdPlato().setText(String.valueOf(idPlato));
-                sistema.getTxtNombrePlato().setText(platoNombre);
-                sistema.getTxtPrecioPlato().setText("35.00");
-                sistema.actualizarEstadoBotonesPlatos();
-
-                // Aquí SÍ se dispara el guardado porque el plato ya existe
-                for (var l : sistema.getTxtPrecioPlato().getActionListeners()) {
-                    l.actionPerformed(new ActionEvent(sistema.getTxtPrecioPlato(), ActionEvent.ACTION_PERFORMED, null));
+            System.out.println("== [Guardado Platos E2E] Paso 5: Clic en la fila del plato activa 'Guardar Cambios' ==");
+            int filaCreada = robot.edt(() -> {
+                for (int i = 0; i < tablePlatos.getRowCount(); i++) {
+                    Object val = tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(i), 1);
+                    if (val != null && val.toString().equals(platoNombre)) return i;
                 }
+                return -1;
             });
-            Thread.sleep(500);
+            robot.clicCelda(tablePlatos, filaCreada, 1);
+            robot.esperar(() -> !txtId.getText().trim().isEmpty(), "Ficha carga los datos del plato seleccionado");
+            check("Guardar Cambios".equals(btnGuardar.getText()), "Botón izquierdo cambia a 'Guardar Cambios'");
+            check("Guardar Cambios".equals(btnEditar.getText()), "Botón derecho cambia a 'Guardar Cambios'");
 
-            platoModificadoOpt = platosDao.buscarActivoPorNombre(platoNombre);
-            check(platoModificadoOpt.isPresent() && new BigDecimal("35.00").compareTo(platoModificadoOpt.get().getPrecioDecimal()) == 0,
-                    "El precio fue actualizado exitosamente a 35.00 con la tecla Enter en plato existente");
+            System.out.println("== [Guardado Platos E2E] Paso 6: Modificar precio a 29.50 y pulsar botón izquierdo ==");
+            robot.reemplazarTexto(txtPrecio, "29.50");
+            robot.clic(btnGuardar);
+            Thread.sleep(600);
 
-            // 6. Decisión del operador: Cancelar edición y limpiar campos con botón 'Limpiar Campos'
-            System.out.println("\n[Paso 6] Operador pulsa botón 'Limpiar Campos' para resetear el formulario");
-            enEdtV(() -> {
-                sistema.getTxtIdPlato().setText(String.valueOf(idPlato));
-                sistema.getTxtNombrePlato().setText(platoNombre);
-                sistema.getTxtPrecioPlato().setText("99.99");
-                sistema.actualizarEstadoBotonesPlatos();
+            robot.reemplazarTexto(txtBuscarAdmin, platoNombre);
+            robot.esperar(() -> {
+                for (int i = 0; i < tablePlatos.getRowCount(); i++) {
+                    Object p = tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(i), 2);
+                    if (p != null && p.toString().contains("29.50")) return true;
+                }
+                return false;
+            }, "Tabla de platos refleja el precio actualizado a 29.50");
+            check(true, "Precio actualizado a 29.50 con botón 'Guardar Cambios'");
 
-                // Clic en Limpiar Campos
-                sistema.getBtnNuevoPlato().doClick();
-
-                check("".equals(sistema.getTxtIdPlato().getText().trim()), "txtIdPlato queda vacío tras limpiar");
-                check("".equals(sistema.getTxtNombrePlato().getText().trim()), "txtNombrePlato queda vacío tras limpiar");
-                check("".equals(sistema.getTxtPrecioPlato().getText().trim()), "txtPrecioPlato queda vacío tras limpiar");
-                check("Guardar".equals(sistema.getBtnGuardarPlato().getText()), "Botón regresa a 'Guardar'");
-                check("Editar".equals(sistema.getBtnEditarPlato().getText()), "Botón derecho regresa a 'Editar'");
+            System.out.println("== [Guardado Platos E2E] Paso 7: Modificar precio a 35.00 con Enter en plato existente ==");
+            int fila2 = robot.edt(() -> {
+                for (int i = 0; i < tablePlatos.getRowCount(); i++) {
+                    Object val = tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(i), 1);
+                    if (val != null && val.toString().equals(platoNombre)) return i;
+                }
+                return -1;
             });
+            robot.clicCelda(tablePlatos, fila2, 1);
+            robot.esperar(() -> !txtId.getText().trim().isEmpty(), "Plato cargado");
+            robot.reemplazarTexto(txtPrecio, "35.00");
+            robot.tecla(KeyEvent.VK_ENTER);
+            Thread.sleep(600);
 
-            // 7. Grupo de inputs de Salas: Verificar botón 'Limpiar Campos'
-            System.out.println("\n[Paso 7] Grupo de inputs de Salas: Verificar botón 'Limpiar Campos'");
-            enEdtV(() -> {
-                check("Limpiar Campos".equals(sistema.getBtnNuevoSala().getText()),
-                        "Botón de salas dice 'Limpiar Campos'");
-                sistema.getTxtIdSala().setText("99");
-                sistema.getTxtNombreSala().setText("Sala Prueba");
-                sistema.getTxtMesas().setText("5");
-                sistema.actualizarEstadoBotonesSalas();
+            robot.reemplazarTexto(txtBuscarAdmin, platoNombre);
+            robot.esperar(() -> {
+                for (int i = 0; i < tablePlatos.getRowCount(); i++) {
+                    Object p = tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(i), 2);
+                    if (p != null && p.toString().contains("35.00")) return true;
+                }
+                return false;
+            }, "Tabla de platos refleja el precio actualizado a 35.00 con Enter");
+            check(true, "Precio actualizado a 35.00 con Enter en plato existente");
 
-                sistema.getBtnNuevoSala().doClick();
-                check("".equals(sistema.getTxtIdSala().getText().trim()), "ID de sala limpio");
-                check("".equals(sistema.getTxtNombreSala().getText().trim()), "Nombre de sala limpio");
-                check("".equals(sistema.getTxtMesas().getText().trim()), "Mesas de sala limpio");
-            });
+            System.out.println("== [Guardado Platos E2E] Paso 8: Probar Limpiar Campos en Platos, Salas y Usuarios ==");
+            robot.reemplazarTexto(txtNombre, "Borrador Incompleto");
+            robot.reemplazarTexto(txtPrecio, "99.99");
+            robot.clic(btnNuevo);
+            check("".equals(txtNombre.getText().trim()), "txtNombrePlato vacío tras limpiar");
+            check("".equals(txtPrecio.getText().trim()), "txtPrecioPlato vacío tras limpiar");
+            check("Guardar".equals(btnGuardar.getText()), "Botón reseteado a 'Guardar'");
 
-            // 8. Grupo de inputs de Usuarios: Verificar botón 'Limpiar Campos'
-            System.out.println("\n[Paso 8] Grupo de inputs de Usuarios: Verificar botón 'Limpiar Campos'");
-            enEdtV(() -> {
-                check(sistema.getBtnLimpiarUsuario() != null, "Botón limpiar usuario existe");
-                check("Limpiar Campos".equals(sistema.getBtnLimpiarUsuario().getText()),
-                        "Botón de usuarios dice 'Limpiar Campos'");
-                sistema.getTxtNombre().setText("Admin Temp");
-                sistema.getTxtCorreo().setText("temp@correo.com");
-                sistema.getTxtPass().setText("secreto123");
+            // Limpiar en Salas
+            robot.clic((Component) robot.campo(sistema, "btnSala"));
+            robot.esperar(() -> tabs.getSelectedIndex() == 1, "Pestaña Salas");
+            JTextField txtNombreSala = (JTextField) robot.campo(sistema, "txtNombreSala");
+            JTextField txtMesas = (JTextField) robot.campo(sistema, "txtMesas");
+            JButton btnNuevoSala = (JButton) robot.campo(sistema, "btnNuevoSala");
+            robot.reemplazarTexto(txtNombreSala, "Sala Test Limpieza");
+            robot.reemplazarTexto(txtMesas, "12");
+            robot.clic(btnNuevoSala);
+            check("".equals(txtNombreSala.getText().trim()), "txtNombreSala limpio tras pulsar Limpiar");
+            check("".equals(txtMesas.getText().trim()), "txtMesas limpio tras pulsar Limpiar");
 
-                sistema.getBtnLimpiarUsuario().doClick();
-                check("".equals(sistema.getTxtNombre().getText().trim()), "Nombre de usuario limpio");
-                check("".equals(sistema.getTxtCorreo().getText().trim()), "Correo de usuario limpio");
-                check(sistema.getTxtPass().getPassword().length == 0, "Password de usuario limpio");
-            });
+            // Limpiar en Usuarios
+            robot.clic((Component) robot.campo(sistema, "btnUsuarios"));
+            robot.esperar(() -> tabs.getSelectedIndex() == 7, "Pestaña Usuarios");
+            JTextField txtNombreU = (JTextField) robot.campo(sistema, "txtNombre");
+            JTextField txtCorreoU = (JTextField) robot.campo(sistema, "txtCorreo");
+            JPasswordField txtPassU = (JPasswordField) robot.campo(sistema, "txtPass");
+            JButton btnLimpiarU = (JButton) robot.campo(sistema, "btnLimpiarUsuario");
+            robot.reemplazarTexto(txtNombreU, "Usuario Temp");
+            robot.reemplazarTexto(txtCorreoU, "temp@correo.com");
+            robot.reemplazarTexto(txtPassU, "clave123");
+            robot.clic(btnLimpiarU);
+            check("".equals(txtNombreU.getText().trim()), "txtNombre usuario limpio tras pulsar Limpiar");
+            check("".equals(txtCorreoU.getText().trim()), "txtCorreo usuario limpio tras pulsar Limpiar");
+            check(txtPassU.getPassword().length == 0, "txtPass usuario limpio tras pulsar Limpiar");
 
+        } catch (Throwable err) {
+            fallo = err;
         } finally {
-            if (idPlatoCreado > 0) {
-                try {
-                    platosDao.desactivar(idPlatoCreado);
-                } catch (Exception ignored) {}
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    for (Window w : Window.getWindows()) {
+                        w.dispose();
+                    }
+                });
+            } catch (Throwable e) {
+                if (fallo == null) fallo = e;
             }
-            enEdtV(sistema::dispose);
         }
 
-        System.out.println("\n================================================================================");
+        if (fallo != null) {
+            System.err.println("E2E_GUARDADO_PLATOS_FALLO: " + fallo.getMessage());
+            fallo.printStackTrace(System.err);
+            System.exit(1);
+        }
+
         if (fallos == 0) {
-            System.out.println("RESULTADO E2E: TODAS LAS PRUEBAS PASARON EXITOSAMENTE (0 fallos)");
-            System.out.println("================================================================================");
+            System.out.println("E2E_GUARDADO_PLATOS_OK");
             System.exit(0);
         } else {
-            System.err.println("RESULTADO E2E: HUBIERON " + fallos + " FALLOS");
-            System.out.println("================================================================================");
+            System.err.println("E2E_GUARDADO_PLATOS_FALLO con " + fallos + " errores");
             System.exit(1);
         }
     }

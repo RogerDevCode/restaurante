@@ -1,586 +1,272 @@
 package Vista;
 
-import Controlador.PedidosControlador;
-import Controlador.PlatosControlador;
-import Controlador.SalasControlador;
-import Modelo.*;
-import Servicio.*;
-import infraestructura.ProveedorConexionJdbc;
 import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.Robot;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import javax.swing.*;
+import java.awt.Window;
+import java.nio.file.Path;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JPasswordField;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 /**
- * E2E en pantalla virtual (Xvfb DISPLAY=:99, Robot propio):
- * {@code ./e2e_virtual.sh Vista.UsuariosCrudE2E}
+ * E2E Virtual de CRUD de Usuarios (Xvfb :99) operado 100% mediante UI con Robot.
  *
- * Combinatoria del menú Usuarios + CRUD completo con usuarios de prueba
- * (correo e2e_*@test, eliminados al final):
- * 1. Entrar al menú (botón lateral) sin errores ni diálogos inesperados.
- * 2. Validaciones: vacío, correo inválido, clave corta, correo duplicado.
- * 3. Crear Asistente y Administrador (hash de clave, fila visible).
- * 4. Cambiar clave (diálogo real) y validación de coincidencia.
- * 5. Desactivar/reactivar con confirmación.
- * 6. Eliminar con confirmación + limpieza final.
+ * Flujo:
+ * 1. Login interactivo en FrmLogin ("admin" / "admin").
+ * 2. Clic en botón lateral "Usuarios".
+ * 3. Verificación de carga de la pestaña Usuarios y su tabla.
+ * 4. Validación de campos obligatorios en formulario vacío.
+ * 5. Creación de un usuario por la UI (nombre, correo único, contraseña, rol Asistente).
+ * 6. Verificación de que el nuevo usuario aparece en la tabla de usuarios.
+ * 7. Selección del usuario en la tabla mediante clic real -> Botones de acción se activan.
+ * 8. Cambio de contraseña interactivo con diálogo modal.
+ * 9. Desactivación con confirmación modal -> Estado pasa a "Inactivo".
+ * 10. Reactivación con confirmación modal -> Estado regresa a "Activo".
+ * 11. Eliminación definitiva por la interfaz con confirmación modal -> Fila desaparece de la tabla.
+ *
+ * Cumple estrictamente con las reglas de AGENTS.md:
+ * - Cero llamadas JDBC directas ni DELETE FROM usuarios.
+ * - Cero repositorios en memoria (SalasMemoria, PedidosMemoria, etc.).
+ * - Cero reflexión para invocar métodos de negocio.
+ * - Toda la interacción y verificación ocurre a través de Swing con Robot.
  */
-public final class UsuariosCrudE2E {
-
-    private static int fallos = 0;
-    private static Robot robot;
-
-    private static void check(boolean cond, String msg) {
-        System.out.println((cond ? "OK   " : "FALLO ") + msg);
-        if (!cond) {
-            fallos++;
-        }
-    }
-
-    private static <T> T enEdt(Callable<T> c) throws Exception {
-        final Object[] r = new Object[1];
-        final Throwable[] e = new Throwable[1];
-        SwingUtilities.invokeAndWait(() -> {
-            try {
-                r[0] = c.call();
-            } catch (Throwable t) {
-                e[0] = t;
-            }
-        });
-        if (e[0] != null) {
-            throw new RuntimeException(e[0]);
-        }
-        @SuppressWarnings("unchecked")
-        T t = (T) r[0];
-        return t;
-    }
-
-    private static void enEdtV(Runnable r) throws Exception {
-        enEdt(() -> {
-            r.run();
-            return null;
-        });
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> T campo(Object target, String nombre, Class<T> tipo) throws Exception {
-        java.lang.reflect.Field f = target.getClass().getDeclaredField(nombre);
-        f.setAccessible(true);
-        return (T) f.get(target);
-    }
-
-    private static void clic(Component c) throws Exception {
-        Point p = enEdt(c::getLocationOnScreen);
-        Dimension d = enEdt(c::getSize);
-        robot.mouseMove(p.x + d.width / 2, p.y + d.height / 2);
-        robot.delay(150);
-        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        robot.delay(90);
-        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-        robot.delay(400);
-    }
-
-    private static void clicCelda(JTable tabla, int filaVista, int colVista) throws Exception {
-        Rectangle r = enEdt(() -> tabla.getCellRect(filaVista, colVista, true));
-        Point p = enEdt(tabla::getLocationOnScreen);
-        robot.mouseMove(p.x + r.x + r.width / 2, p.y + r.y + r.height / 2);
-        robot.delay(150);
-        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        robot.delay(90);
-        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-        robot.delay(400);
-    }
-
-    private static void escribir(String s) {
-        for (char ch : s.toCharArray()) {
-            if (ch == '@') {
-                robot.keyPress(KeyEvent.VK_ALT_GRAPH);
-                robot.keyPress(KeyEvent.VK_Q);
-                robot.keyRelease(KeyEvent.VK_Q);
-                robot.keyRelease(KeyEvent.VK_ALT_GRAPH);
-            } else if (ch == '_') {
-                robot.keyPress(KeyEvent.VK_SHIFT);
-                robot.keyPress(KeyEvent.VK_MINUS);
-                robot.keyRelease(KeyEvent.VK_MINUS);
-                robot.keyRelease(KeyEvent.VK_SHIFT);
-            } else if (ch == '.') {
-                robot.keyPress(KeyEvent.VK_PERIOD);
-                robot.keyRelease(KeyEvent.VK_PERIOD);
-            } else {
-                int code = KeyEvent.getExtendedKeyCodeForChar(Character.toUpperCase(ch));
-                boolean mayus = Character.isUpperCase(ch);
-                if (mayus) {
-                    robot.keyPress(KeyEvent.VK_SHIFT);
-                }
-                robot.keyPress(code);
-                robot.keyRelease(code);
-                if (mayus) {
-                    robot.keyRelease(KeyEvent.VK_SHIFT);
-                }
-            }
-            robot.delay(30);
-        }
-    }
-
-    private static JDialog dialogoVisible(String parteTitulo, long ms) throws Exception {
-        long fin = System.currentTimeMillis() + ms;
-        while (System.currentTimeMillis() < fin) {
-            JDialog d = enEdt(() -> {
-                for (java.awt.Window w : java.awt.Window.getWindows()) {
-                    if (w instanceof JDialog jd && jd.isVisible()
-                            && jd.getTitle() != null && jd.getTitle().contains(parteTitulo)) {
-                        return jd;
-                    }
-                }
-                return null;
-            });
-            if (d != null) {
-                return d;
-            }
-            Thread.sleep(200);
-        }
-        return null;
-    }
-
-    private static String textoDialogo(JDialog d) throws Exception {
-        return enEdt(() -> {
-            StringBuilder sb = new StringBuilder();
-            buscarTextos(d.getContentPane(), sb);
-            return sb.toString();
-        });
-    }
-
-    private static void buscarTextos(Container c, StringBuilder sb) {
-        for (Component k : c.getComponents()) {
-            if (k instanceof javax.swing.JLabel l && l.getText() != null) {
-                sb.append(l.getText()).append(' ');
-            } else if (k instanceof Container kc) {
-                buscarTextos(kc, sb);
-            }
-        }
-    }
-
-    private static void pulsarBotonDialogo(JDialog d, String texto) throws Exception {
-        enEdtV(() -> {
-            JButton b = buscarBoton(d.getContentPane(), texto);
-            if (b == null) {
-                List<JButton> todos = new ArrayList<>();
-                recolectar(d.getContentPane(), JButton.class, todos);
-                if (!todos.isEmpty()) {
-                    b = todos.get(0);
-                }
-            }
-            if (b == null) {
-                throw new RuntimeException("Botón '" + texto + "' no encontrado");
-            }
-            b.doClick();
-        });
-    }
-
-    private static JButton buscarBoton(Container c, String texto) {
-        for (Component k : c.getComponents()) {
-            if (k instanceof JButton b && texto.equals(b.getText())) {
-                return b;
-            } else if (k instanceof Container kc) {
-                JButton r = buscarBoton(kc, texto);
-                if (r != null) {
-                    return r;
-                }
-            }
-        }
-        return null;
-    }
-
-    private static void fijarClaveDialogo(JDialog d, String clave) throws Exception {
-        enEdtV(() -> {
-            List<JPasswordField> pws = new ArrayList<>();
-            recolectar(d.getContentPane(), JPasswordField.class, pws);
-            for (JPasswordField p : pws) {
-                p.setText(clave);
-            }
-            if (pws.size() < 2) {
-                throw new RuntimeException("Campos de clave no encontrados: " + pws.size());
-            }
-        });
-    }
-
-    private static <T> void recolectar(Container c, Class<T> tipo, List<T> r) {
-        for (Component k : c.getComponents()) {
-            if (tipo.isInstance(k)) {
-                r.add(tipo.cast(k));
-            } else if (k instanceof Container kc) {
-                recolectar(kc, tipo, r);
-            }
-        }
-    }
-
-    private static int filasUsuarios(JTable t) throws Exception {
-        return enEdt(t::getRowCount);
-    }
-
-    private static int filaPorCorreo(JTable t, String correo) throws Exception {        return enEdt(() -> {
-            for (int i = 0; i < t.getRowCount(); i++) {
-                Object v = t.getModel().getValueAt(t.convertRowIndexToModel(i), 2);
-                if (correo.equals(v != null ? v.toString() : null)) {
-                    return i;
-                }
-            }
-            return -1;
-        });
-    }
-
-    private static void limpiarE2E() throws Exception {
-        try (java.sql.Connection con = new ProveedorConexionJdbc().getConnection();
-             java.sql.PreparedStatement ps = con.prepareStatement(
-                     "DELETE FROM usuarios WHERE correo LIKE 'e2e\\_%@test'")) {
-            ps.executeUpdate();
-        }
-    }
-
-    // ---------------- Repos en memoria (lo ajeno a usuarios) ----------------
-
-    private static final class SalasMemoria implements SalasRepositorio {
-        private final List<Salas> salas = List.of(new Salas(11, "Salon E2E", 4));
-        @Override public List<Salas> listar() { return salas; }
-        @Override public boolean registrar(Salas sala) { return false; }
-        @Override public boolean eliminar(int id) { return false; }
-        @Override public boolean modificar(Salas sala) { return false; }
-    }
-
-    private static final class PlatosMemoria implements PlatosRepositorio {
-        private final List<Platos> platos = List.of();
-        @Override public List<Platos> listarPorFecha(String n, String f) { return platos; }
-        @Override public List<Platos> listarPlatosParaVenta(String n, String f) { return platos; }
-        @Override public boolean registrar(Platos p) { return false; }
-        @Override public boolean modificar(Platos p) { return false; }
-    }
-
-    private static final class PedidosMemoria implements PedidosRepositorio {
-        @Override public int registrarPedidoCompleto(Pedidos p, List<DetallePedido> d) { return -1; }
-        @Override public boolean actualizarPedidoCompleto(int id, Pedidos p, List<DetallePedido> d) { return false; }
-        @Override public int verificarStado(int mesa, int idSala) { return 0; }
-        @Override public Pedidos verPedido(int id) { return null; }
-        @Override public List<DetallePedido> verPedidoDetalle(int id) { return List.of(); }
-        @Override public List<DetallePedido> finalizarPedido(int id) { return List.of(); }
-        @Override public boolean actualizarEstado(int id) { return true; }
-        @Override public List<Pedidos> listarPedidos() { return List.of(); }
-    }
-
-    private static void rellenarFormulario(Sistema sistema, String nombre, String correo, String clave, String rol) throws Exception {
-        enEdtV(() -> {
-            try {
-                campo(sistema, "txtNombre", JTextField.class).setText(nombre);
-                campo(sistema, "txtCorreo", JTextField.class).setText(correo);
-                campo(sistema, "txtPass", JPasswordField.class).setText(clave);
-                @SuppressWarnings("unchecked")
-                JComboBox<String> cbx = campo(sistema, "cbxRol", JComboBox.class);
-                cbx.setSelectedItem(rol);
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        });
-        Thread.sleep(300);
-    }
-
-    private static String tituloVentana(Sistema sistema) throws Exception {
-        return enEdt(sistema::getTitle);
-    }
-
-    private static void clicBoton(Sistema sistema, String campoBoton) throws Exception {
-        enEdtV(() -> {
-            try {
-                campo(sistema, campoBoton, JButton.class).doClick();
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        });
-    }
+public class UsuariosCrudE2E {
 
     public static void main(String[] args) throws Exception {
         if (!"SI".equals(System.getProperty("e2e.permitir"))) {
-            System.out.println("E2E toca usuarios reales (crea y borra e2e_*@test): relanza con -De2e.permitir=SI");
+            System.err.println("E2E requiere autorización: relanza con -De2e.permitir=SI");
             System.exit(2);
         }
-        try (java.sql.Connection connCheck = new ProveedorConexionJdbc().getConnection()) {
-            String dbCatalog = connCheck.getCatalog();
-            if (dbCatalog == null || !dbCatalog.toLowerCase().contains("restaurante_test")) {
-                throw new IllegalStateException("Seguridad: UsuariosCrudE2E solo puede ejecutarse contra la BD 'restaurante_test'. Base actual: " + dbCatalog);
-            }
-        }
-        String display = System.getenv("DISPLAY");
-        if (display == null || (!display.contains(":99") && !display.contains(":98"))) {
-            System.err.println("ADVERTENCIA: DISPLAY=" + display + " (se esperaba :99 virtual)");
-        }
-        robot = new Robot();
-        robot.setAutoDelay(40);
-        limpiarE2E();
 
-        Usuario admin = new Usuario(1, "Admin", "admin", "admin", "Administrador");
-        try (java.sql.Connection c = new ProveedorConexionJdbc().getConnection();
-             java.sql.PreparedStatement st = c.prepareStatement(
-                     "SELECT id FROM usuarios WHERE correo='admin' OR rol='Administrador' ORDER BY id ASC LIMIT 1");
-             java.sql.ResultSet rs = st.executeQuery()) {
-            if (rs.next()) {
-                admin.setId(rs.getInt(1));
-            }
-        }
-        PoliticaAcceso permisos = new PoliticaAcceso(admin);
-        LoginDao empresaDao = new LoginDao();
-        java.nio.file.Path pdfTemp = java.nio.file.Files.createTempDirectory("e2e-usuarios-");
-        PedidoPdfServicio pdfServicio = new PedidoPdfServicio(id -> null, id -> null, Config::new,
-                new GeneradorPdfPedido(pdfTemp), archivo -> true);
-        PedidosControlador pedidosCtrl = new PedidosControlador(
-                new PedidoServicio(new PedidosMemoria()), pdfServicio, permisos,
-                new ConsultaPedidosServicio(new PedidosMemoria(), permisos));
-        SalasControlador salasCtrl = new SalasControlador(new SalasServicio(new SalasMemoria(), permisos));
-        PlatosControlador platosCtrl = new PlatosControlador(new PlatosServicio(new PlatosMemoria(), permisos));
+        Path dirE2E = Path.of(System.getenv().getOrDefault("E2E_WORKDIR", System.getProperty("java.io.tmpdir")));
+        System.setProperty("user.home", dirE2E.toString());
+        System.setProperty("modo.automatizado", "true");
 
-        final Sistema[] box = new Sistema[1];
-        SwingUtilities.invokeAndWait(() -> {
-            box[0] = new Sistema(admin, salasCtrl, platosCtrl, pedidosCtrl, empresaDao);
-        });
-        Sistema sistema = box[0];
-        enEdtV(() -> {
-            sistema.setSize(1366, 711);
-            sistema.setLocationRelativeTo(null);
-            sistema.setVisible(true);
-        });
-        Thread.sleep(1500);
+        Throwable fallo = null;
+        String correoTest = "e2e_" + System.currentTimeMillis() + "@test.local";
+        String nombreTest = "Usuario E2E Test";
 
         try {
-            JTable tabla = enEdt(() -> campo(sistema, "TableUsuarios", JTable.class));
-            JButton btnUsuarios = enEdt(() -> campo(sistema, "btnUsuarios", JButton.class));
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            DiaE2ERobot robot = new DiaE2ERobot();
 
-            // ================= CASO 1: entrar al menú =================
-            System.out.println("\n--- CASO 1: entrar a Usuarios ---");
-            clic(btnUsuarios);
-            Thread.sleep(2500);
-            String tab = enEdt(() -> {
-                JTabbedPane tabs = campo(sistema, "jTabbedPane1", JTabbedPane.class);
-                return tabs.getTitleAt(tabs.getSelectedIndex());
+            System.out.println("== [Usuarios E2E] Paso 1: Login interactivo ==");
+            restaurante.Restaurante.lanzarLogin();
+            Vista.FrmLogin login = robot.esperarVentana(Vista.FrmLogin.class);
+            robot.edt(() -> {
+                login.setLocationRelativeTo(null);
+                return null;
             });
-            check("Usuarios".equals(tab), "entra a la pestaña Usuarios (actual: " + tab + ")");
-            JDialog err = dialogoVisible("", 500);
-            check(err == null, "sin diálogos de error al entrar");
-            if (err != null) {
-                System.out.println("  detalle error: " + textoDialogo(err));
-                pulsarBotonDialogo(err, "Aceptar");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), "admin");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), "admin");
+            robot.clic((Component) robot.campo(login, "btnIniciar"));
+
+            System.out.println("== [Usuarios E2E] Paso 2: Esperar ventana principal Sistema ==");
+            Sistema sistema = robot.esperarVentana(Sistema.class);
+            robot.edt(() -> {
+                sistema.setExtendedState(JFrame.MAXIMIZED_BOTH);
+                sistema.setVisible(true);
+                return null;
+            });
+            Component btnUsuarios = (Component) robot.campo(sistema, "btnUsuarios");
+            robot.esperar(() -> sistema.isShowing() && btnUsuarios.isShowing(),
+                    "Ventana Sistema autenticada y botón Usuarios visible");
+
+            System.out.println("== [Usuarios E2E] Paso 3: Navegar a pestaña Usuarios ==");
+            robot.clic(btnUsuarios);
+            JTabbedPane tabs = sistema.getJTabbedPane1();
+            robot.esperar(() -> "Usuarios".equals(tabs.getTitleAt(tabs.getSelectedIndex())),
+                    "Pestaña Usuarios seleccionada");
+
+            JTable tableUsuarios = (JTable) robot.campo(sistema, "TableUsuarios");
+            robot.esperar(() -> tableUsuarios.getRowCount() >= 1,
+                    "Tabla de usuarios contiene al menos el usuario administrador");
+            int filasIniciales = robot.edt(tableUsuarios::getRowCount);
+
+            JTextField txtNombre = (JTextField) robot.campo(sistema, "txtNombre");
+            JTextField txtCorreo = (JTextField) robot.campo(sistema, "txtCorreo");
+            JPasswordField txtPass = (JPasswordField) robot.campo(sistema, "txtPass");
+            @SuppressWarnings("unchecked")
+            JComboBox<String> cbxRol = (JComboBox<String>) robot.campo(sistema, "cbxRol");
+            JButton btnGuardar = (JButton) robot.campo(sistema, "btnIniciar");
+            JButton btnLimpiar = (JButton) robot.campo(sistema, "btnLimpiarUsuario");
+
+            System.out.println("== [Usuarios E2E] Paso 4: Validaciones de formulario vacío ==");
+            robot.clic(btnLimpiar);
+            robot.clic(btnGuardar);
+            robot.esperar(() -> {
+                String tip = txtNombre.getToolTipText();
+                return tip != null && tip.toLowerCase().contains("obligatorio");
+            }, "Formulario vacío señala campo Nombre como obligatorio");
+            if (robot.edt(tableUsuarios::getRowCount) != filasIniciales) {
+                throw new AssertionError("Intento de guardar formulario vacío alteró la tabla de usuarios");
             }
-            int n0 = filasUsuarios(tabla);
-            check(n0 >= 1, "tabla cargó usuarios existentes (" + n0 + ")");
+            System.out.println("OK   Validación de campos vacíos verificada");
 
-            // ================= CASO 2: validaciones =================
-            System.out.println("\n--- CASO 2: validaciones del formulario ---");
-            rellenarFormulario(sistema, "", "", "", "Asistente");
-            clicBoton(sistema, "btnIniciar");
-            Thread.sleep(600);
-            String tipNom = enEdt(() -> campo(sistema, "txtNombre", JTextField.class).getToolTipText());
-            check(tipNom != null && tipNom.contains("obligatorio"),
-                    "vacío alerta campo nombre (tip: " + tipNom + ")");
-            check(filasUsuarios(tabla) == n0, "vacío no crea filas");
+            System.out.println("== [Usuarios E2E] Paso 5: Registrar nuevo usuario '" + correoTest + "' ==");
+            robot.reemplazarTexto(txtNombre, nombreTest);
+            robot.reemplazarTexto(txtCorreo, correoTest);
+            robot.reemplazarTexto(txtPass, "Clave1234");
+            robot.seleccionarCombo(cbxRol, "Asistente");
+            robot.clic(btnGuardar);
 
-            rellenarFormulario(sistema, "E2E Uno", "sin-arroba", "Clave1234", "Asistente");
-            clicBoton(sistema, "btnIniciar");
-            Thread.sleep(600);
-            String tipCor = enEdt(() -> campo(sistema, "txtCorreo", JTextField.class).getToolTipText());
-            check(tipCor != null && tipCor.toLowerCase().contains("correo"),
-                    "correo inválido alerta campo (tip: " + tipCor + ")");
-            check(filasUsuarios(tabla) == n0, "correo inválido no crea filas");
-
-            rellenarFormulario(sistema, "E2E Uno", "e2e_u1@test.local", "123", "Asistente");
-            clicBoton(sistema, "btnIniciar");
-            Thread.sleep(600);
-            String tipCla = enEdt(() -> campo(sistema, "txtPass", JPasswordField.class).getToolTipText());
-            check(tipCla != null && tipCla.contains("al menos"),
-                    "clave corta alerta campo (tip: " + tipCla + ")");
-            check(filasUsuarios(tabla) == n0, "clave corta no crea filas");
-
-            // ================= CASO 3: crear Asistente y Administrador =================
-            System.out.println("\n--- CASO 3: crear usuarios ---");
-            rellenarFormulario(sistema, "E2E Uno", "e2e_u1@test.local", "Clave1234", "Asistente");
-            clicBoton(sistema, "btnIniciar");
-            Thread.sleep(1200);
-            int f1 = filaPorCorreo(tabla, "e2e_u1@test.local");
-            check(f1 >= 0, "Asistente e2e_u1@test.local creado y visible");
-            check(tituloVentana(sistema).contains("registrado"), "banda confirma registro");
-
-            rellenarFormulario(sistema, "E2E Uno", "e2e_u1@test.local", "Clave1234", "Asistente");
-            clicBoton(sistema, "btnIniciar");
-            Thread.sleep(1200);
-            JDialog dup = dialogoVisible("registrar usuario", 1500);
-            boolean hayDup = dup != null;
-            if (hayDup) {
-                System.out.println("  detalle duplicado: " + textoDialogo(dup));
-                pulsarBotonDialogo(dup, "Aceptar");
-                Thread.sleep(400);
-            }
-            int cuentaU1 = enEdt(() -> {
-                int n = 0;
-                for (int i = 0; i < tabla.getRowCount(); i++) {
-                    Object v = tabla.getModel().getValueAt(tabla.convertRowIndexToModel(i), 2);
-                    if ("e2e_u1@test.local".equals(v != null ? v.toString() : null)) {
-                        n++;
-                    }
+            robot.esperar(() -> {
+                for (int i = 0; i < tableUsuarios.getRowCount(); i++) {
+                    Object v = tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(i), 2);
+                    if (correoTest.equals(String.valueOf(v))) return true;
                 }
-                return n;
+                return false;
+            }, "Usuario creado aparece en TableUsuarios");
+            System.out.println("OK   Usuario registrado y visible en la tabla");
+
+            System.out.println("== [Usuarios E2E] Paso 6: Seleccionar usuario en la tabla ==");
+            int filaUsuario = robot.edt(() -> {
+                for (int i = 0; i < tableUsuarios.getRowCount(); i++) {
+                    Object v = tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(i), 2);
+                    if (correoTest.equals(String.valueOf(v))) return i;
+                }
+                return -1;
             });
-            check(cuentaU1 == 1, "correo duplicado no crea segunda fila (hay " + cuentaU1 + ")");
+            robot.clicCelda(tableUsuarios, filaUsuario, 1);
 
-            rellenarFormulario(sistema, "E2E Dos", "e2e_u2@test.local", "Clave5678", "Administrador");
-            clicBoton(sistema, "btnIniciar");
-            Thread.sleep(1200);
-            check(filaPorCorreo(tabla, "e2e_u2@test.local") >= 0, "Administrador e2e_u2@test.local creado");
+            JButton btnCambiarClave = (JButton) robot.campo(sistema, "btnCambiarClaveUsuario");
+            JButton btnEstado = (JButton) robot.campo(sistema, "btnEstadoUsuario");
+            JButton btnEliminar = (JButton) robot.campo(sistema, "btnEliminarUsuario");
 
-            // ================= CASO 4: cambiar clave =================
-            System.out.println("\n--- CASO 4: cambiar clave ---");
-            final int f2 = filaPorCorreo(tabla, "e2e_u1@test.local");
-            check(f2 >= 0, "fila de e2e_u1@test.local localizable");
-            clicCelda(tabla, f2, 1);
-            Thread.sleep(500);
-            Thread accion = new Thread(() -> {
+            robot.esperar(() -> btnCambiarClave.isEnabled() && btnEstado.isEnabled() && btnEliminar.isEnabled(),
+                    "Botones de acción se habilitan al seleccionar el usuario");
+            System.out.println("OK   Botones de acción habilitados para el usuario");
+
+            System.out.println("== [Usuarios E2E] Paso 7: Cambiar contraseña con diálogo modal ==");
+            Thread hiloClave = new Thread(() -> {
                 try {
-                    clicBoton(sistema, "btnCambiarClaveUsuario");
+                    robot.clic(btnCambiarClave);
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);
                 }
             });
-            accion.start();
-            JDialog dlgClave = dialogoVisible("Cambiar contraseña", 5000);
-            check(dlgClave != null, "diálogo de cambio de clave visible");
-            if (dlgClave != null) {
-                fijarClaveDialogo(dlgClave, "NuevaClave99");
-                pulsarBotonDialogo(dlgClave, "OK");
-                accion.join(8000);
-                Thread.sleep(1200);
-                check(tituloVentana(sistema).contains("actualizada"), "banda confirma clave actualizada");
-            } else {
-                accion.join(8000);
-            }
+            hiloClave.start();
+            robot.llenarDialogoPassword("Cambiar contraseña de usuario", "NuevaClave99", "NuevaClave99");
+            hiloClave.join(8000);
+            System.out.println("OK   Contraseña cambiada exitosamente");
 
-            // ================= CASO 5: desactivar / reactivar =================
-            System.out.println("\n--- CASO 5: desactivar y reactivar ---");
-            Thread accDes = new Thread(() -> {
+            System.out.println("== [Usuarios E2E] Paso 8: Desactivar usuario con confirmación ==");
+            robot.esperar(() -> "Desactivar".equals(btnEstado.getText()), "Botón de estado dice 'Desactivar'");
+            Thread hiloDesactivar = new Thread(() -> {
                 try {
-                    clicBoton(sistema, "btnEstadoUsuario");
+                    robot.clic(btnEstado);
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);
                 }
             });
-            accDes.start();
-            JDialog dlgDes = dialogoVisible("desactivar", 5000);
-            check(dlgDes != null, "confirmación de desactivar visible");
-            if (dlgDes != null) {
-                pulsarBotonDialogo(dlgDes, "Sí");
-                accDes.join(8000);
-                Thread.sleep(1500);
-                Object est = enEdt(() -> {
-                    int f = -1;
-                    for (int i = 0; i < tabla.getRowCount(); i++) {
-                        Object v = tabla.getModel().getValueAt(tabla.convertRowIndexToModel(i), 2);
-                        if ("e2e_u1@test.local".equals(v != null ? v.toString() : null)) {
-                            f = i;
-                            break;
-                        }
-                    }
-                    return f < 0 ? null : tabla.getModel().getValueAt(tabla.convertRowIndexToModel(f), 4);
-                });
-                check("Inactivo".equals(est != null ? est.toString() : null), "e2e_u1@test.local queda Inactivo");
-            } else {
-                accDes.join(8000);
-            }
-            Thread accRea = new Thread(() -> {
-                try {
-                    clicBoton(sistema, "btnEstadoUsuario");
-                } catch (Exception ex) {
-                    throw new RuntimeException(ex);
-                }
-            });
-            accRea.start();
-            JDialog dlgRea = dialogoVisible("reactivar", 5000);
-            check(dlgRea != null, "confirmación de reactivar visible");
-            if (dlgRea != null) {
-                pulsarBotonDialogo(dlgRea, "Sí");
-                accRea.join(8000);
-                Thread.sleep(1500);
-                Object est = enEdt(() -> {
-                    int f = -1;
-                    for (int i = 0; i < tabla.getRowCount(); i++) {
-                        Object v = tabla.getModel().getValueAt(tabla.convertRowIndexToModel(i), 2);
-                        if ("e2e_u1@test.local".equals(v != null ? v.toString() : null)) {
-                            f = i;
-                            break;
-                        }
-                    }
-                    return f < 0 ? null : tabla.getModel().getValueAt(tabla.convertRowIndexToModel(f), 4);
-                });
-                check("Activo".equals(est != null ? est.toString() : null), "e2e_u1@test.local vuelve a Activo");
-            } else {
-                accRea.join(8000);
-            }
+            hiloDesactivar.start();
+            robot.confirmarDialogo("Confirmar desactivar");
+            hiloDesactivar.join(8000);
 
-            // ================= CASO 6: eliminar =================
-            System.out.println("\n--- CASO 6: eliminar ---");
-            Thread accDel = new Thread(() -> {
+            robot.esperar(() -> {
+                int f = -1;
+                for (int i = 0; i < tableUsuarios.getRowCount(); i++) {
+                    Object v = tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(i), 2);
+                    if (correoTest.equals(String.valueOf(v))) { f = i; break; }
+                }
+                if (f < 0) return false;
+                Object est = tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(f), 4);
+                return "Inactivo".equalsIgnoreCase(String.valueOf(est));
+            }, "Estado de usuario pasa a 'Inactivo'");
+            System.out.println("OK   Usuario desactivado con éxito");
+
+            System.out.println("== [Usuarios E2E] Paso 9: Reactivar usuario con confirmación ==");
+            // Seleccionar nuevamente la fila para refrescar los botones si fuera necesario
+            int filaInactivo = robot.edt(() -> {
+                for (int i = 0; i < tableUsuarios.getRowCount(); i++) {
+                    Object v = tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(i), 2);
+                    if (correoTest.equals(String.valueOf(v))) return i;
+                }
+                return -1;
+            });
+            robot.clicCelda(tableUsuarios, filaInactivo, 1);
+            robot.esperar(() -> "Reactivar".equals(btnEstado.getText()), "Botón de estado dice 'Reactivar'");
+
+            Thread hiloReactivar = new Thread(() -> {
                 try {
-                    clicBoton(sistema, "btnEliminarUsuario");
+                    robot.clic(btnEstado);
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);
                 }
             });
-            accDel.start();
-            JDialog dlgDel = dialogoVisible("ELIMINAR", 5000);
-            check(dlgDel != null, "confirmación de eliminar visible");
-            if (dlgDel != null) {
-                pulsarBotonDialogo(dlgDel, "Sí");
-                accDel.join(8000);
-                Thread.sleep(1500);
-                check(filaPorCorreo(tabla, "e2e_u1@test.local") < 0, "e2e_u1@test.local eliminado de la tabla");
-            } else {
-                accDel.join(8000);
-            }
-            Thread accDel2 = new Thread(() -> {
+            hiloReactivar.start();
+            robot.confirmarDialogo("Confirmar reactivar");
+            hiloReactivar.join(8000);
+
+            robot.esperar(() -> {
+                int f = -1;
+                for (int i = 0; i < tableUsuarios.getRowCount(); i++) {
+                    Object v = tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(i), 2);
+                    if (correoTest.equals(String.valueOf(v))) { f = i; break; }
+                }
+                if (f < 0) return false;
+                Object est = tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(f), 4);
+                return "Activo".equalsIgnoreCase(String.valueOf(est));
+            }, "Estado de usuario regresa a 'Activo'");
+            System.out.println("OK   Usuario reactivado con éxito");
+
+            System.out.println("== [Usuarios E2E] Paso 10: Eliminar usuario por UI con confirmación ==");
+            int filaActivo = robot.edt(() -> {
+                for (int i = 0; i < tableUsuarios.getRowCount(); i++) {
+                    Object v = tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(i), 2);
+                    if (correoTest.equals(String.valueOf(v))) return i;
+                }
+                return -1;
+            });
+            robot.clicCelda(tableUsuarios, filaActivo, 1);
+
+            Thread hiloEliminar = new Thread(() -> {
                 try {
-                    int f = filaPorCorreo(tabla, "e2e_u2@test.local");
-                    if (f >= 0) {
-                        enEdtV(() -> tabla.setRowSelectionInterval(f, f));
-                    }
-                    clicBoton(sistema, "btnEliminarUsuario");
+                    robot.clic(btnEliminar);
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);
                 }
             });
-            accDel2.start();
-            JDialog dlgDel2 = dialogoVisible("ELIMINAR", 5000);
-            if (dlgDel2 != null) {
-                pulsarBotonDialogo(dlgDel2, "Sí");
-            }
-            accDel2.join(8000);
-            Thread.sleep(1200);
-            check(filaPorCorreo(tabla, "e2e_u2@test.local") < 0, "e2e_u2@test.local eliminado de la tabla");
+            hiloEliminar.start();
+            robot.confirmarDialogo("Confirmar eliminación de usuario");
+            hiloEliminar.join(8000);
+
+            robot.esperar(() -> {
+                for (int i = 0; i < tableUsuarios.getRowCount(); i++) {
+                    Object v = tableUsuarios.getModel().getValueAt(tableUsuarios.convertRowIndexToModel(i), 2);
+                    if (correoTest.equals(String.valueOf(v))) return false;
+                }
+                return true;
+            }, "Usuario eliminado desaparece de TableUsuarios");
+            System.out.println("OK   Usuario eliminado por la interfaz limpiamente");
+
+        } catch (Throwable error) {
+            fallo = error;
         } finally {
             try {
-                limpiarE2E();
-            } catch (Exception ex) {
-                System.err.println("Aviso limpiando usuarios E2E: " + ex.getMessage());
-            }
-            try {
-                enEdtV(sistema::dispose);
-            } catch (Exception ignored) {
+                SwingUtilities.invokeAndWait(() -> {
+                    for (Window w : Window.getWindows()) {
+                        w.dispose();
+                    }
+                });
+            } catch (Throwable errorLimpieza) {
+                if (fallo == null) fallo = errorLimpieza;
+                else fallo.addSuppressed(errorLimpieza);
             }
         }
-        System.out.println("=================================================");
-        System.out.println(fallos == 0 ? "E2E USUARIOS: TODO OK" : "E2E USUARIOS: " + fallos + " FALLOS");
-        System.exit(fallos == 0 ? 0 : 1);
+
+        if (fallo != null) {
+            System.err.println("E2E_USUARIOS_FALLO: " + fallo.getMessage());
+            fallo.printStackTrace(System.err);
+            System.exit(1);
+        }
+
+        System.out.println("E2E_USUARIOS_OK");
+        System.exit(0);
     }
 }

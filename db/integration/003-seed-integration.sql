@@ -23,3 +23,15 @@ ON DUPLICATE KEY UPDATE `estado` = VALUES(`estado`), `fecha` = VALUES(`fecha`), 
 INSERT INTO `detalle_pedidos` (`id`, `id_pedido`, `nombre`, `precio`, `cantidad`, `comentario`, `aplica_iva`, `id_plato`, `moneda_base`, `precio_incluye_iva`, `iva_porcentaje`)
 VALUES (100, 100, 'Plato Semilla Integracion', 10.00, 1, '', 1, 1, 'USD', 0, 16.00)
 ON DUPLICATE KEY UPDATE `id_pedido` = VALUES(`id_pedido`);
+
+INSERT INTO `schema_migrations` (`version`, `nombre`, `checksum`, `estado`, `paso_actual`, `iniciada_en`, `aplicada_en`)
+VALUES (13, 'sincronizacion_esquema_v13', 'ef81e8e90c5e928c1039d62553fe486c14d07c5e0f5b7f2a52a6ba720a998bc7', 'APLICADA', 'validada', NOW(), NOW())
+ON DUPLICATE KEY UPDATE `estado` = 'APLICADA', `paso_actual` = 'validada', `checksum` = VALUES(`checksum`);
+
+INSERT INTO `restaurante_control` (`id`, `estado`) VALUES (1, 'OPERATIVO')
+ON DUPLICATE KEY UPDATE `estado` = 'OPERATIVO', `operacion_id` = NULL;
+
+INSERT INTO `configuracion_sistema` (`clave`, `valor`, `descripcion`)
+VALUES ('modo_atencion', 'OPCION_B', 'Modo predeterminado de atención de mesas')
+ON DUPLICATE KEY UPDATE `valor` = 'OPCION_B';
+

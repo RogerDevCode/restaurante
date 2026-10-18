@@ -27,7 +27,7 @@ import javax.swing.*;
  * 3. Con 'Auto-limpiar' desactivado, el texto del filtro se conserva tras seleccionar/agregar.
  * 4. Sincronización bidireccional entre los selectores de Auto-limpiar.
  */
-public final class FiltroRapidoPlatosE2E {
+public final class FiltroRapidoPlatosTest {
 
     private static int fallos = 0;
 

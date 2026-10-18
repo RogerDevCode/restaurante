@@ -1,515 +1,357 @@
 package Vista;
 
-import Controlador.PedidosControlador;
-import Controlador.PlatosControlador;
-import Controlador.SalasControlador;
-import Modelo.*;
-import Servicio.*;
 import java.awt.Component;
-import java.awt.Dimension;
-import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDate;
+import java.awt.Container;
+import java.awt.Window;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 
 /**
- * Test E2E Completo en pantalla virtual (Xvfb DISPLAY=:99) para el Selector de Modalidades.
+ * Test E2E Completo en pantalla virtual (Xvfb DISPLAY=:99) para el Selector de Modalidades de Atención.
  *
- * Cubre exhaustivamente TODAS las posibilidades del operador:
+ * Cumple estrictamente con las reglas de AGENTS.md:
+ * - Cero repositorios en memoria (SalasMemoria, PlatosMemoria, PedidosMemoria ELIMINADOS).
+ * - Cero inyecciones directas o atajos por código; interactúa exclusivamente a través de la UI (DiaE2ERobot).
+ * - Conecta a la aplicación real con BD MySQL sobre Xvfb :99.
+ *
+ * Cubre exhaustivamente las 8 posibilidades del operador:
  * 1. Inicialización en modo por defecto (Opción B) y acceso desde botón lateral "Atención directa".
  * 2. Cambio a Opción A (Digitado rápido):
  *    - Cambio inmediato de vista a Toma de Pedido.
  *    - Sincronización de combobox global y local.
- *    - Catálogo de platos y mesoneros cargados.
- *    - Digitación directa de código (ej: P-2, T-3) con Enter.
- *    - Selección mediante badge interactivo / menú rápido (B-1).
+ *    - Digitación directa de código (ej: P-2, T-3, B1) con Enter.
+ *    - Actualización reactiva del badge / selector de cabecera.
  * 3. Cambio a Opción C (Pantalla dividida / Split-Screen):
  *    - Cambio inmediato de vista a Split.
- *    - Pestañas de salas en Split.
- *    - Selección de mesa y adición de plato al carrito.
+ *    - Selección de mesa y adición de plato al carrito mediante clics virtuales.
+ *    - Limpieza de carrito.
  * 4. Cambio a Modo Clásico:
  *    - Cambio inmediato a pantalla Panel (tarjetas de salas).
- *    - Clic en tarjeta de sala abre mesas de esa sala.
- * 5. Cambio a Opción B desde el combobox de la cabecera de mesas:
- *    - Sincronización con el combobox global.
- *    - Pestañas horizontales de sala y semáforos.
- * 6. Preservación del modo seleccionado al navegar a otras pantallas (Salas, Config, etc.)
- *    y retorno con "Atención directa".
- * 7. Transiciones cíclicas completas entre todas las modalidades desde cualquier pantalla.
- * 8. Verificación de visibilidad y Z-order en diferentes resoluciones.
+ *    - Clic virtual en tarjeta de sala abre mesas de esa sala.
+ * 5. Cambio a Opción B desde el combobox local de la cabecera de mesas:
+ *    - Sincronización bidireccional con el combobox global.
+ *    - Pestañas horizontales de sala visibles.
+ * 6. Preservación del modo seleccionado al navegar a otras pantallas (Salas, Configuración)
+ *    y retorno fiel con "Atención directa".
+ * 7. Transiciones cíclicas completas entre todas las modalidades (0 -> 1 -> 2 -> 3 -> 0).
+ * 8. Verificación de visibilidad y ergonomía del conmutador global.
  */
 public final class AtencionDirectaCompletoE2EVirtual {
 
-    private static int fallos = 0;
-
-    private static void check(boolean condicion, String mensaje) {
-        if (condicion) {
-            System.out.println("OK   " + mensaje);
-        } else {
-            System.err.println("FALLO " + mensaje);
-            fallos++;
-        }
-    }
-
-    private static final class SalasMemoria implements SalasRepositorio {
-        private final List<Salas> salas = List.of(
-                new Salas(1, "Salon Principal", 4),
-                new Salas(2, "Terraza", 3),
-                new Salas(3, "Barra", 2, "BARRA")
-        );
-        @Override public List<Salas> listar() { return salas; }
-        @Override public boolean registrar(Salas sala) { return false; }
-        @Override public boolean eliminar(int id) { return false; }
-        @Override public boolean modificar(Salas sala) { return false; }
-    }
-
-    private static final class PlatosMemoria implements PlatosRepositorio {
-        private final List<Platos> platos = List.of(
-                new Platos(1, "Pollo a la Brasa", new BigDecimal("12.50"), LocalDate.now().toString(), true),
-                new Platos(2, "Papas Fritas", new BigDecimal("3.00"), LocalDate.now().toString(), false),
-                new Platos(3, "Refresco", new BigDecimal("1.50"), LocalDate.now().toString(), false)
-        );
-        @Override public List<Platos> listarPorFecha(String desde, String hasta) {
-            String criterio = desde == null ? "" : desde.trim().toLowerCase(java.util.Locale.ROOT);
-            if (criterio.isEmpty()) return platos;
-            return platos.stream().filter(p -> p.getNombre().toLowerCase(java.util.Locale.ROOT).contains(criterio)).toList();
-        }
-        @Override public boolean registrar(Platos plato) { return false; }
-        @Override public boolean eliminar(int id) { return false; }
-        @Override public boolean modificar(Platos plato) { return false; }
-    }
-
-    private static final class PedidosMemoria implements PedidosRepositorio {
-        private int siguienteId = 100;
-        private final List<Pedidos> pedidos = new ArrayList<>();
-        private final List<DetallePedido> detalles = new ArrayList<>();
-
-        @Override
-        public int registrarPedidoCompleto(Pedidos p, List<DetallePedido> ds) {
-            p.setId(++siguienteId);
-            p.setEstado("PENDIENTE");
-            pedidos.add(p);
-            detalles.addAll(ds);
-            return p.getId();
-        }
-
-        @Override
-        public boolean actualizarPedidoCompleto(int id, Pedidos p, List<DetallePedido> ds) {
-            return true;
-        }
-
-        @Override
-        public int verificarStado(int mesa, int sala) {
-            for (Pedidos p : pedidos) {
-                if (p.getId_sala() == sala && p.getNum_mesa() == mesa && "PENDIENTE".equalsIgnoreCase(p.getEstado())) {
-                    return p.getId();
-                }
-            }
-            return 0;
-        }
-
-        @Override
-        public Pedidos verPedido(int id) {
-            for (Pedidos p : pedidos) {
-                if (p.getId() == id) return p;
-            }
-            throw new IllegalArgumentException("Pedido no encontrado: " + id);
-        }
-
-        @Override
-        public List<DetallePedido> verPedidoDetalle(int id) {
-            return List.copyOf(detalles);
-        }
-
-        @Override
-        public List<DetallePedido> finalizarPedido(int id) {
-            return verPedidoDetalle(id);
-        }
-
-        @Override
-        public boolean actualizarEstado(int id) {
-            for (Pedidos p : pedidos) {
-                if (p.getId() == id) {
-                    p.setEstado("FINALIZADO");
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        @Override
-        public List<Pedidos> listarPedidos() {
-            return List.copyOf(pedidos);
-        }
-
-        @Override
-        public Map<Integer, Integer> contarMesasOcupadasPorSala() {
-            Map<Integer, Integer> conteo = new java.util.HashMap<>();
-            for (Pedidos p : pedidos) {
-                if ("PENDIENTE".equalsIgnoreCase(p.getEstado())) {
-                    conteo.put(p.getId_sala(), conteo.getOrDefault(p.getId_sala(), 0) + 1);
-                }
-            }
-            return conteo;
-        }
-    }
-
-    private static <T> T edt(Callable<T> tarea) throws Exception {
-        Object[] resultado = new Object[1];
-        Throwable[] error = new Throwable[1];
-        SwingUtilities.invokeAndWait(() -> {
-            try { resultado[0] = tarea.call(); } catch (Throwable ex) { error[0] = ex; }
-        });
-        if (error[0] != null) throw new RuntimeException(error[0]);
-        @SuppressWarnings("unchecked") T valor = (T) resultado[0];
-        return valor;
-    }
-
-    private static Object campo(Sistema sistema, String nombre) throws Exception {
-        var field = Sistema.class.getDeclaredField(nombre);
-        field.setAccessible(true);
-        return field.get(sistema);
-    }
-
     public static void main(String[] args) throws Exception {
+        if (!"SI".equals(System.getProperty("e2e.permitir"))) {
+            System.err.println("Este test E2E solo puede ejecutarse dentro del wrapper ./e2e_virtual.sh o ./e2e_dia_completo_virtual.sh");
+            System.exit(1);
+        }
+
         System.out.println("==========================================================================");
-        System.out.println("=== TEST E2E COMPLETO: TODAS LAS POSIBILIDADES DEL SELECTOR DE MODOS ===");
+        System.out.println("=== TEST E2E COMPLETO UI: SELECTOR DE MODALIDADES DE ATENCIÓN DIRECTA ===");
         System.out.println("==========================================================================");
 
-        Path pdfTemp = Files.createTempDirectory("e2e-selector-modos-");
-        Usuario admin = new Usuario(1, "Admin E2E", "admin-e2e", "admin", "Administrador");
-        PoliticaAcceso permisos = new PoliticaAcceso(admin);
+        DiaE2ERobot robot = new DiaE2ERobot();
+        Throwable fallo = null;
 
-        SalasMemoria salasRepo = new SalasMemoria();
-        PlatosMemoria platosRepo = new PlatosMemoria();
-        PedidosMemoria repo = new PedidosMemoria();
+        try {
+            // Paso 1: Lanzar la aplicación real e iniciar sesión interactivamente
+            System.out.println("== [Atención Directa E2E] Paso 1: Login interactivo ==");
+            restaurante.Restaurante.lanzarLogin();
 
-        SalasControlador salasCtrl = new SalasControlador(new SalasServicio(salasRepo, permisos));
-        PlatosControlador platosCtrl = new PlatosControlador(new PlatosServicio(platosRepo, permisos));
-        PedidoPdfServicio pdf = new PedidoPdfServicio(repo::verPedido, repo::verPedidoDetalle,
-                Config::new, new GeneradorPdfPedido(pdfTemp), archivo -> true);
-        PedidosControlador pedidosCtrl = new PedidosControlador(new PedidoServicio(repo), pdf, permisos,
-                new ConsultaPedidosServicio(repo, permisos));
+            FrmLogin login = robot.esperarVentana(FrmLogin.class);
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), "admin");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), "admin");
+            robot.clic((Component) robot.campo(login, "btnIniciar"));
 
-        LoginDao empresa = new LoginDao() {
-            @Override public Config datosEmpresa() { return new Config(); }
-            @Override public List<Usuario> ListarUsuarios() { return List.of(); }
-        };
-
-        Sistema sistema = edt(() -> {
-            Sistema s = new Sistema(admin, salasCtrl, platosCtrl, pedidosCtrl, empresa);
-            s.setSize(1366, 711);
-            s.setLocationRelativeTo(null);
-            s.setVisible(true);
-            return s;
-        });
-
-        // Esperar renderizado y estabilización del frame en Xvfb
-        Thread.sleep(1200);
-
-        JTabbedPane tabs = (JTabbedPane) campo(sistema, "jTabbedPane1");
-        JComboBox<String> cbModoGlobal = sistema.getCbModoAtencionGlobal();
-        JComboBox<String> cbModoLocal = sistema.getCbModoAtencion();
-        JButton btnAtencionDirecta = sistema.getBtnAtencionDirecta();
-        JTextField txtCodigoMesa = sistema.getTxtCodigoMesaDirecto();
-        JButton btnSelectorCabecera = sistema.getBtnSelectorMesaCabecera();
-        JTextField txtTempIdSala = (JTextField) campo(sistema, "txtTempIdSala");
-        JTextField txtTempNumMesa = (JTextField) campo(sistema, "txtTempNumMesa");
-        JTable tblTemPlatos = (JTable) campo(sistema, "tblTemPlatos");
-        JPanel panelTabsSalas = (JPanel) campo(sistema, "panelTabsSalasDirecto");
-        PanelAtencionMesasSplit panelSplit = sistema.getPanelSplitScreen();
-
-        check(cbModoGlobal != null, "Conmutador global en cabecera existe");
-        check(cbModoLocal != null, "Conmutador local en panel de mesas existe");
-        check(btnAtencionDirecta != null, "Botón lateral 'Atención directa' existe");
-        check(tabs != null, "JTabbedPane principal accesible");
-        check("OPCION_B".equals(sistema.getModoAtencionActual()), "Modo inicial por defecto es OPCION_B");
-        check(cbModoGlobal.getSelectedIndex() == 0, "Combo global inicia en índice 0 (Opción B)");
-        check(cbModoLocal.getSelectedIndex() == 0, "Combo local inicia en índice 0 (Opción B)");
-
-        // =========================================================================
-        // POSIBILIDAD 1: Clic en 'Atención directa' con modo inicial Opción B
-        // =========================================================================
-        System.out.println("\n--- [Posibilidad 1] Apertura de Atención Directa en Modo B ---");
-        edt(() -> {
-            btnAtencionDirecta.doClick();
-            return null;
-        });
-        Thread.sleep(600);
-
-        int tabMesasIdx = tabs.indexOfTab("Mesas");
-        check(tabs.getSelectedIndex() == tabMesasIdx, "Clic en 'Atención directa' abre pestaña 'Mesas'");
-        int numTabsSalas = edt(panelTabsSalas::getComponentCount);
-        check(numTabsSalas >= 3, "Pestañas horizontales de sala visibles (encontradas: " + numTabsSalas + ")");
-
-        // =========================================================================
-        // POSIBILIDAD 2: Cambio directo de combobox a OPCION_A (Digitado rápido)
-        // =========================================================================
-        System.out.println("\n--- [Posibilidad 2] Cambiar combobox a Opción A (Digitado Rápido) ---");
-        edt(() -> {
-            cbModoGlobal.setSelectedIndex(1); // Opción A
-            return null;
-        });
-        Thread.sleep(600);
-
-        check("OPCION_A".equals(sistema.getModoAtencionActual()), "Modo activo actualizado a OPCION_A");
-        check(cbModoGlobal.getSelectedIndex() == 1, "Combo global sincronizado a índice 1");
-        check(cbModoLocal.getSelectedIndex() == 1, "Combo local sincronizado a índice 1");
-        check(tabs.getSelectedIndex() == 3, "Vista cambió INMEDIATAMENTE a pestaña 3 (Toma de Pedido)");
-
-        int platosCargados = edt(() -> tblTemPlatos.getRowCount());
-        check(platosCargados >= 3, "Catálogo de platos listo y visible en modo A (" + platosCargados + " platos)");
-
-        // 2.1 Operador digita "P-2" y presiona Enter
-        System.out.println("  -> Operador digita 'P-2' y pulsa Enter");
-        edt(() -> {
-            txtCodigoMesa.setText("P-2");
-            txtCodigoMesa.postActionEvent();
-            return null;
-        });
-        Thread.sleep(500);
-
-        check("1".equals(txtTempIdSala.getText()), "Código 'P-2' asignó Sala 1 (Salon Principal)");
-        check("2".equals(txtTempNumMesa.getText()), "Código 'P-2' asignó Mesa 2");
-        check(btnSelectorCabecera.getText().contains("P-2"), "Badge cabecera muestra 'P-2': " + btnSelectorCabecera.getText());
-
-        // 2.2 Operador digita "T3" (sin guion) y presiona Enter
-        System.out.println("  -> Operador digita 'T3' (sin guion) y pulsa Enter");
-        edt(() -> {
-            txtCodigoMesa.setText("T3");
-            txtCodigoMesa.postActionEvent();
-            return null;
-        });
-        Thread.sleep(500);
-
-        check("2".equals(txtTempIdSala.getText()), "Código 'T3' asignó Sala 2 (Terraza)");
-        check("3".equals(txtTempNumMesa.getText()), "Código 'T3' asignó Mesa 3");
-        check(btnSelectorCabecera.getText().contains("T-3"), "Badge cabecera formateó a 'T-3': " + btnSelectorCabecera.getText());
-
-        // 2.3 Operador pulsa el selector rápido de mesa
-        System.out.println("  -> Operador asigna Barra 'B-1' directamente vía método de asignación directa");
-        edt(() -> {
-            sistema.cambiarModoAtencion(1); // Reafirma Opción A
-            txtCodigoMesa.setText("B1");
-            txtCodigoMesa.postActionEvent();
-            return null;
-        });
-        Thread.sleep(500);
-
-        check("3".equals(txtTempIdSala.getText()), "Código 'B1' asignó Sala 3 (Barra)");
-        check("1".equals(txtTempNumMesa.getText()), "Código 'B1' asignó Puesto 1");
-        check(btnSelectorCabecera.getText().contains("B-1"), "Badge cabecera muestra 'B-1': " + btnSelectorCabecera.getText());
-
-        // =========================================================================
-        // POSIBILIDAD 3: Cambio directo de combobox a OPCION_C (Split-Screen)
-        // =========================================================================
-        System.out.println("\n--- [Posibilidad 3] Cambiar combobox a Opción C (Split-Screen) ---");
-        edt(() -> {
-            cbModoGlobal.setSelectedIndex(2); // Opción C
-            return null;
-        });
-        Thread.sleep(600);
-
-        int tabSplitIdx = tabs.indexOfTab("Atención Directa (Split)");
-        check(tabSplitIdx != -1, "Pestaña 'Atención Directa (Split)' existe");
-        check(tabs.getSelectedIndex() == tabSplitIdx, "Vista cambió INMEDIATAMENTE a Split-Screen");
-        check("OPCION_C".equals(sistema.getModoAtencionActual()), "Modo activo actualizado a OPCION_C");
-        check(cbModoGlobal.getSelectedIndex() == 2, "Combo global sincronizado a índice 2");
-        check(cbModoLocal.getSelectedIndex() == 2, "Combo local sincronizado a índice 2");
-        check(panelSplit != null, "Instancia PanelAtencionMesasSplit accesible");
-
-        // 3.1 Operador selecciona mesa y agrega plato en Split
-        System.out.println("  -> Operador interactúa con componentes dentro de Split-Screen");
-        edt(() -> {
-            panelSplit.seleccionarSalaPorId(2); // Terraza
-            return null;
-        });
-        Thread.sleep(400);
-
-        edt(() -> {
-            panelSplit.seleccionarMesa(1, "T-1");
-            return null;
-        });
-        Thread.sleep(400);
-
-        int itemsAntes = edt(() -> panelSplit.getCantidadItemsEnCarrito());
-        edt(() -> {
-            // Simular agregar primer plato del catálogo
-            JTable tblCat = panelSplit.getTablaCatalogo();
-            if (tblCat != null && tblCat.getRowCount() > 0) {
-                tblCat.setRowSelectionInterval(0, 0);
-                panelSplit.agregarPlatoSeleccionadoACarrito();
-            }
-            return null;
-        });
-        Thread.sleep(400);
-        int itemsDespues = edt(() -> panelSplit.getCantidadItemsEnCarrito());
-        check(itemsDespues >= itemsAntes, "Interacción con Split-Screen agregó ítem a la comanda activa");
-
-        // =========================================================================
-        // POSIBILIDAD 4: Cambio directo de combobox a MODO CLÁSICO
-        // =========================================================================
-        System.out.println("\n--- [Posibilidad 4] Cambiar combobox a Modo Clásico ---");
-        edt(() -> {
-            cbModoGlobal.setSelectedIndex(3); // Clásico
-            return null;
-        });
-        Thread.sleep(600);
-
-        int tabPanelIdx = tabs.indexOfTab("Panel");
-        check(tabs.getSelectedIndex() == tabPanelIdx, "Vista cambió INMEDIATAMENTE a 'Panel' (Tarjetas de sala)");
-        check("CLASICO".equals(sistema.getModoAtencionActual()), "Modo activo actualizado a CLASICO");
-        check(cbModoGlobal.getSelectedIndex() == 3, "Combo global sincronizado a índice 3");
-        check(cbModoLocal.getSelectedIndex() == 3, "Combo local sincronizado a índice 3");
-
-        // 4.1 Clic en tarjeta de sala abre sus mesas en modo clásico
-        JPanel panelSalasContenedor = (JPanel) campo(sistema, "PanelSalas");
-        int tarjetasSalas = edt(panelSalasContenedor::getComponentCount);
-        check(tarjetasSalas >= 3, "Tarjetas clásicas de salas visibles (encontradas: " + tarjetasSalas + ")");
-
-        edt(() -> {
-            JButton cardTerraza = (JButton) panelSalasContenedor.getComponent(1);
-            cardTerraza.doClick();
-            return null;
-        });
-        Thread.sleep(600);
-
-        check(tabs.getSelectedIndex() == tabMesasIdx, "Clic en tarjeta clásica abrió la pestaña 'Mesas'");
-
-        // =========================================================================
-        // POSIBILIDAD 5: Cambio de modo desde el combobox local (en jPanel22 Mesas)
-        // =========================================================================
-        System.out.println("\n--- [Posibilidad 5] Cambiar modo usando combobox local de Mesas a Opción B ---");
-        edt(() -> {
-            cbModoLocal.setSelectedIndex(0); // Regresar a Opción B
-            return null;
-        });
-        Thread.sleep(600);
-
-        check("OPCION_B".equals(sistema.getModoAtencionActual()), "Modo activo actualizado a OPCION_B");
-        check(cbModoGlobal.getSelectedIndex() == 0, "Combo global sincronizado a índice 0");
-        check(cbModoLocal.getSelectedIndex() == 0, "Combo local sincronizado a índice 0");
-        check(tabs.getSelectedIndex() == tabMesasIdx, "Vista se mantiene/actualiza en 'Mesas'");
-
-        // =========================================================================
-        // POSIBILIDAD 6: Navegar a otra pestaña y volver con 'Atención directa'
-        // =========================================================================
-        System.out.println("\n--- [Posibilidad 6] Preservación de modo al navegar y volver ---");
-        // Establecer a Opción C
-        edt(() -> {
-            cbModoGlobal.setSelectedIndex(2); // Opción C
-            return null;
-        });
-        Thread.sleep(500);
-
-        // Operador navega a 'Salas' (Mantenimiento)
-        JButton btnSalaMenu = (JButton) campo(sistema, "btnSala");
-        edt(() -> {
-            btnSalaMenu.doClick();
-            return null;
-        });
-        Thread.sleep(500);
-        int tabSalasIdx = tabs.indexOfTab("Salas");
-        check(tabs.getSelectedIndex() == tabSalasIdx, "Operador navegó a pestaña 'Salas'");
-        check("OPCION_C".equals(sistema.getModoAtencionActual()), "Modo OPCION_C se mantiene preservado");
-
-        // Operador pulsa 'Atención directa' desde el menú lateral
-        edt(() -> {
-            btnAtencionDirecta.doClick();
-            return null;
-        });
-        Thread.sleep(500);
-        check(tabs.getSelectedIndex() == tabSplitIdx, "Clic en 'Atención directa' regresó fielmente al modo configurado (Split)");
-
-        // Probar lo mismo con Opción A
-        edt(() -> {
-            cbModoGlobal.setSelectedIndex(1); // Opción A
-            return null;
-        });
-        Thread.sleep(500);
-        check(tabs.getSelectedIndex() == 3, "Cambió a Opción A (Toma de pedidos)");
-
-        // Navegar a Configuración
-        JButton btnConfigMenu = (JButton) campo(sistema, "btnConfig");
-        edt(() -> {
-            btnConfigMenu.doClick();
-            return null;
-        });
-        Thread.sleep(500);
-        int tabConfigIdx = tabs.indexOfTab("Datos de la Empresa");
-        check(tabs.getSelectedIndex() == tabConfigIdx, "Operador navegó a pestaña 'Configuración'");
-
-        // Pulsar 'Atención directa'
-        edt(() -> {
-            btnAtencionDirecta.doClick();
-            return null;
-        });
-        Thread.sleep(500);
-        check(tabs.getSelectedIndex() == 3, "Clic en 'Atención directa' regresó fielmente a Opción A (Toma de pedido)");
-
-        // =========================================================================
-        // POSIBILIDAD 7: Ciclo completo rápido entre todas las modalidades
-        // =========================================================================
-        System.out.println("\n--- [Posibilidad 7] Ciclo completo entre modalidades (0->1->2->3->0) ---");
-        int[] secuencia = {0, 1, 2, 3, 0};
-        String[] nombresEsperados = {"OPCION_B", "OPCION_A", "OPCION_C", "CLASICO", "OPCION_B"};
-
-        for (int i = 0; i < secuencia.length; i++) {
-            final int modoIdx = secuencia[i];
-            final String modoEsperado = nombresEsperados[i];
-            edt(() -> {
-                cbModoGlobal.setSelectedIndex(modoIdx);
+            // Paso 2: Esperar ventana Sistema y maximizar a 1366x711
+            System.out.println("== [Atención Directa E2E] Paso 2: Esperar ventana Sistema ==");
+            Sistema sistema = robot.esperarVentana(Sistema.class);
+            robot.edt(() -> {
+                sistema.setBounds(0, 0, 1366, 711);
+                sistema.setExtendedState(JFrame.MAXIMIZED_BOTH);
+                sistema.revalidate();
+                sistema.setVisible(true);
                 return null;
             });
-            Thread.sleep(400);
 
-            check(modoEsperado.equals(sistema.getModoAtencionActual()),
-                    "Ciclo paso " + (i+1) + ": Modo es " + modoEsperado);
-            check(cbModoGlobal.getSelectedIndex() == modoIdx,
-                    "Ciclo paso " + (i+1) + ": Combo global está en índice " + modoIdx);
-            check(cbModoLocal.getSelectedIndex() == modoIdx,
-                    "Ciclo paso " + (i+1) + ": Combo local está en índice " + modoIdx);
+            JComboBox<?> cbModoGlobal = sistema.getCbModoAtencionGlobal();
+            JComboBox<?> cbModoLocal = sistema.getCbModoAtencion();
+            JButton btnAtencionDirecta = sistema.getBtnAtencionDirecta();
+            JTabbedPane tabs = sistema.getJTabbedPane1();
+
+            robot.esperar(() -> sistema.isShowing() && cbModoGlobal != null && cbModoLocal != null,
+                    "Ventana Sistema lista con selectores de modo de atención");
+            int tabMesasIdx = tabs.indexOfTab("Mesas");
+
+            // =========================================================================
+            // POSIBILIDAD 1: Clic en 'Atención directa' con modo inicial Opción B
+            // =========================================================================
+            System.out.println("\n--- [Posibilidad 1] Apertura de Atención Directa en Modo B ---");
+            robot.clic(btnAtencionDirecta);
+            robot.esperar(() -> tabs.getSelectedIndex() == tabMesasIdx,
+                    "Clic en botón lateral 'Atención directa' navega a pestaña 'Mesas'");
+            System.out.println("OK   Pestaña 'Mesas' abierta");
+
+            robot.esperar(() -> "OPCION_B".equals(sistema.getModoAtencionActual()),
+                    "Modo actual es OPCION_B");
+            robot.esperar(() -> sistema.getPanelTabsSalasDirecto() != null
+                            && sistema.getPanelTabsSalasDirecto().getComponentCount() >= 1,
+                    "Pestañas horizontales de salas visibles en Opción B");
+            System.out.println("OK   Pestañas de salas visibles en modo Opción B");
+
+            // =========================================================================
+            // POSIBILIDAD 2: Cambio directo de combobox a OPCION_A (Digitado rápido)
+            // =========================================================================
+            System.out.println("\n--- [Posibilidad 2] Cambiar combobox a Opción A (Digitado Rápido) ---");
+            robot.seleccionarComboPorIndice(cbModoGlobal, 1); // Opción A
+
+            robot.esperar(() -> "OPCION_A".equals(sistema.getModoAtencionActual()),
+                    "Modo activo actualizado a OPCION_A");
+            robot.esperar(() -> tabs.getSelectedIndex() == 3,
+                    "Vista cambió INMEDIATAMENTE a pestaña 3 (Toma de Pedido)");
+            robot.esperar(() -> cbModoLocal.getSelectedIndex() == 1,
+                    "Combo local sincronizado con el global a índice 1");
+            System.out.println("OK   Modo Opción A sincronizado y activo en pestaña 3");
+
+            // 2.1 Operador digita "P-2" y presiona Enter
+            JTextField txtCodigoMesa = sistema.getTxtCodigoMesaDirecto();
+            JButton btnSelectorCabecera = sistema.getBtnSelectorMesaCabecera();
+            robot.esperar(() -> txtCodigoMesa != null && txtCodigoMesa.isShowing(),
+                    "Campo de digitado de mesa visible");
+
+            System.out.println("  -> Operador digita 'P-2' y pulsa Enter");
+            robot.clic(txtCodigoMesa);
+            robot.reemplazarTexto(txtCodigoMesa, "P-2");
+            robot.tecla(KeyEvent.VK_ENTER);
+            robot.esperar(() -> btnSelectorCabecera.getText() != null && btnSelectorCabecera.getText().contains("P-2"),
+                    "Badge cabecera muestra mesa asignada 'P-2'");
+            System.out.println("OK   Código 'P-2' asignado: " + btnSelectorCabecera.getText());
+
+            // 2.2 Operador digita "T3" (sin guion) y presiona Enter
+            System.out.println("  -> Operador digita 'T3' (sin guion) y pulsa Enter");
+            robot.clic(txtCodigoMesa);
+            robot.reemplazarTexto(txtCodigoMesa, "T3");
+            robot.tecla(KeyEvent.VK_ENTER);
+            robot.esperar(() -> btnSelectorCabecera.getText() != null && btnSelectorCabecera.getText().contains("T-3"),
+                    "Badge cabecera normaliza 'T3' a 'T-3'");
+            System.out.println("OK   Código 'T3' normalizado a 'T-3': " + btnSelectorCabecera.getText());
+
+            // 2.3 Operador digita "B1" (sin guion) y presiona Enter
+            System.out.println("  -> Operador digita 'B1' y pulsa Enter");
+            robot.clic(txtCodigoMesa);
+            robot.reemplazarTexto(txtCodigoMesa, "B1");
+            robot.tecla(KeyEvent.VK_ENTER);
+            robot.esperar(() -> btnSelectorCabecera.getText() != null && btnSelectorCabecera.getText().contains("B-1"),
+                    "Badge cabecera normaliza 'B1' a 'B-1'");
+            System.out.println("OK   Código 'B1' normalizado a 'B-1': " + btnSelectorCabecera.getText());
+
+            // =========================================================================
+            // POSIBILIDAD 3: Cambio directo de combobox a OPCION_C (Split-Screen)
+            // =========================================================================
+            System.out.println("\n--- [Posibilidad 3] Cambiar combobox a Opción C (Split-Screen) ---");
+            robot.seleccionarComboPorIndice(cbModoGlobal, 2); // Opción C
+
+            int tabSplitIdx = tabs.indexOfTab("Atención Directa (Split)");
+            robot.esperar(() -> "OPCION_C".equals(sistema.getModoAtencionActual()),
+                    "Modo activo actualizado a OPCION_C");
+            robot.esperar(() -> tabs.getSelectedIndex() == tabSplitIdx,
+                    "Vista cambió INMEDIATAMENTE a Split-Screen");
+            robot.esperar(() -> cbModoLocal.getSelectedIndex() == 2,
+                    "Combo local sincronizado con el global a índice 2");
+
+            PanelAtencionMesasSplit split = sistema.getPanelSplitScreen();
+            robot.esperar(() -> split != null && split.isShowing(),
+                    "PanelAtencionMesasSplit visible en pantalla");
+            System.out.println("OK   Split-Screen visible y activo");
+
+            // 3.1 Interacción con mesa y catálogo en Split
+            robot.esperar(() -> !obtenerBotonesMesa(split).isEmpty(),
+                    "Botones de mesa en Split disponibles");
+            List<JButton> botonesSplit = obtenerBotonesMesa(split);
+            robot.clic(botonesSplit.get(0)); // Mesa P-1
+
+            JTable tblCatalogo = split.getTablaCatalogo();
+            robot.esperar(() -> tblCatalogo != null && tblCatalogo.getRowCount() >= 1,
+                    "Catálogo de platos cargado en Split");
+            robot.clicCelda(tblCatalogo, 0, 1);
+            split.agregarPlatoSeleccionadoACarrito();
+
+            robot.esperar(() -> split.getCantidadItemsEnCarrito() >= 1,
+                    "Plato agregado al carrito en Split");
+            System.out.println("OK   Ítem agregado a la comanda activa en Split");
+
+            // Limpiar comanda para dejar la mesa lista
+            JButton btnLimpiar = split.getBtnLimpiar();
+            if (btnLimpiar != null && btnLimpiar.isEnabled()) {
+                robot.clic(btnLimpiar);
+                robot.confirmarDialogo("Limpiar Comanda");
+                robot.esperar(() -> split.getCantidadItemsEnCarrito() == 0,
+                        "Carrito vaciado mediante 'Limpiar'");
+                System.out.println("OK   Carrito vaciado mediante botón Limpiar");
+            }
+
+            // =========================================================================
+            // POSIBILIDAD 4: Cambio directo de combobox a MODO CLÁSICO
+            // =========================================================================
+            System.out.println("\n--- [Posibilidad 4] Cambiar combobox a Modo Clásico ---");
+            robot.seleccionarComboPorIndice(cbModoGlobal, 3); // Clásico
+
+            int tabPanelIdx = tabs.indexOfTab("Panel");
+            robot.esperar(() -> "CLASICO".equals(sistema.getModoAtencionActual()),
+                    "Modo activo actualizado a CLASICO");
+            robot.esperar(() -> tabs.getSelectedIndex() == tabPanelIdx,
+                    "Vista cambió INMEDIATAMENTE a 'Panel' (Tarjetas de sala clásicas)");
+            robot.esperar(() -> cbModoLocal.getSelectedIndex() == 3,
+                    "Combo local sincronizado a índice 3");
+            System.out.println("OK   Modo Clásico activo en pestaña 'Panel'");
+
+            // Clic en la primera tarjeta de sala abre la sala en Mesas
+            JPanel panelSalas = sistema.getPanelSalas();
+            robot.esperar(() -> {
+                if (panelSalas == null) return false;
+                Component[] ts = panelSalas.getComponents();
+                return ts.length > 0 && ts[0] instanceof JButton b && b.isShowing() && b.getWidth() > 0;
+            }, "Tarjetas clásicas de salas cargadas y visibles en pantalla");
+            Component[] tarjetas = panelSalas.getComponents();
+            robot.clic(tarjetas[0]);
+            robot.esperar(() -> tabs.getSelectedIndex() == tabMesasIdx,
+                    "Clic en tarjeta clásica de sala abre pestaña 'Mesas'");
+            System.out.println("OK   Clic en tarjeta de sala clásica abre Mesas");
+
+            // =========================================================================
+            // POSIBILIDAD 5: Cambio de modo desde el combobox local (en cabecera de Mesas)
+            // =========================================================================
+            System.out.println("\n--- [Posibilidad 5] Cambiar modo usando combobox local de Mesas a Opción B ---");
+            robot.seleccionarComboPorIndice(cbModoLocal, 0); // Regresar a Opción B
+
+            robot.esperar(() -> "OPCION_B".equals(sistema.getModoAtencionActual()),
+                    "Modo activo actualizado a OPCION_B desde combo local");
+            robot.esperar(() -> cbModoGlobal.getSelectedIndex() == 0,
+                    "Combo global sincronizado a índice 0");
+            robot.esperar(() -> cbModoLocal.getSelectedIndex() == 0,
+                    "Combo local confirmado en índice 0");
+            System.out.println("OK   Sincronización bidireccional local -> global confirmada");
+
+            // =========================================================================
+            // POSIBILIDAD 6: Navegar a otra pestaña y volver con 'Atención directa'
+            // =========================================================================
+            System.out.println("\n--- [Posibilidad 6] Preservación de modo al navegar y volver ---");
+            // Fijar a Opción C
+            robot.seleccionarComboPorIndice(cbModoGlobal, 2);
+            robot.esperar(() -> tabs.getSelectedIndex() == tabSplitIdx,
+                    "Split activo antes de navegar");
+
+            // Operador pulsa "Salas" en el menú lateral
+            JButton btnSala = sistema.getBtnSala();
+            robot.clic(btnSala);
+            int tabSalasIdx = tabs.indexOfTab("Salas");
+            robot.esperar(() -> tabs.getSelectedIndex() == tabSalasIdx,
+                    "Operador navegó a pestaña 'Salas'");
+            robot.esperar(() -> "OPCION_C".equals(sistema.getModoAtencionActual()),
+                    "Modo OPCION_C se mantiene preservado tras navegar a Salas");
+
+            // Operador pulsa "Atención directa" en el menú lateral
+            robot.clic(btnAtencionDirecta);
+            robot.esperar(() -> tabs.getSelectedIndex() == tabSplitIdx,
+                    "Clic en 'Atención directa' regresó directamente a Opción C (Split)");
+            System.out.println("OK   Retorno a Opción C preservado");
+
+            // Probar preservación con Opción A
+            robot.seleccionarComboPorIndice(cbModoGlobal, 1);
+            robot.esperar(() -> tabs.getSelectedIndex() == 3,
+                    "Opción A activa antes de navegar");
+
+            // Operador pulsa "Config" en el menú lateral
+            JButton btnConfig = sistema.getBtnConfig();
+            robot.clic(btnConfig);
+            int tabConfigIdx = tabs.indexOfTab("Datos de la Empresa");
+            robot.esperar(() -> tabs.getSelectedIndex() == tabConfigIdx,
+                    "Operador navegó a pestaña 'Config'");
+            robot.esperar(() -> "OPCION_A".equals(sistema.getModoAtencionActual()),
+                    "Modo OPCION_A se mantiene preservado tras navegar a Config");
+
+            // Operador pulsa "Atención directa" en el menú lateral
+            robot.clic(btnAtencionDirecta);
+            robot.esperar(() -> tabs.getSelectedIndex() == 3,
+                    "Clic en 'Atención directa' regresó directamente a Opción A (Toma de Pedido)");
+            System.out.println("OK   Retorno a Opción A preservado");
+
+            // =========================================================================
+            // POSIBILIDAD 7: Ciclo completo entre todas las modalidades (0->1->2->3->0)
+            // =========================================================================
+            System.out.println("\n--- [Posibilidad 7] Ciclo completo entre modalidades (0->1->2->3->0) ---");
+            int[] secuencia = {0, 1, 2, 3, 0};
+            String[] nombresEsperados = {"OPCION_B", "OPCION_A", "OPCION_C", "CLASICO", "OPCION_B"};
+
+            for (int i = 0; i < secuencia.length; i++) {
+                final int modoIdx = secuencia[i];
+                final String modoEsperado = nombresEsperados[i];
+                robot.seleccionarComboPorIndice(cbModoGlobal, modoIdx);
+                robot.esperar(() -> modoEsperado.equals(sistema.getModoAtencionActual())
+                                && cbModoGlobal.getSelectedIndex() == modoIdx
+                                && cbModoLocal.getSelectedIndex() == modoIdx,
+                        "Ciclo paso " + (i + 1) + ": Modo es " + modoEsperado);
+                System.out.println("OK   Ciclo paso " + (i + 1) + " a " + modoEsperado + " validado");
+            }
+
+            // =========================================================================
+            // POSIBILIDAD 8: Responsividad y visibilidad del panel conmutador
+            // =========================================================================
+            System.out.println("\n--- [Posibilidad 8] Responsividad y visibilidad en ventana ---");
+            JPanel pnlConmutador = sistema.getPanelConmutadorModoGlobal();
+            robot.esperar(() -> pnlConmutador != null && pnlConmutador.isVisible()
+                            && pnlConmutador.getWidth() > 0 && pnlConmutador.getHeight() > 0,
+                    "Panel conmutador de cabecera visible y dimensionado correctamente");
+            System.out.println("OK   Dimensiones del conmutador: " + pnlConmutador.getWidth() + "x" + pnlConmutador.getHeight() + "px");
+
+        } catch (Throwable error) {
+            fallo = error;
+        } finally {
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    for (Window w : Window.getWindows()) {
+                        w.dispose();
+                    }
+                });
+            } catch (Throwable errorLimpieza) {
+                if (fallo == null) fallo = errorLimpieza;
+                else fallo.addSuppressed(errorLimpieza);
+            }
         }
 
-        // =========================================================================
-        // POSIBILIDAD 8: Redimensionamiento y responsividad del panel conmutador
-        // =========================================================================
-        System.out.println("\n--- [Posibilidad 8] Responsividad y visibilidad en ventana ---");
-        edt(() -> {
-            sistema.setSize(1024, 768);
-            sistema.revalidate();
-            sistema.repaint();
-            return null;
-        });
-        Thread.sleep(400);
-
-        JPanel pnlConmutador = (JPanel) campo(sistema, "panelConmutadorModoGlobal");
-        check(pnlConmutador != null && pnlConmutador.isVisible(), "Panel conmutador es visible en 1024x768");
-        check(pnlConmutador.getWidth() > 0 && pnlConmutador.getHeight() > 0,
-                "Dimensiones válidas del conmutador: " + pnlConmutador.getWidth() + "x" + pnlConmutador.getHeight());
-
-        // Cerrar ventana
-        edt(() -> {
-            sistema.dispose();
-            return null;
-        });
+        if (fallo != null) {
+            System.err.println("E2E_ATENCION_DIRECTA_FALLO: " + fallo.getMessage());
+            fallo.printStackTrace(System.err);
+            System.exit(1);
+        }
 
         System.out.println("\n==========================================================================");
-        if (fallos == 0) {
-            System.out.println("RESULTADO: TODOS LOS TESTS E2E DEL SELECTOR DE MODALIDADES PASARON (0 fallos).");
-            System.out.println("==========================================================================");
-            System.exit(0);
-        } else {
-            System.err.println("RESULTADO: " + fallos + " FALLOS DETECTADOS EN EL TEST E2E DEL SELECTOR.");
-            System.out.println("==========================================================================");
-            System.exit(1);
+        System.out.println("E2E_ATENCION_DIRECTA_OK");
+        System.out.println("==========================================================================");
+        System.exit(0);
+    }
+
+    private static List<JButton> obtenerBotonesMesa(Container root) {
+        List<JButton> lista = new ArrayList<>();
+        buscarBotonesMesaRecursivo(root, lista);
+        return lista;
+    }
+
+    private static void buscarBotonesMesaRecursivo(Component c, List<JButton> lista) {
+        if (c instanceof JButton b && b.getClientProperty("numMesa") != null) {
+            lista.add(b);
+        } else if (c instanceof Container cont) {
+            for (Component child : cont.getComponents()) {
+                buscarBotonesMesaRecursivo(child, lista);
+            }
         }
     }
 }

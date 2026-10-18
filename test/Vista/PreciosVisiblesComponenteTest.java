@@ -28,7 +28,7 @@ import javax.swing.table.TableCellRenderer;
  * Usa los renderers reales y mide el ancho preferido de cada celda visible.
  * No toca la BD (repos en memoria). Exige {@code -De2e.permitir=SI} por convención E2E.
  */
-public final class PreciosVisiblesE2E {
+public final class PreciosVisiblesComponenteTest {
 
     private static int fallos = 0;
 

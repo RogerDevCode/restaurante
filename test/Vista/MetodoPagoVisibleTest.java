@@ -44,7 +44,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 /** Comprueba en Xvfb que Forma de Pago está visible y se puede cambiar con mouse/teclado. */
-public final class MetodoPagoVisibleE2E {
+public final class MetodoPagoVisibleTest {
     private static int fallos;
 
     private static void check(boolean condicion, String mensaje) {

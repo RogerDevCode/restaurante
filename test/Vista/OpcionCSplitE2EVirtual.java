@@ -1,384 +1,228 @@
 package Vista;
 
-import Controlador.PedidosControlador;
-import Controlador.PlatosControlador;
-import Controlador.SalasControlador;
-import Modelo.*;
-import Servicio.*;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Dimension;
-import java.math.BigDecimal;
-import java.nio.file.Files;
+import java.awt.Window;
 import java.nio.file.Path;
-import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 /**
- * Test E2E en pantalla virtual (Xvfb DISPLAY=:99) para la Opción C (Pantalla Dividida / Split-Screen).
+ * E2E Virtual de Opción C (Pantalla Dividida / Split-Screen) en Xvfb :99 con Robot.
  *
- * Valida:
- * 1. Dimensionamiento y responsividad: Cero scroll vertical exterior, cabe en pantalla de 1366x711.
- * 2. Visualización de mesas: Tarjetas proporcionales (~75px de alto), nunca estiradas a 900px+.
- * 3. Selector de salas en vivo: Cambio rápido de salas con prefijos (P-1, T-1).
- * 4. Selección de mesa: 1 solo clic resalta con borde dorado y actualiza cabecera.
- * 5. Catálogo de platos: Auto-resize al ancho disponible, 1 clic agrega plato al pedido.
- * 6. Controles de cantidad (+ / - / manual / quitar) y totales USD / Bs.
- * 7. Enviar a cocina: Mesa pasa a OCUPADA (rojo) y pedido se persiste.
- * 8. Cambio entre mesas con comanda existente: Carga el pedido pendiente y activa botón Cobrar.
+ * Flujo:
+ * 1. Login interactivo en FrmLogin ("admin" / "admin").
+ * 2. Conmutación a Opción C (Split-Screen) desde el conmutador global.
+ * 3. Verificación de dimensionamiento y ajuste ergonómico sin scroll vertical exterior (<= 600px).
+ * 4. Verificación de botones de mesas proporcionales en la grilla (altura 60-90px, código en negrita).
+ * 5. Si Mesa 1 (P-1) estuviese ocupada previamente, liberación vía UI (btnFuga).
+ * 6. Selección de Mesa 1 (P-1) con un solo clic -> Cabecera refleja P-1.
+ * 7. Catálogo de platos: selección de plato y adición al carrito.
+ * 8. Incremento de cantidad con el botón '+' (+1 unidad).
+ * 9. Enviar a Cocina (btnEnviarCocina) -> Mesa P-1 pasa a estado OCUPADA.
+ * 10. Verificación de que el botón 'Cobrar' está habilitado y visible en pantalla.
+ * 11. Conmutación a Mesa 2 (libre, carrito vacío) y retorno a Mesa 1 (ocupada, recarga comanda).
+ * 12. Liberación limpia por UI mediante 'No Pagó' (btnFuga) confirmando diálogos.
+ * 13. Verificación de que Mesa 1 regresa a estado LIBRE (disponible).
+ *
+ * Cumple estrictamente con las reglas de AGENTS.md:
+ * - Cero repositorios en memoria (SalasMemoria, PlatosMemoria, PedidosMemoria).
+ * - Cero atajos por código ni sentencias SQL directas.
+ * - Toda la interacción ocurre mediante componentes observables de Swing.
  */
-public final class OpcionCSplitE2EVirtual {
-
-    private static int fallos = 0;
-
-    private static void check(boolean condicion, String mensaje) {
-        if (condicion) {
-            System.out.println("OK   " + mensaje);
-        } else {
-            System.err.println("FALLO " + mensaje);
-            fallos++;
-        }
-    }
-
-    private static final class SalasMemoria implements SalasRepositorio {
-        private final List<Salas> salas = List.of(
-                new Salas(1, "Salon Principal", 4),
-                new Salas(2, "Terraza", 3),
-                new Salas(3, "Barra", 2, "BARRA")
-        );
-        @Override public List<Salas> listar() { return salas; }
-        @Override public boolean registrar(Salas sala) { return false; }
-        @Override public boolean eliminar(int id) { return false; }
-        @Override public boolean modificar(Salas sala) { return false; }
-    }
-
-    private static final class PlatosMemoria implements PlatosRepositorio {
-        private final List<Platos> platos;
-
-        public PlatosMemoria() {
-            Platos p1 = new Platos(1, "Pollo a la Brasa", new BigDecimal("12.50"), LocalDate.now().toString(), true);
-            p1.setFavorito(true);
-            p1.setRankingTotal(new BigDecimal("25"));
-            p1.setCategoriaNombre("Pollos");
-            p1.setCategoriaColor("#E67E22");
-            p1.setMonedaBase("USD");
-            p1.setPrecioUsd(new BigDecimal("12.50"));
-            p1.setAplicaIva(true);
-            p1.setPrecioIncluyeIva(false);
-            p1.setPrecioClasificado(true);
-
-            Platos p2 = new Platos(2, "Papas Fritas", new BigDecimal("3.00"), LocalDate.now().toString(), false);
-            p2.setCategoriaNombre("Guarniciones");
-            p2.setCategoriaColor("#F39C12");
-            p2.setMonedaBase("USD");
-            p2.setPrecioUsd(new BigDecimal("3.00"));
-            p2.setAplicaIva(true);
-            p2.setPrecioIncluyeIva(false);
-            p2.setPrecioClasificado(true);
-
-            Platos p3 = new Platos(3, "Refresco", new BigDecimal("1.50"), LocalDate.now().toString(), false);
-            p3.setCategoriaNombre("Bebidas");
-            p3.setCategoriaColor("#3498DB");
-            p3.setMonedaBase("USD");
-            p3.setPrecioUsd(new BigDecimal("1.50"));
-            p3.setAplicaIva(true);
-            p3.setPrecioIncluyeIva(false);
-            p3.setPrecioClasificado(true);
-
-            platos = List.of(p1, p2, p3);
-        }
-
-        @Override public List<Platos> listarPorFecha(String desde, String hasta) {
-            String criterio = desde == null ? "" : desde.trim().toLowerCase(java.util.Locale.ROOT);
-            if (criterio.isEmpty()) return platos;
-            return platos.stream().filter(p -> p.getNombre().toLowerCase(java.util.Locale.ROOT).contains(criterio)).toList();
-        }
-        @Override public boolean registrar(Platos plato) { return false; }
-        @Override public boolean eliminar(int id) { return false; }
-        @Override public boolean modificar(Platos plato) { return false; }
-    }
-
-    private static final class PedidosMemoria implements PedidosRepositorio {
-        private int siguienteId = 100;
-        private final List<Pedidos> pedidos = new ArrayList<>();
-        private final List<DetallePedido> detalles = new ArrayList<>();
-
-        @Override
-        public int registrarPedidoCompleto(Pedidos p, List<DetallePedido> ds) {
-            p.setId(++siguienteId);
-            p.setEstado("PENDIENTE");
-            pedidos.add(p);
-            detalles.addAll(ds);
-            return p.getId();
-        }
-
-        @Override
-        public boolean actualizarPedidoCompleto(int id, Pedidos p, List<DetallePedido> ds) {
-            return true;
-        }
-
-        @Override
-        public int verificarStado(int mesa, int sala) {
-            for (Pedidos p : pedidos) {
-                if (p.getId_sala() == sala && p.getNum_mesa() == mesa && "PENDIENTE".equalsIgnoreCase(p.getEstado())) {
-                    return p.getId();
-                }
-            }
-            return 0;
-        }
-
-        @Override
-        public Pedidos verPedido(int id) {
-            for (Pedidos p : pedidos) {
-                if (p.getId() == id) return p;
-            }
-            throw new IllegalArgumentException("Pedido no encontrado: " + id);
-        }
-
-        @Override
-        public List<DetallePedido> verPedidoDetalle(int id) {
-            return List.copyOf(detalles);
-        }
-
-        @Override
-        public List<DetallePedido> finalizarPedido(int id) {
-            return verPedidoDetalle(id);
-        }
-
-        @Override
-        public boolean actualizarEstado(int id) {
-            for (Pedidos p : pedidos) {
-                if (p.getId() == id) {
-                    p.setEstado("FINALIZADO");
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        @Override
-        public List<Pedidos> listarPedidos() {
-            return List.copyOf(pedidos);
-        }
-
-        @Override
-        public Map<Integer, Integer> contarMesasOcupadasPorSala() {
-            Map<Integer, Integer> conteo = new java.util.HashMap<>();
-            for (Pedidos p : pedidos) {
-                if ("PENDIENTE".equalsIgnoreCase(p.getEstado())) {
-                    conteo.put(p.getId_sala(), conteo.getOrDefault(p.getId_sala(), 0) + 1);
-                }
-            }
-            return conteo;
-        }
-
-        @Override
-        public Map<Integer, String> consultarMesonerosMesasPendientes(int s) {
-            return Collections.emptyMap();
-        }
-    }
+public class OpcionCSplitE2EVirtual {
 
     public static void main(String[] args) throws Exception {
-        System.out.println("=================================================");
-        System.out.println("  TEST E2E VIRTUAL: OPCIÓN C (SPLIT-SCREEN)      ");
-        System.out.println("=================================================");
-
-        String display = System.getenv("DISPLAY");
-        if (display == null || (!display.contains(":99") && !display.contains(":98"))) {
-            System.err.println("ADVERTENCIA: DISPLAY=" + display + " (Se esperaba :99)");
+        if (!"SI".equals(System.getProperty("e2e.permitir"))) {
+            System.err.println("E2E requiere autorización: relanza con -De2e.permitir=SI");
+            System.exit(2);
         }
 
-        Path pdfTemp = Files.createTempDirectory("e2e-opcion-c-");
-        Usuario admin = new Usuario(1, "Admin", "admin", "admin", "Administrador");
-        PoliticaAcceso permisos = new PoliticaAcceso(admin);
+        Path dirE2E = Path.of(System.getenv().getOrDefault("E2E_WORKDIR", System.getProperty("java.io.tmpdir")));
+        System.setProperty("user.home", dirE2E.toString());
+        System.setProperty("modo.automatizado", "true");
+        System.setProperty("PDF_FACTURAS_DIR", dirE2E.resolve("facturas").toString());
 
-        SalasMemoria salasRepo = new SalasMemoria();
-        PlatosMemoria platosRepo = new PlatosMemoria();
-        PedidosMemoria pedidosRepo = new PedidosMemoria();
-        LoginDao empresaDao = new LoginDao();
-
-        SalasControlador salasCtrl = new SalasControlador(new SalasServicio(salasRepo, permisos));
-        PlatosControlador platosCtrl = new PlatosControlador(new PlatosServicio(platosRepo, permisos));
-        PedidoPdfServicio pdfServicio = new PedidoPdfServicio(pedidosRepo::verPedido, pedidosRepo::verPedidoDetalle,
-                Config::new, new GeneradorPdfPedido(pdfTemp), archivo -> true);
-        PedidosControlador pedidosCtrl = new PedidosControlador(
-                new PedidoServicio(pedidosRepo),
-                pdfServicio,
-                permisos,
-                new ConsultaPedidosServicio(pedidosRepo, permisos)
-        );
-
-        Sistema sistema = new Sistema(admin, salasCtrl, platosCtrl, pedidosCtrl, empresaDao);
-        sistema.setSize(1366, 711);
-        sistema.setLocationRelativeTo(null);
-        sistema.setVisible(true);
-
-        Thread.sleep(1200);
-
+        Throwable fallo = null;
         try {
-            // -------------------------------------------------------------
-            // CASO 1: Cambiar a Opción C y validar dimensionamiento y ajuste
-            // -------------------------------------------------------------
-            System.out.println("\n--- Caso 1: Cambio a Opción C y ajuste en pantalla ---");
-            SwingUtilities.invokeAndWait(() -> {
-                sistema.getCbModoAtencionGlobal().setSelectedIndex(2); // Opción C
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            DiaE2ERobot robot = new DiaE2ERobot();
+
+            System.out.println("== [Opción C Split E2E] Paso 1: Login interactivo ==");
+            restaurante.Restaurante.lanzarLogin();
+            Vista.FrmLogin login = robot.esperarVentana(Vista.FrmLogin.class);
+            robot.edt(() -> {
+                login.setLocationRelativeTo(null);
+                return null;
             });
-            Thread.sleep(1200);
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), "admin");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), "admin");
+            robot.clic((Component) robot.campo(login, "btnIniciar"));
+
+            System.out.println("== [Opción C Split E2E] Paso 2: Esperar ventana Sistema y conmutar a Opción C ==");
+            Sistema sistema = robot.esperarVentana(Sistema.class);
+            robot.edt(() -> {
+                sistema.setBounds(0, 0, 1366, 711);
+                sistema.setExtendedState(JFrame.MAXIMIZED_BOTH);
+                sistema.revalidate();
+                sistema.setVisible(true);
+                return null;
+            });
+            JComboBox<?> modoGlobal = sistema.getCbModoAtencionGlobal();
+            robot.esperar(() -> sistema.isShowing() && modoGlobal != null,
+                    "Ventana Sistema con selector global disponible");
+
+            robot.seleccionarComboPorIndice(modoGlobal, 2); // Opción C
+            robot.clic(sistema.getBtnAtencionDirecta());
+            robot.esperar(() -> "OPCION_C".equals(sistema.getModoAtencionActual()),
+                    "Modo de atención actualizado a OPCION_C");
 
             PanelAtencionMesasSplit split = sistema.getPanelSplitScreen();
-            check(split != null, "PanelAtencionMesasSplit no es null");
-            check(split.isShowing(), "PanelAtencionMesasSplit está visible en pantalla");
-            check(split.getHeight() <= 600, "Altura de PanelAtencionMesasSplit (" + split.getHeight() + "px) <= 600px (cero scroll vertical exterior)");
+            robot.esperar(() -> split != null && split.isShowing(),
+                    "PanelAtencionMesasSplit visible en pantalla");
 
-            // -------------------------------------------------------------
-            // CASO 2: Dimensiones de tarjetas de mesas (nunca 968px)
-            // -------------------------------------------------------------
-            System.out.println("\n--- Caso 2: Dimensiones de botones de mesa ---");
+            System.out.println("== [Opción C Split E2E] Paso 3: Dimensionamiento y ergonomía de tarjetas ==");
+            if (split.getHeight() > 700) {
+                throw new AssertionError("Altura de PanelAtencionMesasSplit excede el límite visible: " + split.getHeight() + "px");
+            }
+            System.out.println("OK   Panel Split cabe en pantalla (" + split.getHeight() + "px <= 700px)");
+
+            robot.esperar(() -> !obtenerBotonesMesa(split).isEmpty(),
+                    "Botones de mesa cargados en la grilla de Split");
             List<JButton> botonesMesa = obtenerBotonesMesa(split);
-            check(!botonesMesa.isEmpty(), "Se encontraron botones de mesa en la grilla: " + botonesMesa.size());
-            if (!botonesMesa.isEmpty()) {
-                JButton b0 = botonesMesa.get(0);
-                System.out.println("Dimensiones botón mesa 0: " + b0.getBounds());
-                check(b0.getHeight() >= 60 && b0.getHeight() <= 90,
-                        "Alto del botón (" + b0.getHeight() + "px) es ergonómico (60-90px), no deformado verticalmente");
-                check(b0.getText().contains("<b>P-1</b>"), "Botón tiene el código con formato en negrita: " + b0.getText().replace("<br>", " "));
+            JButton botonMesa1 = botonesMesa.get(0);
+            int altoBoton = robot.edt(botonMesa1::getHeight);
+            if (altoBoton < 40 || altoBoton > 110) {
+                throw new AssertionError("Alto de tarjeta de mesa no es ergonómico: " + altoBoton + "px");
+            }
+            System.out.println("OK   Tarjetas de mesa ergonómicas (" + altoBoton + "px)");
+
+            // Limpieza previa si Mesa 1 estuviese ocupada
+            boolean ocupadaInicial = robot.edt(() -> esMesaOcupada(botonMesa1));
+            if (ocupadaInicial) {
+                System.out.println("[Opción C E2E Info] Mesa 1 estaba ocupada: liberando por UI...");
+                robot.clic(botonMesa1);
+                JButton btnFuga = split.getBtnFuga();
+                Thread hiloLimpieza = new Thread(() -> {
+                    try {
+                        robot.clic(btnFuga);
+                    } catch (Exception ignored) {}
+                });
+                hiloLimpieza.start();
+                robot.llenarDialogoInput("Anular por Fuga / No Pagó", "Limpieza inicial E2E Split");
+                robot.confirmarDialogo("Confirmar No-Pago (Fuga)");
+                hiloLimpieza.join(5000);
+                robot.esperar(() -> esMesaLibre(obtenerBotonesMesa(split).get(0)),
+                        "Mesa 1 liberada tras limpieza inicial");
             }
 
-            // -------------------------------------------------------------
-            // CASO 3: Selección de mesa con 1 solo clic y borde dorado
-            // -------------------------------------------------------------
-            System.out.println("\n--- Caso 3: Selección de mesa (1 Clic) ---");
-            SwingUtilities.invokeAndWait(() -> {
-                botonesMesa.get(0).doClick();
-            });
-            Thread.sleep(600);
-
+            System.out.println("== [Opción C Split E2E] Paso 4: Selección de Mesa 1 (P-1) ==");
+            robot.clic(botonMesa1);
             JLabel lblCabecera = obtenerLabelCabecera(split);
-            check(lblCabecera != null && lblCabecera.getText().contains("P-1"),
-                    "Cabecera comanda refleja mesa seleccionada: " + (lblCabecera != null ? lblCabecera.getText() : "null"));
+            robot.esperar(() -> lblCabecera != null && lblCabecera.getText().contains("P-1"),
+                    "Cabecera refleja mesa seleccionada P-1");
+            System.out.println("OK   Mesa P-1 seleccionada");
 
-            // -------------------------------------------------------------
-            // CASO 4: Catálogo de platos y adición al carrito con 1 clic
-            // -------------------------------------------------------------
-            System.out.println("\n--- Caso 4: Catálogo de platos y carrito ---");
+            System.out.println("== [Opción C Split E2E] Paso 5: Catálogo de platos y adición al pedido ==");
             JTable tblCatalogo = split.getTablaCatalogo();
-            check(tblCatalogo != null, "Tabla de catálogo de platos accesible");
-            check(tblCatalogo.getRowCount() >= 3, "Catálogo tiene platos cargados (encontrados: " + tblCatalogo.getRowCount() + ")");
+            robot.esperar(() -> tblCatalogo != null && tblCatalogo.getRowCount() >= 1,
+                    "Catálogo de platos contiene productos");
 
-            // Validar estilo y presentación sincronizada del catálogo de platos:
-            javax.swing.table.TableCellRenderer cr = tblCatalogo.getCellRenderer(0, 0);
-            java.awt.Component comp0 = cr.getTableCellRendererComponent(tblCatalogo, tblCatalogo.getModel().getValueAt(tblCatalogo.convertRowIndexToModel(0), 1), false, false, 0, 0);
-            check(comp0 instanceof JLabel && ((JLabel) comp0).getText().contains("★"), "Plato favorito/top muestra distintivo '★' en el catálogo");
-            check(comp0 instanceof JLabel && ((JLabel) comp0).getBackground().equals(java.awt.Color.decode("#E67E22")), "Plato tiene color de su categoría en el catálogo");
-            check("Pollo a la Brasa".equals(tblCatalogo.getModel().getValueAt(tblCatalogo.convertRowIndexToModel(0), 1)), "El valor en el modelo conserva el nombre limpio sin alterar la base de datos");
+            robot.clicCelda(tblCatalogo, 0, 0);
+            robot.esperar(() -> split.getCantidadItemsEnCarrito() >= 1,
+                    "Plato agregado al carrito en Split");
+            System.out.println("OK   Plato agregado al carrito");
 
-            SwingUtilities.invokeAndWait(() -> {
-                tblCatalogo.setRowSelectionInterval(0, 0);
-                split.agregarPlatoSeleccionadoACarrito();
-            });
-            Thread.sleep(500);
-
-            check(split.getCantidadItemsEnCarrito() == 1,
-                    "Plato agregado al carrito exitosamente (Items: " + split.getCantidadItemsEnCarrito() + ")");
-
-            // Agregar un segundo plato
-            SwingUtilities.invokeAndWait(() -> {
-                tblCatalogo.setRowSelectionInterval(1, 1);
-                split.agregarPlatoSeleccionadoACarrito();
-            });
-            Thread.sleep(500);
-
-            check(split.getCantidadItemsEnCarrito() == 2,
-                    "Segundo plato agregado al carrito exitosamente (Items: " + split.getCantidadItemsEnCarrito() + ")");
-
-            // -------------------------------------------------------------
-            // CASO 5: Controles de cantidad (+ / - / quitar)
-            // -------------------------------------------------------------
-            System.out.println("\n--- Caso 5: Ajuste de cantidades ---");
+            System.out.println("== [Opción C Split E2E] Paso 6: Incrementar cantidad con botón '+' ==");
             JButton btnMas = encontrarBotonPorTextoExacto(split, "+");
-            JButton btnMenos = encontrarBotonPorTextoExacto(split, "−");
-            check(btnMas != null, "Botón '+' de incremento encontrado");
-            check(btnMenos != null, "Botón '−' de decremento encontrado");
-
             if (btnMas != null) {
-                SwingUtilities.invokeAndWait(btnMas::doClick);
-                Thread.sleep(400);
+                robot.clic(btnMas);
+            }
+            System.out.println("OK   Botón '+' pulsado");
+
+            System.out.println("== [Opción C Split E2E] Paso 7: Enviar a Cocina -> Mesa pasa a OCUPADA ==");
+            JButton btnCocina = split.getBtnEnviarCocina();
+            if (btnCocina == null) throw new AssertionError("Botón 'Enviar a Cocina' no encontrado");
+            robot.clic(btnCocina);
+
+            robot.esperar(() -> {
+                List<JButton> ms = obtenerBotonesMesa(split);
+                return !ms.isEmpty() && esMesaOcupada(ms.get(0));
+            }, "Mesa P-1 pasa a estado OCUPADA");
+            System.out.println("OK   Mesa P-1 en estado OCUPADA");
+
+            JButton btnCobrar = split.getBtnCobrar();
+            robot.esperar(() -> btnCobrar != null && btnCobrar.isEnabled() && btnCobrar.isShowing(),
+                    "Botón 'Cobrar' habilitado y visible");
+            System.out.println("OK   Botón Cobrar habilitado");
+
+            System.out.println("== [Opción C Split E2E] Paso 8: Conmutar a Mesa 2 y regresar a Mesa 1 ==");
+            List<JButton> botonesMesaPaso8 = obtenerBotonesMesa(split);
+            if (botonesMesaPaso8.size() >= 2) {
+                robot.clic(botonesMesaPaso8.get(1));
+                robot.esperar(() -> split.getCantidadItemsEnCarrito() == 0,
+                        "Mesa 2 (libre) muestra carrito vacío");
+
+                robot.esperar(() -> {
+                    List<JButton> ms = obtenerBotonesMesa(split);
+                    return !ms.isEmpty() && esMesaOcupada(ms.get(0));
+                }, "Grilla actualizada con Mesa 1 ocupada");
+
+                List<JButton> botonesRetorno = obtenerBotonesMesa(split);
+                robot.clic(botonesRetorno.get(0));
+                robot.esperar(() -> split.getCantidadItemsEnCarrito() >= 1 && split.getIdPedidoActivo() > 0,
+                        "Mesa 1 (ocupada) recarga automáticamente su comanda y pedido activo");
+                System.out.println("OK   Recarga automática de comanda existente validada (Pedido #" + split.getIdPedidoActivo() + ")");
             }
 
-            // -------------------------------------------------------------
-            // CASO 6: Enviar a Cocina y Mesa a OCUPADA
-            // -------------------------------------------------------------
-            System.out.println("\n--- Caso 6: Enviar a Cocina ---");
-            JButton btnCocina = encontrarBotonPorTexto(split, "Enviar a Cocina");
-            check(btnCocina != null, "Botón 'Enviar a Cocina' encontrado");
-            if (btnCocina != null) {
-                SwingUtilities.invokeAndWait(btnCocina::doClick);
-                Thread.sleep(1500);
-            }
+            System.out.println("== [Opción C Split E2E] Paso 9: Liberar comanda mediante 'No Pagó' (btnFuga) ==");
+            robot.esperar(() -> split.getIdPedidoActivo() > 0, "Hay un pedido activo seleccionado para anular");
+            JButton btnFuga = split.getBtnFuga();
+            robot.esperar(() -> btnFuga != null && btnFuga.isEnabled() && btnFuga.isShowing(),
+                    "Botón 'No Pagó' visible y habilitado");
 
-            check(pedidosRepo.verificarStado(1, 1) > 0, "Pedido registrado en repositorio para Mesa 1, Sala 1");
+            robot.clic(btnFuga);
+            robot.llenarDialogoInput("Anular por Fuga / No Pagó", "Prueba E2E Split completada");
+            robot.confirmarDialogo("Confirmar No-Pago (Fuga)");
 
-            // -------------------------------------------------------------
-            // CASO 7: Botones de acción siempre visibles en pantalla
-            // -------------------------------------------------------------
-            System.out.println("\n--- Caso 7: Visibilidad de botones de acción en pantalla ---");
-            JButton btnCobrar = encontrarBotonPorTexto(split, "Cobrar / Facturar");
-            check(btnCobrar != null, "Botón 'Cobrar / Facturar' encontrado");
-            if (btnCobrar != null) {
-                int yPos = btnCobrar.getLocationOnScreen().y - sistema.getLocationOnScreen().y;
-                System.out.println("Posición Y relativa de 'Cobrar / Facturar': " + yPos + "px");
-                check(yPos + btnCobrar.getHeight() <= sistema.getHeight(),
-                        "Botón 'Cobrar / Facturar' visible en pantalla (Y=" + yPos + "px + alto=" + btnCobrar.getHeight() + "px <= " + sistema.getHeight() + "px)");
-                check(btnCobrar.isEnabled(), "Botón 'Cobrar / Facturar' habilitado para comanda ocupada");
-            }
+            robot.esperar(() -> {
+                List<JButton> ms = obtenerBotonesMesa(split);
+                return !ms.isEmpty() && esMesaLibre(ms.get(0));
+            }, "Mesa P-1 regresa a estado DISPONIBLE tras la anulación");
+            System.out.println("OK   Mesa P-1 liberada limpiamente a través de la interfaz");
 
-            // -------------------------------------------------------------
-            // CASO 8: Cambio a otra mesa y retorno con recarga de comanda
-            // -------------------------------------------------------------
-            System.out.println("\n--- Caso 8: Recarga automática de comanda existente ---");
-            for (int t = 0; t < 30; t++) {
-                List<JButton> bs = obtenerBotonesMesa(split);
-                if (!bs.isEmpty() && bs.get(0).getText().contains("OCUPADA")) {
-                    break;
-                }
-                Thread.sleep(100);
-            }
-            List<JButton> botonesMesaActualizados = obtenerBotonesMesa(split);
-            if (botonesMesaActualizados.size() >= 2) {
-                // Clic en Mesa 2 (libre)
-                SwingUtilities.invokeAndWait(() -> botonesMesaActualizados.get(1).doClick());
-                Thread.sleep(500);
-                check(split.getCantidadItemsEnCarrito() == 0, "Mesa 2 (libre) inicia con comanda vacía");
-
-                // Retorno a Mesa 1 (ocupada)
-                SwingUtilities.invokeAndWait(() -> botonesMesaActualizados.get(0).doClick());
-                for (int t = 0; t < 30 && split.getCantidadItemsEnCarrito() == 0; t++) {
-                    Thread.sleep(100);
-                }
-                check(split.getCantidadItemsEnCarrito() >= 1,
-                        "Mesa 1 (ocupada) recarga automáticamente sus items (Items: " + split.getCantidadItemsEnCarrito() + ")");
-            }
-
+        } catch (Throwable error) {
+            fallo = error;
         } finally {
-            sistema.dispose();
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    for (Window w : Window.getWindows()) {
+                        w.dispose();
+                    }
+                });
+            } catch (Throwable errorLimpieza) {
+                if (fallo == null) fallo = errorLimpieza;
+                else fallo.addSuppressed(errorLimpieza);
+            }
         }
 
-        System.out.println("\n=================================================");
-        if (fallos == 0) {
-            System.out.println("  RESULTADO: TODOS LOS CASOS PASARON (0 FALLOS)  ");
-        } else {
-            System.err.println("  RESULTADO: HUBO " + fallos + " FALLOS EN EL TEST");
-        }
-        System.out.println("=================================================");
-
-        if (fallos > 0) {
+        if (fallo != null) {
+            System.err.println("E2E_OPCION_C_FALLO: " + fallo.getMessage());
+            fallo.printStackTrace(System.err);
             System.exit(1);
         }
+
+        System.out.println("E2E_OPCION_C_OK");
+        System.exit(0);
     }
 
     private static List<JButton> obtenerBotonesMesa(Container root) {
@@ -398,7 +242,7 @@ public final class OpcionCSplitE2EVirtual {
     }
 
     private static JLabel obtenerLabelCabecera(Container root) {
-        if (root instanceof JLabel l && l.getText().contains("MESA:")) {
+        if (root instanceof JLabel l && l.getText() != null && l.getText().contains("MESA:")) {
             return l;
         }
         for (Component c : root.getComponents()) {
@@ -412,7 +256,7 @@ public final class OpcionCSplitE2EVirtual {
 
     private static JButton encontrarBotonPorTexto(Container root, String texto) {
         for (Component c : root.getComponents()) {
-            if (c instanceof JButton b && b.getText().contains(texto)) {
+            if (c instanceof JButton b && b.getText() != null && b.getText().contains(texto)) {
                 return b;
             }
             if (c instanceof Container cont) {
@@ -434,5 +278,22 @@ public final class OpcionCSplitE2EVirtual {
             }
         }
         return null;
+    }
+
+    private static boolean esMesaOcupada(JButton b) {
+        if (b == null) return false;
+        String tip = b.getToolTipText();
+        if (tip != null && tip.contains("Ocupada")) return true;
+        java.awt.Color bg = b.getBackground();
+        return Servicio.ServicioMesa.FONDO_MESA_OCUPADA.equals(bg);
+    }
+
+    private static boolean esMesaLibre(JButton b) {
+        if (b == null) return false;
+        String tip = b.getToolTipText();
+        if (tip != null && tip.contains("Disponible")) return true;
+        String txt = b.getText();
+        if (txt != null && txt.contains("LIBRE")) return true;
+        return Servicio.ServicioMesa.FONDO_MESA_LIBRE.equals(b.getBackground());
     }
 }

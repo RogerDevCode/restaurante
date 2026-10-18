@@ -1,4 +1,4 @@
-package Vista;
+package integracion;
 
 import Modelo.*;
 import Servicio.*;
@@ -24,9 +24,8 @@ import java.util.Random;
  * Fases: seed 6 platos fiscales (exento/gravado/incluido x USD/VES) -&gt; ~50
  * pedidos con tasa/IVA cambiantes -&gt; cobro directo y diferido (mixto, vuelto,
  * residuo FX) -&gt; verificación de snapshots congelados y conciliación.
- * Uso: DB_URL=... DB_USER=... DB_PASSWORD=... ./e2e_virtual.sh Vista.CenaLifecycleE2E
  */
-public final class CenaLifecycleE2E {
+public final class CenaLifecycleIT {
 
     private static int fallos = 0;
     private static int creados = 0;

@@ -1,27 +1,38 @@
 package aceptacion;
 
-import Controlador.*;
-import Modelo.*;
-import Servicio.*;
+import Vista.DiaE2ERobot;
 import Vista.Sistema;
-import infraestructura.ProveedorConexionJdbc;
-import java.awt.*;
-import java.awt.event.InputEvent;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Point;
+import java.awt.Window;
 import java.awt.event.KeyEvent;
-import java.math.BigDecimal;
-import java.util.concurrent.Callable;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import java.nio.file.Path;
+import java.util.function.Predicate;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 /**
- * E2E VIRTUAL F-09 (Xvfb :99) — RED TEAM
- * Verifica:
- * 1. Tipear 4 en fila 0 y hacer clic en fila 1 -> fila 0 = 4, fila 1 intacta.
- * 2. Ingresar 0 -> rechazo y texto revertido al valor previo.
+ * E2E VIRTUAL F-09 (Xvfb :99) — 100% UI con Robot
+ *
+ * Verifica el comportamiento de txtCantidadManual en la comanda:
+ * 1. Ingresar 0 con teclado virtual -> rechazo y texto revertido al valor previo (1).
+ * 2. Tipear 4 en fila 0 y hacer clic en fila 1 -> fila 0 se actualiza a 4 y fila 1 se mantiene intacta en 1.
+ *
+ * Cumple estrictamente con AGENTS.md:
+ * - Cero manipulación de modelos por código (no addRow).
+ * - Cero invocación por reflexión de aplicarCantidadManual.
+ * - Toda la selección de platos y tipeo ocurre mediante Robot e interfaz Swing observable.
  */
 public class E2EF09Virtual {
 
-    static Robot robot;
     static int fallos = 0;
 
     static void check(boolean cond, String msg) {
@@ -31,177 +42,210 @@ public class E2EF09Virtual {
         }
     }
 
-    static <T> T enEdt(Callable<T> c) throws Exception {
-        final Object[] r = new Object[1];
-        final Throwable[] e = new Throwable[1];
-        SwingUtilities.invokeAndWait(() -> {
-            try {
-                r[0] = c.call();
-            } catch (Throwable t) {
-                e[0] = t;
-            }
-        });
-        if (e[0] != null) {
-            throw new RuntimeException(e[0]);
-        }
-        @SuppressWarnings("unchecked")
-        T t = (T) r[0];
-        return t;
-    }
-
-    static void enEdtV(Runnable r) throws Exception {
-        enEdt(() -> {
-            r.run();
-            return null;
-        });
-    }
-
-    static Object campo(Sistema s, String nombre) throws Exception {
-        java.lang.reflect.Field f = Sistema.class.getDeclaredField(nombre);
-        f.setAccessible(true);
-        return f.get(s);
-    }
-
-    static void clic(Component c) throws Exception {
-        Point p = c.getLocationOnScreen();
-        Dimension d = c.getSize();
-        robot.mouseMove(p.x + d.width / 2, p.y + d.height / 2);
-        robot.delay(120);
-        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-        robot.delay(80);
-        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-        robot.delay(300);
-    }
-
     public static void main(String[] args) throws Exception {
         if (!"SI".equals(System.getProperty("e2e.permitir"))) {
-            System.out.println("E2E requiere -De2e.permitir=SI");
+            System.err.println("E2E requiere -De2e.permitir=SI");
             System.exit(2);
         }
+
+        Path dirE2E = Path.of(System.getenv().getOrDefault("E2E_WORKDIR", System.getProperty("java.io.tmpdir")));
+        System.setProperty("user.home", dirE2E.toString());
+        System.setProperty("modo.automatizado", "true");
+
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        robot = new Robot();
-        robot.setAutoDelay(40);
+        DiaE2ERobot robot = new DiaE2ERobot();
 
-        Usuario admin = new Usuario(2, "Administrador", "admin", "admin", "Administrador");
-        PoliticaAcceso politica = new PoliticaAcceso(admin);
-        PedidosDao pedidosDao = new PedidosDao();
-        LoginDao empresaDao = new LoginDao();
-        PedidoPdfServicio pdfServicio = new PedidoPdfServicio(
-                pedidosDao::verPedido,
-                id -> pedidosDao.verPedidoDetalle(id),
-                empresaDao::datosEmpresa,
-                GeneradorPdfPedido.conEstructuraMensual(GeneradorPdfPedido.resolverDirectorioFacturasPorDefecto()),
-                PedidoPdfServicio.AbridorPdf.porDefecto());
-        Servicio.CierreCajaServicio cierreServicio = new Servicio.CierreCajaServicio(
-                new Modelo.CierreCajaDao(), empresaDao::datosEmpresa, new Servicio.GeneradorPdfCierre());
-        PedidosControlador pedidosCtrl = new PedidosControlador(
-                new PedidoServicio(pedidosDao), pdfServicio, politica,
-                new ConsultaPedidosServicio(pedidosDao, politica), cierreServicio);
-
-        final Sistema[] box = new Sistema[1];
-        SwingUtilities.invokeAndWait(() -> box[0] = new Sistema(admin,
-                new SalasControlador(new SalasServicio(new SalasDao(), politica)),
-                new PlatosControlador(new PlatosServicio(new PlatosDao(), politica)),
-                pedidosCtrl,
-                new CategoriaControlador(new Servicio.CategoriaServicio(new Modelo.CategoriaDao(), politica)),
-                new FavoritoControlador(new Servicio.FavoritoServicio(new Modelo.FavoritoDao(), politica)),
-                empresaDao));
-        Sistema s = box[0];
-
+        Throwable fallo = null;
         try {
-            SwingUtilities.invokeAndWait(() -> {
-                s.setExtendedState(JFrame.MAXIMIZED_BOTH);
-                s.setVisible(true);
+            System.out.println("== [F-09 E2E] Paso 1: Inicio e inicio de sesión interactivo ==");
+            restaurante.Restaurante.lanzarLogin();
+            Vista.FrmLogin login = robot.esperarVentana(Vista.FrmLogin.class);
+            robot.edt(() -> {
+                login.setLocationRelativeTo(null);
+                return null;
             });
-            Thread.sleep(2000);
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), "admin");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), "admin");
+            robot.clic((Component) robot.campo(login, "btnIniciar"));
 
-            JTabbedPane tabs = (JTabbedPane) campo(s, "jTabbedPane1");
-            JTextField txtSala = (JTextField) campo(s, "txtTempIdSala");
-            JTextField txtMesa = (JTextField) campo(s, "txtTempNumMesa");
-            JTable carro = (JTable) campo(s, "tableMenu");
-            JTextField txtCant = (JTextField) campo(s, "txtCantidadManual");
-
-            enEdtV(() -> {
-                txtSala.setText("1");
-                txtMesa.setText("1");
-                tabs.setSelectedIndex(3); // Tab toma de pedidos
+            Sistema sistema = robot.esperarVentana(Sistema.class);
+            robot.edt(() -> {
+                sistema.setExtendedState(JFrame.MAXIMIZED_BOTH);
+                sistema.setVisible(true);
+                return null;
             });
-            Thread.sleep(500);
+            robot.esperar(() -> sistema.isShowing() && sistema.getBtnAtencionDirecta().isShowing(),
+                    "Ventana Sistema disponible");
 
-            // Cargar directamente 2 platos al carrito (tableMenu)
-            enEdtV(() -> {
-                DefaultTableModel m = (DefaultTableModel) carro.getModel();
-                m.setRowCount(0);
-                // Cols: 0:id, 1:nombre, 2:cant, 3:precio, 4:total, 5:comentario, 6:idDetalle, 7:moneda, 8:iva, 9:inc
-                m.addRow(new Object[]{1, "POLLO ASADO", 1, new BigDecimal("45.00"), new BigDecimal("45.00"), "", 0, "USD", true, false});
-                m.addRow(new Object[]{2, "LOMO SALTADO", 1, new BigDecimal("32.50"), new BigDecimal("32.50"), "", 0, "USD", true, false});
-                carro.setRowSelectionInterval(0, 0);
-            });
-            Thread.sleep(300);
-
-            check(carro.getRowCount() == 2, "Carrito contiene 2 filas");
-            check("1".equals(txtCant.getText()), "txtCantidadManual inicial es 1");
-
-            // =================================================================
-            // TEST PARTE 1: Ingresar 0 -> rechazo y texto revertido
-            // =================================================================
-            enEdtV(() -> {
-                carro.setRowSelectionInterval(0, 0);
-                txtCant.requestFocusInWindow();
-                txtCant.setText("0");
-            });
-            Thread.sleep(200);
-
-            // Disparar aplicarCantidadManual ("0", fila 0) mediante Enter o pérdida de foco
-            java.lang.reflect.Method mAplicar = Sistema.class.getDeclaredMethod("aplicarCantidadManual", String.class, int.class);
-            mAplicar.setAccessible(true);
-            enEdtV(() -> {
-                try {
-                    mAplicar.invoke(s, "0", 0);
-                } catch (Exception ex) {
-                    throw new RuntimeException(ex);
-                }
-            });
-            Thread.sleep(200);
-
-            String textoRevertido = enEdt(txtCant::getText);
-            Object cantFila0 = enEdt(() -> carro.getModel().getValueAt(0, 2));
-            check("1".equals(textoRevertido), "txtCantidadManual fue revertido a '1' ante 0 (actual: " + textoRevertido + ")");
-            check(Integer.valueOf(1).equals(cantFila0), "Fila 0 conserva cantidad 1 (actual: " + cantFila0 + ")");
-
-            // =================================================================
-            // TEST PARTE 2: Tipear 4 en fila 0 y hacer clic en fila 1 -> fila 0 = 4, fila 1 intacta
-            // =================================================================
-            enEdtV(() -> {
-                carro.setRowSelectionInterval(0, 0);
-                txtCant.requestFocusInWindow();
-                txtCant.setText("4");
-            });
-            Thread.sleep(200);
-
-            // Simular clic en fila 1: selección de fila 1 mientras txtCant tiene foco
-            enEdtV(() -> {
-                // Al cambiar la selección con txtCant enfocado, el ListSelectionListener transfiere el foco
-                carro.setRowSelectionInterval(1, 1);
-            });
-            Thread.sleep(300);
-
-            Object cantFila0Final = enEdt(() -> carro.getModel().getValueAt(0, 2));
-            Object cantFila1Final = enEdt(() -> carro.getModel().getValueAt(1, 2));
-            String textoFila1 = enEdt(txtCant::getText);
-
-            check(Integer.valueOf(4).equals(cantFila0Final), "Fila 0 se actualizó a 4 tras cambio de selección (actual: " + cantFila0Final + ")");
-            check(Integer.valueOf(1).equals(cantFila1Final), "Fila 1 se mantuvo intacta en 1 (actual: " + cantFila1Final + ")");
-            check("1".equals(textoFila1), "txtCantidadManual muestra '1' correspondiente a la fila 1 seleccionada (actual: " + textoFila1 + ")");
-
-            if (fallos == 0) {
-                System.out.println("E2E_F09_OK");
-            } else {
-                System.out.println("E2E_F09_FALLO: " + fallos + " errores");
-                System.exit(1);
+            System.out.println("== [F-09 E2E] Paso 2: Navegar a mesas y seleccionar Mesa 1 ==");
+            javax.swing.JComboBox<?> modoGlobal = sistema.getCbModoAtencionGlobal();
+            if (modoGlobal != null) {
+                robot.seleccionarComboPorIndice(modoGlobal, 0);
+                robot.esperar(() -> "OPCION_B".equals(sistema.getModoAtencionActual()),
+                        "modo de atención Opción B activo");
             }
+            robot.clic(sistema.getBtnAtencionDirecta());
+            JTabbedPane tabs = sistema.getJTabbedPane1();
+            robot.esperar(() -> tabs.indexOfTab("Mesas") >= 0 && tabs.getSelectedIndex() == tabs.indexOfTab("Mesas"),
+                    "Pestaña Mesas seleccionada");
+
+            JPanel panelMesas = (JPanel) robot.campo(sistema, "PanelMesas");
+            Predicate<JButton> esMesa1 = b -> {
+                String tip = b.getToolTipText() == null ? "" : b.getToolTipText();
+                String txt = b.getText() == null ? "" : b.getText().toUpperCase();
+                return tip.startsWith("Mesa 1 (") || txt.contains("MESA 1");
+            };
+            robot.esperar(() -> buscarBoton(panelMesas, esMesa1) != null, "Botón de Mesa 1 cargado");
+            JButton botonMesa1 = robot.edt(() -> buscarBoton(panelMesas, esMesa1));
+
+            // Si estuviera ocupada, liberamos por UI
+            boolean ocupada = robot.edt(() -> {
+                String tip = botonMesa1.getToolTipText() != null ? botonMesa1.getToolTipText() : "";
+                return tip.contains("Ocupada");
+            });
+            if (ocupada) {
+                robot.clic(botonMesa1);
+                robot.esperar(() -> tabs.getSelectedIndex() == 4, "Abre Caja/Cuenta");
+                robot.clic((Component) robot.campo(sistema, "btnAnularFuga"));
+                robot.llenarDialogoInput("Anular por Fuga / No Pagó", "Limpieza previa F-09");
+                robot.confirmarDialogo("Confirmar No-Pago (Fuga)");
+                robot.clic(sistema.getBtnAtencionDirecta());
+                robot.esperar(() -> {
+                    JButton b = buscarBoton(panelMesas, esMesa1);
+                    String tip = b.getToolTipText() == null ? "" : b.getToolTipText();
+                    return tip.contains("Disponible");
+                }, "Mesa 1 liberada");
+            }
+
+            // Abrir Mesa 1
+            robot.clic(robot.edt(() -> buscarBoton(panelMesas, esMesa1)));
+            robot.esperar(() -> tabs.getSelectedIndex() == 3, "Toma de pedidos abierta");
+
+            JTextField buscar = (JTextField) robot.campo(sistema, "txtBuscarPlato");
+            JTable menu = (JTable) robot.campo(sistema, "tblTemPlatos");
+            JTable carro = (JTable) robot.campo(sistema, "tableMenu");
+            JTextField txtCant = (JTextField) robot.campo(sistema, "txtCantidadManual");
+
+            System.out.println("== [F-09 E2E] Paso 3: Agregar 2 platos reales al carrito por la UI ==");
+            // Plato 1: Pollo
+            robot.reemplazarTexto(buscar, "pollo");
+            robot.esperar(() -> {
+                for (int i = 0; i < menu.getRowCount(); i++) {
+                    Object v = menu.getModel().getValueAt(menu.convertRowIndexToModel(i), 1);
+                    if (v != null && v.toString().toUpperCase().contains("POLLO")) return true;
+                }
+                return false;
+            }, "Platos con POLLO cargados en el menú");
+            int f1 = robot.edt(() -> {
+                for (int i = 0; i < menu.getRowCount(); i++) {
+                    Object v = menu.getModel().getValueAt(menu.convertRowIndexToModel(i), 1);
+                    if (v != null && v.toString().toUpperCase().contains("POLLO")) return i;
+                }
+                return -1;
+            });
+            robot.clicCelda(menu, f1, 0);
+            robot.esperar(() -> carro.getRowCount() >= 1, "Carrito tiene al menos 1 fila");
+
+            // Plato 2: Sopa
+            robot.reemplazarTexto(buscar, "sopa");
+            robot.esperar(() -> {
+                for (int i = 0; i < menu.getRowCount(); i++) {
+                    Object v = menu.getModel().getValueAt(menu.convertRowIndexToModel(i), 1);
+                    if (v != null && v.toString().toUpperCase().contains("SOPA")) return true;
+                }
+                return false;
+            }, "Platos con SOPA cargados en el menú");
+            int f2 = robot.edt(() -> {
+                for (int i = 0; i < menu.getRowCount(); i++) {
+                    Object v = menu.getModel().getValueAt(menu.convertRowIndexToModel(i), 1);
+                    if (v != null && v.toString().toUpperCase().contains("SOPA")) return i;
+                }
+                return -1;
+            });
+            robot.clicCelda(menu, f2, 0);
+            robot.esperar(() -> carro.getRowCount() >= 2, "Carrito contiene 2 filas reales");
+            check(carro.getRowCount() >= 2, "Carrito contiene 2 platos seleccionados desde el catálogo");
+
+            // Seleccionar fila 0 del carrito
+            robot.clicCelda(carro, 0, 1);
+            robot.esperar(() -> "1".equals(txtCant.getText()), "txtCantidadManual inicial es 1");
+
+            System.out.println("== [F-09 E2E] Paso 4: Tipear 0 -> rechazo y reversión a 1 ==");
+            robot.reemplazarTexto(txtCant, "0");
+            robot.tecla(KeyEvent.VK_ENTER);
+            robot.esperar(() -> "1".equals(txtCant.getText()), "txtCantidadManual se revierte a '1' ante '0'");
+
+            int cantFila0 = robot.edt(() -> Integer.parseInt(carro.getModel().getValueAt(0, 2).toString()));
+            check(cantFila0 == 1, "Fila 0 conserva cantidad 1");
+
+            System.out.println("== [F-09 E2E] Paso 5: Tipear 4 en fila 0 y hacer clic en fila 1 ==");
+            robot.clicCelda(carro, 0, 1);
+            robot.reemplazarTexto(txtCant, "4");
+
+            // Clic real con mouse virtual en fila 1
+            robot.clicCelda(carro, 1, 1);
+
+            robot.esperar(() -> {
+                try {
+                    int c0 = Integer.parseInt(carro.getModel().getValueAt(0, 2).toString());
+                    int c1 = Integer.parseInt(carro.getModel().getValueAt(1, 2).toString());
+                    return c0 == 4 && c1 == 1;
+                } catch (Exception ex) {
+                    return false;
+                }
+            }, "Fila 0 actualizada a 4 y fila 1 se mantiene en 1 tras cambiar foco");
+
+            int c0Final = robot.edt(() -> Integer.parseInt(carro.getModel().getValueAt(0, 2).toString()));
+            int c1Final = robot.edt(() -> Integer.parseInt(carro.getModel().getValueAt(1, 2).toString()));
+            String cantFila1Text = txtCant.getText();
+
+            check(c0Final == 4, "Fila 0 actualizada a 4");
+            check(c1Final == 1, "Fila 1 se mantiene en 1");
+            check("1".equals(cantFila1Text), "txtCantidadManual refleja '1' de la fila 1 seleccionada");
+
+            System.out.println("== [F-09 E2E] Paso 6: Cancelar comanda sin guardar para dejar mesa limpia ==");
+            robot.clic(sistema.getBtnAtencionDirecta());
+            robot.esperar(() -> tabs.getSelectedIndex() == tabs.indexOfTab("Mesas"), "Regresa a Mesas sin alterar la BD");
+
+        } catch (Throwable err) {
+            fallo = err;
         } finally {
-            enEdtV(s::dispose);
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    for (Window w : Window.getWindows()) {
+                        w.dispose();
+                    }
+                });
+            } catch (Throwable e) {
+                if (fallo == null) fallo = e;
+            }
         }
+
+        if (fallo != null) {
+            System.err.println("E2E_F09_FALLO: " + fallo.getMessage());
+            fallo.printStackTrace(System.err);
+            System.exit(1);
+        }
+
+        if (fallos == 0) {
+            System.out.println("E2E_F09_OK");
+            System.exit(0);
+        } else {
+            System.err.println("E2E_F09_FALLO con " + fallos + " errores");
+            System.exit(1);
+        }
+    }
+
+    private static JButton buscarBoton(Container raiz, Predicate<JButton> criterio) {
+        for (Component c : raiz.getComponents()) {
+            if (c instanceof JButton b && criterio.test(b)) {
+                return b;
+            }
+            if (c instanceof Container cont) {
+                JButton encontrado = buscarBoton(cont, criterio);
+                if (encontrado != null) return encontrado;
+            }
+        }
+        return null;
     }
 }

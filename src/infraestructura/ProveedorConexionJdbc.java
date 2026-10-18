@@ -11,9 +11,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,6 +57,12 @@ public class ProveedorConexionJdbc {
             port = "3306";
         }
         String url = setting("DB_URL", localConfig);
+        if ((database == null || database.trim().isEmpty()) && url != null && !url.trim().isEmpty()) {
+            java.util.regex.Matcher mDb = java.util.regex.Pattern.compile("(?i)jdbc:mysql://[^/]+/([^?\\s]+)").matcher(url);
+            if (mDb.find()) {
+                database = mDb.group(1);
+            }
+        }
 
         if (database == null || database.trim().isEmpty()
                 || user == null || user.trim().isEmpty()
@@ -278,6 +287,7 @@ public class ProveedorConexionJdbc {
     private Connection envolverConexion(Connection fisica, BlockingQueue<Connection> pool, AtomicInteger activas, int nivelAislamientoDefault) {
         InvocationHandler handler = new InvocationHandler() {
             private volatile boolean cerrado = false;
+            private final boolean[] transaccionConEscritura = {false};
 
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -285,7 +295,8 @@ public class ProveedorConexionJdbc {
                 if ("close".equals(methodName)) {
                     if (!cerrado) {
                         cerrado = true;
-                        devolverAlPool(fisica, pool, activas, nivelAislamientoDefault);
+                        devolverAlPool(fisica, pool, activas, nivelAislamientoDefault,
+                                transaccionConEscritura[0]);
                     }
                     return null;
                 }
@@ -316,7 +327,20 @@ public class ProveedorConexionJdbc {
                     return iface.isInstance(proxy) || fisica.isWrapperFor(iface);
                 }
                 try {
-                    return method.invoke(fisica, args);
+                    Object resultado = method.invoke(fisica, args);
+                    if ("commit".equals(methodName) || "rollback".equals(methodName)
+                            || "setAutoCommit".equals(methodName)) {
+                        transaccionConEscritura[0] = false;
+                    }
+                    if (resultado instanceof Statement sentencia
+                            && (methodName.startsWith("createStatement")
+                            || methodName.startsWith("prepareStatement")
+                            || methodName.startsWith("prepareCall"))) {
+                        String sqlPreparado = methodName.startsWith("createStatement")
+                                ? null : (args != null && args.length > 0 && args[0] instanceof String sql ? sql : null);
+                        return envolverSentencia(sentencia, fisica, sqlPreparado, transaccionConEscritura);
+                    }
+                    return resultado;
                 } catch (InvocationTargetException ite) {
                     throw ite.getCause() != null ? ite.getCause() : ite;
                 }
@@ -330,13 +354,55 @@ public class ProveedorConexionJdbc {
         );
     }
 
-    private void devolverAlPool(Connection fisica, BlockingQueue<Connection> pool, AtomicInteger activas, int nivelAislamientoDefault) {
+    private Statement envolverSentencia(Statement sentencia, Connection conexion, String sqlPreparado,
+            boolean[] transaccionConEscritura) {
+        boolean[] loteTieneEscritura = {false};
+        InvocationHandler handler = (proxy, method, args) -> {
+            String nombre = method.getName();
+            boolean ejecucion = nombre.startsWith("execute");
+            boolean loteEscritura = "executeBatch".equals(nombre) || "executeLargeBatch".equals(nombre);
+            if ("addBatch".equals(nombre)) {
+                String sqlLote = sqlPreparado != null ? sqlPreparado
+                        : args != null && args.length > 0 && args[0] instanceof String sql ? sql : null;
+                loteTieneEscritura[0] |= ControlMantenimientoBD.esEscritura(sqlLote);
+            }
+            String sqlEjecutado = sqlPreparado != null ? sqlPreparado
+                    : args != null && args.length > 0 && args[0] instanceof String sql ? sql : null;
+            boolean escritura = loteEscritura && loteTieneEscritura[0]
+                    || !loteEscritura && ControlMantenimientoBD.esEscritura(sqlEjecutado)
+                    || sentencia instanceof CallableStatement && ejecucion;
+            if (ejecucion && escritura && !conexion.getAutoCommit()) {
+                transaccionConEscritura[0] = true;
+            }
+            try {
+                Object resultado = method.invoke(sentencia, args);
+                if ("clearBatch".equals(nombre) || loteEscritura) loteTieneEscritura[0] = false;
+                return resultado;
+            } catch (InvocationTargetException ite) {
+                throw ite.getCause() != null ? ite.getCause() : ite;
+            }
+        };
+        Class<?> api = sentencia instanceof CallableStatement ? CallableStatement.class
+                : sentencia instanceof PreparedStatement ? PreparedStatement.class : Statement.class;
+        return (Statement) Proxy.newProxyInstance(ProveedorConexionJdbc.class.getClassLoader(),
+                new Class<?>[]{api}, handler);
+    }
+
+    private void devolverAlPool(Connection fisica, BlockingQueue<Connection> pool, AtomicInteger activas,
+            int nivelAislamientoDefault, boolean transaccionConEscritura) throws SQLException {
         try {
             if (fisica.isClosed()) {
                 activas.decrementAndGet();
                 return;
             }
+            SQLException transaccionRevertida = null;
             if (!fisica.getAutoCommit()) {
+                if (transaccionConEscritura) {
+                    LOGGER.severe("La conexión volvió al pool con autocommit=false y escrituras sin confirmar; "
+                            + "el pool las revirtió. Revise la salida transaccional que omitió commit().");
+                    transaccionRevertida = new SQLException(
+                            "La conexión se cerró con escrituras sin confirmar; el pool revirtió la transacción.");
+                }
                 fisica.rollback();
                 fisica.setAutoCommit(true);
             }
@@ -353,10 +419,17 @@ public class ProveedorConexionJdbc {
             } catch (Exception ignored) {
             }
             fisica.clearWarnings();
-            pool.offer(fisica);
+            if (transaccionRevertida != null) {
+                throw transaccionRevertida;
+            }
+            if (!pool.offer(fisica)) {
+                cerrarSilenciosamente(fisica);
+                activas.decrementAndGet();
+            }
         } catch (SQLException error) {
             cerrarSilenciosamente(fisica);
             activas.decrementAndGet();
+            throw error;
         }
     }
 
