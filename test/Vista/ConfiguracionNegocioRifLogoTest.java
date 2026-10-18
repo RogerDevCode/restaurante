@@ -149,14 +149,17 @@ public class ConfiguracionNegocioRifLogoTest {
             JTextField txtMensaje = campo(sistema, "txtMensaje", JTextField.class);
             JButton btnActualizar = campo(sistema, "btnActualizarConfig", JButton.class);
 
-            // Modificar a datos de empresa venezolana
-            txtRif.setText("J-50123456-7");
-            txtNombre.setText("Arepera Gran Café");
-            txtTelefono.setText("+58 414 1234567");
-            txtDireccion.setText("Bulevar de Sabana Grande, Caracas");
-            txtMensaje.setText("¡La mejor sazón venezolana!");
+            esperarTextoConfig(txtRif, "J-12345678-0");
 
-            SwingUtilities.invokeAndWait(btnActualizar::doClick);
+            // Modificar a datos de empresa venezolana
+            SwingUtilities.invokeAndWait(() -> {
+                txtRif.setText("J-50123456-7");
+                txtNombre.setText("Arepera Gran Café");
+                txtTelefono.setText("+58 414 1234567");
+                txtDireccion.setText("Bulevar de Sabana Grande, Caracas");
+                txtMensaje.setText("¡La mejor sazón venezolana!");
+                btnActualizar.doClick();
+            });
 
             Config guardado = daoMock.configuracionActual;
             assertEquals("J-50123456-7", guardado.getRif());

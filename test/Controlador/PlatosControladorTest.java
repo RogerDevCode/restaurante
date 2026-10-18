@@ -22,6 +22,9 @@ public class PlatosControladorTest {
         RepositorioFalso repositorio = new RepositorioFalso();
         PlatosControlador controlador = controlador(repositorio);
         Platos plato = new Platos(7, "Sopa", new BigDecimal("4.50"), "2026-10-05");
+        plato.setMonedaBase("USD");
+        plato.setAplicaIva(true);
+        plato.setPrecioIncluyeIva(false);
 
         assertTrue(controlador.listarPorFecha("", "2026-10-05").isEmpty());
         assertTrue(controlador.registrar(plato));

@@ -45,6 +45,16 @@ import javax.swing.UIManager;
 
 /** Comprueba en Xvfb que Forma de Pago está visible y se puede cambiar con mouse/teclado. */
 public final class MetodoPagoVisibleTest {
+
+    @org.junit.Test
+    public void ejecutarE2E() throws Exception {
+        if (!"SI".equalsIgnoreCase(System.getProperty("e2e.permitir"))) {
+            org.junit.Assume.assumeTrue("Requiere entorno Xvfb virtual (-De2e.permitir=SI). Se omite en unitarias estándar.", false);
+            return;
+        }
+        main(new String[0]);
+    }
+
     private static int fallos;
 
     private static void check(boolean condicion, String mensaje) {

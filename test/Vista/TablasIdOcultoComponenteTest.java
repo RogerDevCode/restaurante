@@ -43,6 +43,15 @@ import javax.swing.table.TableRowSorter;
  */
 public final class TablasIdOcultoComponenteTest {
 
+    @org.junit.Test
+    public void ejecutarE2E() throws Exception {
+        if (!"SI".equalsIgnoreCase(System.getProperty("e2e.permitir"))) {
+            org.junit.Assume.assumeTrue("Requiere entorno Xvfb virtual (-De2e.permitir=SI). Se omite en unitarias estándar.", false);
+            return;
+        }
+        main(new String[0]);
+    }
+
     private static int fallos = 0;
     private static Robot robot;
 

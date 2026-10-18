@@ -501,7 +501,8 @@ public class ExhaustivoDashboardUsuarioTest {
                         boolean baseExistente = columna != null && (("config".equalsIgnoreCase(tabla)
                                 && ("ruc".equalsIgnoreCase(columna) || "telefono".equalsIgnoreCase(columna)))
                                 || ("usuarios".equalsIgnoreCase(tabla) && "pass".equalsIgnoreCase(columna))
-                                || ("pedidos".equalsIgnoreCase(tabla) && ("id_sala".equalsIgnoreCase(columna) || "num_mesa".equalsIgnoreCase(columna))));
+                                || ("pedidos".equalsIgnoreCase(tabla) && ("id_sala".equalsIgnoreCase(columna) || "num_mesa".equalsIgnoreCase(columna)))
+                                || ("platos".equalsIgnoreCase(tabla) && "aplica_iva".equalsIgnoreCase(columna)));
                         AtomicInteger fila = new AtomicInteger();
                         return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
                                 ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
@@ -542,7 +543,29 @@ public class ExhaustivoDashboardUsuarioTest {
                     if ("getMetaData".equals(name)) return mockMeta;
                     if ("getCatalog".equals(name)) return "restaurante";
                     if ("createStatement".equals(name)) return mockStatement;
-                    if ("prepareStatement".equals(name)) return mockPreparedStatement;
+                    if ("prepareStatement".equals(name)) {
+                        String sql = args != null && args.length > 0 ? String.valueOf(args[0]) : "";
+                        if (sql.contains("information_schema.columns")) {
+                            return (PreparedStatement) java.lang.reflect.Proxy.newProxyInstance(
+                                    PreparedStatement.class.getClassLoader(), new Class<?>[] { PreparedStatement.class },
+                                    (pr, me, ar) -> {
+                                        if ("executeQuery".equals(me.getName())) {
+                                            java.util.concurrent.atomic.AtomicBoolean nextCalled = new java.util.concurrent.atomic.AtomicBoolean(false);
+                                            return (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                                                    ResultSet.class.getClassLoader(), new Class<?>[] { ResultSet.class },
+                                                    (prs, mth, arg) -> {
+                                                        if ("next".equals(mth.getName())) return !nextCalled.getAndSet(true);
+                                                        if ("getString".equals(mth.getName())) return "NO";
+                                                        if ("close".equals(mth.getName())) return null;
+                                                        return null;
+                                                    });
+                                        }
+                                        if ("close".equals(me.getName())) return null;
+                                        return null;
+                                    });
+                        }
+                        return mockPreparedStatement;
+                    }
                     if ("isClosed".equals(name)) return false;
                     if ("close".equals(name)) return null;
                     return null;

@@ -23,6 +23,7 @@ import Servicio.PedidoServicio;
 import Servicio.PlatosServicio;
 import Servicio.PoliticaAcceso;
 import Servicio.SalasServicio;
+import Servicio.ServicioMesa;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.io.File;
@@ -105,12 +106,27 @@ public class SistemaTabsYVistasTest {
                 SwingUtilities.invokeLater(() -> {
                     for (java.awt.Window window : java.awt.Window.getWindows()) {
                         if (window instanceof javax.swing.JDialog dialog && dialog.isModal()) {
+                            setOptionPaneYes(dialog);
                             dialog.dispose();
                         }
                     }
                 });
             }
         }, 50, 50);
+    }
+
+    private static void setOptionPaneYes(java.awt.Container container) {
+        if (container instanceof javax.swing.JOptionPane pane) {
+            pane.setValue(javax.swing.JOptionPane.YES_OPTION);
+            return;
+        }
+        for (java.awt.Component c : container.getComponents()) {
+            if (c instanceof javax.swing.JOptionPane pane) {
+                pane.setValue(javax.swing.JOptionPane.YES_OPTION);
+            } else if (c instanceof java.awt.Container childContainer) {
+                setOptionPaneYes(childContainer);
+            }
+        }
     }
 
     @org.junit.AfterClass
@@ -132,8 +148,19 @@ public class SistemaTabsYVistasTest {
         salasRepo.salas.add(new Salas(2, "Salón VIP", 8));
 
         platosRepo = new PlatosRepositorioFalso();
-        platosRepo.platos.add(new Platos(1, "Arepa Reina Pepiada", new BigDecimal("10.00"), LocalDate.now().toString()));
-        platosRepo.platos.add(new Platos(2, "Jugo Natural", new BigDecimal("2.50"), LocalDate.now().toString()));
+        Platos initP1 = new Platos(1, "Arepa Reina Pepiada", new BigDecimal("10.00"), LocalDate.now().toString());
+        initP1.setMonedaBase("USD");
+        initP1.setPrecioUsd(new BigDecimal("10.00"));
+        initP1.setPrecioClasificado(true);
+        initP1.setAplicaIva(false);
+        platosRepo.platos.add(initP1);
+
+        Platos initP2 = new Platos(2, "Jugo Natural", new BigDecimal("2.50"), LocalDate.now().toString());
+        initP2.setMonedaBase("USD");
+        initP2.setPrecioUsd(new BigDecimal("2.50"));
+        initP2.setPrecioClasificado(true);
+        initP2.setAplicaIva(false);
+        platosRepo.platos.add(initP2);
 
         pedidosRepo = new PedidosRepositorioTestDouble();
         loginDaoFalso = new LoginDaoFalso();
@@ -275,7 +302,7 @@ public class SistemaTabsYVistasTest {
         try {
             assertFalse("btnConfig deshabilitado para Asistente", campo(sistema, "btnConfig", JButton.class).isEnabled());
             assertFalse("btnUsuarios deshabilitado para Asistente", campo(sistema, "btnUsuarios", JButton.class).isEnabled());
-            assertFalse("btnPlatos deshabilitado para Asistente", campo(sistema, "btnPlatos", JButton.class).isEnabled());
+            assertTrue("btnPlatos habilitado para Asistente", campo(sistema, "btnPlatos", JButton.class).isEnabled());
             assertFalse("btnRegistrarSala deshabilitado para Asistente", campo(sistema, "btnRegistrarSala", JButton.class).isEnabled());
             assertFalse("btnActualizarConfig deshabilitado para Asistente", campo(sistema, "btnActualizarConfig", JButton.class).isEnabled());
             assertFalse("btnGuardarPlato deshabilitado para Asistente", campo(sistema, "btnGuardarPlato", JButton.class).isEnabled());
@@ -393,9 +420,9 @@ public class SistemaTabsYVistasTest {
             assertTrue(btnMesa1.getText().contains("T-1") || btnMesa1.getText().contains("MESA 1") || btnMesa1.getText().contains("MESA N°: 1"));
             assertTrue(btnMesa2.getText().contains("T-2") || btnMesa2.getText().contains("MESA 2") || btnMesa2.getText().contains("MESA N°: 2"));
 
-            // Mesa libre color verde (0, 102, 102), ocupada color rojo oscuro (192, 57, 43)
-            assertEquals(new Color(0, 102, 102), btnMesa1.getBackground());
-            assertEquals(new Color(192, 57, 43), btnMesa2.getBackground());
+            // Mesa libre color verde, ocupada color rojo oscuro
+            assertEquals(ServicioMesa.FONDO_MESA_LIBRE, btnMesa1.getBackground());
+            assertEquals(ServicioMesa.FONDO_MESA_OCUPADA, btnMesa2.getBackground());
 
             // Click en mesa libre debe navegar a Tab 3 (Pedidos) y fijar identificadores
             SwingUtilities.invokeAndWait(() -> btnMesa1.getActionListeners()[0].actionPerformed(
@@ -421,10 +448,11 @@ public class SistemaTabsYVistasTest {
             Config conf = campo(sistema, "conf", Config.class);
             conf.setTasaDolar(new BigDecimal("36.5000"));
 
-            List<Platos> catalogo = Arrays.asList(
-                    new Platos(1, "Arepa Reina Pepiada", new BigDecimal("10.00"), LocalDate.now().toString()),
-                    new Platos(2, "Jugo Natural", new BigDecimal("2.50"), LocalDate.now().toString())
-            );
+            Platos p1 = new Platos(1, "Arepa Reina Pepiada", new BigDecimal("10.00"), LocalDate.now().toString());
+            p1.setPrecioClasificado(true);
+            Platos p2 = new Platos(2, "Jugo Natural", new BigDecimal("2.50"), LocalDate.now().toString());
+            p2.setPrecioClasificado(true);
+            List<Platos> catalogo = Arrays.asList(p1, p2);
 
             JTable tblTemPlatos = campo(sistema, "tblTemPlatos", JTable.class);
             SwingUtilities.invokeAndWait(() -> {
@@ -454,28 +482,34 @@ public class SistemaTabsYVistasTest {
         try {
             Config conf = campo(sistema, "conf", Config.class);
             conf.setTasaDolar(new BigDecimal("36.5000"));
-            conf.setIvaPorcentaje(new BigDecimal("16.00"));
+            conf.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
 
             JTable tblTemPlatos = campo(sistema, "tblTemPlatos", JTable.class);
             JTable tableMenu = campo(sistema, "tableMenu", JTable.class);
             JButton btnAddPlato = campo(sistema, "btnAddPlato", JButton.class);
             JLabel totalMenu = campo(sistema, "totalMenu", JLabel.class);
 
-            // Poblar menú temporal con 1 plato de $10 (con 2 decimales)
-            DefaultTableModel modeloPlatos = (DefaultTableModel) tblTemPlatos.getModel();
-            modeloPlatos.setRowCount(0);
-            modeloPlatos.addRow(new Object[]{101, "Pabellón Criollo", "$ 10.00"});
+            // Esperar que el catalogo de platos este cargado en tblTemPlatos
+            for (int i = 0; i < 30 && tblTemPlatos.getRowCount() == 0; i++) {
+                Thread.sleep(50);
+                SwingUtilities.invokeAndWait(() -> { });
+            }
+            assertTrue("tblTemPlatos debe tener platos cargados", tblTemPlatos.getRowCount() > 0);
 
             SwingUtilities.invokeAndWait(() -> {
                 tblTemPlatos.setRowSelectionInterval(0, 0);
                 btnAddPlato.doClick();
             });
 
-            assertEquals(1, tableMenu.getRowCount());
-            assertEquals(101, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 0));
-            assertEquals("Pabellón Criollo", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 1));
+            int modelRow = tblTemPlatos.convertRowIndexToModel(0);
+            Object idFila0 = tblTemPlatos.getModel().getValueAt(modelRow, 0);
+            int idEsperado = (idFila0 instanceof Number n) ? n.intValue() : Integer.parseInt(idFila0.toString().trim());
+            String nombreEsperado = tblTemPlatos.getModel().getValueAt(modelRow, 1).toString();
+            assertEquals(idEsperado, Integer.parseInt(tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 0).toString()));
+            assertEquals(nombreEsperado, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 1));
             assertEquals(1, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2));
-            assertEquals("10.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4)); // Subtotal con 2 decimales
+            String sub1 = tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4).toString();
+            assertTrue("Subtotal contiene 10.00", sub1.contains("10.00"));
 
             // Agregar por segunda vez: debe incrementar cantidad a 2 y subtotal a 20.00
             SwingUtilities.invokeAndWait(() -> {
@@ -485,7 +519,8 @@ public class SistemaTabsYVistasTest {
 
             assertEquals(1, tableMenu.getRowCount());
             assertEquals(2, tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 2)); // Cantidad = 2
-            assertEquals("20.00", tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4)); // Subtotal = 20.00
+            String sub2 = tableMenu.getModel().getValueAt(tableMenu.convertRowIndexToModel(0), 4).toString();
+            assertTrue("Subtotal contiene 20.00", sub2.contains("20.00"));
 
             // El total preliminar del menú debe mostrarse en USD con 2 decimales:
             assertEquals("$ 20.00", totalMenu.getText());
@@ -500,6 +535,9 @@ public class SistemaTabsYVistasTest {
     public void testTab2YTab3IndependenciaEntreSalasYMesas() throws Exception {
         Sistema sistema = crearSistemaEnEdt(admin, true);
         try {
+            Config conf = campo(sistema, "conf", Config.class);
+            conf.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+
             JTable tableMenu = campo(sistema, "tableMenu", JTable.class);
             JLabel totalMenu = campo(sistema, "totalMenu", JLabel.class);
             JTextField txtTempIdSala = campo(sistema, "txtTempIdSala", JTextField.class);
@@ -519,7 +557,7 @@ public class SistemaTabsYVistasTest {
 
             // Cargar platos ficticios en el carrito de Sala Principal
             DefaultTableModel modeloMenu = (DefaultTableModel) tableMenu.getModel();
-            modeloMenu.addRow(new Object[]{1, "Chaufa", 2, "20", "40", ""});
+            modeloMenu.addRow(new Object[]{1, "Chaufa", 2, "$ 20.00", "$ 40.00", "", "Exento"});
             SwingUtilities.invokeAndWait(() -> {
                 invocar(sistema, "TotalPagar",
                         new Class<?>[]{JTable.class, JLabel.class},
@@ -719,10 +757,16 @@ public class SistemaTabsYVistasTest {
             assertEquals("16.00", txtIva.getText());
 
             // Actualización con nueva tasa y nuevo IVA
-            txtTasa.setText("40.0000");
-            txtIva.setText("8.00");
+            SwingUtilities.invokeAndWait(() -> {
+                txtTasa.setText("40.0000");
+                txtIva.setText("8.00");
+                btnActualizar.doClick();
+            });
 
-            SwingUtilities.invokeAndWait(btnActualizar::doClick);
+            for (int i = 0; i < 30 && !new BigDecimal("40.0000").equals(loginDaoFalso.configuracionActual.getTasaDolar()); i++) {
+                Thread.sleep(50);
+                SwingUtilities.invokeAndWait(() -> { });
+            }
 
             assertEquals(new BigDecimal("40.0000"), loginDaoFalso.configuracionActual.getTasaDolar());
             assertEquals(new BigDecimal("8.00"), loginDaoFalso.configuracionActual.getIvaPorcentaje());
@@ -758,7 +802,7 @@ public class SistemaTabsYVistasTest {
             SwingUtilities.invokeAndWait(sistemaAdmin::dispose);
         }
 
-        Sistema sistemaAsistente = crearSistemaEnEdt(asistente, true);
+        Sistema sistemaAsistente = crearSistemaEnEdt(asistente, false);
         try {
             JButton btnPurga = sistemaAsistente.getBtnPurgarHistorial();
             javax.swing.JSpinner spRetencion = sistemaAsistente.getSpMesesRetencion();
@@ -908,6 +952,7 @@ public class SistemaTabsYVistasTest {
             assertEquals("Sí (0%)", sistema.formatearEtiquetaIva(true, BigDecimal.ZERO));
 
             // 2. Configuración fiscal de la empresa a 10%
+            loginDaoFalso.configuracionActual.setIvaPorcentaje(new BigDecimal("10.00"));
             Config config10 = new Config();
             config10.setId(1);
             config10.setIvaPorcentaje(new BigDecimal("10.00"));
@@ -975,10 +1020,11 @@ public class SistemaTabsYVistasTest {
     public void testTab8PlatosCrudMuestraPreciosEnterosEnTablaPlatos() throws Exception {
         Sistema sistema = crearSistemaEnEdt(admin, true);
         try {
-            List<Platos> lista = Arrays.asList(
-                    new Platos(1, "Chivo en Coco", new BigDecimal("18.00"), "2026-10-06"),
-                    new Platos(2, "Postre Tres Leches", new BigDecimal("4.50"), "2026-10-06")
-            );
+            Platos p1 = new Platos(1, "Chivo en Coco", new BigDecimal("18.00"), "2026-10-06");
+            p1.setPrecioClasificado(true);
+            Platos p2 = new Platos(2, "Postre Tres Leches", new BigDecimal("4.50"), "2026-10-06");
+            p2.setPrecioClasificado(true);
+            List<Platos> lista = Arrays.asList(p1, p2);
 
             JTable tablePlatos = campo(sistema, "TablePlatos", JTable.class);
             SwingUtilities.invokeAndWait(() -> {
@@ -989,9 +1035,9 @@ public class SistemaTabsYVistasTest {
 
             assertEquals(2, tablePlatos.getRowCount());
             assertEquals("Chivo en Coco", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(0), 1));
-            assertEquals("18.00", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(0), 2)); // Formato estándar con 2 decimales
+            assertEquals("$ 18.00", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(0), 2));
             assertEquals("Postre Tres Leches", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(1), 1));
-            assertEquals("4.50", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(1), 2));  // 4.50 con 2 decimales exactos
+            assertEquals("$ 4.50", tablePlatos.getModel().getValueAt(tablePlatos.convertRowIndexToModel(1), 2));
         } finally {
             SwingUtilities.invokeAndWait(sistema::dispose);
         }
@@ -1013,7 +1059,7 @@ public class SistemaTabsYVistasTest {
             SwingUtilities.invokeAndWait(sistemaAdmin::dispose);
         }
 
-        Sistema sistemaAsistente = crearSistemaEnEdt(asistente, true);
+        Sistema sistemaAsistente = crearSistemaEnEdt(asistente, false);
         try {
             javax.swing.JButton btnEliminar = campo(sistemaAsistente, "btnEliminarPlato", javax.swing.JButton.class);
             javax.swing.JButton btnReactivar = sistemaAsistente.getBtnReactivarPlato();

@@ -136,12 +136,21 @@ public class PedidoPdfServicioTest {
         pedido.setSala("Principal");
         pedido.setUsuario("Operador");
         pedido.setFecha("2026-10-05");
+        pedido.setSubtotal(new BigDecimal("10.00"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+        pedido.setIvaMonto(BigDecimal.ZERO.setScale(2));
         pedido.setTotalDecimal(new BigDecimal("10.00"));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setSubtotalBs(new BigDecimal("365.00"));
+        pedido.setIvaBs(BigDecimal.ZERO.setScale(2));
+        pedido.setTotalBs(new BigDecimal("365.00"));
         return pedido;
     }
 
     private Config configuracion() {
-        return new Config(1, "123", "Restaurante de prueba", "+56 9", "Santiago", "Gracias");
+        Config c = new Config(1, "123", "Restaurante de prueba", "+56 9", "Santiago", "Gracias");
+        c.setTasaDolar(new BigDecimal("36.5000"));
+        return c;
     }
 
     private DetallePedido detalle() {
@@ -149,6 +158,10 @@ public class PedidoPdfServicioTest {
         detalle.setNombre("Plato de prueba");
         detalle.setPrecioDecimal(new BigDecimal("10.00"));
         detalle.setCantidad(1);
+        detalle.setMonedaBase("USD");
+        detalle.setAplicaIva(false);
+        detalle.setPrecioIncluyeIva(false);
+        detalle.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
         return detalle;
     }
 

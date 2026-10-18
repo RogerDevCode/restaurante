@@ -108,6 +108,7 @@ public class PedidoIvaIntegracionFlujoTest {
         pedido.setIvaPorcentaje(fiscal.ivaPorcentaje());
         pedido.setIvaMonto(fiscal.ivaUsd());
         pedido.setTotalDecimal(fiscal.totalUsd());
+        pedido.setTasaCambio(fiscal.tasaCambio());
         assertEquals(103, new PedidoServicio(new PedidosRepositorioFalso() {
             @Override
             public int registrarPedidoCompleto(Pedidos recibido, List<DetallePedido> lineas) {
@@ -150,6 +151,8 @@ public class PedidoIvaIntegracionFlujoTest {
         pedido.setNum_mesa(3);
         pedido.setUsuario("Mesero 2");
         pedido.setSubtotal(new BigDecimal("15.00"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+        pedido.setIvaMonto(BigDecimal.ZERO.setScale(2));
         pedido.setTotalDecimal(new BigDecimal("15.00"));
         pedido.setTasaCambio(new BigDecimal("36.5000"));
 

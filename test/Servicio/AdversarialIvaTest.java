@@ -156,10 +156,13 @@ public class AdversarialIvaTest {
     @Test
     public void configValoresPorDefectoIva() {
         Config config = new Config();
+        assertEquals(null, config.getIvaPorcentaje());
+
+        config.setIvaPorcentaje(new BigDecimal("16.00"));
         assertEquals(new BigDecimal("16.00"), config.getIvaPorcentaje());
 
         config.setIvaPorcentaje(null);
-        assertEquals(new BigDecimal("16.00"), config.getIvaPorcentaje());
+        assertEquals(null, config.getIvaPorcentaje());
     }
 
     @Test
@@ -207,9 +210,11 @@ public class AdversarialIvaTest {
         pedido.setIvaMonto(new BigDecimal("2.40"));
         pedido.setTotalDecimal(new BigDecimal("17.40"));
 
-        List<DetallePedido> detalles = Arrays.asList(
-                new DetallePedido(1, "Plato A", new BigDecimal("10.00"), 2, "", 1) // 10.00 * 2 = 20.00
-        );
+        DetallePedido d1 = new DetallePedido(1, "Plato A", new BigDecimal("10.00"), 2, "", 1);
+        d1.setMonedaBase("USD");
+        d1.setAplicaIva(true);
+        d1.setPrecioIncluyeIva(false);
+        List<DetallePedido> detalles = Arrays.asList(d1); // 10.00 * 2 = 20.00
 
         ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class, () ->
                 dao.registrarPedidoCompleto(pedido, detalles)
@@ -237,9 +242,11 @@ public class AdversarialIvaTest {
         // Total manipulado a $30.00 en lugar de $23.20
         pedido.setTotalDecimal(new BigDecimal("30.00"));
 
-        List<DetallePedido> detalles = Arrays.asList(
-                new DetallePedido(1, "Plato A", new BigDecimal("10.00"), 2, "", 1)
-        );
+        DetallePedido d2 = new DetallePedido(1, "Plato A", new BigDecimal("10.00"), 2, "", 1);
+        d2.setMonedaBase("USD");
+        d2.setAplicaIva(true);
+        d2.setPrecioIncluyeIva(false);
+        List<DetallePedido> detalles = Arrays.asList(d2);
 
         ErrorAplicacionException ex = assertThrows(ErrorAplicacionException.class, () ->
                 dao.registrarPedidoCompleto(pedido, detalles)

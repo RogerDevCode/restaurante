@@ -90,10 +90,10 @@ public class PanelMesasLeyendaYTimestampTest {
                             encontroLeyenda = true;
                         } else if ("Libre".equalsIgnoreCase(txt)) {
                             encontroLibre = true;
-                            assertEquals(new Color(0, 102, 102), lbl.getBackground());
+                            assertEquals(Servicio.ServicioMesa.FONDO_MESA_LIBRE, lbl.getBackground());
                         } else if ("Ocupada".equalsIgnoreCase(txt)) {
                             encontroOcupada = true;
-                            assertEquals(new Color(192, 57, 43), lbl.getBackground());
+                            assertEquals(Servicio.ServicioMesa.FONDO_MESA_OCUPADA, lbl.getBackground());
                         }
                     }
                 }

@@ -172,7 +172,15 @@ public class FinalizarPedidoSwingWorkerTest {
     private Pedidos pedido(int id) {
         Pedidos pedido = new Pedidos();
         pedido.setId(id);
+        pedido.setSubtotal(new BigDecimal("5.00"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+        pedido.setIvaMonto(BigDecimal.ZERO.setScale(2));
         pedido.setTotalDecimal(new BigDecimal("5.00"));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setSubtotalBs(new BigDecimal("182.50"));
+        pedido.setIvaBs(BigDecimal.ZERO.setScale(2));
+        pedido.setTotalBs(new BigDecimal("182.50"));
+        pedido.setFecha("2026-10-05");
         return pedido;
     }
 
@@ -181,10 +189,16 @@ public class FinalizarPedidoSwingWorkerTest {
         detalle.setNombre("Plato");
         detalle.setCantidad(1);
         detalle.setPrecioDecimal(new BigDecimal("5.00"));
+        detalle.setMonedaBase("USD");
+        detalle.setAplicaIva(false);
+        detalle.setPrecioIncluyeIva(false);
+        detalle.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
         return detalle;
     }
 
     private Config configuracion() {
-        return new Config(1, "123", "Restaurante", "9", "Santiago", "Gracias");
+        Config c = new Config(1, "123", "Restaurante", "9", "Santiago", "Gracias");
+        c.setTasaDolar(new BigDecimal("36.5000"));
+        return c;
     }
 }

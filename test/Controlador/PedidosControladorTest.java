@@ -204,7 +204,13 @@ public class PedidosControladorTest {
                 c.setFecha(fecha != null ? fecha : "2026-10-07");
                 c.setFechaHoraEmision("2026-10-07 18:00:00");
                 c.setUsuarioEmisor(usuarioEmisor);
+                c.setTasaCambioReferencia(new BigDecimal("36.5000"));
                 return c;
+            }
+
+            @Override
+            public boolean guardarCierre(Modelo.CierreCaja cierre, String rutaPdf) {
+                return true;
             }
         };
         Servicio.CierreCajaServicio cierreServicio = new Servicio.CierreCajaServicio(
@@ -310,12 +316,21 @@ public class PedidosControladorTest {
         pedido.setSala("Principal");
         pedido.setUsuario("Operador");
         pedido.setFecha("2026-10-05");
+        pedido.setSubtotal(new BigDecimal("8.00"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+        pedido.setIvaMonto(BigDecimal.ZERO.setScale(2));
         pedido.setTotalDecimal(new BigDecimal("8.00"));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setSubtotalBs(new BigDecimal("292.00"));
+        pedido.setIvaBs(BigDecimal.ZERO.setScale(2));
+        pedido.setTotalBs(new BigDecimal("292.00"));
         return pedido;
     }
 
     private Config configuracion() {
-        return new Config(1, "123", "Restaurante", "9", "Santiago", "Gracias");
+        Config c = new Config(1, "123", "Restaurante", "9", "Santiago", "Gracias");
+        c.setTasaDolar(new BigDecimal("36.5000"));
+        return c;
     }
 
     private PoliticaAcceso politica(String rol) {
@@ -329,6 +344,10 @@ public class PedidosControladorTest {
         detalle.setNombre("Plato");
         detalle.setCantidad(1);
         detalle.setPrecioDecimal(new BigDecimal("8.00"));
+        detalle.setMonedaBase("USD");
+        detalle.setAplicaIva(false);
+        detalle.setPrecioIncluyeIva(false);
+        detalle.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
         return detalle;
     }
 }

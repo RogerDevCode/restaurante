@@ -194,15 +194,22 @@ public class SistemaSimulacionPedidoTest {
                 List<DetallePedido> detalles = new ArrayList<>();
                 DetallePedido d1 = new DetallePedido();
                 d1.setNombre("Plato IVA");
+                d1.setMonedaBase("USD");
                 d1.setPrecioDecimal(new BigDecimal("10.00"));
                 d1.setCantidad(1);
+                d1.setAplicaIva(true);
+                d1.setPrecioIncluyeIva(false);
+                d1.setIvaPorcentaje(new BigDecimal("16.00"));
                 detalles.add(d1);
                 
                 DetallePedido d2 = new DetallePedido();
                 d2.setNombre("Agua Exenta");
+                d2.setMonedaBase("USD");
                 d2.setPrecioDecimal(new BigDecimal("5.00"));
                 d2.setCantidad(1);
                 d2.setAplicaIva(false);
+                d2.setPrecioIncluyeIva(false);
+                d2.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
                 detalles.add(d2);
 
                 // Inject service to bypass actual DB 

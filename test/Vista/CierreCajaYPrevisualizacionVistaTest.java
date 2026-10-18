@@ -105,9 +105,8 @@ public class CierreCajaYPrevisualizacionVistaTest {
             model.setRowCount(0);
             model.addRow(new Object[]{501, "2026-10-07 14:00", "Terraza", 2, "$ 30.00", "Bs. 1095.00", "Admin", "FINALIZADO"});
             tableFacturas.setRowSelectionInterval(0, 0);
+            sistema.previsualizarFacturaClienteSeleccionada();
         });
-
-        SwingUtilities.invokeAndWait(() -> sistema.previsualizarFacturaClienteSeleccionada());
         assertEquals("Debe haberse solicitado la previsualización de la factura 501", 1, previsualizacionesFactura.get());
     }
 
@@ -121,9 +120,8 @@ public class CierreCajaYPrevisualizacionVistaTest {
             model.setRowCount(0);
             model.addRow(new Object[]{501, "2026-10-07 14:00", "Terraza", 2, "$ 30.00", "Bs. 1095.00", "Admin", "FINALIZADO"});
             tableFacturas.setRowSelectionInterval(0, 0);
+            sistema.reimprimirFacturaClienteSeleccionada();
         });
-
-        SwingUtilities.invokeAndWait(() -> sistema.reimprimirFacturaClienteSeleccionada());
         assertEquals("Debe haberse solicitado la reimpresión de la factura 501", 1, reimpresionesFactura.get());
     }
 
@@ -162,13 +160,25 @@ public class CierreCajaYPrevisualizacionVistaTest {
         pedidoDummy.setSala("Terraza");
         pedidoDummy.setUsuario("Admin");
         pedidoDummy.setFecha("2026-10-07");
+        pedidoDummy.setSubtotal(new BigDecimal("30.00"));
+        pedidoDummy.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+        pedidoDummy.setIvaMonto(BigDecimal.ZERO.setScale(2));
         pedidoDummy.setTotalDecimal(new BigDecimal("30.00"));
+        pedidoDummy.setTasaCambio(new BigDecimal("36.5000"));
+        pedidoDummy.setSubtotalBs(new BigDecimal("1095.00"));
+        pedidoDummy.setIvaBs(BigDecimal.ZERO.setScale(2));
+        pedidoDummy.setTotalBs(new BigDecimal("1095.00"));
 
         Config configDummy = new Config(1, "J-00001", "Restaurante", "123", "Caracas", "Gracias");
+        configDummy.setTasaDolar(new BigDecimal("36.5000"));
         DetallePedido detalleDummy = new DetallePedido();
         detalleDummy.setNombre("Plato");
         detalleDummy.setCantidad(1);
         detalleDummy.setPrecioDecimal(new BigDecimal("30.00"));
+        detalleDummy.setMonedaBase("USD");
+        detalleDummy.setAplicaIva(false);
+        detalleDummy.setPrecioIncluyeIva(false);
+        detalleDummy.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
 
         PedidoPdfServicio pdfServicio = new PedidoPdfServicio(
                 id -> pedidoDummy,

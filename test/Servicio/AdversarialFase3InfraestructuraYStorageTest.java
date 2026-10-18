@@ -86,14 +86,23 @@ public class AdversarialFase3InfraestructuraYStorageTest {
         p.setId(id);
         p.setSala("Principal");
         p.setNum_mesa(4);
+        p.setSubtotal(new BigDecimal("150.00"));
+        p.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
+        p.setIvaMonto(BigDecimal.ZERO.setScale(2));
         p.setTotalDecimal(new BigDecimal("150.00"));
+        p.setTasaCambio(new BigDecimal("36.5000"));
+        p.setSubtotalBs(new BigDecimal("5475.00"));
+        p.setIvaBs(BigDecimal.ZERO.setScale(2));
+        p.setTotalBs(new BigDecimal("5475.00"));
         p.setFecha("2026-10-07");
         p.setUsuario("cajero");
         return p;
     }
 
     private static Config configPrueba() {
-        return new Config(1, "J-12345678-0", "Restaurante RedTeam", "0212-0000000", "Caracas, Venezuela", "Gracias por su visita");
+        Config c = new Config(1, "J-12345678-0", "Restaurante RedTeam", "0212-0000000", "Caracas, Venezuela", "Gracias por su visita");
+        c.setTasaDolar(new BigDecimal("36.5000"));
+        return c;
     }
 
     private static DetallePedido detallePrueba() {
@@ -102,6 +111,10 @@ public class AdversarialFase3InfraestructuraYStorageTest {
         d.setNombre("Hamburguesa Especial");
         d.setCantidad(2);
         d.setPrecioDecimal(new BigDecimal("75.00"));
+        d.setMonedaBase("USD");
+        d.setAplicaIva(false);
+        d.setPrecioIncluyeIva(false);
+        d.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
         return d;
     }
 

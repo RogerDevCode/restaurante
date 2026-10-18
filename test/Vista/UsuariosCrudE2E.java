@@ -43,6 +43,12 @@ public class UsuariosCrudE2E {
             System.exit(2);
         }
 
+        // Guard de seguridad: E2E solo puede correr contra la BD desechable restaurante_test
+        String bdTarget = System.getProperty("db.name", System.getenv().getOrDefault("MYSQL_DB", "restaurante_test"));
+        if (!"restaurante_test".equals(bdTarget)) {
+            throw new IllegalStateException("E2E bloqueado: la BD debe ser 'restaurante_test' para no afectar producción.");
+        }
+
         Path dirE2E = Path.of(System.getenv().getOrDefault("E2E_WORKDIR", System.getProperty("java.io.tmpdir")));
         System.setProperty("user.home", dirE2E.toString());
         System.setProperty("modo.automatizado", "true");

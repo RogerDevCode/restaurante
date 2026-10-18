@@ -105,7 +105,9 @@ public class GeneradorPdfPedidoTest {
         Path destino = temporal.newFolder("pdf-tasa-inferida").toPath();
         Pedidos pedido = pedidoValido();
         pedido.setTasaCambio(null);
+        pedido.setSubtotal(new BigDecimal("10.00"));
         pedido.setTotalDecimal(new BigDecimal("10.00"));
+        pedido.setSubtotalBs(new BigDecimal("370.00"));
         pedido.setTotalBs(new BigDecimal("370.00"));
 
         Config config = configuracionValida();
@@ -115,7 +117,10 @@ public class GeneradorPdfPedidoTest {
         detalle.setNombre("Hamburguesa Simple");
         detalle.setCantidad(1);
         detalle.setPrecioDecimal(new BigDecimal("10.00"));
+        detalle.setMonedaBase("USD");
         detalle.setAplicaIva(false);
+        detalle.setPrecioIncluyeIva(false);
+        detalle.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
 
         Path archivo = new GeneradorPdfPedido(destino).generar(pedido, config, java.util.List.of(detalle));
         assertTrue(Files.isRegularFile(archivo));
@@ -168,7 +173,16 @@ public class GeneradorPdfPedidoTest {
         Config config = configuracionValida();
         config.setTasaDolar(null);
 
-        Path archivo = new GeneradorPdfPedido(destino).generar(pedido, config, detalleValido());
+        DetallePedido detalle = new DetallePedido();
+        detalle.setNombre("Plato gravado");
+        detalle.setPrecioDecimal(new BigDecimal("12.50"));
+        detalle.setCantidad(1);
+        detalle.setMonedaBase("USD");
+        detalle.setAplicaIva(true);
+        detalle.setPrecioIncluyeIva(false);
+        detalle.setIvaPorcentaje(new BigDecimal("16.00"));
+
+        Path archivo = new GeneradorPdfPedido(destino).generar(pedido, config, List.of(detalle));
         assertTrue(Files.isRegularFile(archivo));
         String textoPdf = extraerTextoPdf(archivo);
         assertTrue("Debe inferir tasa 37.0000 a partir del desglose de IVA", textoPdf.contains("37.0000"));
@@ -288,7 +302,7 @@ public class GeneradorPdfPedidoTest {
         pedido.setSubtotal(new BigDecimal("1.42"));
         pedido.setIvaPorcentaje(new BigDecimal("16.00"));
         pedido.setIvaMonto(new BigDecimal("0.23"));
-        pedido.setTotalDecimal(new BigDecimal("1.64"));
+        pedido.setTotalDecimal(new BigDecimal("1.65"));
         pedido.setSubtotalBs(new BigDecimal("51.72"));
         pedido.setIvaBs(new BigDecimal("8.28"));
         pedido.setTotalBs(new BigDecimal("60.00"));
@@ -309,7 +323,7 @@ public class GeneradorPdfPedidoTest {
         assertTrue("Debe mostrar precio unitario en Bs", texto.contains("60.00"));
         assertTrue("Debe desglosar base imponible calculada hacia atras", texto.contains("Subtotal: $1.42 (Bs. 51.72)"));
         assertTrue("Debe desglosar IVA calculado hacia atras", texto.contains("IVA (16.00%): $0.23 (Bs. 8.28)"));
-        assertTrue("Debe mostrar total en USD referencial", texto.contains("Total USD: $1.64"));
+        assertTrue("Debe mostrar total en USD referencial", texto.contains("Total USD: $1.65"));
         assertTrue("El total acordado en VES no se altera por impuestos", texto.contains("TOTAL A PAGAR (Bs.): Bs. 60.00"));
     }
 
@@ -355,7 +369,7 @@ public class GeneradorPdfPedidoTest {
         pedido.setSubtotal(new BigDecimal("11.42"));
         pedido.setIvaPorcentaje(new BigDecimal("16.00"));
         pedido.setIvaMonto(new BigDecimal("1.83"));
-        pedido.setTotalDecimal(new BigDecimal("13.24"));
+        pedido.setTotalDecimal(new BigDecimal("13.25"));
         pedido.setSubtotalBs(new BigDecimal("416.72"));
         pedido.setIvaBs(new BigDecimal("66.68"));
         pedido.setTotalBs(new BigDecimal("483.40"));
@@ -384,7 +398,7 @@ public class GeneradorPdfPedidoTest {
 
         assertTrue("Debe mostrar subtotal combinado", texto.contains("Subtotal: $11.42 (Bs. 416.72)"));
         assertTrue("Debe mostrar IVA combinado", texto.contains("IVA (16.00%): $1.83 (Bs. 66.68)"));
-        assertTrue("Debe mostrar Total USD combinado", texto.contains("Total USD: $13.24"));
+        assertTrue("Debe mostrar Total USD combinado", texto.contains("Total USD: $13.25"));
         assertTrue("Debe mostrar Total Bs combinado", texto.contains("TOTAL A PAGAR (Bs.): Bs. 483.40"));
     }
 
@@ -403,14 +417,23 @@ public class GeneradorPdfPedidoTest {
         pedido.setId(42);
         pedido.setNum_mesa(4);
         pedido.setFecha("2026-10-05");
+        pedido.setSubtotal(new BigDecimal("12.50"));
+        pedido.setIvaPorcentaje(BigDecimal.ZERO);
+        pedido.setIvaMonto(BigDecimal.ZERO);
         pedido.setTotalDecimal(new BigDecimal("12.50"));
+        pedido.setTasaCambio(new BigDecimal("36.5000"));
+        pedido.setSubtotalBs(new BigDecimal("456.25"));
+        pedido.setIvaBs(BigDecimal.ZERO);
+        pedido.setTotalBs(new BigDecimal("456.25"));
         pedido.setSala("Principal");
         pedido.setUsuario("Operador");
         return pedido;
     }
 
     private Config configuracionValida() {
-        return new Config(1, "123", "Restaurante de prueba", "+56 9", "Santiago", "Gracias por su compra");
+        Config c = new Config(1, "123", "Restaurante de prueba", "+56 9", "Santiago", "Gracias por su compra");
+        c.setTasaDolar(new BigDecimal("36.5000"));
+        return c;
     }
 
     private java.util.List<DetallePedido> detalleValido() {
@@ -418,6 +441,10 @@ public class GeneradorPdfPedidoTest {
         detalle.setNombre("Plato de prueba");
         detalle.setPrecioDecimal(new BigDecimal("12.50"));
         detalle.setCantidad(1);
+        detalle.setMonedaBase("USD");
+        detalle.setAplicaIva(false);
+        detalle.setPrecioIncluyeIva(false);
+        detalle.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
         return java.util.Collections.singletonList(detalle);
     }
 

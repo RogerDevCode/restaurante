@@ -13,13 +13,13 @@ public class TablesTest {
         JTable pendiente = tabla("PENDIENTE");
         Component rojo = renderer.getTableCellRendererComponent(
                 pendiente, "pedido", false, false, 0, 0);
-        assertEquals(new Color(192, 57, 43), rojo.getBackground());
+        assertEquals(Servicio.ServicioMesa.FONDO_MESA_OCUPADA, rojo.getBackground());
         assertEquals(Color.WHITE, rojo.getForeground());
 
         JTable finalizado = tabla("FINALIZADO");
         Component verde = renderer.getTableCellRendererComponent(
                 finalizado, "pedido", false, false, 0, 0);
-        assertEquals(new Color(0, 102, 102), verde.getBackground());
+        assertEquals(Servicio.ServicioMesa.FONDO_MESA_LIBRE, verde.getBackground());
         assertEquals(Color.WHITE, verde.getForeground());
     }
 

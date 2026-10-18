@@ -1035,6 +1035,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (btnUsuarios != null) btnUsuarios.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS));
         if (btnConfig != null) btnConfig.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)
                 || politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_ROLES_ACCESOS));
+        if (btnActualizarConfig != null) btnActualizarConfig.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_CONFIGURACION));
         if (btnCategorias != null) btnCategorias.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PLATOS));
         if (btnAtencionDirecta != null) btnAtencionDirecta.setEnabled(algunaPermite(
                 PoliticaAcceso.Accion.REGISTRAR_PEDIDOS, PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES,
@@ -10011,7 +10012,13 @@ public final class Sistema extends javax.swing.JFrame {
      * Llena el combo de categoría de la ficha (con opción "Sin categoría").
      * Preserva la selección actual si sigue existiendo.
      */
+    private List<Modelo.Categoria> cacheCategoriasActivas = new ArrayList<>();
+
     private void cargarCategoriasFicha() {
+        cargarCategoriasFicha(cacheCategoriasActivas);
+    }
+
+    private void cargarCategoriasFicha(List<Modelo.Categoria> categorias) {
         if (cbCategoriaFicha == null) {
             return;
         }
@@ -10019,15 +10026,12 @@ public final class Sistema extends javax.swing.JFrame {
         int idSel = (sel instanceof Modelo.Categoria c) ? c.getId() : -1;
         cbCategoriaFicha.removeAllItems();
         cbCategoriaFicha.addItem(new Modelo.Categoria(0, "Sin categoría", null, 0));
-        try {
-            for (Modelo.Categoria c : categoriaControlador().listar()) {
-                if (c != null) {
+        if (categorias != null) {
+            for (Modelo.Categoria c : categorias) {
+                if (c != null && c.isActivo()) {
                     cbCategoriaFicha.addItem(c);
                 }
             }
-        } catch (Exception ex) {
-            java.util.logging.Logger.getLogger(Sistema.class.getName())
-                    .log(java.util.logging.Level.WARNING, "No se pudieron cargar categorías: " + ex.getMessage());
         }
         if (idSel >= 0) {
             seleccionarCategoriaFicha(idSel);
@@ -11130,8 +11134,9 @@ public final class Sistema extends javax.swing.JFrame {
                     activas.add(c);
                 }
             }
+            cacheCategoriasActivas = activas;
             poblarComboCategorias(activas);
-            cargarCategoriasFicha();
+            cargarCategoriasFicha(activas);
             if (seleccionada != null) {
                 for (Modelo.Categoria c : categorias) {
                     if (c.getId() == seleccionada.getId()) {

@@ -28,6 +28,15 @@ import javax.swing.table.DefaultTableModel;
  */
 public class TotalesPlatosBolivaresTest {
 
+    @org.junit.Test
+    public void ejecutarE2E() throws Exception {
+        if (!"SI".equalsIgnoreCase(System.getProperty("e2e.permitir"))) {
+            org.junit.Assume.assumeTrue("Requiere entorno Xvfb virtual (-De2e.permitir=SI). Se omite en unitarias estándar.", false);
+            return;
+        }
+        main(new String[0]);
+    }
+
     public static void main(String[] args) {
         if (!"SI".equalsIgnoreCase(System.getProperty("e2e.permitir"))) {
             System.err.println("Este test requiere -De2e.permitir=SI");

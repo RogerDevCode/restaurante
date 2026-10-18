@@ -35,6 +35,7 @@ public class PedidoRapidoCombinatoriaTest {
         p.setId_sala(sala);
         p.setNum_mesa(mesa);
         p.setUsuario("Operador de pruebas");
+        p.setTasaCambio(new BigDecimal("36.5000"));
         BigDecimal subtotal = new BigDecimal("10.00").multiply(BigDecimal.valueOf(cantidad));
         p.setSubtotal(subtotal);
         p.setIvaPorcentaje(BigDecimal.ZERO);
@@ -48,6 +49,9 @@ public class PedidoRapidoCombinatoriaTest {
         d.setNombre("Plato de prueba");
         d.setCantidad(cantidad);
         d.setPrecioDecimal(new BigDecimal("10.00"));
+        d.setMonedaBase("USD");
+        d.setAplicaIva(false);
+        d.setPrecioIncluyeIva(false);
         return List.of(d);
     }
 

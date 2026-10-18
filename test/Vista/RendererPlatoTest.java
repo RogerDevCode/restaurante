@@ -38,12 +38,12 @@ public class RendererPlatoTest {
 
         // Fila 0: fondo oscuro -> texto blanco
         JLabel c0 = (JLabel) renderer.getTableCellRendererComponent(tabla, "Asado Negro", false, false, 0, 1);
-        assertEquals(Color.decode("#1B2631"), c0.getBackground());
-        assertEquals(Color.WHITE, c0.getForeground());
+        assertEquals(Modelo.PaletaCategorias.atenuar("#1B2631", 0.30), c0.getBackground());
+        assertEquals(Color.BLACK, c0.getForeground());
 
         // Fila 1: fondo claro -> texto negro
         JLabel c1 = (JLabel) renderer.getTableCellRendererComponent(tabla, "Jugo de Naranja", false, false, 1, 1);
-        assertEquals(Color.decode("#F9E79F"), c1.getBackground());
+        assertEquals(Modelo.PaletaCategorias.atenuar("#F9E79F", 0.30), c1.getBackground());
         assertEquals(Color.BLACK, c1.getForeground());
     }
 

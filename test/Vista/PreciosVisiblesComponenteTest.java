@@ -30,6 +30,15 @@ import javax.swing.table.TableCellRenderer;
  */
 public final class PreciosVisiblesComponenteTest {
 
+    @org.junit.Test
+    public void ejecutarE2E() throws Exception {
+        if (!"SI".equalsIgnoreCase(System.getProperty("e2e.permitir"))) {
+            org.junit.Assume.assumeTrue("Requiere entorno Xvfb virtual (-De2e.permitir=SI). Se omite en unitarias estándar.", false);
+            return;
+        }
+        main(new String[0]);
+    }
+
     private static int fallos = 0;
 
     private static void check(boolean cond, String msg) {
