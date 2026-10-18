@@ -21,5 +21,6 @@ scratch*
 *.bak
 debug.log
 target.txt
+tablet.txt
 tickets/
 respaldo_*.sql

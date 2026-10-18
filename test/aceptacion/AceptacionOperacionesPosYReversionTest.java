@@ -211,9 +211,10 @@ public class AceptacionOperacionesPosYReversionTest {
             con.commit();
         }
 
-        // 3. Ejecutar anulación de factura cobrada con devolución formal/contra-asientos.
-        boolean anulado = pedidosDao.anularFacturaCobradaConDevolucion(idPedido, "Error en factura de prueba", "admin_qa");
-        assertTrue("anularFacturaCobradaConDevolucion debe retornar true", anulado);
+        // 3. Ejecutar anulación con auditoría. ANTES lanzaba ErrorAplicacionException bloqueando al usuario.
+        // AHORA debe anular con éxito y generar automáticamente los contra-asientos.
+        boolean anulado = pedidosDao.anularPedidoConAuditoria(idPedido, "Error en factura de prueba", "admin_qa");
+        assertTrue("anularPedidoConAuditoria debe retornar true", anulado);
 
         // 4. Verificar en MySQL que el pedido esté ANULADO
         try (Connection con = proveedor.getConnection()) {

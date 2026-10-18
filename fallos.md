@@ -2069,7 +2069,8 @@ A solicitud explícita de auditoría de caja y operaciones en caliente, el RED T
   6. Como NO existe ninguna interfaz de usuario, botón o mecanismo en la aplicación para registrar devoluciones previas en `pedido_saldos_movimientos` (`MovimientoSaldoPedidoDao` jamás se invoca en toda la capa de controladores o vistas), `compensadoUsd` es forzosamente 0.00.
   7. El método lanza indefectiblemente `ErrorAplicacionException.validacion(...)`, arrojando un cuadro de error rojo en pantalla y abortando la transacción con rollback.
   8. ¡NINGUNA factura finalizada con pagos puede ser jamás anulada por el usuario desde la UI!
-- **Estado:** **CERRADO**. Resuelto mediante la separación limpia de responsabilidades: `anularPedidoConAuditoria` preserva inmutable el guard estricto F-07 (rechazando de raíz anulaciones de pedidos con pagos sin contra-asientos previos), y se creó la operación transaccional formal `anularFacturaCobradaConDevolucion` en `PedidosRepositorio`, `PedidosDao`, `ConsultaPedidosServicio`, `PedidosControlador` y `Sistema.java` (L8520) que genera atómicamente la reversión contable en `pedido_saldos_movimientos` al anular una factura finalizada.
+- **Impacto Real:** Imposibilidad absoluta de reversar facturas emitidas por error; alteración forzosa del libro contable y descuadre irreversible de inventario y caja diaria.
+- **Estado:** **CONFIRMADO / ABIERTO**.
 
 ---
 

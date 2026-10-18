@@ -1300,16 +1300,89 @@ public class PedidosDao implements PedidosRepositorio {
 
                 if (pagadoUsd != null && pagadoUsd.compareTo(BigDecimal.ZERO) > 0) {
                     BigDecimal compensadoUsd = BigDecimal.ZERO;
+                    int cantMovimientos = 0;
                     try (PreparedStatement psMov = con.prepareStatement(
-                            "SELECT COALESCE(SUM(CASE WHEN moneda = 'USD' THEN monto_origen ELSE ROUND(equivalente_ves / NULLIF(tasa_cambio, 0), 2) END), 0) FROM pedido_saldos_movimientos WHERE id_pedido = ? AND tipo IN ('DEVOLUCION','CREDITO','ANULACION')")) {
+                            "SELECT COUNT(*), COALESCE(SUM(CASE WHEN moneda = 'USD' THEN monto_origen ELSE ROUND(equivalente_ves / NULLIF(tasa_cambio, 0), 2) END), 0) FROM pedido_saldos_movimientos WHERE id_pedido = ? AND tipo IN ('DEVOLUCION','CREDITO','ANULACION')")) {
                         psMov.setInt(1, id_pedido);
                         try (ResultSet rsMov = psMov.executeQuery()) {
                             if (rsMov.next()) {
-                                compensadoUsd = rsMov.getBigDecimal(1);
+                                cantMovimientos = rsMov.getInt(1);
+                                compensadoUsd = rsMov.getBigDecimal(2);
                             }
                         }
                     }
-                    if (compensadoUsd == null || compensadoUsd.compareTo(pagadoUsd.subtract(new BigDecimal("0.01"))) < 0) {
+
+                    // Consultar estado actual del pedido para distinguir anulación de mesa abierta / abono parcial (PENDIENTE) vs anulación de factura cobrada (FINALIZADO)
+                    String estadoActual = "PENDIENTE";
+                    try (PreparedStatement psEst = con.prepareStatement("SELECT estado FROM pedidos WHERE id = ?")) {
+                        psEst.setInt(1, id_pedido);
+                        try (ResultSet rsEst = psEst.executeQuery()) {
+                            if (rsEst.next()) {
+                                estadoActual = rsEst.getString("estado");
+                            }
+                        }
+                    }
+
+                    if ("FINALIZADO".equalsIgnoreCase(estadoActual) && cantMovimientos == 0) {
+                        // Venta cobrada sin devolución manual previa (F-57 / AceptacionOperacionesPosYReversionTest):
+                        // Generar atómicamente los contra-asientos formales de anulación en pedido_saldos_movimientos
+                        List<Object[]> pagosRegistrados = new ArrayList<>();
+                        try (PreparedStatement psPagosDet = con.prepareStatement(
+                                "SELECT id, id_liquidacion, metodo_pago, moneda, monto, tasa_cambio, monto_bs, monto_usd, monto_aplicado " +
+                                "FROM pedido_pagos WHERE id_pedido = ?")) {
+                            psPagosDet.setInt(1, id_pedido);
+                            try (ResultSet rsPagosDet = psPagosDet.executeQuery()) {
+                                while (rsPagosDet.next()) {
+                                    pagosRegistrados.add(new Object[]{
+                                        rsPagosDet.getLong("id"),
+                                        rsPagosDet.getObject("id_liquidacion"),
+                                        rsPagosDet.getString("metodo_pago"),
+                                        rsPagosDet.getString("moneda"),
+                                        rsPagosDet.getBigDecimal("monto"),
+                                        rsPagosDet.getBigDecimal("tasa_cambio"),
+                                        rsPagosDet.getBigDecimal("monto_bs"),
+                                        rsPagosDet.getBigDecimal("monto_usd"),
+                                        rsPagosDet.getBigDecimal("monto_aplicado")
+                                    });
+                                }
+                            }
+                        }
+                        if (!pagosRegistrados.isEmpty()) {
+                            String sqlContra = """
+                                INSERT INTO pedido_saldos_movimientos (
+                                    id_pedido, id_liquidacion, tipo, moneda, monto_origen, equivalente_ves, tasa_cambio, actor, motivo, idempotency_key
+                                ) VALUES (?, ?, 'ANULACION', ?, ?, ?, ?, ?, ?, ?)
+                                ON DUPLICATE KEY UPDATE motivo = VALUES(motivo)
+                                """;
+                            try (PreparedStatement psContra = con.prepareStatement(sqlContra)) {
+                                for (Object[] pago : pagosRegistrados) {
+                                    long idPago = (Long) pago[0];
+                                    Long idLiq = pago[1] != null ? ((Number) pago[1]).longValue() : null;
+                                    String metodoPago = (String) pago[2];
+                                    String moneda = (String) pago[3];
+                                    BigDecimal monto = pago[8] != null ? (BigDecimal) pago[8] : (BigDecimal) pago[4];
+                                    BigDecimal tasa = (BigDecimal) pago[5];
+                                    BigDecimal eqVes = pago[6] != null ? (BigDecimal) pago[6] : (BigDecimal) pago[4];
+
+                                    psContra.setInt(1, id_pedido);
+                                    if (idLiq != null) {
+                                        psContra.setLong(2, idLiq);
+                                    } else {
+                                        psContra.setNull(2, java.sql.Types.BIGINT);
+                                    }
+                                    psContra.setString(3, moneda != null ? moneda : "USD");
+                                    psContra.setBigDecimal(4, monto != null ? monto : BigDecimal.ZERO);
+                                    psContra.setBigDecimal(5, eqVes != null ? eqVes : BigDecimal.ZERO);
+                                    psContra.setBigDecimal(6, tasa != null ? tasa : BigDecimal.ONE);
+                                    psContra.setString(7, usr);
+                                    psContra.setString(8, "Anulación factura #" + id_pedido + " (" + metodoPago + "): " + motivo.trim());
+                                    psContra.setString(9, "ANUL-" + id_pedido + "-PAGO-" + idPago);
+                                    psContra.executeUpdate();
+                                }
+                            }
+                        }
+                    } else if (compensadoUsd == null || compensadoUsd.compareTo(pagadoUsd.subtract(new BigDecimal("0.01"))) < 0) {
+                        // Invariante F-07 y D3: Pedido PENDIENTE con abonos o pedido con compensación incompleta
                         throw ErrorAplicacionException.validacion(
                                 "El pedido #" + id_pedido + " tiene pagos registrados por $" + pagadoUsd.setScale(2, RoundingMode.HALF_UP)
                                 + " y solo se ha compensado/devuelto $" + (compensadoUsd != null ? compensadoUsd.setScale(2, RoundingMode.HALF_UP) : "0.00")
