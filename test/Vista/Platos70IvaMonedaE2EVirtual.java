@@ -62,6 +62,7 @@ public class Platos70IvaMonedaE2EVirtual {
         BigDecimal precio;
         int catId;
         String catNombre;
+        int comboIndex;
 
         boolean incluyeEsperado() {
             return aplica && incluye;
@@ -151,7 +152,10 @@ public class Platos70IvaMonedaE2EVirtual {
             String url = c.getMetaData().getURL();
             boolean urlLocalDesechable = url != null && url.matches(
                     "(?i)^jdbc:mysql://(?:127\\.0\\.0\\.1|localhost):3307/restaurante_test(?:\\?.*)?$");
-            if (!"restaurante_test".equals(bd) || puerto != 3307
+            // La URL (host loopback :3307 + BD restaurante_test) es la garantía real; @@port es el
+            // puerto interno del servidor (3306 dentro del contenedor, 3307 si es nativo).
+            boolean puertoInternoEsperado = puerto == 3306 || puerto == 3307;
+            if (!"restaurante_test".equals(bd) || !puertoInternoEsperado
                     || usuario == null || !usuario.startsWith("restaurante_test_app@")
                     || !urlLocalDesechable) {
                 throw new IllegalStateException("E2E rechazado por destino no desechable: BD=" + bd
@@ -183,10 +187,22 @@ public class Platos70IvaMonedaE2EVirtual {
         }
     }
 
+    /** Índice de la columna "nombre" localizado por cabecera; fallback al 1 si no se identifica. */
+    private static int columnaNombre(JTable tabla) {
+        for (int c = 0; c < tabla.getColumnCount(); c++) {
+            String h = tabla.getColumnName(c);
+            if (h != null && h.toLowerCase(java.util.Locale.ROOT).contains("nombre")) {
+                return c;
+            }
+        }
+        return 1;
+    }
+
     /** true si la tabla admin (sin tocar la BD) ya muestra una fila con ese nombre. */
     private static boolean nombreEnTabla(JTable tabla, String nombre) {
+        int col = columnaNombre(tabla);
         for (int i = 0; i < tabla.getRowCount(); i++) {
-            Object v = tabla.getModel().getValueAt(tabla.convertRowIndexToModel(i), 1);
+            Object v = tabla.getModel().getValueAt(tabla.convertRowIndexToModel(i), col);
             if (v != null && v.toString().equalsIgnoreCase(nombre)) {
                 return true;
             }
@@ -243,7 +259,7 @@ public class Platos70IvaMonedaE2EVirtual {
 
     // ------------------------- Preparación de los 70 specs -------------------------
 
-    private static List<Spec> construirSpecs(List<Categoria> categorias) {
+    private static List<Spec> construirSpecs(List<Categoria> categorias, List<Integer> indicesCombo) {
         List<Spec> specs = new ArrayList<>();
         for (int i = 0; i < OBJETIVO; i++) {
             int[] pat = PATRONES[i % PATRONES.length];
@@ -262,9 +278,11 @@ public class Platos70IvaMonedaE2EVirtual {
                 s.precio = new BigDecimal("250.00").add(new BigDecimal(i).multiply(new BigDecimal("25")))
                         .setScale(2, RoundingMode.HALF_UP);
             }
-            Categoria cat = categorias.get(i % categorias.size());
+            int k = i % categorias.size();
+            Categoria cat = categorias.get(k);
             s.catId = cat.getId();
             s.catNombre = cat.getNombre();
+            s.comboIndex = indicesCombo.get(k);
             specs.add(s);
         }
         return specs;
@@ -422,11 +440,13 @@ public class Platos70IvaMonedaE2EVirtual {
 
             // --- Categorías existentes ofrecidas por el propio combo (no se crea ninguna) ---
             List<Categoria> categorias = new ArrayList<>();
+            List<Integer> indicesCombo = new ArrayList<>();
             enEdt(() -> {
                 for (int i = 0; i < cbCategoria.getItemCount(); i++) {
                     Object o = cbCategoria.getItemAt(i);
                     if (o instanceof Categoria c && c.getId() > 0) {
                         categorias.add(c);
+                        indicesCombo.add(i);
                     }
                 }
                 return null;
@@ -436,22 +456,21 @@ public class Platos70IvaMonedaE2EVirtual {
                 throw new IllegalStateException("Sin categorías existentes; el panel no está listo.");
             }
 
-            List<Spec> specs = construirSpecs(categorias);
+            List<Spec> specs = construirSpecs(categorias, indicesCombo);
             info("platos en categorías existentes: " + categorias.size()
                     + " | patrones probados: " + PATRONES.length + " | platos: " + specs.size());
 
             // --- Creación de los 70 platos por la INTERFAZ ---
             long t0 = System.currentTimeMillis();
             int creados = 0;
-            int indexCategoria = 0;
             for (Spec sp : specs) {
                 robot.clic(btnLimpiar);
                 robot.reemplazarTexto(txtNombre, sp.nombre);
                 robot.seleccionarCombo(cbMoneda, sp.moneda);
                 robot.reemplazarTexto(txtPrecio, sp.precio.toPlainString());
-                // idx 0 del combo = "Sin categoría"; las categorías reales empiezan en 1.
-                indexCategoria = 1 + ((sp.indice - 1) % categorias.size());
-                robot.seleccionarComboPorIndice(cbCategoria, indexCategoria);
+                // Índice de combo resuelto explícitamente al recorrer el propio combo
+                // (no se asume que las categorías reales empiecen justo en el índice 1).
+                robot.seleccionarComboPorIndice(cbCategoria, sp.comboIndex);
 
                 boolean aplicaAntes = enEdt(chkAplica::isSelected);
                 if (sp.aplica != aplicaAntes) {
@@ -524,9 +543,10 @@ public class Platos70IvaMonedaE2EVirtual {
             Thread.sleep(600);
             int filasUi = enEdt(tablaAdmin::getRowCount);
             int nombresUiOk = enEdt(() -> {
+                int col = columnaNombre(tablaAdmin);
                 int ok = 0;
                 for (int i = 0; i < tablaAdmin.getRowCount(); i++) {
-                    Object v = tablaAdmin.getModel().getValueAt(tablaAdmin.convertRowIndexToModel(i), 1);
+                    Object v = tablaAdmin.getModel().getValueAt(tablaAdmin.convertRowIndexToModel(i), col);
                     if (v != null && v.toString().toUpperCase(java.util.Locale.ROOT).startsWith(PREFIJO)) {
                         ok++;
                     }

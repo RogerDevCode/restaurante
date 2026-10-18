@@ -95,6 +95,7 @@ public class PreciosPedidosDao {
 
     private ResultadoActualizacionPrecios ejecutarTransaccion(Platos plato, String usuario, String idempotencyKey) throws SQLException {
         try (Connection con = conexiones.getConnection()) {
+            boolean autoCommitPrevio = con.getAutoCommit();
             con.setAutoCommit(false);
             try {
                 if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -139,9 +140,10 @@ public class PreciosPedidosDao {
                 BigDecimal precioUsdAnt = null;
                 BigDecimal precioVesAnt = null;
                 String monedaAnt = null;
+                String claveAnterior = null;
 
                 String sqlLockPlato = """
-                    SELECT id, nombre, precio, aplica_iva, moneda_base, precio_usd, precio_ves, precio_clasificado, precio_incluye_iva
+                    SELECT id, nombre, nombre_clave, precio, aplica_iva, moneda_base, precio_usd, precio_ves, precio_clasificado, precio_incluye_iva
                     FROM platos
                     WHERE id = ?
                     FOR UPDATE
@@ -155,6 +157,7 @@ public class PreciosPedidosDao {
                         monedaAnt = rs.getString("moneda_base");
                         precioUsdAnt = rs.getBigDecimal("precio_usd");
                         precioVesAnt = rs.getBigDecimal("precio_ves");
+                        claveAnterior = rs.getString("nombre_clave");
                     }
                 }
 
@@ -186,6 +189,10 @@ public class PreciosPedidosDao {
                         throw ErrorAplicacionException.validacion("No se pudo actualizar el plato en el catálogo.");
                     }
                 }
+
+                // 3.b Trasladar categoría/favorito si el nombre cambió (identidad por nombre)
+                PlatoIdentidadMapeos.migrarClave(con, claveAnterior,
+                        PlatoIdentidadMapeos.claveDePlato(con, plato.getId()));
 
                 // 4. Contar líneas no enlazadas con el mismo nombre en pedidos abiertos
                 int lineasNoEnlazadas = 0;
@@ -445,8 +452,17 @@ public class PreciosPedidosDao {
                         lineasNoEnlazadas
                 );
             } catch (SQLException | RuntimeException ex) {
-                con.rollback();
+                try {
+                    con.rollback();
+                } catch (SQLException falloRollback) {
+                    ex.addSuppressed(falloRollback);
+                }
                 throw ex;
+            } finally {
+                try {
+                    con.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException ignored) {
+                }
             }
         }
     }

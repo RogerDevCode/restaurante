@@ -177,21 +177,50 @@ public final class ControlMantenimientoBD {
         }
     }
 
+    private static final java.util.Set<String> VERBOS_ESCRITURA = java.util.Set.of(
+            "INSERT", "UPDATE", "DELETE", "REPLACE", "MERGE", "TRUNCATE", "ALTER",
+            "CREATE", "DROP", "RENAME", "GRANT", "REVOKE", "LOAD", "CALL", "DO");
+    private static final java.util.concurrent.ConcurrentHashMap<String, Boolean> CACHE_ES_ESCRITURA =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int MAX_CACHE_ESCRITURA = 4096;
+
     static boolean esEscritura(String sql) {
         if (sql == null) return false;
-        String limpio = sql.stripLeading();
-        if (limpio.startsWith("/*!") || limpio.indexOf(';') >= 0) return true;
+        Boolean cacheado = CACHE_ES_ESCRITURA.get(sql);
+        if (cacheado != null) return cacheado;
+        boolean resultado = clasificarEscritura(sql);
+        if (CACHE_ES_ESCRITURA.size() < MAX_CACHE_ESCRITURA) {
+            CACHE_ES_ESCRITURA.putIfAbsent(sql, resultado);
+        }
+        return resultado;
+    }
+
+    private static boolean clasificarEscritura(String sql) {
+        String leading = sql.stripLeading();
+        // Los comentarios versionados de MySQL (/*! ... */) se ejecutan como SQL.
+        if (leading.startsWith("/*!")) return true;
+        String limpio = saltarComentariosIniciales(leading);
+        if (limpio.isEmpty()) return false;
+        String primera = limpio.split("\\s+", 2)[0].toUpperCase(Locale.ROOT);
+        if (!"WITH".equals(primera)) {
+            return VERBOS_ESCRITURA.contains(primera);
+        }
+        // Un WITH puede envolver un SELECT o una escritura; esta última aparece después
+        // de cerrar las CTE, es decir tras el último paréntesis de la sentencia.
+        int ultimoParen = limpio.lastIndexOf(')');
+        String resto = (ultimoParen >= 0 ? limpio.substring(ultimoParen + 1) : limpio).stripLeading();
+        if (resto.isEmpty()) return false;
+        return VERBOS_ESCRITURA.contains(resto.split("\\s+", 2)[0].toUpperCase(Locale.ROOT));
+    }
+
+    private static String saltarComentariosIniciales(String sql) {
+        String limpio = sql;
         while (limpio.startsWith("--") || limpio.startsWith("/*")) {
             int fin = limpio.startsWith("--") ? limpio.indexOf('\n') : limpio.indexOf("*/");
-            if (fin < 0) return false;
+            if (fin < 0) return "";
             limpio = limpio.substring(fin + (limpio.startsWith("--") ? 1 : 2)).stripLeading();
         }
-        String primera = limpio.split("\\s+", 2)[0].toUpperCase(Locale.ROOT);
-        return switch (primera) {
-            case "INSERT", "UPDATE", "DELETE", "REPLACE", "MERGE", "TRUNCATE", "ALTER",
-                 "CREATE", "DROP", "RENAME", "GRANT", "REVOKE", "LOAD", "CALL", "DO", "WITH" -> true;
-            default -> false;
-        };
+        return limpio;
     }
 
     private static final class ConexionHandler implements InvocationHandler {

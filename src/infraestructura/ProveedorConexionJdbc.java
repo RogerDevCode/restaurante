@@ -31,6 +31,8 @@ public class ProveedorConexionJdbc {
     private static final ConcurrentHashMap<String, BlockingQueue<Connection>> POOL_DISPONIBLES = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, AtomicInteger> CONEXIONES_ACTIVAS = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Integer> NIVELES_AISLAMIENTO_DEFAULT = new ConcurrentHashMap<>();
+    /** Conexiones entregadas a los clientes y aún no devueltas al pool. */
+    private static final java.util.Set<Connection> CONEXIONES_EN_USO = ConcurrentHashMap.newKeySet();
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(ProveedorConexionJdbc::limpiarPool, "conexion-pool-shutdown"));
@@ -285,6 +287,7 @@ public class ProveedorConexionJdbc {
     }
 
     private Connection envolverConexion(Connection fisica, BlockingQueue<Connection> pool, AtomicInteger activas, int nivelAislamientoDefault) {
+        CONEXIONES_EN_USO.add(fisica);
         InvocationHandler handler = new InvocationHandler() {
             private volatile boolean cerrado = false;
             private final boolean[] transaccionConEscritura = {false};
@@ -328,8 +331,11 @@ public class ProveedorConexionJdbc {
                 }
                 try {
                     Object resultado = method.invoke(fisica, args);
-                    if ("commit".equals(methodName) || "rollback".equals(methodName)
-                            || "setAutoCommit".equals(methodName)) {
+                    if ("commit".equals(methodName) || "rollback".equals(methodName)) {
+                        transaccionConEscritura[0] = false;
+                    } else if ("setAutoCommit".equals(methodName) && args != null && args.length == 1
+                            && Boolean.TRUE.equals(args[0])) {
+                        // Habilitar autocommit confirma implícitamente la transacción en curso.
                         transaccionConEscritura[0] = false;
                     }
                     if (resultado instanceof Statement sentencia
@@ -390,6 +396,7 @@ public class ProveedorConexionJdbc {
 
     private void devolverAlPool(Connection fisica, BlockingQueue<Connection> pool, AtomicInteger activas,
             int nivelAislamientoDefault, boolean transaccionConEscritura) throws SQLException {
+        CONEXIONES_EN_USO.remove(fisica);
         try {
             if (fisica.isClosed()) {
                 activas.decrementAndGet();
@@ -469,6 +476,10 @@ public class ProveedorConexionJdbc {
                 cerrarSilenciosamente(conn);
             }
         }
+        for (Connection enUso : CONEXIONES_EN_USO) {
+            cerrarSilenciosamente(enUso);
+        }
+        CONEXIONES_EN_USO.clear();
         POOL_DISPONIBLES.clear();
         CONEXIONES_ACTIVAS.clear();
     }

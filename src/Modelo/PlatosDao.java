@@ -517,15 +517,42 @@ public class PlatosDao implements PlatosRepositorio {
     }
 
     private boolean eliminarFisico(int id) {
-        String sql = "DELETE FROM platos WHERE id = ?";
-        try (Connection conexion = conexiones.getConnection();
-                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setInt(1, id);
-            return ErrorAplicacionException.resultadoUnaFila(
-                    sentencia.executeUpdate(), "eliminar plato " + id);
+        try (Connection conexion = conexiones.getConnection()) {
+            boolean autoCommitPrevio = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
+            try {
+                String clave = PlatoIdentidadMapeos.claveDePlato(conexion, id);
+                int filas;
+                try (PreparedStatement sentencia = conexion.prepareStatement("DELETE FROM platos WHERE id = ?")) {
+                    sentencia.setInt(1, id);
+                    filas = sentencia.executeUpdate();
+                }
+                if (filas == 1) {
+                    PlatoIdentidadMapeos.eliminarMapeos(conexion, clave);
+                }
+                conexion.commit();
+                return ErrorAplicacionException.resultadoUnaFila(filas, "eliminar plato " + id);
+            } catch (SQLException | RuntimeException ex) {
+                try {
+                    conexion.rollback();
+                } catch (SQLException falloRollback) {
+                    ex.addSuppressed(falloRollback);
+                }
+                throw ex;
+            } finally {
+                try {
+                    conexion.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException ignored) {
+                }
+            }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo eliminar el plato.", ex);
         }
+    }
+
+    @FunctionalInterface
+    private interface Binder {
+        void bind(PreparedStatement sentencia, Platos plato) throws SQLException;
     }
 
     @Override
@@ -536,23 +563,24 @@ public class PlatosDao implements PlatosRepositorio {
             SET nombre = ?, precio = ?, aplica_iva = ?, moneda_base = ?, precio_usd = ?, precio_ves = ?, precio_clasificado = ?, precio_incluye_iva = ?
             WHERE id = ?
             """;
-        try (Connection conexion = conexiones.getConnection();
-                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, pla.getNombre());
-            sentencia.setBigDecimal(2, precioLegacyPersistible(pla));
-            sentencia.setInt(3, pla.isAplicaIva() ? 1 : 0);
-            sentencia.setString(4, pla.getMonedaBase());
-            sentencia.setBigDecimal(5, pla.getPrecioUsd());
-            sentencia.setBigDecimal(6, pla.getPrecioVes());
-            sentencia.setInt(7, pla.isPrecioClasificado() ? 1 : 0);
-            if (pla.getPrecioIncluyeIva() != null) {
-                sentencia.setInt(8, pla.getPrecioIncluyeIva() ? 1 : 0);
-            } else {
-                sentencia.setNull(8, java.sql.Types.TINYINT);
-            }
-            sentencia.setInt(9, pla.getId());
+        try {
             return ErrorAplicacionException.resultadoUnaFila(
-                    sentencia.executeUpdate(), "modificar plato " + pla.getId());
+                    ejecutarModificacionAtomica(pla, sql, (sentencia, plato) -> {
+                        sentencia.setString(1, plato.getNombre());
+                        sentencia.setBigDecimal(2, precioLegacyPersistible(plato));
+                        sentencia.setInt(3, plato.isAplicaIva() ? 1 : 0);
+                        sentencia.setString(4, plato.getMonedaBase());
+                        sentencia.setBigDecimal(5, plato.getPrecioUsd());
+                        sentencia.setBigDecimal(6, plato.getPrecioVes());
+                        sentencia.setInt(7, plato.isPrecioClasificado() ? 1 : 0);
+                        if (plato.getPrecioIncluyeIva() != null) {
+                            sentencia.setInt(8, plato.getPrecioIncluyeIva() ? 1 : 0);
+                        } else {
+                            sentencia.setNull(8, java.sql.Types.TINYINT);
+                        }
+                        sentencia.setInt(9, plato.getId());
+                    }),
+                    "modificar plato " + pla.getId());
         } catch (SQLException ex) {
             if (ex.getErrorCode() == 1054) {
                 return modificarV4(pla);
@@ -567,14 +595,15 @@ public class PlatosDao implements PlatosRepositorio {
             SET nombre = ?, precio = ?, aplica_iva = ?
             WHERE id = ?
             """;
-        try (Connection conexion = conexiones.getConnection();
-                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, pla.getNombre());
-            sentencia.setBigDecimal(2, precioPersistible(pla));
-            sentencia.setInt(3, pla.isAplicaIva() ? 1 : 0);
-            sentencia.setInt(4, pla.getId());
+        try {
             return ErrorAplicacionException.resultadoUnaFila(
-                    sentencia.executeUpdate(), "modificar plato " + pla.getId());
+                    ejecutarModificacionAtomica(pla, sql, (sentencia, plato) -> {
+                        sentencia.setString(1, plato.getNombre());
+                        sentencia.setBigDecimal(2, precioPersistible(plato));
+                        sentencia.setInt(3, plato.isAplicaIva() ? 1 : 0);
+                        sentencia.setInt(4, plato.getId());
+                    }),
+                    "modificar plato " + pla.getId());
         } catch (SQLException ex) {
             if (ex.getErrorCode() == 1054) {
                 return modificarLegacy(pla);
@@ -589,15 +618,53 @@ public class PlatosDao implements PlatosRepositorio {
             SET nombre = ?, precio = ?
             WHERE id = ?
             """;
-        try (Connection conexion = conexiones.getConnection();
-                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, pla.getNombre());
-            sentencia.setBigDecimal(2, precioPersistible(pla));
-            sentencia.setInt(3, pla.getId());
+        try {
             return ErrorAplicacionException.resultadoUnaFila(
-                    sentencia.executeUpdate(), "modificar plato " + pla.getId());
+                    ejecutarModificacionAtomica(pla, sql, (sentencia, plato) -> {
+                        sentencia.setString(1, plato.getNombre());
+                        sentencia.setBigDecimal(2, precioPersistible(plato));
+                        sentencia.setInt(3, plato.getId());
+                    }),
+                    "modificar plato " + pla.getId());
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo modificar el plato.", ex);
+        }
+    }
+
+    /**
+     * Ejecuta el UPDATE del plato y, si el nombre cambió, traslada sus asignaciones
+     * (categoría/favorito) a la nueva clave, todo dentro de una única transacción.
+     */
+    private int ejecutarModificacionAtomica(Platos pla, String sql, Binder binder) throws SQLException {
+        try (Connection conexion = conexiones.getConnection()) {
+            boolean autoCommitPrevio = conexion.getAutoCommit();
+            conexion.setAutoCommit(false);
+            try {
+                String claveAnterior = PlatoIdentidadMapeos.claveDePlato(conexion, pla.getId());
+                int filas;
+                try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+                    binder.bind(sentencia, pla);
+                    filas = sentencia.executeUpdate();
+                }
+                if (filas == 1) {
+                    PlatoIdentidadMapeos.migrarClave(conexion, claveAnterior,
+                            PlatoIdentidadMapeos.claveDePlato(conexion, pla.getId()));
+                }
+                conexion.commit();
+                return filas;
+            } catch (SQLException | RuntimeException ex) {
+                try {
+                    conexion.rollback();
+                } catch (SQLException falloRollback) {
+                    ex.addSuppressed(falloRollback);
+                }
+                throw ex;
+            } finally {
+                try {
+                    conexion.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException ignored) {
+                }
+            }
         }
     }
 

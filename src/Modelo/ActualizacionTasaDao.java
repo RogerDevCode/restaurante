@@ -132,6 +132,7 @@ public class ActualizacionTasaDao {
 
     private ResultadoActualizacionPrecios ejecutarTransaccion(BigDecimal tasaNueva, String usuario, String idempotencyKey, Integer idSalaFiltro) throws SQLException {
         try (Connection con = conexiones.getConnection()) {
+            boolean autoCommitPrevio = con.getAutoCommit();
             con.setAutoCommit(false);
             try {
                 if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -396,8 +397,17 @@ public class ActualizacionTasaDao {
                         0
                 );
             } catch (SQLException | RuntimeException ex) {
-                con.rollback();
+                try {
+                    con.rollback();
+                } catch (SQLException falloRollback) {
+                    ex.addSuppressed(falloRollback);
+                }
                 throw ex;
+            } finally {
+                try {
+                    con.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException ignored) {
+                }
             }
         }
     }

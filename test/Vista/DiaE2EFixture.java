@@ -9,7 +9,8 @@ final class DiaE2EFixture {
     static final String DB_URL_ESPERADO =
             "jdbc:mysql://127.0.0.1:3307/restaurante_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
     static final String DB_USER_ESPERADO = "restaurante_test_app";
-    static final String DB_PASSWORD_ESPERADO = "test_only_app_password";
+    static final String DB_PASSWORD_ESPERADO =
+            System.getenv().getOrDefault("DB_PASSWORD", "test_only_app_password");
     static final BigDecimal TASA_INICIAL = new BigDecimal("40.0000");
     static final BigDecimal TASA_NUEVA = new BigDecimal("42.0000");
     static final BigDecimal IVA_INICIAL = new BigDecimal("16.00");

@@ -76,6 +76,7 @@ public class PedidosDao implements PedidosRepositorio {
             """;
 
         try (Connection conexion = conexiones.getConnection()) {
+            boolean autoCommitPrevio = conexion.getAutoCommit();
             try {
                 conexion.setAutoCommit(false);
                 calcularYConsolidarSnapshot(conexion, pedido, detalles);
@@ -175,6 +176,11 @@ public class PedidosDao implements PedidosRepositorio {
                     throw new DataAccessException("No se pudo guardar el pedido completo.", errorSql);
                 }
                 throw new ErrorAplicacionException("Falló el guardado completo del pedido.", error);
+            } finally {
+                try {
+                    conexion.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException ignored) {
+                }
             }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo abrir la conexión para guardar el pedido.", ex);
@@ -198,8 +204,22 @@ public class PedidosDao implements PedidosRepositorio {
             """;
         
         try (Connection conexion = conexiones.getConnection()) {
+            boolean autoCommitPrevio = conexion.getAutoCommit();
             conexion.setAutoCommit(false);
-            calcularYConsolidarSnapshot(conexion, pedidoModificado, detallesNuevos);
+            try {
+                calcularYConsolidarSnapshot(conexion, pedidoModificado, detallesNuevos);
+            } catch (SQLException | RuntimeException ex) {
+                try {
+                    conexion.rollback();
+                } catch (SQLException falloRollback) {
+                    ex.addSuppressed(falloRollback);
+                }
+                try {
+                    conexion.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException ignored) {
+                }
+                throw ex;
+            }
 
             try (PreparedStatement updatePed = conexion.prepareStatement(sqlUpdatePedido);
                  PreparedStatement delDetalles = conexion.prepareStatement(sqlDeleteDetalles);
@@ -267,6 +287,11 @@ public class PedidosDao implements PedidosRepositorio {
                     return actualizarPedidoCompletoLegacy(conexion, idPedido, pedidoModificado, detallesNuevos);
                 }
                 throw error;
+            } finally {
+                try {
+                    conexion.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException ignored) {
+                }
             }
         } catch (SQLException ex) {
             throw new DataAccessException("No se pudo actualizar el pedido completo.", ex);

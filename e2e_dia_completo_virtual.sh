@@ -34,7 +34,8 @@ trap 'exit 143' TERM
 
 export DB_URL='jdbc:mysql://127.0.0.1:3307/restaurante_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
 export DB_USER='restaurante_test_app'
-export DB_PASSWORD='test_only_app_password'
+export E2E_MYSQL_PASSWORD="${E2E_MYSQL_PASSWORD:-test_only_app_password}"
+export DB_PASSWORD="$E2E_MYSQL_PASSWORD"
 export DB_NAME='restaurante_test'
 export MYSQL_DATABASE='restaurante_test'
 export BACKUP_HMAC_KEY='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
