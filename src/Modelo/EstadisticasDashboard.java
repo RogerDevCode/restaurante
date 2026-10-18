@@ -51,6 +51,7 @@ public class EstadisticasDashboard {
     private List<ItemEstadistica> topPlatos = new ArrayList<>();
     private List<ItemEstadistica> topSalas = new ArrayList<>();
     private List<ItemEstadistica> estadisticasMesoneros = new ArrayList<>();
+    private List<ItemEstadistica> pagosPorMetodoHoy = new ArrayList<>();
 
     public EstadisticasDashboard() {
     }
@@ -161,5 +162,13 @@ public class EstadisticasDashboard {
 
     public void setEstadisticasMesoneros(List<ItemEstadistica> estadisticasMesoneros) {
         this.estadisticasMesoneros = estadisticasMesoneros != null ? estadisticasMesoneros : new ArrayList<>();
+    }
+
+    public List<ItemEstadistica> getPagosPorMetodoHoy() {
+        return pagosPorMetodoHoy;
+    }
+
+    public void setPagosPorMetodoHoy(List<ItemEstadistica> pagosPorMetodoHoy) {
+        this.pagosPorMetodoHoy = pagosPorMetodoHoy != null ? pagosPorMetodoHoy : new ArrayList<>();
     }
 }

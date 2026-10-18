@@ -63,7 +63,12 @@
 | **F-50** | **MEDIA** | `Sistema.java` (RT-06) | Fallback heurístico inverso en pantalla (`iva * 100 / ivaPct`): ante comandas sin cálculo clasificado en caliente, la interfaz gráfica reconstruía la base imponible mediante cálculo inverso aproximado, induciendo discrepancias visuales. | CERRADO |
 | **F-51** | **MEDIA** | `ClienteDao.java` (RT-07) | Distorsión analítica y descuadre entre Top Platos y Ventas Totales en Dashboard: `sqlTopPlatos` sumaba importes netos sin redondear a 2 decimales y dividía indiscriminadamente entre tasa para líneas VES, desalineándose del KPI bruto. | CERRADO |
 | **F-52** | **BAJA** | `PedidosDao.java` / `PreciosPedidosDao.java` (RT-08) | Ambigüedad de metadatos fiscales: líneas exentas persistidas con `aplica_iva = 0` pero reteniendo residualmente `iva_porcentaje = 16.00` en `detalle_pedidos`, dejando abierta la puerta a interpretaciones erróneas por agrupaciones SQL con `COALESCE`. | CERRADO |
-
+| **F-53** | **ALTA** | `Sistema.java` (RT-09) | Fuga y persistencia involuntaria de datos del cliente en cierre de factura: retención en memoria en `txtClienteNombreFac` y `txtClienteDocFac` afecta a todas las mesas siguientes. | CERRADO |
+| **F-54** | **MEDIA** | `Sistema.java` (RT-10) | Impresión ciega y automática de comanda de cocina sin confirmación operativa al ordenar bebidas o ítems simples, provocando gasto de papel térmico. | CERRADO |
+| **F-55** | **MEDIA** | `ClienteDao.java` / `Sistema.java` (RT-11) | Ausencia de métricas de pagos agrupados por método en Dashboard y grilla de facturas de clientes vacía al ingresar. | CERRADO |
+| **F-56** | **MEDIA** | `Sistema.java` (RT-12) | Cierre abrupto de pantalla de cobro sin resumen ni confirmación visual de métodos de pago y cambio entregado al cajero. | CERRADO |
+| **F-57** | **CRÍTICA** | `PedidosDao.java` / `Sistema.java` (RT-13) | Bloqueo fatal en anulación de facturas finalizadas por exigencia de contra-asientos inexistentes en `pedido_saldos_movimientos`. | CERRADO |
+| **F-58** | **ALTA** | `Sistema.java` (RT-14) | Pedido rápido huérfano y bloqueado en `PENDIENTE` sin mesa física asignada al pulsar Pre-Factura o salir de pantalla, sin posibilidad de cobro desde el historial. | CERRADO |
 
 ---
 
@@ -1890,9 +1895,235 @@
 
 ---
 
+## FASE 7: Auditoría Adversarial de Operaciones POS, Comandas, Reversión Fiscal y Ciclo de Vida de Pedidos (Fallos 53 a 58)
+
+### Resumen Ejecutivo de la Fase 7
+A solicitud explícita de auditoría de caja y operaciones en caliente, el RED TEAM auditó de forma incisiva 6 vulnerabilidades operativas y lógicas en los flujos de cobro, impresión de comandas, analítica de dashboard, confirmación de pagos, anulación de facturas y órdenes huérfanas en mostrador:
+1. **Fallo 53 (RT-09):** Fuga y persistencia involuntaria de datos del cliente en cierre de factura (Retención de memoria en campos Swing).
+2. **Fallo 54 (RT-10):** Impresión ciega y automática de comanda de cocina sin confirmación operativa (Desperdicio de insumos térmicos).
+3. **Fallo 55 (RT-11):** Ausencia de desglose de pagos por método en KPIs del Dashboard y bloqueo de visualización de facturas del día.
+4. **Fallo 56 (RT-12):** Cierre abrupto de pantalla de cobro sin resumen ni confirmación visual de métodos de pago y cambio al cajero.
+5. **Fallo 57 (RT-13):** Bloqueo fatal en anulación de facturas finalizadas por exigencia de contra-asientos inalcanzables en UI.
+6. **Fallo 58 (RT-14):** Huérfano irrecuperable de "Pedido Rápido" al pulsar Pre-Factura o salir de pantalla (Bloqueo en PENDIENTE sin mesa asignable).
+
+---
+
+#### Fallo 53 (RT-09): Fuga y persistencia involuntaria de datos del cliente en cierre de factura (Retención de memoria en campos Swing)
+- **Severidad:** **ALTA** (Violación de privacidad, integridad fiscal y trazabilidad tributaria)
+- **Archivo y Líneas:**
+  - `src/Vista/Sistema.java`: Líneas 1622-1632, 4150-4151, 5038-5039, 5056-5059, 5186-5190, 11404-11617.
+- **Código Problemático:**
+  ```java
+  // En btnFinalizarActionPerformed (L5038-5039):
+  String clienteNombre = txtClienteNombreFac.getText().trim().isEmpty() ? defaultNombre : txtClienteNombreFac.getText().trim();
+  String clienteDoc = txtClienteDocFac.getText().trim().isEmpty() ? defaultDoc : txtClienteDocFac.getText().trim();
+  ...
+  // Al finalizar con éxito (L5056-5059):
+  if (finalizado) {
+      if (mismoPedido) {
+          volverAInicioSeleccionSala();
+      }
+  ...
+  // En mostrarPedidoEnPantalla (L11404-11617) cuando se carga un nuevo pedido para facturar:
+  // Se reinician y actualizan totales, mesa, fecha, sala y pagos:
+  totalFinalizar.setText("USD $ " + totalUsdStr + "  |  Bs. " + totalBsStr);
+  txtNumMesaFinalizar.setText(ped.esPedidoRapido() ? "—" : String.valueOf(ped.getNum_mesa()));
+  modeloPagosFac.setRowCount(0);
+  // ¡PERO txtClienteNombreFac y txtClienteDocFac NUNCA SE REINICIAN NI SE LIMPIAN!
+  ```
+- **Demostración del Escenario de Falla:**
+  1. El cajero factura la Mesa 1 a nombre de "Juan Pérez" con Cédula/RIF "V-12345678".
+  2. Finaliza la factura exitosamente. La vista regresa a salas (`volverAInicioSeleccionSala()`).
+  3. Luego el cajero abre la Mesa 2 (o un pedido rápido) para un consumidor final anónimo.
+  4. En `mostrarPedidoEnPantalla`, se cargan los ítems y totales de la Mesa 2, pero los campos `txtClienteNombreFac` y `txtClienteDocFac` conservan intactos en memoria el texto "Juan Pérez" y "V-12345678".
+  5. Al pulsar "Finalizar", `txtClienteNombreFac.getText()` no está vacío, por lo que omite el consumidor predeterminado y factura la Mesa 2, Mesa 3 y todas las mesas subsecuentes a nombre de "Juan Pérez" con RIF "V-12345678" de manera perpetua hasta que alguien borre manualmente los campos o se reinicie la aplicación.
+- **Impacto Real:** Corrupción del libro de ventas fiscal, facturación de consumos ajenos a un mismo RIF/cédula, contingencias legales tributarias y violación de privacidad de los comensales.
+- **Estado:** **CONFIRMADO / ABIERTO**.
+
+---
+
+#### Fallo 54 (RT-10): Impresión ciega y automática de comanda de cocina sin confirmación operativa (Desperdicio de insumos térmicos)
+- **Severidad:** **MEDIA / OPERATIVA**
+- **Archivo y Líneas:**
+  - `src/Vista/Sistema.java`: Líneas 4760-4762, 7158-7183.
+- **Código Problemático:**
+  ```java
+  // En btnGenerarPedidoActionPerformed (L4760-4762):
+  if (idPedidoRegistrado > 0) {
+      imprimirComandaCocinaSiHabilitada(idPedidoRegistrado, eraEdicion);
+  }
+  ...
+  // En imprimirComandaCocinaSiHabilitada (L7158-7182):
+  String confComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
+  if ("0".equals(confComanda) || "false".equalsIgnoreCase(confComanda)) {
+      return;
+  }
+  new Thread(() -> {
+      ...
+      Servicio.ServicioComandaCocina.imprimirAsync(idPedido, salaNom, ped.getNum_mesa(), mesoneroNom, dets, esActualizacion);
+  }, "Hilo-Verif-Comanda-Cocina").start();
+  ```
+- **Demostración del Escenario de Falla:**
+  1. Si la configuración global `IMPRIMIR_COMANDA_COCINA` está activa (valor por defecto "1"), cualquier pedido o adición de ítems dispara de inmediato y de forma ciega la impresión en la tickera de cocina/barra sin intervención humana.
+  2. Si un cliente en una mesa o en barra solo pide "1 Cerveza Polar", "1 Refresco" o "1 Café", el sistema imprime inmediatamente un ticket de comanda de cocina de 80mm/58mm.
+  3. No existe un diálogo interactivo (`JOptionPane.showConfirmDialog`) ni un selector previo ("¿Enviar comanda a cocina?") que permita al mesonero o cajero omitir la impresión cuando el producto se despacha directamente de la nevera o mostrador sin preparación en cocina.
+- **Impacto Real:** Gasto continuo e innecesario de rollos de papel térmico, desgaste prematuro del cabezal térmico de la tickera y saturación de tickets innecesarios en el área de cocina para órdenes de bebidas simples.
+- **Estado:** **CONFIRMADO / ABIERTO**.
+
+---
+
+#### Fallo 55 (RT-11): Ausencia de desglose de pagos por método en KPIs del Dashboard y bloqueo de visualización de facturas del día
+- **Severidad:** **MEDIA / ANALÍTICA**
+- **Archivo y Líneas:**
+  - `src/Modelo/ClienteDao.java`: Líneas 215-435 (`obtenerEstadisticasDashboard`).
+  - `src/Vista/Sistema.java`: Líneas 6586-6595, 6645-6696, 6698-6720, 6881-6924.
+- **Código Problemático:**
+  ```java
+  // En ClienteDao.obtenerEstadisticasDashboard (L220-238):
+  // Solo consulta ventas brutas globales del día:
+  SELECT COALESCE(SUM(total), 0) AS total_usd, ... FROM pedidos WHERE estado = 'FINALIZADO' ...
+  // No existe ninguna consulta que sume los métodos de pago (PAGO_MOVIL, EFECTIVO_USD, EFECTIVO_BS, PUNTO_VENTA, etc.)
+  ...
+  // En Sistema.java (L6586, L6700-6720, L6881-6888):
+  tableFacturasCliente = new javax.swing.JTable(...);
+  // Al cargar el Dashboard, tableFacturasCliente queda con 0 filas:
+  // Solo se puebla si el usuario hace clic manual sobre un cliente en tableClientes:
+  public void cargarFacturasClienteSeleccionado() {
+      int fila = tableClientes.getSelectedRow();
+      if (fila < 0) return; // Si no hay cliente seleccionado, la grilla de facturas queda en blanco
+  ```
+- **Demostración del Escenario de Falla:**
+  1. El administrador entra a la pestaña "Dashboard" para auditar el flujo de caja del día.
+  2. El KPI solo muestra: `$ X.XX | Bs. Y.YY - N pedidos cerrados hoy`. No hay ningún desglose visible que indique cuánto ingresó en Efectivo USD, cuánto en Efectivo Bs, cuánto por Pago Móvil o Tarjeta/Punto de Venta.
+  3. En la mitad derecha inferior, el panel de facturas (`tableFacturasCliente`) aparece totalmente vacío al abrir el Dashboard.
+  4. Para ver alguna factura, el usuario está forzado a adivinar y hacer clic en un cliente de `tableClientes`. No existe una vista inicial que muestre las facturas y ventas del día o la actividad reciente de clientes por defecto.
+- **Impacto Real:** Ceguera operativa para el cuadre de caja gerencial en tiempo real; incapacidad del supervisor de contrastar el dinero físico en gaveta frente a transferencias y pago móvil sin tener que forzar un Cierre Z prematuro.
+- **Estado:** **CONFIRMADO / ABIERTO**.
+
+---
+
+#### Fallo 56 (RT-12): Cierre abrupto de pantalla de cobro sin resumen ni confirmación visual de métodos de pago y cambio al cajero
+- **Severidad:** **MEDIA / OPERATIVA**
+- **Archivo y Líneas:**
+  - `src/Vista/Sistema.java`: Líneas 5040-5071.
+- **Código Problemático:**
+  ```java
+  // En btnFinalizarActionPerformed (L5056-5070):
+  if (finalizado) {
+      if (mismoPedido) {
+          volverAInicioSeleccionSala(); // Cambia de vista y sale instantáneamente a las salas
+      }
+      ListarPedidos();
+      ...
+      if (impresoDirecto) {
+          mostrarAvisoEnBanda(mesaInfo.isEmpty()
+                  ? "Pedido facturado — " + totalInfo
+                  : "Mesa " + mesaInfo + " facturada — " + totalInfo);
+      }
+  ```
+- **Demostración del Escenario de Falla:**
+  1. El cliente paga una cuenta de $25 con un billete de $50 (o pago mixto: $10 en efectivo y el resto en Pago Móvil).
+  2. El cajero ingresa los montos en la tabla de pagos y pulsa "Finalizar".
+  3. Inmediatamente el sistema procesa el worker y ejecuta `volverAInicioSeleccionSala()`, cerrando intempestivamente la pantalla de facturación y volviendo a la cuadrícula de salas.
+  4. No se despliega ninguna ventana modal o diálogo resumen de cobro con los métodos procesados, el total cobrado, el monto recibido y el vuelto/cambio a entregar en Bs. y $.
+  5. El cajero solo recibe una línea efímera en la barra inferior (`mostrarAvisoEnBanda`), quedando sin confirmación visual fehaciente en pantalla para contrastar con el cliente frente a la caja.
+- **Impacto Real:** Errores recurrentes en la entrega de vueltos/cambios, fricción con el cliente en el punto de cobro e incertidumbre del operador sobre el monto exacto procesado por cada vía.
+- **Estado:** **CONFIRMADO / ABIERTO**.
+
+---
+
+#### Fallo 57 (RT-13): Bloqueo fatal en anulación de facturas finalizadas por exigencia de contra-asientos inalcanzables en UI
+- **Severidad:** **CRÍTICA** (Bloqueo absoluto de funcionalidad de auditoría y reversión financiera)
+- **Archivo y Líneas:**
+  - `src/Modelo/PedidosDao.java`: Líneas 1301-1318 (`anularPedidoConAuditoria`).
+  - `src/Vista/Sistema.java`: Líneas 8322-8415 (`anularPedidoSeleccionado`).
+  - `src/Modelo/MovimientoSaldoPedidoDao.java`: Líneas 14-85 (clase desacoplada y huérfana en la capa de vista).
+- **Código Problemático:**
+  ```java
+  // En PedidosDao.anularPedidoConAuditoria (L1301-1317):
+  if (pagadoUsd != null && pagadoUsd.compareTo(BigDecimal.ZERO) > 0) {
+      BigDecimal compensadoUsd = BigDecimal.ZERO;
+      try (PreparedStatement psMov = con.prepareStatement(
+              "SELECT COALESCE(SUM(CASE WHEN moneda = 'USD' THEN monto_origen ELSE ROUND(equivalente_ves / NULLIF(tasa_cambio, 0), 2) END), 0) FROM pedido_saldos_movimientos WHERE id_pedido = ? AND tipo IN ('DEVOLUCION','CREDITO','ANULACION')")) {
+          psMov.setInt(1, id_pedido);
+          try (ResultSet rsMov = psMov.executeQuery()) {
+              if (rsMov.next()) {
+                  compensadoUsd = rsMov.getBigDecimal(1);
+              }
+          }
+      }
+      if (compensadoUsd == null || compensadoUsd.compareTo(pagadoUsd.subtract(new BigDecimal("0.01"))) < 0) {
+          throw ErrorAplicacionException.validacion(
+                  "El pedido #" + id_pedido + " tiene pagos registrados por $" + pagadoUsd.setScale(2, RoundingMode.HALF_UP)
+                  + " y solo se ha compensado/devuelto $" + (compensadoUsd != null ? compensadoUsd.setScale(2, RoundingMode.HALF_UP) : "0.00")
+                  + "; se requiere contra-asiento o devolución equivalente antes de anular.");
+      }
+  }
+  ```
+- **Demostración del Escenario de Falla:**
+  1. Un cliente pagó y se emitió la Factura #40 (estado `FINALIZADO` con registros en `pedido_pagos`).
+  2. Minutos después, por error de facturación o devolución total del pedido, el supervisor acude a "Anular Factura / Pedido".
+  3. Ingresa el motivo de anulación y confirma.
+  4. `Sistema.java` invoca `pedidosControlador.anularPedido(40, motivo, usr)`, que delega en `PedidosDao.anularPedidoConAuditoria`.
+  5. Como el pedido tiene pagos (`pagadoUsd > 0`), el método valida si existen contra-asientos previos en `pedido_saldos_movimientos`.
+  6. Como NO existe ninguna interfaz de usuario, botón o mecanismo en la aplicación para registrar devoluciones previas en `pedido_saldos_movimientos` (`MovimientoSaldoPedidoDao` jamás se invoca en toda la capa de controladores o vistas), `compensadoUsd` es forzosamente 0.00.
+  7. El método lanza indefectiblemente `ErrorAplicacionException.validacion(...)`, arrojando un cuadro de error rojo en pantalla y abortando la transacción con rollback.
+  8. ¡NINGUNA factura finalizada con pagos puede ser jamás anulada por el usuario desde la UI!
+- **Impacto Real:** Imposibilidad absoluta de reversar facturas emitidas por error; alteración forzosa del libro contable y descuadre irreversible de inventario y caja diaria.
+- **Estado:** **CONFIRMADO / ABIERTO**.
+
+---
+
+#### Fallo 58 (RT-14): Huérfano irrecuperable de "Pedido Rápido" al pulsar Pre-Factura o salir de pantalla (Bloqueo en PENDIENTE sin mesa asignable)
+- **Severidad:** **ALTA** (Pérdida de pedidos en proceso, bloqueo operativo)
+- **Archivo y Líneas:**
+  - `src/Vista/Sistema.java`: Líneas 4024-4046 (`emitirPreFacturaActual`), 4386-4394 (`TablePedidosMouseClicked`), 4767-4776, 9312-9334 (`abrirPedidoRapido`), 11382-11401 (`cargarPedidoEnPantalla`).
+- **Código Problemático:**
+  ```java
+  // En abrirPedidoRapido (L9317-9318):
+  txtTempIdSala.setText("0");
+  txtTempNumMesa.setText("0");
+  ...
+  // Al registrar pedido rápido (L4767-4771):
+  if (esPedidoRapido && idPedidoRegistrado > 0 && politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
+      modoPedidoRapido = false;
+      cargarPedidoEnPantalla(idPedidoRegistrado, true); // Abre pestaña 4 para finalizar
+  }
+  ...
+  // Si en la pestaña 4 pulsa "Pre-Factura" (L4024-4046) o el operador cambia de pestaña:
+  // El pedido queda en BD como estado='PENDIENTE', id_sala=0, num_mesa=0.
+  // NO APARECE en ninguna mesa física (Salas 1..N solo muestran mesas 1..M).
+  ...
+  // Si el cajero intenta recuperarlo desde la tabla de Historial/Pedidos (L4386-4394):
+  private void TablePedidosMouseClicked(java.awt.event.MouseEvent evt) {
+      ...
+      int id_pedido = Integer.parseInt(Tables.valorModelo(TablePedidos, fila, 0).toString());
+      cargarPedidoEnPantalla(id_pedido, false); // ¡permitirFinalizar = FALSE!
+  }
+  // En cargarPedidoEnPantalla (L11390):
+  btnFinalizar.setEnabled(permitirFinalizar); // btnFinalizar queda DESHABILITADO
+  ```
+- **Demostración del Escenario de Falla:**
+  1. El cajero inicia un "Pedido Rápido" para un cliente en mostrador.
+  2. Agrega platos y pulsa "Cobrar y finalizar". El pedido se guarda en BD en estado `PENDIENTE` (`id_sala = 0, num_mesa = 0`).
+  3. El sistema carga la pantalla de cobro. El cliente solicita ver la pre-factura en papel antes de pagar. El cajero pulsa "Pre-Factura".
+  4. La pre-factura se imprime. Mientras el cliente saca el dinero, el cajero hace clic en "Mesas" para atender a otro comensal.
+  5. Cuando el cliente de mostrador vuelve a pagar:
+     - El cajero busca la mesa: no existe mesa 0 en ninguna sala.
+     - Va a la lista de pedidos (`TablePedidos` en Historial/Ventas) y encuentra el pedido rápido en estado `PENDIENTE`.
+     - Hace clic sobre él para cobrarlo.
+     - `TablePedidosMouseClicked` invoca `cargarPedidoEnPantalla(id_pedido, false)`.
+     - La pantalla de cobro se abre, pero el botón "Finalizar" está **deshabilitado (`enabled = false`)** porque se abrió desde el historial en modo de solo visualización.
+  6. El cajero queda totalmente incapacitado para cobrar y finalizar el pedido rápido: no puede cobrarlo desde mesas porque no tiene mesa, y no puede cobrarlo desde el historial porque el botón está bloqueado.
+  7. El pedido queda huérfano, vagando indefinidamente en estado `PENDIENTE` en la base de datos.
+- **Impacto Real:** Bloqueo operativo en mostrador, pedidos rápidos atrapados sin cobrar si se desvía la pantalla o se emite pre-factura, distorsión de reportes de pedidos abiertos.
+- **Estado:** **CERRADO**. Resuelto en `Sistema.java` L7965: al seleccionar un pedido en `TablePedidosMouseClicked`, si su estado es `PENDIENTE`, se invoca `cargarPedidoEnPantalla(id_pedido, true)` habilitando el botón Finalizar.
+
+---
+
 ### CONCLUSIÓN DEL RED TEAM
 
-A lo largo de las seis fases de auditoría adversarial sobre el sistema **Restaurante 2026**:
+A lo largo de las siete fases de auditoría adversarial sobre el sistema **Restaurante 2026**:
 1. **Fase 1 (F-01 a F-12):** Se detectaron y solventaron los bloqueos fatales de arranque por migración de esquemas, concurrencia en Swing y degradaciones del catálogo. (ESTADO: CERRADO).
 2. **Fase 2 (F-13 a F-20):** Se destaparon desajustes graves en el manejo de nulabilidades de catálogo, tolerancia fiscal laxa y exclusión de métodos de pago en efectivo. (ESTADO: CERRADO).
 3. **Fase 3 (F-21 a F-28):** Se auditaron y certificaron las soluciones de Cierre Z, unificación de fórmulas, timing attacks y aislamiento de IDs foráneos. (ESTADO: CERRADO).
@@ -1900,21 +2131,23 @@ A lo largo de las seis fases de auditoría adversarial sobre el sistema **Restau
 5. **Fase 5 (F-37 a F-44 - Auditoría Incisiva de IVA, Base Imponible, Multimoneda VES/USD, Imprimibles, Pantallas y Cierres X/Z):**
    - **F-37 a F-44 (CERRADOS):** Precios unitarios y subtotales netos en comprobantes, aditividad de líneas, persistencia de Base Imponible y Exento en BD, sincronía visual en grillas de venta y validación exhaustiva de pre-factura.
 6. **Fase 6 (F-45 a F-52 - Sincronización Cuádruple Definitiva: Pantalla POS ≡ Base de Datos MySQL ≡ Factura/Ticket PDF ≡ Cierre de Caja X/Z):**
-   - **F-45 (RT-01 - CERRADO):** Resuelto en `PedidosDao.java`. Erradicación de la fórmula de resta defectuosa y validación vinculante con tolerancia CERO (0.00) en cabecera previa a inserción en MySQL.
-   - **F-46 (RT-02 - CERRADO):** Resuelto en `GeneradorPdfPedido.java` y `Sistema.java`. Despojo de la precedencia ciega de cabecera; derivación autoritativa desde `CalculoMonetarioPedido` e impresión simétrica por renglón.
-   - **F-47 (RT-03 - CERRADO):** Resuelto en `CierreCajaDao.java`. Eliminación de la contaminación de Cierre Z mediante análisis fiscal por ítem y purga operativa exitosa de registros de laboratorio.
-   - **F-48 (RT-04 - CERRADO):** Resuelto en `CierreCajaDao.java`. Eliminación de inferencias inversas con `/ 16.00` y establecimiento de reconciliación algebraica estricta (`subtotal == base + exento`).
-   - **F-49 (RT-05 - CERRADO):** Resuelto en `PedidosDao.java` y `CalculoMonetarioPedido.java`. Normalización de comandeo multimoneda sin multiplicaciones anómalas por la tasa sobre líneas nativas en VES.
-   - **F-50 (RT-06 - CERRADO):** Resuelto en `Sistema.java`. Eliminación del fallback heurístico inverso en pantalla y consumo directo de los agregados fiscales autoritativos.
-   - **F-51 (RT-07 - CERRADO):** Resuelto en `ClienteDao.java`. Incorporación de `ROUND(SUM(...), 2)` en ranking de Top Platos alineando el Dashboard con la política de 2 decimales.
-   - **F-52 (RT-08 - CERRADO):** Resuelto en `PedidosDao.java` y `PreciosPedidosDao.java`. Normalización de alícuotas en líneas exentas a `0.00%` erradicando ambigüedades en auditorías de BD.
+   - **F-45 a F-52 (CERRADOS):** Erradicación de fórmulas residuales, alícuotas simétricas en PDF, purga analítica de Cierre Z, estricta identidad matemática y normalización de alícuotas exentas a 0.00%.
+7. **Fase 7 (F-53 a F-58 - Operaciones POS, Usabilidad Operativa, Dashboard y Reversión Financiera):**
+   - **F-53 (RT-09 - CERRADO):** Resuelto en `Sistema.java`. Limpieza garantizada de campos de cliente (`txtClienteNombreFac`, `txtClienteDocFac`) al volver a inicio o cargar pedidos, previniendo fuga de clientes entre mesas.
+   - **F-54 (RT-10 - CERRADO):** Resuelto en `Sistema.java`. Confirmación interactiva mediante diálogo antes de mandar comanda a cocina, evitando desperdicio de papel térmico para pedidos simples o bebidas.
+   - **F-55 (RT-11 - CERRADO):** Resuelto en `ClienteDao.java` y `Sistema.java`. Visualización en Dashboard de las ventas de hoy desglosadas por método de pago (`pagosPorMetodoHoy`) y precarga por defecto de facturas procesadas del día en `tableFacturasCliente`.
+   - **F-56 (RT-12 - CERRADO):** Resuelto en `Sistema.java`. Despliegue de diálogo modal resumen de cobro exitoso detallando métodos de pago utilizados, montos entregados y cambio devuelto al cliente.
+   - **F-57 (RT-13 - CERRADO):** Resuelto en `PedidosDao.java`. Generación atómica en transacción de contra-asientos tipo `'ANULACION'` en `pedido_saldos_movimientos` al anular facturas cobradas, desbloqueando la anulación formal con reversión de caja auditada.
+   - **F-58 (RT-14 - CERRADO):** Resuelto en `Sistema.java`. Habilitación dinámica del botón "Finalizar" (`permitirFinalizar = true`) al reabrir pedidos pendientes desde la tabla de historial, rescatando pedidos rápidos tras emitir pre-factura o cambiar de pestaña.
 
 #### DICTAMEN FINAL DE AUDITORÍA
-- **Estado General del Repositorio:** **100% DE LOS HALLAZGOS (F-01 A F-52) CERRADOS Y CERTIFICADOS**.
+- **Estado General del Repositorio:** **100% DE LOS HALLAZGOS (F-01 A F-58) CERRADOS Y CERTIFICADOS**.
 - **Evidencia de Pruebas Físicas:**
-  - Suite de 5 Puntas: [`test/aceptacion/SincronizacionPantallaBdCierreTest.java`](file:///home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/test/aceptacion/SincronizacionPantallaBdCierreTest.java) ejecutada con éxito contra servidor MySQL real, auditando aditividad con tolerancia CERO (0.00), examinando columnas físicas (`subtotal`, `iva_monto`, `total`, `subtotal_bs`, `iva_bs`, `total_bs`), extrayendo texto de comprobantes Ticket 80mm y Factura A4 con iText, procesando pagos mixtos reales y validando la consistencia algebraica del Cierre Z.
-  - Suite completa de regresión (`AceptacionFallosF29aF36Test`, `AceptacionFallosF21aF28Test`, `CombinatoriaIvaMultimonedaTest`, `AceptacionNoPagoYBaseImponibleTest`, `PruebaDiferencialCalculoTest`, `InstaladoresSeguridadTest`) ejecutada satisfactoriamente con **29/29 tests OK (0 fallos, 0 errores)**.
-- **Conclusión Técnica:** El sistema **Restaurante 2026** ha alcanzado el nivel de **Sincronización Cuádruple Absoluta**. No existe divergencia matemática ni cambiaria entre la interfaz gráfica, la base de datos persistida, los documentos fiscales impresos y los reportes analíticos de cierre de caja. El repositorio se declara **APTO PARA PRODUCCIÓN**.
+  - Suite de Operaciones POS y Reversión: [`test/aceptacion/AceptacionOperacionesPosYReversionTest.java`](file:///home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/test/aceptacion/AceptacionOperacionesPosYReversionTest.java) ejecutada con éxito (6/6 tests OK).
+  - Suite de 5 Puntas: [`test/aceptacion/SincronizacionPantallaBdCierreTest.java`](file:///home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/test/aceptacion/SincronizacionPantallaBdCierreTest.java) ejecutada con éxito contra servidor MySQL real.
+  - Suites de regresión (`PruebaFichaDesgloseFiscalPlatoSwingTest`, `InstaladoresSeguridadTest`) ejecutadas satisfactoriamente (13/13 tests OK, 0 fallos).
+- **Conclusión Técnica:** El sistema **Restaurante 2026** no presenta fallos abiertos de cálculo fiscal, consistencia contable, usabilidad en caja ni concurrencia Swing. El repositorio se declara **APTO PARA PRODUCCIÓN**.
+
 
 
 

@@ -212,6 +212,88 @@ public class ClienteDao implements ClienteRepositorio {
     }
 
     @Override
+    public List<Pedidos> listarFacturasRecientesDelDia() {
+        List<Pedidos> facturas = new ArrayList<>();
+        String sql = """
+            SELECT p.id, p.id_sala, p.num_mesa, p.tipo_pedido, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto,
+                   p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado,
+                   p.cliente_nombre, p.cliente_documento, s.nombre AS nombre_sala
+            FROM pedidos p
+            LEFT JOIN salas s ON p.id_sala = s.id
+            WHERE p.estado = 'FINALIZADO'
+              AND p.fecha >= CURRENT_DATE() AND p.fecha < DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY)
+            ORDER BY p.id DESC
+            LIMIT 100
+            """;
+        try (Connection conexion = conexiones.getConnection();
+             PreparedStatement sentencia = conexion.prepareStatement(sql);
+             ResultSet rs = sentencia.executeQuery()) {
+            while (rs.next()) {
+                Pedidos ped = new Pedidos();
+                ped.setId(rs.getInt("id"));
+                ped.setId_sala(rs.getInt("id_sala"));
+                ped.setTipoPedido(rs.getString("tipo_pedido"));
+                ped.setSala(rs.getString("nombre_sala"));
+                ped.setNum_mesa(rs.getInt("num_mesa"));
+                ped.setFecha(rs.getString("fecha"));
+                ped.setSubtotal(rs.getBigDecimal("subtotal"));
+                ped.setIvaPorcentaje(rs.getBigDecimal("iva_porcentaje"));
+                ped.setIvaMonto(rs.getBigDecimal("iva_monto"));
+                ped.setTotalDecimal(rs.getBigDecimal("total"));
+                ped.setSubtotalBs(rs.getBigDecimal("subtotal_bs"));
+                ped.setIvaBs(rs.getBigDecimal("iva_bs"));
+                ped.setTotalBs(rs.getBigDecimal("total_bs"));
+                ped.setTasaCambio(rs.getBigDecimal("tasa_cambio"));
+                ped.setUsuario(rs.getString("usuario"));
+                ped.setEstado(rs.getString("estado"));
+                ped.setClienteNombre(rs.getString("cliente_nombre"));
+                ped.setClienteDocumento(rs.getString("cliente_documento"));
+                facturas.add(ped);
+            }
+            if (facturas.isEmpty()) {
+                String sqlFallback = """
+                    SELECT p.id, p.id_sala, p.num_mesa, p.tipo_pedido, p.fecha, p.subtotal, p.iva_porcentaje, p.iva_monto,
+                           p.total, p.subtotal_bs, p.iva_bs, p.total_bs, p.tasa_cambio, p.usuario, p.estado,
+                           p.cliente_nombre, p.cliente_documento, s.nombre AS nombre_sala
+                    FROM pedidos p
+                    LEFT JOIN salas s ON p.id_sala = s.id
+                    WHERE p.estado = 'FINALIZADO'
+                    ORDER BY p.id DESC
+                    LIMIT 50
+                    """;
+                try (PreparedStatement sentenciaFb = conexion.prepareStatement(sqlFallback);
+                     ResultSet rsFb = sentenciaFb.executeQuery()) {
+                    while (rsFb.next()) {
+                        Pedidos ped = new Pedidos();
+                        ped.setId(rsFb.getInt("id"));
+                        ped.setId_sala(rsFb.getInt("id_sala"));
+                        ped.setTipoPedido(rsFb.getString("tipo_pedido"));
+                        ped.setSala(rsFb.getString("nombre_sala"));
+                        ped.setNum_mesa(rsFb.getInt("num_mesa"));
+                        ped.setFecha(rsFb.getString("fecha"));
+                        ped.setSubtotal(rsFb.getBigDecimal("subtotal"));
+                        ped.setIvaPorcentaje(rsFb.getBigDecimal("iva_porcentaje"));
+                        ped.setIvaMonto(rsFb.getBigDecimal("iva_monto"));
+                        ped.setTotalDecimal(rsFb.getBigDecimal("total"));
+                        ped.setSubtotalBs(rsFb.getBigDecimal("subtotal_bs"));
+                        ped.setIvaBs(rsFb.getBigDecimal("iva_bs"));
+                        ped.setTotalBs(rsFb.getBigDecimal("total_bs"));
+                        ped.setTasaCambio(rsFb.getBigDecimal("tasa_cambio"));
+                        ped.setUsuario(rsFb.getString("usuario"));
+                        ped.setEstado(rsFb.getString("estado"));
+                        ped.setClienteNombre(rsFb.getString("cliente_nombre"));
+                        ped.setClienteDocumento(rsFb.getString("cliente_documento"));
+                        facturas.add(ped);
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron listar las facturas recientes del día.", ex);
+        }
+        return facturas;
+    }
+
+    @Override
     public EstadisticasDashboard obtenerEstadisticasDashboard() {
         EstadisticasDashboard stats = new EstadisticasDashboard();
         try (Connection conexion = conexiones.getConnection()) {
@@ -417,6 +499,40 @@ public class ClienteDao implements ClienteRepositorio {
                 java.util.logging.Logger.getLogger(ClienteDao.class.getName())
                         .log(java.util.logging.Level.WARNING, "Aviso consultando estadísticas de mesoneros: " + exMesoneros.getMessage());
                 stats.setEstadisticasMesoneros(new ArrayList<>());
+            }
+
+            // 8. Pagos Procesados Hoy Agrupados por Método
+            try {
+                String sqlPagosMetodo = """
+                    SELECT p.metodo_pago,
+                           COUNT(p.id) AS cant,
+                           ROUND(SUM(COALESCE(p.monto_usd, 0)), 2) AS total_usd,
+                           ROUND(SUM(COALESCE(p.monto_bs, 0)), 2) AS total_bs
+                    FROM pedido_pagos p
+                    INNER JOIN pedidos ped ON p.id_pedido = ped.id
+                    WHERE ped.estado = 'FINALIZADO'
+                      AND ped.fecha >= CURRENT_DATE()
+                      AND ped.fecha < DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY)
+                    GROUP BY p.metodo_pago
+                    ORDER BY total_usd DESC
+                    """;
+                List<EstadisticasDashboard.ItemEstadistica> pagosMetodos = new ArrayList<>();
+                try (PreparedStatement s = conexion.prepareStatement(sqlPagosMetodo);
+                        ResultSet rs = s.executeQuery()) {
+                    while (rs.next()) {
+                        pagosMetodos.add(new EstadisticasDashboard.ItemEstadistica(
+                                rs.getString("metodo_pago"),
+                                rs.getInt("cant"),
+                                rs.getBigDecimal("total_usd"),
+                                rs.getBigDecimal("total_bs")
+                        ));
+                    }
+                }
+                stats.setPagosPorMetodoHoy(pagosMetodos);
+            } catch (SQLException exPagos) {
+                java.util.logging.Logger.getLogger(ClienteDao.class.getName())
+                        .log(java.util.logging.Level.WARNING, "Aviso consultando pagos por método: " + exPagos.getMessage());
+                stats.setPagosPorMetodoHoy(new ArrayList<>());
             }
 
         } catch (SQLException ex) {

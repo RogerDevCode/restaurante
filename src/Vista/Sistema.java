@@ -4390,7 +4390,15 @@ public final class Sistema extends javax.swing.JFrame {
             return;
         }
         int id_pedido = Integer.parseInt(Tables.valorModelo(TablePedidos, fila, 0).toString());
-        cargarPedidoEnPantalla(id_pedido, false);
+        String estado = "";
+        if (TablePedidos.getModel().getColumnCount() > 6) {
+            Object estObj = Tables.valorModelo(TablePedidos, fila, 6);
+            if (estObj != null) {
+                estado = estObj.toString().trim();
+            }
+        }
+        boolean esPendiente = "PENDIENTE".equalsIgnoreCase(estado);
+        cargarPedidoEnPantalla(id_pedido, esPendiente);
     }//GEN-LAST:event_TablePedidosMouseClicked
 
     private void tableSalaMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tableSalaMouseClicked
@@ -5054,6 +5062,7 @@ public final class Sistema extends javax.swing.JFrame {
                 boolean mismoPedido = version == versionPedidoPantalla
                         && String.valueOf(idPedido).equals(txtIdPedido.getText());
                 if (finalizado) {
+                    mostrarResumenCobroExitoso(idPedido, mesaInfo, totalInfo, pagos);
                     if (mismoPedido) {
                         volverAInicioSeleccionSala();
                     }
@@ -5184,9 +5193,42 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void volverAInicioSeleccionSala() {
+        if (txtClienteNombreFac != null) txtClienteNombreFac.setText("");
+        if (txtClienteDocFac != null) txtClienteDocFac.setText("");
         LimpiarTableMenu();
         // Respetar el modo de atención del selector (A/B/C/Clásico) en vez de ir fijo a "Mesas".
         abrirAtencionDirectaSegunModo();
+    }
+
+    private void mostrarResumenCobroExitoso(int idPedido, String mesaInfo, String totalInfo, List<Modelo.PagoPedido> pagos) {
+        if (java.awt.GraphicsEnvironment.isHeadless() || Boolean.getBoolean("test.headless") || Boolean.getBoolean("modo.automatizado")) {
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("<html><div style='width:320px;font-family:Segoe UI;'>");
+        sb.append("<h3 style='color:#007ACC;margin-bottom:8px;'>Cobro Procesado con Éxito</h3>");
+        sb.append("<p><b>Factura/Pedido:</b> #").append(idPedido).append("</p>");
+        if (mesaInfo != null && !mesaInfo.trim().isEmpty()) {
+            sb.append("<p><b>Mesa:</b> ").append(mesaInfo.trim()).append("</p>");
+        } else {
+            sb.append("<p><b>Tipo:</b> Pedido Rápido / Para llevar</p>");
+        }
+        sb.append("<p><b>Total Facturado:</b> ").append(totalInfo).append("</p>");
+        sb.append("<hr style='border:0;border-top:1px solid #ccc;margin:8px 0;'>");
+        sb.append("<p><b>Métodos de Pago Procesados:</b></p><ul style='margin-top:4px;padding-left:18px;'>");
+        if (pagos != null && !pagos.isEmpty()) {
+            for (Modelo.PagoPedido p : pagos) {
+                String sim = "VES".equalsIgnoreCase(p.moneda()) ? "Bs. " : "$ ";
+                sb.append("<li><b>").append(p.metodo()).append(":</b> ").append(sim)
+                        .append(String.format(java.util.Locale.US, "%.2f", p.monto())).append("</li>");
+            }
+        } else {
+            sb.append("<li>Pago registrado</li>");
+        }
+        sb.append("</ul>");
+        sb.append("</div></html>");
+
+        JOptionPane.showMessageDialog(this, sb.toString(), "Factura #" + idPedido + " Finalizada", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private String mensajeError(Throwable error) {
@@ -6647,9 +6689,28 @@ public final class Sistema extends javax.swing.JFrame {
         Modelo.EstadisticasDashboard stats = datos.getStats();
         if (stats != null) {
             if (lblVentasHoy != null) {
-                lblVentasHoy.setText("<html><b style='font-size:13px;color:#007700;'>$ " + String.format(java.util.Locale.US, "%.2f", stats.getVentasHoyDolares())
-                        + "</b> &nbsp;|&nbsp; <span style='color:#003366;'>Bs. " + String.format(java.util.Locale.US, "%.2f", stats.getVentasHoyBs())
-                        + "</span><br><small style='color:#555555;'>" + stats.getPedidosHoy() + " pedidos cerrados hoy</small></html>");
+                StringBuilder htmlVentas = new StringBuilder();
+                htmlVentas.append("<html><b style='font-size:13px;color:#007700;'>$ ")
+                        .append(String.format(java.util.Locale.US, "%.2f", stats.getVentasHoyDolares()))
+                        .append("</b> &nbsp;|&nbsp; <span style='color:#003366;'>Bs. ")
+                        .append(String.format(java.util.Locale.US, "%.2f", stats.getVentasHoyBs()))
+                        .append("</span><br><small style='color:#555555;'>")
+                        .append(stats.getPedidosHoy()).append(" pedidos cerrados hoy");
+
+                if (stats.getPagosPorMetodoHoy() != null && !stats.getPagosPorMetodoHoy().isEmpty()) {
+                    htmlVentas.append("<br><span style='color:#005A9E;font-size:10px;'>");
+                    boolean primero = true;
+                    for (Modelo.EstadisticasDashboard.ItemEstadistica pMet : stats.getPagosPorMetodoHoy()) {
+                        if (!primero) htmlVentas.append(" | ");
+                        htmlVentas.append("<b>").append(pMet.getNombre()).append(":</b> $ ")
+                                .append(String.format(java.util.Locale.US, "%.2f", pMet.getTotalDolares()))
+                                .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", pMet.getTotalBs())).append(")");
+                        primero = false;
+                    }
+                    htmlVentas.append("</span>");
+                }
+                htmlVentas.append("</small></html>");
+                lblVentasHoy.setText(htmlVentas.toString());
             }
             if (lblTicketPromedio != null) {
                 lblTicketPromedio.setText("<html><b style='font-size:13px;color:#004488;'>$ " + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHoyDolares())
@@ -6693,6 +6754,49 @@ public final class Sistema extends javax.swing.JFrame {
             }
         }
         mostrarClientesEnTabla(datos.getClientes());
+        if (tableClientes == null || tableClientes.getSelectedRow() < 0) {
+            cargarFacturasRecientesDelDia();
+        }
+    }
+
+    public void cargarFacturasRecientesDelDia() {
+        if (tableFacturasCliente == null) return;
+        long version = ++versionFacturasCliente;
+        new javax.swing.SwingWorker<List<Pedidos>, Void>() {
+            @Override
+            protected List<Pedidos> doInBackground() {
+                return clienteDao.listarFacturasRecientesDelDia();
+            }
+
+            @Override
+            protected void done() {
+                if (version != versionFacturasCliente) return;
+                try {
+                    List<Pedidos> facturas = get();
+                    if (tableFacturasCliente != null) {
+                        javax.swing.table.DefaultTableModel modelFac = (javax.swing.table.DefaultTableModel) tableFacturasCliente.getModel();
+                        modelFac.setRowCount(0);
+                        if (facturas != null) {
+                            for (Pedidos p : facturas) {
+                                modelFac.addRow(new Object[]{
+                                    p.getId(),
+                                    p.getFecha(),
+                                    p.esPedidoRapido() ? "Pedido rápido" : p.getSala(),
+                                    p.esPedidoRapido() ? "—" : p.getNum_mesa(),
+                                    "$ " + (p.getTotalDecimal() != null ? p.getTotalDecimal().toPlainString() : "0.00"),
+                                    "Bs. " + (p.getTotalBs() != null ? p.getTotalBs().toPlainString() : "0.00"),
+                                    p.getUsuario(),
+                                    p.getEstado()
+                                });
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    java.util.logging.Logger.getLogger(Sistema.class.getName())
+                            .log(java.util.logging.Level.WARNING, "Error al cargar facturas recientes del día: " + ex.getMessage());
+                }
+            }
+        }.execute();
     }
 
     private void mostrarClientesEnTabla(List<Modelo.Cliente> clientes) {
@@ -6712,10 +6816,7 @@ public final class Sistema extends javax.swing.JFrame {
             }
         }
         if (clientes == null || clientes.isEmpty()) {
-            if (tableFacturasCliente != null) {
-                javax.swing.table.DefaultTableModel modelFac = (javax.swing.table.DefaultTableModel) tableFacturasCliente.getModel();
-                modelFac.setRowCount(0);
-            }
+            cargarFacturasRecientesDelDia();
         }
     }
 
@@ -7152,6 +7253,13 @@ public final class Sistema extends javax.swing.JFrame {
     public javax.swing.JButton getBtnCierreTotal() { return btnCierreTotal; }
     public javax.swing.JCheckBox getChkImprimirLogoTicket() { return chkImprimirLogoTicket; }
     public javax.swing.JCheckBox getChkImprimirComandaCocina() { return chkImprimirComandaCocina; }
+    public javax.swing.JTextField getTxtClienteNombreFac() { return txtClienteNombreFac; }
+    public javax.swing.JTextField getTxtClienteDocFac() { return txtClienteDocFac; }
+    public javax.swing.JButton getBtnFinalizar() { return btnFinalizar; }
+    public void volverAInicioSeleccionSalaPublica() { volverAInicioSeleccionSala(); }
+    public void mostrarPedidoEnPantallaPublica(Modelo.Pedidos ped, java.util.List<Modelo.DetallePedido> detalles) { mostrarPedidoEnPantalla(ped, detalles); }
+    public void mostrarResumenCobroExitosoPublico(int idPedido, String mesaInfo, String totalInfo, java.util.List<Modelo.PagoPedido> pagos) { mostrarResumenCobroExitoso(idPedido, mesaInfo, totalInfo, pagos); }
+    public void cargarPedidoEnPantallaPublica(int id, boolean permitirFinalizar) { cargarPedidoEnPantalla(id, permitirFinalizar); }
     public javax.swing.JTable getTablePedidos() { return TablePedidos; }
     public javax.swing.JTable getTablaPagosFac() { return tablaPagosFac; }
 
@@ -7159,6 +7267,18 @@ public final class Sistema extends javax.swing.JFrame {
         String confComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
         if ("0".equals(confComanda) || "false".equalsIgnoreCase(confComanda)) {
             return;
+        }
+        if (!java.awt.GraphicsEnvironment.isHeadless() && isDisplayable()
+                && !Boolean.getBoolean("test.headless") && !Boolean.getBoolean("modo.automatizado")) {
+            int opcion = JOptionPane.showConfirmDialog(this,
+                    "¿Desea imprimir la comanda en cocina para este pedido?",
+                    "Comanda de Cocina",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (opcion != JOptionPane.YES_OPTION) {
+                mostrarAvisoEnBanda("Impresión de comanda omitida por el operador");
+                return;
+            }
         }
         new Thread(() -> {
             try {
@@ -11505,6 +11625,16 @@ public final class Sistema extends javax.swing.JFrame {
         txtNumMesaFinalizar.setText(ped.esPedidoRapido() ? "—" : String.valueOf(ped.getNum_mesa()));
         jLabel8.setText(ped.esPedidoRapido() ? "Tipo:" : "Sala:");
         jLabel9.setText(ped.esPedidoRapido() ? "Mesa:" : "N° Mesa:");
+
+        if (txtClienteNombreFac != null && txtClienteDocFac != null) {
+            String cliNom = ped != null ? ped.getClienteNombre() : null;
+            String cliDoc = ped != null ? ped.getClienteDocumento() : null;
+            boolean esDefaultNom = cliNom == null || cliNom.isBlank() || "Consumidor Final".equalsIgnoreCase(cliNom.trim());
+            boolean esDefaultDoc = cliDoc == null || cliDoc.isBlank() || "V-00000000".equalsIgnoreCase(cliDoc.trim());
+            txtClienteNombreFac.setText(esDefaultNom ? "" : cliNom.trim());
+            txtClienteDocFac.setText(esDefaultDoc ? "" : cliDoc.trim());
+        }
+
         tasaPagoFac = tasa;
         totalPagoBsFac = totalBs2Dec;
         modeloPagosFac.setRowCount(0);
