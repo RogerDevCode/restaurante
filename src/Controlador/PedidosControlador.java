@@ -84,6 +84,11 @@ public final class PedidosControlador {
         return consultas.anular(idPedido, motivo, usuario);
     }
 
+    public boolean anularFacturaCobradaConDevolucion(int idPedido, String motivo, String usuario) {
+        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        return consultas.anularFacturaCobradaConDevolucion(idPedido, motivo, usuario);
+    }
+
     public List<Modelo.AuditoriaPedido> obtenerAuditoriaPedido(int idPedido) {
         exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         return consultas.obtenerAuditoriaPedido(idPedido);

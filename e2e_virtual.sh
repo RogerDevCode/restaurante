@@ -40,5 +40,11 @@ DISPLAY="$DISP" xdotool getdisplaygeometry || { echo "Xvfb no respondió" >&2; e
 CLASE="${1:-Vista.E2EVirtual}"
 shift || true
 echo "== E2E: $CLASE (DISPLAY=$DISP) =="
+
+JAVA_DB_ARGS=()
+if [ -n "${DB_URL:-}" ]; then JAVA_DB_ARGS+=("-DDB_URL=$DB_URL"); fi
+if [ -n "${DB_USER:-}" ]; then JAVA_DB_ARGS+=("-DDB_USER=$DB_USER"); fi
+if [ -n "${DB_PASSWORD:-}" ]; then JAVA_DB_ARGS+=("-DDB_PASSWORD=$DB_PASSWORD"); fi
+
 # shellcheck disable=SC2086
-DISPLAY="$DISP" java -De2e.permitir=SI -cp "build/classes:build/test/classes:librerias/*" "$CLASE" $*
+DISPLAY="$DISP" java -De2e.permitir=SI ${JAVA_DB_ARGS[@]+"${JAVA_DB_ARGS[@]}"} -cp "build/classes:build/test/classes:librerias/*" "$CLASE" $*

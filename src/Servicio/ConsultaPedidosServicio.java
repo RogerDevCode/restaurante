@@ -125,6 +125,16 @@ public final class ConsultaPedidosServicio {
         return repositorio.anularPedidoConAuditoria(idPedido, motivo.trim(), usr);
     }
 
+    public boolean anularFacturaCobradaConDevolucion(int idPedido, String motivo, String usuario) {
+        exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        validarId(idPedido);
+        if (motivo == null || motivo.trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("Debe indicar el motivo de la anulación de la factura.");
+        }
+        String usr = (usuario != null && !usuario.isBlank()) ? usuario.trim() : "Sistema";
+        return repositorio.anularFacturaCobradaConDevolucion(idPedido, motivo.trim(), usr);
+    }
+
     public void registrarAuditoria(int idPedido, String accion, String motivo, String usuario) {
         exigir(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
         validarId(idPedido);

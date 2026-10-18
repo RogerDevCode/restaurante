@@ -75,6 +75,14 @@ public interface PedidosRepositorio {
     }
 
     /**
+     * Anula una factura cobrada registrando formalmente la reversión contable/contra-asientos
+     * de los pagos existentes en la misma transacción y marcando el pedido como ANULADO.
+     */
+    default boolean anularFacturaCobradaConDevolucion(int idPedido, String motivo, String usuario) {
+        return false;
+    }
+
+    /**
      * Cierra el servicio de la mesa congelando su cotización (Task 7).
      * @param idPedido identificador del pedido
      * @param versionEsperada versión de cotización esperada (o 0 si no se valida versión previa)

@@ -173,18 +173,18 @@ public class CierreCajaDao {
                             WHEN d.aplica_iva = 1 THEN
                                 CASE
                                     WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES' AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0
-                                        THEN ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, 16.00)/100.0)) ELSE (d.precio * d.cantidad) END) / p.tasa_cambio, 2)
+                                        THEN ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, p.iva_porcentaje, (SELECT cfg.iva_porcentaje FROM config cfg WHERE cfg.id = 1), 16.00)/100.0)) ELSE (d.precio * d.cantidad) END) / p.tasa_cambio, 2)
                                     ELSE
-                                        ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, 16.00)/100.0)) ELSE (d.precio * d.cantidad) END), 2)
+                                        ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, p.iva_porcentaje, (SELECT cfg.iva_porcentaje FROM config cfg WHERE cfg.id = 1), 16.00)/100.0)) ELSE (d.precio * d.cantidad) END), 2)
                                 END
                             ELSE 0.00 END), 0.00) AS base_imp_usd,
                         COALESCE(SUM(CASE
                             WHEN d.aplica_iva = 1 THEN
                                 CASE
                                     WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES'
-                                        THEN ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, 16.00)/100.0)) ELSE (d.precio * d.cantidad) END), 2)
+                                        THEN ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, p.iva_porcentaje, (SELECT cfg.iva_porcentaje FROM config cfg WHERE cfg.id = 1), 16.00)/100.0)) ELSE (d.precio * d.cantidad) END), 2)
                                     ELSE
-                                        CASE WHEN p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 THEN ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, 16.00)/100.0)) ELSE (d.precio * d.cantidad) END) * p.tasa_cambio, 2) ELSE 0.00 END
+                                        CASE WHEN p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 THEN ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, p.iva_porcentaje, (SELECT cfg.iva_porcentaje FROM config cfg WHERE cfg.id = 1), 16.00)/100.0)) ELSE (d.precio * d.cantidad) END) * p.tasa_cambio, 2) ELSE 0.00 END
                                 END
                             ELSE 0.00 END), 0.00) AS base_imp_bs,
                         COALESCE(SUM(CASE
@@ -222,10 +222,25 @@ public class CierreCajaDao {
 
                             if (baseUsd.signum() == 0 && exUsd.signum() == 0 && cierre.getSubtotalUsd().signum() > 0) {
                                 if (cierre.getIvaUsd().signum() > 0) {
-                                    baseUsd = cierre.getIvaUsd().multiply(new BigDecimal("100")).divide(new BigDecimal("16.00"), 2, RoundingMode.HALF_UP).min(cierre.getSubtotalUsd());
-                                    exUsd = cierre.getSubtotalUsd().subtract(baseUsd).max(BigDecimal.ZERO);
-                                    baseBs = cierre.getIvaBs().multiply(new BigDecimal("100")).divide(new BigDecimal("16.00"), 2, RoundingMode.HALF_UP).min(cierre.getSubtotalBs());
-                                    exBs = cierre.getSubtotalBs().subtract(baseBs).max(BigDecimal.ZERO);
+                                    BigDecimal pctIva = BigDecimal.ZERO;
+                                    try (PreparedStatement psCfg = con.prepareStatement("SELECT iva_porcentaje FROM config WHERE id = 1")) {
+                                        try (ResultSet rsCfg = psCfg.executeQuery()) {
+                                            if (rsCfg.next()) {
+                                                pctIva = rsCfg.getBigDecimal(1);
+                                            }
+                                        }
+                                    }
+                                    if (pctIva != null && pctIva.compareTo(BigDecimal.ZERO) > 0) {
+                                        baseUsd = cierre.getIvaUsd().multiply(new BigDecimal("100")).divide(pctIva, 2, RoundingMode.HALF_UP).min(cierre.getSubtotalUsd());
+                                        exUsd = cierre.getSubtotalUsd().subtract(baseUsd).max(BigDecimal.ZERO);
+                                        baseBs = cierre.getIvaBs().multiply(new BigDecimal("100")).divide(pctIva, 2, RoundingMode.HALF_UP).min(cierre.getSubtotalBs());
+                                        exBs = cierre.getSubtotalBs().subtract(baseBs).max(BigDecimal.ZERO);
+                                    } else {
+                                        baseUsd = cierre.getSubtotalUsd();
+                                        exUsd = BigDecimal.ZERO;
+                                        baseBs = cierre.getSubtotalBs();
+                                        exBs = BigDecimal.ZERO;
+                                    }
                                 } else {
                                     exUsd = cierre.getSubtotalUsd();
                                     exBs = cierre.getSubtotalBs();
@@ -551,12 +566,13 @@ public class CierreCajaDao {
                 BigDecimal ib;
                 if (p.getSubtotalBs() != null && p.getSubtotalBs().signum() > 0) {
                     sb = p.getSubtotalBs();
-                    ib = (p.getIvaBs() != null && p.getIvaBs().signum() > 0)
+                    BigDecimal diffBs = b.subtract(sb).max(BigDecimal.ZERO);
+                    ib = (p.getIvaBs() != null && p.getIvaBs().compareTo(diffBs) <= 0)
                             ? p.getIvaBs()
-                            : b.subtract(sb);
+                            : diffBs;
                 } else if (iu.signum() > 0) {
                     sb = su.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
-                    ib = b.subtract(sb);
+                    ib = b.subtract(sb).max(BigDecimal.ZERO);
                 } else {
                     sb = b;
                     ib = BigDecimal.ZERO;
@@ -576,9 +592,7 @@ public class CierreCajaDao {
                 if (iu.signum() > 0 && p.getIvaPorcentaje() != null && p.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0) {
                     baseUsdPed = iu.multiply(new BigDecimal("100")).divide(p.getIvaPorcentaje(), 2, RoundingMode.HALF_UP).min(su);
                     exUsdPed = su.subtract(baseUsdPed).max(BigDecimal.ZERO);
-                    baseBsPed = ib.signum() > 0
-                            ? ib.multiply(new BigDecimal("100")).divide(p.getIvaPorcentaje(), 2, RoundingMode.HALF_UP).min(sb)
-                            : baseUsdPed.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    baseBsPed = baseUsdPed.multiply(tasa).setScale(2, RoundingMode.HALF_UP).min(sb);
                     exBsPed = sb.subtract(baseBsPed).max(BigDecimal.ZERO);
                 } else if (iu.signum() > 0) {
                     baseUsdPed = su;

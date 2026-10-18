@@ -671,6 +671,25 @@ INSERT INTO `restaurante_control` (`id`, `estado`) VALUES (1,'OPERATIVO');
 /*!40000 ALTER TABLE `restaurante_control` ENABLE KEYS */;
 UNLOCK TABLES;
 
+--
+-- Table structure for table `schema_migrations`
+--
+
+DROP TABLE IF EXISTS `schema_migrations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `schema_migrations` (
+  `version` int(11) NOT NULL,
+  `nombre` varchar(160) NOT NULL,
+  `checksum` varchar(80) NOT NULL,
+  `estado` varchar(20) NOT NULL,
+  `paso_actual` varchar(80) NOT NULL,
+  `iniciada_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `aplicada_en` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

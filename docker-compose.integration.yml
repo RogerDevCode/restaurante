@@ -13,6 +13,7 @@ services:
       - restaurante_integration_mysql_data:/var/lib/mysql
       - ./BD.sql:/docker-entrypoint-initdb.d/001-restaurante.sql:ro
       - ./db/integration/002-restore-permissions.sql:/docker-entrypoint-initdb.d/002-restore-permissions.sql:ro
+      - ./db/integration/003-seed-integration.sql:/docker-entrypoint-initdb.d/003-seed-integration.sql:ro
     healthcheck:
       test:
         - CMD-SHELL

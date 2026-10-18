@@ -8518,7 +8518,12 @@ public final class Sistema extends javax.swing.JFrame {
 
         String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
         try {
-            boolean exito = pedidosControlador.anularPedido(id, motivo.trim(), usr);
+            boolean exito;
+            if ("FINALIZADO".equalsIgnoreCase(pedido.getEstado())) {
+                exito = pedidosControlador.anularFacturaCobradaConDevolucion(id, motivo.trim(), usr);
+            } else {
+                exito = pedidosControlador.anularPedido(id, motivo.trim(), usr);
+            }
             if (exito) {
                 mostrarAvisoEnBanda("Factura #" + id + " anulada exitosamente");
                 if (txtIdHistorialPedido != null) txtIdHistorialPedido.setText("");

@@ -1,0 +1,173 @@
+GUIA DE COMPRA DE TABLETS PARA MESONEROS (USO RUDO - RESTAURANTE)
+MERCADO VENEZOLANO (Daka, IVOO, City Market, MercadoLibre Venezuela)
+================================================================================
+
+1. ARQUITECTURA TECNICA DE CONEXION (SISTEMA RESTAURANTE 2026)
+--------------------------------------------------------------------------------
+El sistema esta desarrollado en Java 21 (Swing). Para usarlo en tablets hay dos vias:
+
+A) VIA ANDROID + ESCRITORIO REMOTO (RDP) [OPCION RECOMENDADA Y MAS ECONOMICA]:
+   - La tablet Android se conecta al Wi-Fi local del restaurante.
+   - Mediante la app gratuita "Microsoft Remote Desktop" (o AnyDesk/RustDesk local),
+     el mesonero opera la pantalla de mesas en tiempo real.
+   - Ventaja: Tablets baratas ($120 - $160), repuestos faciles en Venezuela y gran bateria.
+
+B) VIA TABLET WINDOWS 10/11 x86 [EJECUCION DIRECTA]:
+   - Corre directamente el archivo "Restaurante.jar" conectado por red a MySQL.
+   - Desventaja: Son mas caras ($250 - $400), pesadas, con menor duracion de bateria y escasas.
+
+
+2. FICHA TECNICA PARA PEDIRLE AL VENDEDOR (REQUISITOS)
+--------------------------------------------------------------------------------
+[!] Minimo indispensable (Si tiene menos de esto, NO COMPRAR):
+   - Pantalla: 8.0 a 8.7 pulgadas (ideal para manipular con una sola mano y bandeja).
+   - Memoria RAM: Minimo 4 GB RAM (Menos de 4GB se congelara en servicio).
+   - Almacenamiento: 64 GB o 128 GB.
+   - Conectividad Wi-Fi: DOBLE BANDA OBLIGATORIA (Soporte 2.4 GHz y 5.0 GHz / Wi-Fi 5).
+     * NOTA: Los microondas de cocina tumban el Wi-Fi de 2.4 GHz. Se exige banda 5 GHz.
+   - Bateria: Minimo 5,000 mAh (Ideal 7,000 mAh a 8,000 mAh).
+   - Puerto de carga: USB Tipo C con carga rapida (15W a 33W).
+
+[!] Deseable / Ideal:
+   - Pantalla con brillo superior a 400 nits (para ver bien en terrazas o bajo sol).
+   - Chasis de aluminio o polimero reforzado.
+
+
+3. MODELOS DISPONIBLES EN VENEZUELA Y PRECIOS ESTIMADOS (USD)
+--------------------------------------------------------------------------------
+
+OPCION 1: COMERCIAL RECOMENDADA (Facil de comprar en Daka/IVOO/Cashea)
+* Se deben comprar con funda de uso rudo (ver Seccion 4).
+
+a) Samsung Galaxy Tab A9 (8.7 pulgadas, 4GB/64GB o 8GB/128GB)
+   - Precio aprox: $120 a $160 USD.
+   - Por que: Ergonomia perfecta (se agarra con una sola mano), repuestos de pantalla
+     y fundas blindadas disponibles en toda Venezuela.
+
+b) Xiaomi Redmi Pad SE (Version 8.7" o Version 11", 4GB / 6GB / 8GB RAM)
+   - Precio aprox: $130 a $180 USD.
+   - Por que: Bateria excelente (hasta 8,000 mAh en 11"), procesador Snapdragon muy
+     fluido, cuerpo metalico solido y pantalla de 90Hz.
+
+c) Lenovo Tab M9 / Tab M10 Gen 3 (4GB RAM)
+   - Precio aprox: $115 a $150 USD.
+   - Por que: Muy comun en tiendas por departamento venezolanas con garantia nacional.
+
+
+OPCION 2: INDUSTRIALES / RUGERIZADAS DE FABRICA (Uso Rudo Extremo)
+* Vienen selladas de fabrica con certificacion IP68 (resisten caidas a concreto y liquidos).
+* Se consiguen principalmente en MercadoLibre Venezuela o importadores directos.
+
+a) Blackview Active 6 / Active 8 Pro (Android, IP68 / IP69K / MIL-STD-810H)
+   - Precio aprox: $250 a $450 USD.
+   - Por que: Blindaje militar de fabrica, bateria gigante de hasta 15,000 mAh,
+     resiste agua, vapor, grasa de cocina y caidas de 1.5 metros. Se opera con manos mojadas.
+
+b) Oukitel RT2 o RT3 (Rugged 8" o 10")
+   - Precio aprox: $220 a $380 USD.
+   - Por que: Diseno reforzado para entornos industriales y restaurantes de alto trafico.
+
+
+OPCION 3: WINDOWS x86 (Para correr el .jar directo sin RDP)
+
+a) Microsoft Surface Go 2 o Go 3 (Intel Pentium Gold o Core m3, 8GB RAM, Windows 10/11)
+   - Precio aprox: $220 a $350 USD (usadas/reacondicionadas en MercadoLibre).
+   - Exigencia: Obligatorio comprarle funda acorazada tipo UAG (Urban Armor Gear).
+
+
+4. KIT DE BLINDAJE OBLIGATORIO PARA RESTAURANTE (NO ENTREGAR AL MESONERO SIN ESTO)
+--------------------------------------------------------------------------------
+Si compras una tablet comercial (Samsung A9 o Redmi Pad SE), compra el mismo dia:
+
+1. FUNDA ACORAZADA DE 3 CAPAS (Heavy Duty / Armor Defender):
+   - Policarbonato rigido interno + silicona gruesa que absorbe golpes en esquinas.
+2. CORREA DE MANO TRASERA GIRATORIA (Hand Strap 360 grados):
+   - VITAL: El mesonero mete la mano por la correa trasera. Si tropieza o lleva la
+     bandeja llena de comida en la otra mano, la tablet JAMAS se cae al suelo.
+3. VIDRIO TEMPLADO 9H:
+   - Protege contra rayones de boligrafos, llaves y salpicaduras de aceite o liquidos.
+4. CABLES CON CONECTOR MAGNETICO USB-C:
+   - En la estacion de mesoneros, si alguien tropieza con el cable mientras carga,
+     el iman se suelta solo y la tablet no cae de la mesa.
+
+
+5. RECOMENDACION FINAL DE COMPRA INMEDIATA (RESTAURANTE)
+--------------------------------------------------------------------------------
+Plan de accion mas rapido, rendidor y facil de mantener en Venezuela:
+
+1. Ir a Daka, IVOO o City Market y comprar:
+   -> Samsung Galaxy Tab A9 (8.7 pulgadas, 4GB RAM) [~$130 USD].
+2. En MercadoLibre o tiendas de accesorios de telefonos comprar:
+   -> Funda Antichoque uso rudo con correa de mano trasera para Galaxy Tab A9 [~$15 - $20 USD].
+   -> Vidrio templado 9H [~$5 USD].
+3. Instalar en la tablet "Microsoft Remote Desktop" y conectar por Wi-Fi de 5 GHz
+   al servidor de caja.
+
+
+6. CASO ESPECIAL: PROYECTO MATADERO / FRIGORIFICO (DIFERENCIAS CLAVE)
+--------------------------------------------------------------------------------
+Si se van a usar tablets en un MATADERO (Recepcion, pesaje, corrales, cavas):
+
+[A] ZONA SECA / OFICINA / SUPERVISION / DASHBOARD PWA (VLAN 30):
+    -> SI se pueden usar las mismas tablets comerciales (Samsung Tab A9 o Redmi Pad SE).
+    -> Uso: Control de guias, veterinarios en oficina, reportes gerenciales, despacho seco.
+
+[B] ZONA CRITICA DE PLANTA (MANGA DE CORRALES, SALA DE FAENA, CAVAS FRIGORIFICAS):
+    -> NO usar tablets comerciales (se destruyen en pocas semanas).
+    -> Motivos criticos:
+       1. Lavado diario industrial con hidrolavadoras y quimicos (cloro / amonio cuaternario).
+       2. Condensacion termica: al entrar y salir de cavas (0°C a -18°C) al calor tropical,
+          se forma condensacion de agua dentro de tablets normales y se sulfatan.
+       3. Sangre, barro y grasa animal.
+       4. Operadores con guantes gruesos de nitrilo, carnaza o cota de malla mojados.
+    -> SOLUCION OBLIGATORIA PARA MANGA Y PLANTA:
+       Tablets Rugged Nativas con IP68 + IP69K (resisten chorro de agua a presion y vapor):
+       * Blackview Active 6 / Active 8 Pro (bateria de 15,000 mAh, modo guantes).
+       * Oukitel RT2 / RT3.
+       * O terminales PDA con lector de codigo/RFID (Zebra / Urovo) para aretes de ganado.
+
+
+7. GUIA DE COMPRA EN CARACAS, VENEZUELA (DONDE CONSEGUIRLAS)
+--------------------------------------------------------------------------------
+Para el comprador que sale a buscar los equipos fisicamente en Caracas:
+
+A) CENTRO COMERCIAL CITY MARKET (Sabana Grande) - [EL EPICENTRO TECNOLOGICO]:
+   * Direccion: Av. Abraham Lincoln con Calle Villaflor, Sabana Grande (salida Metro Sabana Grande).
+   * Tiendas recomendadas para Tablets Rugged (Blackview / Oukitel) y Comerciales:
+     1. "SoyTechno" (Locales en Nivel Plaza PB y Nivel Boulevard): Tienen Samsung, Xiaomi
+        y modelos resistentes Blackview. Aceptan Cashea, Zelle, divisas y pago movil.
+     2. "VIP Phone" / "VIP Phone City" (Niveles Boulevard y Feria): Especialistas en marcas
+        chinas de alta bateria y modelos todo terreno.
+     3. "Bit Mercado Digital" (Local 322 aprox.): Gran inventario y financiamiento.
+     4. Pasillos de accesorios (Niveles Boulevard y Feria): Decenas de quioscos con
+        fundas tipo armadura (Heavy Duty), vidrios templados 9H y servicio de instalacion.
+
+B) GRANDES TIENDAS RETAIL (Garantia Nacional y Financiamiento con Cashea):
+   * Tiendas Daka Caracas:
+     - Sucursal Bello Monte (Av. Principal de Bello Monte).
+     - Sucursal Boleita Norte (Av. Francisco de Miranda / Centro Boleita).
+     - Sucursal CCCT (Nivel C-1).
+     -> Ideales para comprar Samsung Galaxy Tab A9 o Lenovo Tab M9 con garantia de 1 ano.
+   * Tiendas IVOO Caracas:
+     - Sucursal Chacao (Av. Francisco de Miranda, diagonal al Sambil).
+     - Sucursal Plaza Venezuela / La Candelaria.
+     -> Gran stock de tablets Samsung y Xiaomi con pago en cuotas (Cashea).
+
+C) TIENDAS OFICIALES EN CENTROS COMERCIALES (Sambil Chacao / CCCT / Sambil La Candelaria):
+   * Tienda Oficial Samsung ("Mundo Sam"): Sambil Chacao (Nivel Autopista) y CCCT.
+     -> Para comprar la Galaxy Tab A9 sellada y con soporte directo.
+   * Tienda Oficial Xiaomi ("Mistore / Xiaomi Store"): Sambil Chacao, CCCT y Tolon.
+     -> Para comprar la Redmi Pad SE de 8.7" u 11" en caja sellada.
+
+D) MERCADOLIBRE VENEZUELA (Para Tablets Rugged Blackview / Oukitel):
+   * Si no hay stock inmediato de Blackview en City Market, buscar en MercadoLibre con
+     filtro "Ubicacion: Caracas / Distrito Capital / Miranda (Chacao, Baruta, Sucre)".
+   * Muchos importadores tienen oficinas de retiro en Chacao, Las Mercedes o Sabana Grande
+     con pago contraentrega en divisas o Zelle.
+
+CONSEJO PARA EL COMPRADOR:
+- Llevar divisas en efectivo en buen estado (sin roturas ni manchas) para obtener el mejor
+  precio, o verificar previamente el cupo disponible en Cashea si se comprara a credito.
+- Preguntar siempre: "¿Viene con memoria RAM real de 4GB o 8GB? ¿Soporta Wi-Fi 5 GHz?".
+================================================================================
+

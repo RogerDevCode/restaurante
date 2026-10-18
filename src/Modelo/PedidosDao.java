@@ -1286,7 +1286,101 @@ public class PedidosDao implements PedidosRepositorio {
             boolean autoCommitPrevio = con.getAutoCommit();
             con.setAutoCommit(false);
             try {
-                // Si tiene pagos registrados, generar automáticamente los contra-asientos contables de anulación/reversión
+                // Si tiene pagos registrados, impedir anular a menos que tenga movimientos de devolución/crédito/anulación equivalentes registrados (Invariante F-07)
+                BigDecimal pagadoUsd = BigDecimal.ZERO;
+                try (PreparedStatement psPagos = con.prepareStatement(
+                        "SELECT COALESCE(SUM(COALESCE(monto_usd, CASE WHEN moneda = 'USD' THEN monto_aplicado ELSE ROUND(monto_bs / NULLIF(tasa_cambio, 0), 2) END)), 0) FROM pedido_pagos WHERE id_pedido = ?")) {
+                    psPagos.setInt(1, id_pedido);
+                    try (ResultSet rs = psPagos.executeQuery()) {
+                        if (rs.next()) {
+                            pagadoUsd = rs.getBigDecimal(1);
+                        }
+                    }
+                }
+
+                if (pagadoUsd != null && pagadoUsd.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal compensadoUsd = BigDecimal.ZERO;
+                    try (PreparedStatement psMov = con.prepareStatement(
+                            "SELECT COALESCE(SUM(CASE WHEN moneda = 'USD' THEN monto_origen ELSE ROUND(equivalente_ves / NULLIF(tasa_cambio, 0), 2) END), 0) FROM pedido_saldos_movimientos WHERE id_pedido = ? AND tipo IN ('DEVOLUCION','CREDITO','ANULACION')")) {
+                        psMov.setInt(1, id_pedido);
+                        try (ResultSet rsMov = psMov.executeQuery()) {
+                            if (rsMov.next()) {
+                                compensadoUsd = rsMov.getBigDecimal(1);
+                            }
+                        }
+                    }
+                    if (compensadoUsd == null || compensadoUsd.compareTo(pagadoUsd.subtract(new BigDecimal("0.01"))) < 0) {
+                        throw ErrorAplicacionException.validacion(
+                                "El pedido #" + id_pedido + " tiene pagos registrados por $" + pagadoUsd.setScale(2, RoundingMode.HALF_UP)
+                                + " y solo se ha compensado/devuelto $" + (compensadoUsd != null ? compensadoUsd.setScale(2, RoundingMode.HALF_UP) : "0.00")
+                                + "; se requiere contra-asiento o devolución equivalente antes de anular.");
+                    }
+                }
+
+                int filas;
+                try (PreparedStatement psUpdate = con.prepareStatement(sqlUpdate)) {
+                    psUpdate.setInt(1, id_pedido);
+                    filas = psUpdate.executeUpdate();
+                }
+                if (filas == 0) {
+                    String sqlVerif = "SELECT estado FROM pedidos WHERE id = ?";
+                    try (PreparedStatement psVerif = con.prepareStatement(sqlVerif)) {
+                        psVerif.setInt(1, id_pedido);
+                        try (ResultSet rs = psVerif.executeQuery()) {
+                            if (rs.next()) {
+                                if ("ANULADO".equalsIgnoreCase(rs.getString("estado"))) {
+                                    throw ErrorAplicacionException.validacion("El pedido #" + id_pedido + " ya se encuentra anulado.");
+                                }
+                            } else {
+                                throw ErrorAplicacionException.validacion("No existe el pedido #" + id_pedido + " para anular.");
+                            }
+                        }
+                    }
+                }
+
+                try (PreparedStatement psAud = con.prepareStatement(sqlAuditoria)) {
+                    psAud.setInt(1, id_pedido);
+                    psAud.setString(2, motivo.trim());
+                    psAud.setString(3, usr);
+                    psAud.executeUpdate();
+                }
+
+                con.commit();
+                return true;
+            } catch (Exception ex) {
+                con.rollback();
+                if (ex instanceof ErrorAplicacionException eae) {
+                    throw eae;
+                }
+                throw new DataAccessException("No se pudo anular el pedido de forma atómica: " + ex.getMessage(), ex);
+            } finally {
+                con.setAutoCommit(autoCommitPrevio);
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("Error de conexión al anular el pedido: " + ex.getMessage(), ex);
+        }
+    }
+
+    @Override
+    public boolean anularFacturaCobradaConDevolucion(int id_pedido, String motivo, String usr) {
+        if (id_pedido <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para anular.");
+        }
+        if (motivo == null || motivo.trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("Debe indicar el motivo de la anulación de la factura.");
+        }
+
+        String sqlUpdate = "UPDATE pedidos SET estado = 'ANULADO', cerrada_en = CURRENT_TIMESTAMP WHERE id = ?";
+        String sqlAuditoria = """
+            INSERT INTO auditoria_pedidos (id_pedido, accion, motivo, usuario, fecha_hora)
+            VALUES (?, 'ANULACION', ?, ?, CURRENT_TIMESTAMP)
+            """;
+
+        try (Connection con = conexiones.getConnection()) {
+            boolean autoCommitPrevio = con.getAutoCommit();
+            con.setAutoCommit(false);
+            try {
+                // 1. Si tiene pagos registrados, generar atómicamente los contra-asientos contables de anulación/reversión
                 List<Object[]> pagosRegistrados = new ArrayList<>();
                 try (PreparedStatement psPagos = con.prepareStatement(
                         "SELECT id, id_liquidacion, metodo_pago, moneda, monto, tasa_cambio, monto_bs, monto_usd, monto_aplicado " +
@@ -1379,12 +1473,12 @@ public class PedidosDao implements PedidosRepositorio {
                 if (ex instanceof ErrorAplicacionException eae) {
                     throw eae;
                 }
-                throw new DataAccessException("No se pudo anular el pedido de forma atómica: " + ex.getMessage(), ex);
+                throw new DataAccessException("No se pudo anular la factura con devolución de forma atómica: " + ex.getMessage(), ex);
             } finally {
                 con.setAutoCommit(autoCommitPrevio);
             }
         } catch (SQLException ex) {
-            throw new DataAccessException("Error de conexión al anular el pedido: " + ex.getMessage(), ex);
+            throw new DataAccessException("Error de conexión al anular la factura con devolución: " + ex.getMessage(), ex);
         }
     }
 
