@@ -221,6 +221,10 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JLabel lblPrecioReferenciaPlato;
     private javax.swing.JCheckBox chkPrecioIncluyeIvaPlato;
     private javax.swing.JComboBox<String> cbTipoSala;
+    private javax.swing.JPanel pnlDesgloseFiscalPlato;
+    private javax.swing.JLabel lblFichaPrecioFinal;
+    private javax.swing.JLabel lblFichaBaseImponible;
+    private javax.swing.JLabel lblFichaIvaMonto;
 
     private Controlador.CategoriaControlador categoriaControlador;
     private Controlador.FavoritoControlador favoritoControlador;
@@ -5230,6 +5234,7 @@ public final class Sistema extends javax.swing.JFrame {
             return;
         }
         try {
+            pla = new Platos();
             pla.setNombre(txtNombrePlato.getText().trim());
             pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText().trim()));
             pla.setFecha(fechaActual());
@@ -5265,6 +5270,7 @@ public final class Sistema extends javax.swing.JFrame {
             return;
         }
         try {
+            pla = new Platos();
             pla.setNombre(txtNombrePlato.getText().trim());
             pla.setPrecioDecimal(importeMonetario(txtPrecioPlato.getText().trim()));
             pla.setId(Integer.parseInt(txtIdPlato.getText().trim()));
@@ -8964,6 +8970,7 @@ public final class Sistema extends javax.swing.JFrame {
             TablePlatos.clearSelection();
         }
         actualizarEstadoBotonesPlatos();
+        actualizarDesgloseFiscalFichaPlato();
     }
 
     public void actualizarEstadoBotonesPlatos() {
@@ -8996,6 +9003,7 @@ public final class Sistema extends javax.swing.JFrame {
         String texto = txtPrecioPlato.getText().trim();
         if (texto.isEmpty()) {
             lblPrecioReferenciaPlato.setText("Ref: ---");
+            actualizarDesgloseFiscalFichaPlato();
             return;
         }
         try {
@@ -9003,6 +9011,7 @@ public final class Sistema extends javax.swing.JFrame {
             BigDecimal tasa = getTasaActual();
             if (tasa == null || tasa.signum() <= 0) {
                 lblPrecioReferenciaPlato.setText("Ref: (sin tasa)");
+                actualizarDesgloseFiscalFichaPlato();
                 return;
             }
             String moneda = String.valueOf(cbMonedaBasePlato.getSelectedItem());
@@ -9016,7 +9025,111 @@ public final class Sistema extends javax.swing.JFrame {
         } catch (Exception ex) {
             lblPrecioReferenciaPlato.setText("Ref: ---");
         }
+        actualizarDesgloseFiscalFichaPlato();
         reflejarFormularioEnFilaPlato();
+    }
+
+    /**
+     * Muestra en tiempo real en la ficha del plato (TAB de Platos) el desglose
+     * exacto de Base Imponible, IVA y Precio Final que pagará el cliente,
+     * adaptándose al instante según si se marca o desmarca "Incluye IVA" o "Genera IVA".
+     */
+    public void actualizarDesgloseFiscalFichaPlato() {
+        if (lblFichaPrecioFinal == null || lblFichaBaseImponible == null || lblFichaIvaMonto == null) {
+            return;
+        }
+        String texto = (txtPrecioPlato != null) ? txtPrecioPlato.getText().trim() : "";
+        if (texto.isEmpty()) {
+            lblFichaPrecioFinal.setText("Precio al Cliente: ---");
+            lblFichaBaseImponible.setText("Base Imponible Neta: ---");
+            lblFichaIvaMonto.setText("IVA (16%): ---");
+            return;
+        }
+        try {
+            BigDecimal precioIngresado = importeMonetario(texto);
+            BigDecimal tasa = getTasaActual();
+            boolean tasaValida = tasa != null && tasa.signum() > 0;
+            BigDecimal ivaPorcentaje = getIvaPorcentajeActual();
+            if (ivaPorcentaje == null || ivaPorcentaje.compareTo(BigDecimal.ZERO) < 0) {
+                ivaPorcentaje = new BigDecimal("16.00");
+            }
+            String moneda = (cbMonedaBasePlato != null && cbMonedaBasePlato.getSelectedItem() != null)
+                    ? String.valueOf(cbMonedaBasePlato.getSelectedItem()) : "USD";
+            boolean esVes = "VES".equalsIgnoreCase(moneda);
+
+            boolean aplicaIva = (chkAplicaIvaPlato == null || chkAplicaIvaPlato.isSelected());
+            boolean incluyeIva = aplicaIva && (chkPrecioIncluyeIvaPlato != null && chkPrecioIncluyeIvaPlato.isSelected());
+
+            BigDecimal baseFuente;
+            BigDecimal ivaFuente;
+            BigDecimal totalFuente;
+
+            if (!aplicaIva) {
+                baseFuente = BigDecimal.ZERO.setScale(2);
+                ivaFuente = BigDecimal.ZERO.setScale(2);
+                totalFuente = precioIngresado.setScale(2, RoundingMode.HALF_UP);
+
+                String sim = esVes ? "Bs. " : "$ ";
+                String refStr = "";
+                if (tasaValida) {
+                    BigDecimal ref = esVes ? totalFuente.divide(tasa, 2, RoundingMode.HALF_UP)
+                            : totalFuente.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    refStr = esVes ? " ($ " + String.format(java.util.Locale.US, "%.2f", ref) + ")"
+                            : " (Bs. " + String.format(java.util.Locale.US, "%.2f", ref) + ")";
+                }
+                lblFichaPrecioFinal.setText("Precio al Cliente: " + sim + String.format(java.util.Locale.US, "%.2f", totalFuente) + refStr);
+                lblFichaPrecioFinal.setForeground(new java.awt.Color(0, 120, 50));
+                lblFichaBaseImponible.setText("Condición Fiscal: EXENTO DE IVA");
+                lblFichaBaseImponible.setForeground(new java.awt.Color(90, 90, 90));
+                lblFichaIvaMonto.setText("IVA discriminado: $ 0.00 (Bs. 0.00)");
+                lblFichaIvaMonto.setForeground(new java.awt.Color(90, 90, 90));
+            } else {
+                BigDecimal cien = new BigDecimal("100");
+                if (incluyeIva) {
+                    totalFuente = precioIngresado.setScale(2, RoundingMode.HALF_UP);
+                    baseFuente = totalFuente.multiply(cien).divide(cien.add(ivaPorcentaje), 2, RoundingMode.HALF_UP);
+                    ivaFuente = totalFuente.subtract(baseFuente).setScale(2, RoundingMode.HALF_UP);
+                } else {
+                    baseFuente = precioIngresado.setScale(2, RoundingMode.HALF_UP);
+                    ivaFuente = baseFuente.multiply(ivaPorcentaje).divide(cien, 2, RoundingMode.HALF_UP);
+                    totalFuente = baseFuente.add(ivaFuente).setScale(2, RoundingMode.HALF_UP);
+                }
+
+                String sim = esVes ? "Bs. " : "$ ";
+                String refTot = "", refBase = "", refIva = "";
+                if (tasaValida) {
+                    BigDecimal totAlt = esVes ? totalFuente.divide(tasa, 2, RoundingMode.HALF_UP)
+                            : totalFuente.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal baseAlt = esVes ? baseFuente.divide(tasa, 2, RoundingMode.HALF_UP)
+                            : baseFuente.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal ivaAlt = esVes ? ivaFuente.divide(tasa, 2, RoundingMode.HALF_UP)
+                            : ivaFuente.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+
+                    refTot = esVes ? " ($ " + String.format(java.util.Locale.US, "%.2f", totAlt) + ")"
+                            : " (Bs. " + String.format(java.util.Locale.US, "%.2f", totAlt) + ")";
+                    refBase = esVes ? " ($ " + String.format(java.util.Locale.US, "%.2f", baseAlt) + ")"
+                            : " (Bs. " + String.format(java.util.Locale.US, "%.2f", baseAlt) + ")";
+                    refIva = esVes ? " ($ " + String.format(java.util.Locale.US, "%.2f", ivaAlt) + ")"
+                            : " (Bs. " + String.format(java.util.Locale.US, "%.2f", ivaAlt) + ")";
+                }
+
+                String etiFinal = incluyeIva ? "Precio al Cliente (con IVA): " : "Precio al Cliente (+IVA): ";
+                lblFichaPrecioFinal.setText(etiFinal + sim + String.format(java.util.Locale.US, "%.2f", totalFuente) + refTot);
+                lblFichaPrecioFinal.setForeground(new java.awt.Color(0, 90, 160));
+
+                lblFichaBaseImponible.setText("Base Imponible Neta: " + sim + String.format(java.util.Locale.US, "%.2f", baseFuente) + refBase);
+                lblFichaBaseImponible.setForeground(new java.awt.Color(40, 40, 40));
+
+                String etiIva = incluyeIva ? "IVA incluido (" : "IVA a agregar (";
+                lblFichaIvaMonto.setText(etiIva + String.format(java.util.Locale.US, "%.2f", ivaPorcentaje) + "%): "
+                        + sim + String.format(java.util.Locale.US, "%.2f", ivaFuente) + refIva);
+                lblFichaIvaMonto.setForeground(new java.awt.Color(180, 50, 0));
+            }
+        } catch (Exception ex) {
+            lblFichaPrecioFinal.setText("Precio al Cliente: (inválido)");
+            lblFichaBaseImponible.setText("Base Imponible: ---");
+            lblFichaIvaMonto.setText("IVA: ---");
+        }
     }
 
     /**
@@ -9088,6 +9201,22 @@ public final class Sistema extends javax.swing.JFrame {
 
     public javax.swing.JCheckBox getChkAplicaIvaPlato() {
         return chkAplicaIvaPlato;
+    }
+
+    public javax.swing.JPanel getPnlDesgloseFiscalPlato() {
+        return pnlDesgloseFiscalPlato;
+    }
+
+    public javax.swing.JLabel getLblFichaPrecioFinal() {
+        return lblFichaPrecioFinal;
+    }
+
+    public javax.swing.JLabel getLblFichaBaseImponible() {
+        return lblFichaBaseImponible;
+    }
+
+    public javax.swing.JLabel getLblFichaIvaMonto() {
+        return lblFichaIvaMonto;
     }
 
     public javax.swing.JTextField getTxtNombrePlato() {
@@ -9297,22 +9426,67 @@ public final class Sistema extends javax.swing.JFrame {
     private void initIvaPlatosYBarraSalas() {
         // 1. Selector moneda, referencia convertida y checkboxes IVA en formulario de Platos (Tab 2)
         if (jPanel11 != null) {
+            jPanel11.setPreferredSize(new java.awt.Dimension(340, 520));
+
+            // Ajustar panel negro superior "Platos del Día" si existe
+            if (jPanel39 != null) {
+                jPanel11.remove(jPanel39);
+                jPanel11.add(jPanel39, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 340, 45));
+            }
+            if (jLabel23 != null) {
+                jPanel11.remove(jLabel23);
+                jPanel11.add(jLabel23, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 60, 68, 25));
+            }
+            if (txtNombrePlato != null) {
+                jPanel11.remove(txtNombrePlato);
+                jPanel11.add(txtNombrePlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 55, 240, 28));
+            }
+            if (jPanel31 != null) {
+                jPanel11.remove(jPanel31);
+                jPanel11.add(jPanel31, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 83, 240, 2));
+            }
+
             javax.swing.JLabel lblMoneda = new javax.swing.JLabel("Moneda:");
             lblMoneda.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
-            jPanel11.add(lblMoneda, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 145, 60, 25));
+            jPanel11.add(lblMoneda, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 98, 68, 25));
 
             cbMonedaBasePlato = new javax.swing.JComboBox<>(new String[]{"USD", "VES"});
             cbMonedaBasePlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
             cbMonedaBasePlato.setBackground(java.awt.Color.WHITE);
             cbMonedaBasePlato.setToolTipText("Moneda principal fijada para este producto");
             cbMonedaBasePlato.addActionListener(e -> actualizarPrecioReferenciaPlato());
-            jPanel11.add(cbMonedaBasePlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 140, 75, 25));
+            jPanel11.add(cbMonedaBasePlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 96, 75, 26));
 
             lblPrecioReferenciaPlato = new javax.swing.JLabel("Ref: ---");
             lblPrecioReferenciaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.ITALIC, 11));
             lblPrecioReferenciaPlato.setForeground(new java.awt.Color(90, 90, 90));
             lblPrecioReferenciaPlato.setToolTipText("Precio convertido referencialmente con la tasa activa del sistema");
-            jPanel11.add(lblPrecioReferenciaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(180, 140, 105, 25));
+            jPanel11.add(lblPrecioReferenciaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(165, 96, 160, 26));
+
+            if (jLabel25 != null) {
+                jPanel11.remove(jLabel25);
+                jPanel11.add(jLabel25, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 133, 68, 25));
+            }
+            if (txtPrecioPlato != null) {
+                jPanel11.remove(txtPrecioPlato);
+                jPanel11.add(txtPrecioPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 128, 240, 28));
+            }
+            if (jPanel33 != null) {
+                jPanel11.remove(jPanel33);
+                jPanel11.add(jPanel33, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 156, 240, 2));
+            }
+
+            javax.swing.JLabel lblCategoriaFicha = new javax.swing.JLabel("Categoría:");
+            lblCategoriaFicha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+            jPanel11.add(lblCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 168, 68, 25));
+
+            cbCategoriaFicha = new javax.swing.JComboBox<>();
+            cbCategoriaFicha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+            cbCategoriaFicha.setBackground(java.awt.Color.WHITE);
+            cbCategoriaFicha.setRenderer(new RendererCategoria());
+            cbCategoriaFicha.setToolTipText("Categoría del plato (se guarda con Guardar/Editar)");
+            jPanel11.add(cbCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 166, 240, 26));
+            cargarCategoriasFicha();
 
             chkAplicaIvaPlato = new javax.swing.JCheckBox(textoCheckboxIvaPlato(), true);
             chkAplicaIvaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
@@ -9321,7 +9495,7 @@ public final class Sistema extends javax.swing.JFrame {
             chkAplicaIvaPlato.setFocusable(false);
             chkAplicaIvaPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
             chkAplicaIvaPlato.setToolTipText("Marcar si el plato genera IVA o desmarcar si está exento");
-            jPanel11.add(chkAplicaIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 215, 140, 25));
+            jPanel11.add(chkAplicaIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 200, 150, 25));
 
             chkPrecioIncluyeIvaPlato = new javax.swing.JCheckBox("Incluye IVA", false);
             chkPrecioIncluyeIvaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
@@ -9330,7 +9504,7 @@ public final class Sistema extends javax.swing.JFrame {
             chkPrecioIncluyeIvaPlato.setFocusable(false);
             chkPrecioIncluyeIvaPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
             chkPrecioIncluyeIvaPlato.setToolTipText("Indica si el precio ingresado ya incluye el porcentaje de IVA");
-            jPanel11.add(chkPrecioIncluyeIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(155, 215, 125, 25));
+            jPanel11.add(chkPrecioIncluyeIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(165, 200, 155, 25));
 
             chkAplicaIvaPlato.addActionListener(e -> {
                 boolean gravado = chkAplicaIvaPlato.isSelected();
@@ -9338,19 +9512,58 @@ public final class Sistema extends javax.swing.JFrame {
                 if (!gravado) {
                     chkPrecioIncluyeIvaPlato.setSelected(false);
                 }
+                actualizarDesgloseFiscalFichaPlato();
             });
+            chkPrecioIncluyeIvaPlato.addActionListener(e -> actualizarDesgloseFiscalFichaPlato());
 
-            javax.swing.JLabel lblCategoriaFicha = new javax.swing.JLabel("Categoría:");
-            lblCategoriaFicha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
-            jPanel11.add(lblCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 242, 80, 24));
+            // Panel de Desglose Fiscal en Vivo (Ficha informativa dinámica)
+            pnlDesgloseFiscalPlato = new javax.swing.JPanel();
+            pnlDesgloseFiscalPlato.setBackground(new java.awt.Color(248, 250, 252));
+            pnlDesgloseFiscalPlato.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                    javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 122, 204), 1, true),
+                    javax.swing.BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+            pnlDesgloseFiscalPlato.setLayout(new java.awt.GridLayout(3, 1, 0, 4));
 
-            cbCategoriaFicha = new javax.swing.JComboBox<>();
-            cbCategoriaFicha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
-            cbCategoriaFicha.setBackground(java.awt.Color.WHITE);
-            cbCategoriaFicha.setRenderer(new RendererCategoria());
-            cbCategoriaFicha.setToolTipText("Categoría del plato (se guarda con Guardar/Editar)");
-            jPanel11.add(cbCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 242, 170, 24));
-            cargarCategoriasFicha();
+            lblFichaPrecioFinal = new javax.swing.JLabel("Precio al Cliente: ---");
+            lblFichaPrecioFinal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+            lblFichaPrecioFinal.setForeground(new java.awt.Color(0, 90, 160));
+            pnlDesgloseFiscalPlato.add(lblFichaPrecioFinal);
+
+            lblFichaBaseImponible = new javax.swing.JLabel("Base Imponible Neta: ---");
+            lblFichaBaseImponible.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+            lblFichaBaseImponible.setForeground(new java.awt.Color(40, 40, 40));
+            pnlDesgloseFiscalPlato.add(lblFichaBaseImponible);
+
+            lblFichaIvaMonto = new javax.swing.JLabel("IVA (16%): ---");
+            lblFichaIvaMonto.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+            lblFichaIvaMonto.setForeground(new java.awt.Color(180, 50, 0));
+            pnlDesgloseFiscalPlato.add(lblFichaIvaMonto);
+
+            jPanel11.add(pnlDesgloseFiscalPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 232, 312, 86));
+
+            // Reubicar botones de acción ordenadamente
+            if (btnGuardarPlato != null) {
+                jPanel11.remove(btnGuardarPlato);
+                jPanel11.add(btnGuardarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 328, 150, 42));
+            }
+            if (btnNuevoPlato != null) {
+                jPanel11.remove(btnNuevoPlato);
+                jPanel11.add(btnNuevoPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(174, 328, 150, 42));
+            }
+            if (btnEliminarPlato != null) {
+                jPanel11.remove(btnEliminarPlato);
+                jPanel11.add(btnEliminarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 378, 150, 36));
+            }
+            if (btnReactivarPlato != null) {
+                jPanel11.remove(btnReactivarPlato);
+                jPanel11.add(btnReactivarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(174, 378, 150, 36));
+            }
+            if (btnEditarPlato != null) {
+                btnEditarPlato.setVisible(false);
+            }
+            if (txtIdPlato != null) {
+                txtIdPlato.setVisible(false);
+            }
 
             if (txtPrecioPlato != null) {
                 txtPrecioPlato.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
@@ -9368,6 +9581,7 @@ public final class Sistema extends javax.swing.JFrame {
                     }
                 });
             }
+            actualizarDesgloseFiscalFichaPlato();
         }
 
         // 2. Combo Tipo de Sala en formulario de Salas (Tab 8)
