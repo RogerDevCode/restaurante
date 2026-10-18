@@ -107,34 +107,20 @@ public class CierreCajaDao {
                            COALESCE(SUM(subtotal), 0) AS subtotal_usd,
                            COALESCE(SUM(sub_bs), 0) AS subtotal_bs,
                            COALESCE(SUM(iva_monto), 0) AS iva_usd,
-                           COALESCE(SUM(iv_bs), 0) AS iva_bs
+                           COALESCE(SUM(CASE WHEN tot_bs > sub_bs THEN (tot_bs - sub_bs) ELSE 0.00 END), 0) AS iva_bs
                     FROM (
                         SELECT total,
                                subtotal,
                                iva_monto,
-                               calc_tot_bs AS tot_bs,
+                               COALESCE(NULLIF(total_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(total * tasa_cambio, 2) ELSE 0.00 END) AS tot_bs,
                                CASE
                                    WHEN NULLIF(subtotal_bs, 0) IS NOT NULL THEN subtotal_bs
-                                   WHEN COALESCE(iva_monto, 0) > 0 THEN calc_sub_bs
-                                   ELSE calc_tot_bs
-                               END AS sub_bs,
-                               CASE
-                                   WHEN NULLIF(iva_bs, 0) IS NOT NULL THEN iva_bs
-                                   WHEN COALESCE(iva_monto, 0) > 0 THEN (calc_tot_bs - calc_sub_bs)
-                                   ELSE 0
-                               END AS iv_bs
-                        FROM (
-                            SELECT total,
-                                   subtotal,
-                                   iva_monto,
-                                   subtotal_bs,
-                                   iva_bs,
-                                   COALESCE(NULLIF(total_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(total * tasa_cambio, 2) ELSE 0.00 END) AS calc_tot_bs,
-                                   COALESCE(NULLIF(subtotal_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(subtotal * tasa_cambio, 2) ELSE 0.00 END) AS calc_sub_bs
-                            FROM pedidos
-                            WHERE estado = 'FINALIZADO'
-                              AND (COALESCE(cerrada_en, fecha) LIKE ? OR DATE(COALESCE(cerrada_en, fecha)) = ?)
-                        ) sub_pedidos
+                                   WHEN COALESCE(iva_monto, 0) > 0 AND tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(subtotal * tasa_cambio, 2)
+                                   ELSE COALESCE(NULLIF(total_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(total * tasa_cambio, 2) ELSE 0.00 END)
+                               END AS sub_bs
+                        FROM pedidos
+                        WHERE estado = 'FINALIZADO'
+                          AND (COALESCE(cerrada_en, fecha) LIKE ? OR DATE(COALESCE(cerrada_en, fecha)) = ?)
                     ) calc_pedidos
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlTotales)) {

@@ -1128,7 +1128,7 @@ public class PedidosDao implements PedidosRepositorio {
 
         String sql = """
             UPDATE pedidos
-            SET estado = ?, fecha = CURRENT_TIMESTAMP, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
+            SET estado = ?, cliente_nombre = ?, cliente_documento = ?, metodo_pago = ?,
                 efectivo_bs = CASE
                     WHEN ? = 'MIXTO' THEN ?
                     WHEN ? IN ('EFECTIVO', 'EFECTIVO_BS') THEN COALESCE(total_bs, total * NULLIF(tasa_cambio, 0), 0)

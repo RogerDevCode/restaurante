@@ -521,6 +521,19 @@ public final class MigradorEsquemaJdbc {
 
         // 17. Precio base explícito, snapshots por línea, cierre independiente del pago y ledger.
         asegurarEsquemaPrecios(con);
+
+        // 18. Reparar datos históricos con iva_bs desalineado de total_bs - subtotal_bs (D7/D2)
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                UPDATE pedidos
+                SET iva_bs = ROUND(total_bs - subtotal_bs, 2)
+                WHERE estado IN ('FINALIZADO', 'ANULADO')
+                  AND total_bs IS NOT NULL
+                  AND subtotal_bs IS NOT NULL
+                  AND total_bs >= subtotal_bs
+                  AND iva_bs <> ROUND(total_bs - subtotal_bs, 2)
+                """);
+        }
     }
 
     private static void asegurarEsquemaPrecios(Connection con) throws SQLException {
