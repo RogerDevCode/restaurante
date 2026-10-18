@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Instalador y configurador TODO EN UN SOLO CLIC para Windows 11 / 10
     Sistema de Gestión de Restaurante 2026.

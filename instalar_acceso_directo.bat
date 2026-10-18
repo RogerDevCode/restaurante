@@ -1,10 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
 title Instalador de Acceso Directo - Restaurante 2026
-chcp 65001 >nul
 cd /d "%~dp0"
 
-:: Verificar privilegios de Administrador para permitir configuración completa del sistema si es posible
+:: Verificar privilegios de Administrador para permitir configuracion completa del sistema si es posible
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     if "%~1" neq "--no-elevate" (
@@ -17,11 +16,11 @@ if %errorlevel% neq 0 (
     )
 )
 
-:: Ejecutar instalador PowerShell con política desbloqueada
+:: Ejecutar instalador PowerShell con politica desbloqueada
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0instalar_acceso_directo.ps1"
 
 if %errorlevel% neq 0 (
     echo.
-    echo [AVISO] El instalador finalizó con observaciones. Presione cualquier tecla para cerrar.
+    echo [AVISO] El instalador finalizo con observaciones. Presione cualquier tecla para cerrar.
     pause >nul
 )

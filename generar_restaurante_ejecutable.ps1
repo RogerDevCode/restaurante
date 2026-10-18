@@ -239,6 +239,10 @@ $sqlCliente = Join-Path $ProjectRoot "BD RESTAURANTE 2026.sql"
 if (Test-Path -LiteralPath $sqlCliente) {
     Copy-Item -LiteralPath $sqlCliente -Destination (Join-Path $OutputDir "BD RESTAURANTE 2026.sql") -Force
 }
+$sqlLimpiar = Join-Path $ProjectRoot "limpiar_para_comenzar_hoy.sql"
+if (Test-Path -LiteralPath $sqlLimpiar) {
+    Copy-Item -LiteralPath $sqlLimpiar -Destination (Join-Path $OutputDir "limpiar_para_comenzar_hoy.sql") -Force
+}
 
 # 4.4 Copiar scripts de automatización e instalación
 Write-Host "  -> Copiando scripts de inicio e instaladores..." -ForegroundColor Gray
@@ -254,9 +258,12 @@ $scripts = @(
     "actualizar_bd.bat",
     "actualizar_datos_cliente.bat",
     "actualizar_datos_cliente.sh",
+    "limpiar_para_comenzar_hoy.bat",
+    "limpiar_para_comenzar_hoy.sh",
     "instalar_mysql_y_bd.bat",
     "instalar_mysql_y_bd.ps1",
     "configurar_mysql.ps1",
+    "crear_acceso_directo.bat",
     "listar_impresoras.bat"
 )
 

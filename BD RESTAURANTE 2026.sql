@@ -39,7 +39,7 @@ CREATE TABLE `config` (
   `impresora_tickets` varchar(150) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'DEFAULT',
   `modo_salida_tickets` varchar(50) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'TERMICA_DIRECTA',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 
@@ -86,7 +86,7 @@ CREATE TABLE `pedidos` (
   KEY `idx_pedidos_mesonero` (`id_mesonero`),
   UNIQUE KEY `uq_pedidos_mesa_pendiente` (`id_sala_pendiente`,`num_mesa_pendiente`),
   CONSTRAINT `pedidos_ibfk_1` FOREIGN KEY (`id_sala`) REFERENCES `salas` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 DROP TABLE IF EXISTS `pedido_liquidaciones`;
@@ -216,7 +216,7 @@ CREATE TABLE `clientes` (
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_clientes_documento` (`documento`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -225,7 +225,7 @@ CREATE TABLE `clientes` (
 
 LOCK TABLES `clientes` WRITE;
 /*!40000 ALTER TABLE `clientes` DISABLE KEYS */;
-INSERT INTO `clientes` (`id`, `documento`, `nombre`, `telefono`, `direccion`, `creado_en`) VALUES (1,'V-00000000','Consumidor Final',NULL,NULL,'2026-10-06 00:00:00');
+INSERT INTO `clientes` (`id`, `documento`, `nombre`, `telefono`, `direccion`, `creado_en`) VALUES (1,'V-00000000','Consumidor Final',NULL,NULL,CURRENT_TIMESTAMP);
 /*!40000 ALTER TABLE `clientes` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -254,7 +254,7 @@ CREATE TABLE `platos` (
   KEY `idx_platos_nombre_clave` (`nombre_clave`),
   CONSTRAINT chk_platos_precio_clasificado CHECK (precio_clasificado = 0 OR (moneda_base IS NOT NULL AND moneda_base IN ('USD','VES') AND ((moneda_base='USD' AND precio_usd>0) OR (moneda_base='VES' AND precio_ves>0)) AND precio_incluye_iva IS NOT NULL AND precio_incluye_iva IN (0,1))),
   CONSTRAINT chk_platos_precio_iva_coherente CHECK (aplica_iva = 1 OR precio_incluye_iva IS NULL OR precio_incluye_iva = 0)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -368,7 +368,7 @@ CREATE TABLE `salas` (
   `mesas` int(11) NOT NULL,
   `tipo` varchar(20) COLLATE utf8_spanish_ci NOT NULL DEFAULT 'SALON',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -403,7 +403,7 @@ CREATE TABLE `usuarios` (
   UNIQUE KEY `uq_usuarios_correo` (`correo`),
   UNIQUE KEY `uq_usuarios_nombre` (`nombre_unico`),
   CONSTRAINT `chk_usuarios_nombre_formato` CHECK ((char_length(`nombre`) between 3 and 60) and (lower(trim(`nombre`)) <> 'admin') and regexp_like(`nombre`, '^[[:alnum:]][[:alnum:] ._-]{1,58}[[:alnum:]]$'))
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 -- Estado de intentos de autenticación; está limitado a cuentas existentes y se limpia al eliminarlas.
@@ -462,7 +462,7 @@ CREATE TABLE `detalle_pedidos` (
   CONSTRAINT chk_detalle_precio_iva_coherente CHECK (aplica_iva = 1 OR precio_incluye_iva IS NULL OR precio_incluye_iva = 0),
   CONSTRAINT `detalle_pedidos_ibfk_1` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`),
   CONSTRAINT `fk_detalle_pedidos_plato` FOREIGN KEY (`id_plato`) REFERENCES `platos` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 -- Dumping data for table `detalle_pedidos`
@@ -509,6 +509,7 @@ INSERT INTO `configuracion_sistema` (`clave`, `valor`, `descripcion`) VALUES
 ('cliente_predeterminado_documento', 'V-00000000', 'Cédula/RIF de cliente por defecto en facturación'),
 ('cliente_predeterminado_nombre', 'Consumidor Final', 'Nombre de cliente por defecto en facturación'),
 ('impresora_tickets', 'DEFAULT', 'Impresora predeterminada para tickets'),
+('imprimir_comanda_cocina', '1', 'Imprimir comanda al enviar a cocina'),
 ('imprimir_logo_ticket', 'true', 'Imprimir logo en ticket térmico 80mm'),
 ('iva_porcentaje', '16.00', 'Porcentaje de IVA'),
 ('meses_retencion_pedidos', '24', 'Meses de retención de pedidos'),
@@ -564,9 +565,11 @@ CREATE TABLE `cierres_caja` (
   `tasa_cambio` decimal(12,4) NOT NULL DEFAULT 36.5000,
   `ruta_pdf` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_jornada_z` date GENERATED ALWAYS AS (CASE WHEN `tipo` = 'TOTAL' THEN `fecha_jornada` ELSE NULL END) STORED,
   PRIMARY KEY (`id`),
   KEY `idx_cierres_fecha` (`fecha_jornada`),
-  KEY `idx_cierres_tipo` (`tipo`)
+  KEY `idx_cierres_tipo` (`tipo`),
+  UNIQUE KEY `uq_cierres_caja_z_fecha` (`fecha_jornada_z`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -637,7 +640,7 @@ CREATE TABLE `categorias` (
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_categorias_nombre` (`nombre`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

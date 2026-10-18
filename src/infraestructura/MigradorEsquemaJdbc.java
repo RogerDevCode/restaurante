@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 12;
+    private static final int VERSION_ESQUEMA = 13;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
@@ -48,7 +48,9 @@ public final class MigradorEsquemaJdbc {
     private static final String CHECKSUM_MIGRACION_V11 = calcularChecksum(DEFINICION_MIGRACION_V11);
     private static final String DEFINICION_MIGRACION_V12 = "v12:detalle_pedidos_aplica_iva_not_null";
     private static final String CHECKSUM_MIGRACION_V12 = calcularChecksum(DEFINICION_MIGRACION_V12);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v12";
+    private static final String DEFINICION_MIGRACION_V13 = "v13:cierres_caja_unicidad_z_por_fecha";
+    private static final String CHECKSUM_MIGRACION_V13 = calcularChecksum(DEFINICION_MIGRACION_V13);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v13";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
@@ -186,7 +188,7 @@ public final class MigradorEsquemaJdbc {
             if (!rs.next()) return false;
             String checksum = rs.getString("checksum");
             String estado = rs.getString("estado");
-            if (!CHECKSUM_MIGRACION_V12.equals(checksum)) {
+            if (!CHECKSUM_MIGRACION_V13.equals(checksum)) {
                 throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
             }
             return "APLICADA".equalsIgnoreCase(estado);
@@ -223,7 +225,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V12 + "','EN_CURSO','asegurar_esquema') "
+                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V13 + "','EN_CURSO','asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -267,7 +269,8 @@ public final class MigradorEsquemaJdbc {
                 {"usuarios", "nombre_unico"},
                 {"login_intentos", "usuario_id"},
                 {"login_intentos", "intentos"},
-                {"login_intentos", "bloqueado_hasta_ms"}
+                {"login_intentos", "bloqueado_hasta_ms"},
+                {"cierres_caja", "fecha_jornada_z"}
         }) {
             if (!columnaExiste(meta, catalogo, par[0], par[1])) {
                 throw new SQLException("Postcondición no cumplida: falta columna " + par[0] + "." + par[1]);
@@ -275,6 +278,9 @@ public final class MigradorEsquemaJdbc {
         }
         if (!indiceExiste(meta, catalogo, "usuarios", "uq_usuarios_nombre")) {
             throw new SQLException("Postcondición no cumplida: falta el índice único de nombre de usuario.");
+        }
+        if (!indiceExiste(meta, catalogo, "cierres_caja", "uq_cierres_caja_z_fecha")) {
+            throw new SQLException("Postcondición no cumplida: falta el índice único uq_cierres_caja_z_fecha en cierres_caja.");
         }
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery("""
@@ -455,6 +461,7 @@ public final class MigradorEsquemaJdbc {
 
         // 8. Asegurar tabla de persistencia de cierres de caja y arqueos
         asegurarTablaCierresCaja(con, meta, catalogo);
+        asegurarUnicidadCierreZ(con, meta, catalogo);
 
         // 9. Asegurar tabla de mesoneros (CRUD, soft-delete, toggle activo)
         asegurarTablaMesoneros(con, meta, catalogo);
@@ -1108,12 +1115,20 @@ public final class MigradorEsquemaJdbc {
                     tasa_cambio DECIMAL(12,4) NOT NULL,
                     ruta_pdf VARCHAR(255) NULL,
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    fecha_jornada_z DATE GENERATED ALWAYS AS (CASE WHEN `tipo` = 'TOTAL' THEN `fecha_jornada` ELSE NULL END) STORED,
                     INDEX idx_cierres_fecha (fecha_jornada),
-                    INDEX idx_cierres_tipo (tipo)
+                    INDEX idx_cierres_tipo (tipo),
+                    UNIQUE KEY uq_cierres_caja_z_fecha (fecha_jornada_z)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
                 """);
             LOGGER.info("Tabla cierres_caja verificada.");
         }
+    }
+
+    private static void asegurarUnicidadCierreZ(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {
+        asegurarColumna(con, meta, catalogo, "cierres_caja", "fecha_jornada_z",
+                "DATE GENERATED ALWAYS AS (CASE WHEN `tipo` = 'TOTAL' THEN `fecha_jornada` ELSE NULL END) STORED");
+        asegurarIndiceUnico(con, meta, catalogo, "cierres_caja", "uq_cierres_caja_z_fecha", "(fecha_jornada_z)");
     }
 
     private static void asegurarTablaMesoneros(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {

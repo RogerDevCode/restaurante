@@ -1,9 +1,12 @@
-# ========================================================
+﻿# ========================================================
 # Script PowerShell para Configuración Automática de MySQL
 # Sistema Restaurante 2026
 # ========================================================
 
 # Auto-elevar si no tiene privilegios de administrador
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "[INFO] Elevando permisos a Administrador..." -ForegroundColor Yellow

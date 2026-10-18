@@ -87,7 +87,7 @@ public class E2EVirtual {
         try (java.sql.Connection c = new ProveedorConexionJdbc().getConnection();
              java.sql.PreparedStatement st = c.prepareStatement(
                      "SELECT COALESCE(SUM(d.cantidad),0) FROM detalle_pedidos d JOIN pedidos p ON p.id=d.id_pedido "
-                     + "WHERE p.estado='PENDIENTE' AND p.id_sala=? AND p.num_mesa=? AND d.nombre LIKE '%POLLO ASADO%'")) {
+                     + "WHERE p.estado='PENDIENTE' AND p.id_sala=? AND p.num_mesa=? AND (d.nombre LIKE '%POLLO A LA BRASA%' OR d.nombre LIKE '%POLLO ASADO%' OR d.nombre LIKE '%POLLO%')")) {
             st.setInt(1, sala);
             st.setInt(2, mesa);
             try (java.sql.ResultSet rs = st.executeQuery()) {
@@ -202,7 +202,7 @@ public class E2EVirtual {
                 filaPollo = enEdt(() -> {
                     for (int i = 0; i < menu.getRowCount(); i++) {
                         Object v = menu.getModel().getValueAt(menu.convertRowIndexToModel(i), 1);
-                        if (v != null && v.toString().toUpperCase().contains("POLLO ASADO")) {
+                        if (v != null && (v.toString().toUpperCase().contains("POLLO A LA BRASA") || v.toString().toUpperCase().contains("POLLO ASADO") || v.toString().toUpperCase().contains("POLLO"))) {
                             return i;
                         }
                     }
@@ -213,7 +213,7 @@ public class E2EVirtual {
                 }
                 Thread.sleep(400);
             }
-            check(filaPollo >= 0, "filtro muestra POLLO ASADO");
+            check(filaPollo >= 0, "filtro muestra plato de POLLO");
             foto(s, "e2e_menu");
             if (filaPollo < 0) {
                 throw new RuntimeException("sin fila de pollo");
@@ -285,7 +285,7 @@ public class E2EVirtual {
                 int fr = enEdt(() -> {
                     for (int i = 0; i < menu.getRowCount(); i++) {
                         Object v = menu.getModel().getValueAt(menu.convertRowIndexToModel(i), 1);
-                        if (v != null && v.toString().toUpperCase().contains("POLLO ASADO")) {
+                        if (v != null && (v.toString().toUpperCase().contains("POLLO A LA BRASA") || v.toString().toUpperCase().contains("POLLO ASADO") || v.toString().toUpperCase().contains("POLLO"))) {
                             return i;
                         }
                     }

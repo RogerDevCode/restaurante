@@ -502,7 +502,7 @@ public class PedidosDao implements PedidosRepositorio {
 
         BigDecimal totalEnviado = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalEsperado = preliminar.totalUsd();
-        if (totalEnviado.compareTo(totalEsperado) != 0 && totalEnviado.compareTo(subtotalEsperado) != 0) {
+        if (totalEnviado.compareTo(totalEsperado) != 0) {
             throw ErrorAplicacionException.validacion("El total del pedido no coincide con el subtotal más IVA ni con sus detalles.");
         }
 
@@ -601,8 +601,7 @@ public class PedidosDao implements PedidosRepositorio {
         if (pedido.getTotalDecimal() != null && pedido.getTotalDecimal().signum() > 0) {
             BigDecimal totalEnviado = pedido.getTotalDecimal().setScale(2, RoundingMode.HALF_UP);
             BigDecimal totalEsperado = resultado.totalUsd();
-            BigDecimal subtotalEsperado = resultado.subtotalUsd();
-            if (totalEnviado.compareTo(totalEsperado) != 0 && totalEnviado.compareTo(subtotalEsperado) != 0) {
+            if (totalEnviado.compareTo(totalEsperado) != 0) {
                 throw ErrorAplicacionException.validacion("El total del pedido no coincide con el subtotal más IVA ni con sus detalles.");
             }
         }
@@ -614,6 +613,14 @@ public class PedidosDao implements PedidosRepositorio {
         pedido.setSubtotalBs(resultado.subtotalVes());
         pedido.setIvaBs(resultado.ivaVes());
         pedido.setTotalBs(resultado.totalVes());
+
+        // Verificación vinculante Red Team: Aditividad estricta con tolerancia CERO (0.00)
+        if (pedido.getTotalDecimal().compareTo(pedido.getSubtotal().add(pedido.getIvaMonto())) != 0) {
+            throw ErrorAplicacionException.validacion("Discrepancia aditiva en cabecera USD: total != subtotal + iva_monto");
+        }
+        if (pedido.getTotalBs().compareTo(pedido.getSubtotalBs().add(pedido.getIvaBs())) != 0) {
+            throw ErrorAplicacionException.validacion("Discrepancia aditiva en cabecera Bs: total_bs != subtotal_bs + iva_bs");
+        }
 
         return resultado;
     }

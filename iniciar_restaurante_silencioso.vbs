@@ -47,7 +47,7 @@ If Err.Number <> 0 Then
     intReturn = objShell.Run("java.exe -jar " & strJarPath, 0, False)
     If Err.Number <> 0 Then
         MsgBox "No se pudo iniciar Java 21." & vbCrLf & vbCrLf & _
-               "Haga doble clic en 'instalar_acceso_directo.bat' para verificar y configurar Java automáticamente.", _
+               "Haga doble clic en 'instalar_acceso_directo.bat' para verificar y configurar Java automaticamente.", _
                vbExclamation, "Restaurante 2026 - Configuracion Requerida"
         WScript.Quit 1
     End If

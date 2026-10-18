@@ -19,4 +19,5 @@ public final class ConfigClaves {
     public static final String MESES_RETENCION_PEDIDOS = "meses_retencion_pedidos";
     public static final String MODO_ATENCION = "modo_atencion";
     public static final String FILTRO_RAPIDO_PLATOS = "filtro_rapido_platos";
+    public static final String IMPRIMIR_COMANDA_COCINA = "imprimir_comanda_cocina";
 }

@@ -154,6 +154,10 @@ public class CierreCaja {
     private BigDecimal totalVentasBs = BigDecimal.ZERO.setScale(2);
     private BigDecimal subtotalUsd = BigDecimal.ZERO.setScale(2);
     private BigDecimal subtotalBs = BigDecimal.ZERO.setScale(2);
+    private BigDecimal baseImponibleUsd;
+    private BigDecimal baseImponibleBs;
+    private BigDecimal exentoUsd;
+    private BigDecimal exentoBs;
     private BigDecimal ivaUsd = BigDecimal.ZERO.setScale(2);
     private BigDecimal ivaBs = BigDecimal.ZERO.setScale(2);
     private BigDecimal tasaCambioReferencia;
@@ -234,6 +238,58 @@ public class CierreCaja {
 
     public void setSubtotalBs(BigDecimal subtotalBs) {
         this.subtotalBs = subtotalBs != null ? subtotalBs.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2);
+    }
+
+    public BigDecimal getBaseImponibleUsd() {
+        if (baseImponibleUsd != null) return baseImponibleUsd;
+        if (ivaUsd != null && ivaUsd.signum() > 0) {
+            BigDecimal baseEst = ivaUsd.multiply(new BigDecimal("100")).divide(new BigDecimal("16.00"), 2, RoundingMode.HALF_UP);
+            return baseEst.min(subtotalUsd != null ? subtotalUsd : baseEst).setScale(2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO.setScale(2);
+    }
+
+    public void setBaseImponibleUsd(BigDecimal baseImponibleUsd) {
+        this.baseImponibleUsd = baseImponibleUsd != null ? baseImponibleUsd.setScale(2, RoundingMode.HALF_UP) : null;
+    }
+
+    public BigDecimal getBaseImponibleBs() {
+        if (baseImponibleBs != null) return baseImponibleBs;
+        if (ivaBs != null && ivaBs.signum() > 0) {
+            BigDecimal baseEst = ivaBs.multiply(new BigDecimal("100")).divide(new BigDecimal("16.00"), 2, RoundingMode.HALF_UP);
+            return baseEst.min(subtotalBs != null ? subtotalBs : baseEst).setScale(2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO.setScale(2);
+    }
+
+    public void setBaseImponibleBs(BigDecimal baseImponibleBs) {
+        this.baseImponibleBs = baseImponibleBs != null ? baseImponibleBs.setScale(2, RoundingMode.HALF_UP) : null;
+    }
+
+    public BigDecimal getExentoUsd() {
+        if (exentoUsd != null) return exentoUsd;
+        BigDecimal base = getBaseImponibleUsd();
+        if (subtotalUsd != null && subtotalUsd.compareTo(base) > 0) {
+            return subtotalUsd.subtract(base).setScale(2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO.setScale(2);
+    }
+
+    public void setExentoUsd(BigDecimal exentoUsd) {
+        this.exentoUsd = exentoUsd != null ? exentoUsd.setScale(2, RoundingMode.HALF_UP) : null;
+    }
+
+    public BigDecimal getExentoBs() {
+        if (exentoBs != null) return exentoBs;
+        BigDecimal base = getBaseImponibleBs();
+        if (subtotalBs != null && subtotalBs.compareTo(base) > 0) {
+            return subtotalBs.subtract(base).setScale(2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO.setScale(2);
+    }
+
+    public void setExentoBs(BigDecimal exentoBs) {
+        this.exentoBs = exentoBs != null ? exentoBs.setScale(2, RoundingMode.HALF_UP) : null;
     }
 
     public BigDecimal getIvaUsd() {

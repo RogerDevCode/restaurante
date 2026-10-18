@@ -17,7 +17,14 @@ public class Tables extends DefaultTableCellRenderer {
             return this;
         }
 
-        Object estadoCelda = valorModelo(tabla, fila, 6);
+        int colEstado = -1;
+        if (tabla.getModel() instanceof javax.swing.table.DefaultTableModel dtm) {
+            colEstado = dtm.findColumn("Estado");
+        }
+        if (colEstado < 0) {
+            colEstado = Math.min(6, tabla.getModel().getColumnCount() - 1);
+        }
+        Object estadoCelda = valorModelo(tabla, fila, colEstado);
         String estado = estadoCelda == null ? "" : estadoCelda.toString();
         switch (estado) {
             case "PENDIENTE":

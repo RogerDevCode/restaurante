@@ -113,19 +113,6 @@ public record CalculoFiscalRecord(
         BigDecimal ivaValido = ivaPorcentaje.setScale(2, RoundingMode.HALF_UP);
 
         Servicio.CalculoMonetarioPedido.CalculoPedido calc = Servicio.CalculoMonetarioPedido.calcularPedido(detalles, tasaValida);
-        BigDecimal baseUsd = BigDecimal.ZERO.setScale(2);
-        BigDecimal exUsd = BigDecimal.ZERO.setScale(2);
-        for (Servicio.CalculoMonetarioPedido.CalculoLinea linea : calc.lineas()) {
-            if ("VES".equalsIgnoreCase(linea.monedaBase())) {
-                baseUsd = baseUsd.add(linea.baseImponibleVes().divide(tasaValida, 8, RoundingMode.HALF_UP));
-                exUsd = exUsd.add(linea.exentoVes().divide(tasaValida, 8, RoundingMode.HALF_UP));
-            } else {
-                baseUsd = baseUsd.add(linea.baseImponibleFuente());
-                exUsd = exUsd.add(linea.exentoFuente());
-            }
-        }
-        baseUsd = baseUsd.setScale(2, RoundingMode.HALF_UP);
-        exUsd = exUsd.setScale(2, RoundingMode.HALF_UP);
         return new CalculoFiscalRecord(
                 calc.subtotalUsd(),
                 ivaValido,
@@ -135,8 +122,8 @@ public record CalculoFiscalRecord(
                 calc.subtotalVes(),
                 calc.ivaVes(),
                 calc.totalVes(),
-                baseUsd,
-                exUsd,
+                calc.baseImponibleUsd(),
+                calc.exentoUsd(),
                 calc.baseImponibleVes(),
                 calc.exentoVes());
     }

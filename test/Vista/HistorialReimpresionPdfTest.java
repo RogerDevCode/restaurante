@@ -77,9 +77,10 @@ public class HistorialReimpresionPdfTest {
         assertNotNull(btnReimprimir);
         assertNotNull(btnPrevHist);
         assertNotNull(btnCierreX);
-        assertNotNull(btnCierreZ);
-        assertEquals("Ver / Reimprimir factura del pedido seleccionado", btnPdf.getToolTipText());
-        assertEquals("Ver / Reimprimir factura del pedido seleccionado", btnReimprimir.getToolTipText());
+        JButton btnAnular = campo(sistema, "btnAnularPedido", JButton.class);
+        assertNotNull(btnAnular);
+        assertTrue("El botón anular debe estar habilitado para anulación directa por número de factura", btnAnular.isEnabled());
+        assertEquals("Anular factura/pedido seleccionado o ingresar directamente su número", btnAnular.getToolTipText());
         assertFalse(btnReimprimir.isEnabled());
         assertFalse(btnPrevHist.isEnabled());
         assertTrue(btnCierreX.isEnabled());
@@ -193,12 +194,24 @@ public class HistorialReimpresionPdfTest {
         pedidoDummy.setUsuario("Admin");
         pedidoDummy.setFecha("2026-10-07");
         pedidoDummy.setTotalDecimal(new BigDecimal("40.00"));
+        pedidoDummy.setTasaCambio(new BigDecimal("40.00"));
+        pedidoDummy.setTotalBs(new BigDecimal("1600.00"));
+        pedidoDummy.setSubtotal(new BigDecimal("40.00"));
+        pedidoDummy.setIvaMonto(BigDecimal.ZERO);
+        pedidoDummy.setIvaPorcentaje(BigDecimal.ZERO);
+        pedidoDummy.setEstado("FINALIZADO");
 
         Config configDummy = new Config(1, "123", "Restaurante", "123", "Caracas", "Gracias");
+        configDummy.setTasaDolar(new BigDecimal("40.00"));
         DetallePedido detalleDummy = new DetallePedido();
+        detalleDummy.setId(1);
         detalleDummy.setNombre("Plato");
         detalleDummy.setCantidad(1);
         detalleDummy.setPrecioDecimal(new BigDecimal("40.00"));
+        detalleDummy.setMonedaBase("USD");
+        detalleDummy.setAplicaIva(false);
+        detalleDummy.setPrecioIncluyeIva(false);
+        detalleDummy.setIvaPorcentaje(BigDecimal.ZERO.setScale(2));
 
         PedidoPdfServicio pdfServicio = new PedidoPdfServicio(
                 id -> pedidoDummy,

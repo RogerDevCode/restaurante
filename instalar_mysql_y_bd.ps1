@@ -1,5 +1,8 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param()
+
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 $ErrorActionPreference = "Stop"
 $scriptDir = $PSScriptRoot

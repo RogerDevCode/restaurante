@@ -1,7 +1,6 @@
 @echo off
 setlocal
 title Generador de Restaurante_Ejecutable (Windows 11)
-chcp 65001 >nul
 cd /d "%~dp0"
 
 echo ========================================================

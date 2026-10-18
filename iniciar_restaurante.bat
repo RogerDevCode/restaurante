@@ -1,15 +1,14 @@
 @echo off
 title Sistema de Restaurante 2026 - Iniciando
-chcp 65001 >nul
 cd /d "%~dp0"
 cls
 
 echo ========================================================
-echo       SISTEMA DE GESTIÓN DE RESTAURANTE 2026
+echo       SISTEMA DE GESTION DE RESTAURANTE 2026
 echo ========================================================
 echo.
 
-:: Configurar Java desde JAVA_HOME si no está en PATH
+:: Configurar Java desde JAVA_HOME si no esta en PATH
 where java >nul 2>&1
 if %errorlevel% neq 0 (
     if defined JAVA_HOME (
@@ -19,11 +18,11 @@ if %errorlevel% neq 0 (
     )
 )
 
-:: Verificar si Java está instalado
+:: Verificar si Java esta instalado
 java -version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Java no está instalado o no se encuentra en el PATH ni JAVA_HOME.
-    echo Por favor ejecute 'instalar_acceso_directo.bat' para configurar Java 21 automáticamente.
+    echo [ERROR] Java no esta instalado o no se encuentra en el PATH ni JAVA_HOME.
+    echo Por favor ejecute 'instalar_acceso_directo.bat' para configurar Java 21 automaticamente.
     echo.
     pause
     exit /b 1
@@ -34,7 +33,7 @@ if not exist ".env" (
     if exist ".env.example" (
         echo [INFO] Creando archivo .env a partir de .env.example...
         copy ".env.example" ".env" >nul
-        echo [AVISO] Se ha generado el archivo .env. Si tu configuración de base de datos
+        echo [AVISO] Se ha generado el archivo .env. Si tu configuracion de base de datos
         echo         es distinta a la por defecto, edita el archivo .env con el Bloc de Notas.
         echo.
     )
@@ -62,7 +61,7 @@ if %errorlevel% equ 0 (
     goto fin
 )
 
-echo [INFO] No se encontró dist\Restaurante.jar ni Apache Ant.
+echo [INFO] No se encontro dist\Restaurante.jar ni Apache Ant.
 echo Compilando clases con javac...
 if not exist "build\classes" mkdir "build\classes"
 
@@ -71,21 +70,21 @@ javac -encoding UTF-8 -cp "librerias\AbsoluteLayout.jar;librerias\itextpdf-5.5.1
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Hubo un problema al compilar las fuentes.
-    echo Revisa el archivo README.txt para más detalles.
+    echo Revisa el archivo README.txt para mas detalles.
     pause
     exit /b 1
 )
 
-:: Copiar recursos de imágenes si existen
+:: Copiar recursos de imagenes si existen
 xcopy /E /I /Y "src\Img" "build\classes\Img" >nul 2>&1
 
-echo [INFO] Iniciando la aplicación...
+echo [INFO] Iniciando la aplicacion...
 java -cp "librerias\AbsoluteLayout.jar;librerias\itextpdf-5.5.1.jar;librerias\mysql-connector-j-8.0.31.jar;librerias\pdfbox-2.0.31.jar;librerias\fontbox-2.0.31.jar;librerias\commons-logging-1.2.jar;build\classes" restaurante.Restaurante
 
 :fin
 if %errorlevel% neq 0 (
     echo.
-    echo [AVISO] La aplicación finalizó con código de error.
-    echo Revisa los archivos en la carpeta logs\ para más información.
+    echo [AVISO] La aplicacion finalizo con codigo de error.
+    echo Revisa los archivos en la carpeta logs\ para mas informacion.
     pause
 )

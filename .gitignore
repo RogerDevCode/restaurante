@@ -21,3 +21,5 @@ scratch*
 *.bak
 debug.log
 target.txt
+tickets/
+respaldo_*.sql

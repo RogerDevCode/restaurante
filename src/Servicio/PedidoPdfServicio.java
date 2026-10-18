@@ -140,6 +140,38 @@ public final class PedidoPdfServicio {
         }
     }
 
+    public boolean emitirPreFactura(int idPedido) {
+        if (idPedido <= 0) {
+            throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para emitir la pre-factura.");
+        }
+        Pedidos pedido = pedidos.obtener(idPedido);
+        if (pedido == null) {
+            throw ErrorAplicacionException.validacion("No existe el pedido " + idPedido + ".");
+        }
+        Config datosConfiguracion = configuracion.obtener();
+        if (datosConfiguracion == null) {
+            throw new ErrorAplicacionException(
+                    "No existe la configuración de la empresa para emitir la pre-factura.",
+                    new IllegalStateException("La tabla config no contiene un registro."));
+        }
+        List<DetallePedido> lineas = detalles.obtener(idPedido);
+        if (lineas == null || lineas.isEmpty()) {
+            throw ErrorAplicacionException.validacion(
+                    "El pedido " + idPedido + " no tiene consumos registrados para emitir la pre-factura.");
+        }
+        Path archivo = generador.generarPreFactura(pedido, datosConfiguracion, lineas);
+        try {
+            return abridor.abrir(archivo);
+        } catch (IOException error) {
+            throw new ErrorAplicacionException("La pre-factura se generó, pero no se pudo imprimir o abrir automáticamente.", error);
+        } catch (RuntimeException error) {
+            if (error instanceof ErrorAplicacionException) {
+                throw error;
+            }
+            throw new ErrorAplicacionException("La pre-factura se generó, pero no se pudo imprimir o abrir automáticamente.", error);
+        }
+    }
+
     @FunctionalInterface
     public interface ConsultaPedido {
         Pedidos obtener(int idPedido);

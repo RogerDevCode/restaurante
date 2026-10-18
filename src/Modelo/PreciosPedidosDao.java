@@ -350,9 +350,16 @@ public class PreciosPedidosDao {
                                     }
                                 }
                                 if (det.getIvaPorcentaje() == null) {
-                                    det.setIvaPorcentaje(Boolean.TRUE.equals(det.getAplicaIva())
+                                    BigDecimal ivaAsignado = Boolean.TRUE.equals(det.getAplicaIva())
                                             ? ivaPorcentajeCabecera
-                                            : BigDecimal.ZERO.setScale(2));
+                                            : BigDecimal.ZERO.setScale(2);
+                                    det.setIvaPorcentaje(ivaAsignado);
+                                    try (PreparedStatement psIva = con.prepareStatement(
+                                            "UPDATE detalle_pedidos SET iva_porcentaje = ? WHERE id = ?")) {
+                                        psIva.setBigDecimal(1, ivaAsignado);
+                                        psIva.setInt(2, det.getId());
+                                        psIva.executeUpdate();
+                                    }
                                 }
                             }
                         }

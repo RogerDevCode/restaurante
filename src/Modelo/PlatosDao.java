@@ -17,7 +17,6 @@ public class PlatosDao implements PlatosRepositorio {
 
     public PlatosDao() {
         this(new ProveedorConexionJdbc());
-        asegurarCatalogoPlatosVigente();
     }
 
     public void asegurarCatalogoPlatosVigente() {
@@ -136,7 +135,7 @@ public class PlatosDao implements PlatosRepositorio {
                   ORDER BY total DESC
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
-              WHERE p.fecha = ? AND p.activo = 1 AND (p.nombre LIKE ? OR c.nombre LIKE ?)
+              WHERE p.activo = 1 AND (p.nombre LIKE ? OR c.nombre LIKE ?)
               ORDER BY favorito DESC, COALESCE(r.total, 0) DESC, c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
               """
             : """
@@ -160,16 +159,15 @@ public class PlatosDao implements PlatosRepositorio {
                   ORDER BY total DESC
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
-              WHERE p.fecha = ? AND p.activo = 1
+              WHERE p.activo = 1
               ORDER BY favorito DESC, COALESCE(r.total, 0) DESC, c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
               """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, fecha);
             if (filtrarNombre) {
                 String filtro = "%" + valor.trim() + "%";
+                sentencia.setString(1, filtro);
                 sentencia.setString(2, filtro);
-                sentencia.setString(3, filtro);
             }
             try (ResultSet resultados = sentencia.executeQuery()) {
                 while (resultados.next()) {
@@ -218,7 +216,7 @@ public class PlatosDao implements PlatosRepositorio {
                   ORDER BY total DESC
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
-              WHERE p.fecha = ? AND p.activo = 1 AND p.precio_clasificado = 1 AND (p.nombre LIKE ? OR c.nombre LIKE ?)
+              WHERE p.activo = 1 AND p.precio_clasificado = 1 AND (p.nombre LIKE ? OR c.nombre LIKE ?)
               ORDER BY favorito DESC, COALESCE(r.total, 0) DESC, c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
               """
             : """
@@ -242,16 +240,15 @@ public class PlatosDao implements PlatosRepositorio {
                   ORDER BY total DESC
                   LIMIT 10
               ) r ON r.nombre_clave = p.nombre_clave
-              WHERE p.fecha = ? AND p.activo = 1 AND p.precio_clasificado = 1
+              WHERE p.activo = 1 AND p.precio_clasificado = 1
               ORDER BY favorito DESC, COALESCE(r.total, 0) DESC, c.nombre IS NULL ASC, c.nombre ASC, p.nombre ASC
               """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, fecha);
             if (filtrarNombre) {
                 String filtro = "%" + valor.trim() + "%";
+                sentencia.setString(1, filtro);
                 sentencia.setString(2, filtro);
-                sentencia.setString(3, filtro);
             }
             try (ResultSet resultados = sentencia.executeQuery()) {
                 while (resultados.next()) {
@@ -265,7 +262,7 @@ public class PlatosDao implements PlatosRepositorio {
             throw new DataAccessException("No se pudieron listar los platos para la venta.", ex);
         }
         if (platos.isEmpty()) {
-            LOGGER.log(java.util.logging.Level.INFO, "[CARGA_DATOS] Carga de platos para venta retornó 0 items (fecha: ''{0}'', filtro: ''{1}'').", new Object[]{fecha, valor != null ? valor : ""});
+            LOGGER.log(java.util.logging.Level.INFO, "[CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: ''{0}'').", valor != null ? valor : "");
         }
         return platos;
     }
@@ -318,20 +315,18 @@ public class PlatosDao implements PlatosRepositorio {
             ? """
               SELECT id, nombre, precio, fecha
               FROM platos
-              WHERE fecha = ? AND nombre LIKE ?
+              WHERE nombre LIKE ?
               ORDER BY nombre ASC
               """
             : """
               SELECT id, nombre, precio, fecha
               FROM platos
-              WHERE fecha = ?
               ORDER BY nombre ASC
               """;
         try (Connection conexion = conexiones.getConnection();
                 PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, fecha);
             if (filtrarNombre) {
-                sentencia.setString(2, "%" + (valor != null ? valor.trim() : "") + "%");
+                sentencia.setString(1, "%" + (valor != null ? valor.trim() : "") + "%");
             }
             try (ResultSet resultados = sentencia.executeQuery()) {
                 while (resultados.next()) {
@@ -386,7 +381,8 @@ public class PlatosDao implements PlatosRepositorio {
             return java.util.Optional.empty();
         }
         String sql = """
-            SELECT id, nombre
+            SELECT id, nombre, precio, fecha,
+                   moneda_base, precio_usd, precio_ves, precio_clasificado, precio_incluye_iva
             FROM platos
             WHERE TRIM(LOWER(nombre)) = TRIM(LOWER(?)) AND activo = 1
             ORDER BY id ASC
@@ -400,6 +396,26 @@ public class PlatosDao implements PlatosRepositorio {
                     Platos plato = new Platos();
                     plato.setId(resultados.getInt("id"));
                     plato.setNombre(resultados.getString("nombre"));
+                    plato.setFecha(resultados.getString("fecha"));
+                    plato.setActivo(true);
+                    try {
+                        plato.setMonedaBase(resultados.getString("moneda_base"));
+                        plato.setPrecioUsd(resultados.getBigDecimal("precio_usd"));
+                        plato.setPrecioVes(resultados.getBigDecimal("precio_ves"));
+                        plato.setPrecioClasificado(resultados.getInt("precio_clasificado") != 0);
+                        int incIva = resultados.getInt("precio_incluye_iva");
+                        if (!resultados.wasNull()) {
+                            plato.setPrecioIncluyeIva(incIva != 0);
+                        }
+                    } catch (SQLException ignored) {}
+                    BigDecimal precioBd = resultados.getBigDecimal("precio");
+                    if ("VES".equalsIgnoreCase(plato.getMonedaBase()) && plato.getPrecioVes() != null) {
+                        plato.setPrecioDecimal(plato.getPrecioVes());
+                    } else if (plato.getPrecioUsd() != null) {
+                        plato.setPrecioDecimal(plato.getPrecioUsd());
+                    } else if (precioBd != null) {
+                        plato.setPrecioDecimal(precioBd);
+                    }
                     return java.util.Optional.of(plato);
                 }
             }

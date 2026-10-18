@@ -31,6 +31,7 @@
 | `./inicio_fresco.sh [--sin-semana] [--forzar]` | **Destructivo**: backup → vacía 16 tablas (preserva `schema_migrations`) → siembra maestra (4 salas, 6 categorías, 20 platos, 6 mesoneros, clientes, config, admin) → semana demo 7 días + cierres → verifica. Vars: `CONTENEDOR/MYSQL_USER/MYSQL_PASS/MYSQL_DB`. Pide `SI` salvo `--forzar` |
 | `MYSQL_DB=restaurante_prueba ./inicio_fresco.sh --forzar` | Probar el script en BD scratch (no toca producción) |
 | `actualizar_bd.bat` | Migración segura Windows (JDBC, con postcondiciones) |
+| `limpiar_para_comenzar_hoy.bat` / `.sh` | Limpieza operativa para iniciar servicio: backup previo → vacía pedidos, consumos, pagos y cierres → contador a #1 → mesas 100% libres → actualiza platos a hoy → preserva intactos 87 platos reales, clientes, salas, categorías, mesoneros, usuarios y config |
 | `BD.sql` + `actualizar_bd.sql` + `db/migrations/actualizar_bd.sql` | Schema fresco + migraciones idempotentes (los 2 últimos **deben ser byte-idénticos**: lo exige `InstaladoresSeguridadTest`) |
 
 ## Instalación Windows (un clic, requieren Admin)
@@ -45,6 +46,21 @@
 | `listar_impresoras.bat` | Lista impresoras (nombre, default, puerto, driver) para configurar tickera |
 | `configurar_mysql.ps1` | Configura/eleva MySQL en Windows |
 
+## Modelo de Dominio: Vocabulario Unificado (Comanda vs. Pedido/Cuenta vs. Factura)
+
+Para evitar confusiones entre el lenguaje coloquial ("el cliente hizo un pedido") y la arquitectura técnica del sistema, se fija la siguiente terminología canónica:
+
+| Concepto | Qué representa | Alcance / Impresión | Impacto Fiscal y Caja |
+|---|---|---|---|
+| **Comanda** (Ronda de cocina / Marcha) | Orden operativa enviada a cocina o barra. Una mesa puede generar múltiples comandas durante su estancia (ronda 1: bebidas/entradas; ronda 2: platos fuertes; ronda 3: postres/cafés). | **Solo ítems nuevos:** Al imprimir comanda en cocina (`ServicioComandaCocina`), se imprime **únicamente el incremento de la ronda en curso**. Los pedidos/ítems anteriores ya fueron marchados y servidos; nunca se reimprimen para no duplicar platos en cocina. | Cero impacto contable o de caja. Es una orden de producción interna. |
+| **Cuenta de Mesa / Pedido** (Consumo acumulado) | El folio o contenedor que acumula todas las comandas/rondas de la mesa (`pedidos` y `detalle_pedidos` en estado `PENDIENTE`). | **Pre-cuenta:** Ticket de revisión informativo no fiscal que se entrega a los comensales para verificar el consumo antes de pagar ("la cuenta, por favor"). | No es venta definitiva. Puede modificarse, corregirse o cancelarse si la mesa se desocupa. |
+| **Factura** (Venta definitiva / Cobro) | El documento fiscal y contable formal emitido al momento del cobro (`FINALIZADO`). | **Factura / Ticket Fiscal:** Documento con correlativo, fecha/hora de cobro, desglose estricto de Base Imponible, Exento, IVA y métodos de pago. | **Vinculante:** Registra ingreso en caja (`pedido_pagos`), devenga IVA, libera la mesa y alimenta de forma inmutable el Cierre Z del día. |
+
+### Los 3 Tipos de Anulación (Diferenciación estricta)
+1. **Anulación de Ítem / Comanda (Cocina):** Cancelación de un plato antes o durante su preparación (por falta de insumo o cambio de opinión inmediato). Resta el plato de la cuenta de la mesa y notifica a cocina. No toca dinero ni caja.
+2. **Cancelación de Cuenta / Fuga (Mesa Abierta):** Mesa que se retira sin pagar o servicio abortado antes de facturar. Se libera la mesa y se anula el pedido pendiente sin registrar pagos. Cero impacto en caja o impuestos.
+3. **Anulación de Factura (Venta Cobrada):** Venta que ya fue pagada e ingresada en caja. Su anulación requiere contra-asiento formal (`pedido_saldos_movimientos`), reversión en caja y ajuste contable para que el Cierre Z y la auditoría cuadren al centavo.
+
 ## Notas para agentes
 - DB prod: `docker exec restaurante-db-1 mysql -uadmin -padmin restaurante -e "..."`. No hay `mysql` CLI en el host.
 - **Tests E2E**: SIEMPRE deben ejecutarse en una ventana virtual aislada (mediante `./e2e_virtual.sh [clase]` sobre Xvfb `:99`), con teclado y mouse virtuales propios, sin interferir jamás con el escritorio ni el cursor del operador.
@@ -54,3 +70,18 @@
 - **Esquema de BD vs Clave/Valor**: Antes de agregar una columna a la base de datos (especialmente en `config`), evaluar primero si se puede resolver la necesidad con el modelo clave/valor de configuración (`configuracion_sistema` vía `ConfigClaves` y `ConfiguracionRepositorio`), evitando alteraciones de esquema (DDL) innecesarias.
 - **Diseñador Swing**: `src/Vista/Sistema.java` tiene edición manual fuera de `Sistema.form` (scroll lateral `scrollBarraLateral`, `btnDashboard`, retoques de contraste/mesoneros). No regenerar desde Matisse o se pierde; si se edita el `.form`, remodelar el `JScrollPane` allí.
 - **Precisión monetaria (política)**: la unidad del dinero es **2 decimales** de punta a punta (BD `DECIMAL(*,2)`, setters de dominio, `PedidosDao.importePersistible` y `CalculoMonetarioPedido.validarMontoCalculado` fallan si `scale > 2`). La aritmética intermedia usa **más decimales** (`CalculoMonetarioPedido.ESCALA_INTERMEDIA = 8`, y en SQL `ROUND(..., 2)` en cada `total * tasa`) y se redondea **una sola vez en el límite de línea/pedido** (HALF_UP). Regla derivada: cualquier conversión tasa-aplicada debe redondearse **por pedido** (`ROUND(total*tasa,2)`) antes de acumular; así `Σ desglose == cabecera` (métodos y salas) por partición. La presentación sigue en 2 decimales (`%.2f` / `setScale(2)`). No subir decimales a la BD para "cuadrar" reportes: el descuadre es de agregación, no de precisión.
+- **Scripts de Windows (.bat, .ps1, .vbs) — Reglas estrictas de generación**:
+  - **Terminaciones de línea (CRLF obligatorio)**: TODO archivo `.bat`, `.cmd`, `.ps1` y `.vbs` DEBE guardarse con terminaciones de línea Windows **CRLF (`\r\n`)**. En Linux/Git, guardar con LF causa que `cmd.exe` descalibre el puntero de archivo y mutile comandos al inicio de cada línea (`echo` $\rightarrow$ `ho` $\rightarrow$ `o`, `set` $\rightarrow$ `t`, `if not` $\rightarrow$ `not`). `.gitattributes` fija `eol=crlf`. Al generar o editar desde Linux, ejecutar siempre: `sed -i 's/\r$//; s/$/\r/' <archivo>`.
+  - **Scripts Batch (`.bat` / `.cmd`)**:
+    - **PROHIBIDO `chcp 65001`**: no incluir cambio de página de códigos dentro de scripts `.bat`. En `cmd.exe` desincroniza el buffer de lectura de líneas.
+    - **ASCII puro sin BOM**: texto en inglés o español sin acentos (`á`, `é`, `í`, `ó`, `ú`, `ñ`, `¡`, `¿`). Sin Byte Order Mark.
+  - **Scripts PowerShell (`.ps1`)**:
+    - **UTF-8 CON BOM obligatorio (`\xef\xbb\xbf`)**: Windows PowerShell 5.1 (por defecto en Windows 10/11) asume ANSI/Windows-1252 si el archivo carece de BOM, corrompiendo tildes y caracteres especiales en comparaciones y salidas.
+    - **Salida UTF-8 en consola**: incluir al inicio:
+      ```powershell
+      [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+      $OutputEncoding = [System.Text.Encoding]::UTF8
+      ```
+  - **Scripts VBScript (`.vbs`)**:
+    - **ASCII puro sin BOM**: `wscript.exe` / `cscript.exe` no soporta UTF-8 sin BOM. Todo diálogo (`MsgBox`) y texto debe ser ASCII plano sin caracteres multibyte.
+

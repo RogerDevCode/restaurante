@@ -112,11 +112,16 @@ public class PanelAtencionMesasSplit extends JPanel {
     private JButton btnMasCant;
     private JTextField txtCantManual;
     private JButton btnEnviarCocina;
+    private JButton btnPreFactura;
     private JButton btnCobrar;
+    private JButton btnCortesia;
+    private JButton btnFuga;
     private JButton btnLimpiar;
+    private JCheckBox chkImprimirComanda;
     private ImageIcon iconoMesaSplit;
     private JCheckBox chkFiltroRapidoSplit;
     private Integer desplazarAPlatoIdSplit = null;
+    private final Map<Integer, DetallePedido> detallesExistentesCarrito = new HashMap<>();
     /** Ancho objetivo por tarjeta (botón 120 + gaps): la grilla ajusta columnas al viewport. */
     private static final int ANCHO_TARJETA_MESA_OBJETIVO = 135;
 
@@ -526,6 +531,25 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnLimpiar.addActionListener(e -> limpiarComanda());
         pnlBotones.add(btnLimpiar);
 
+        chkImprimirComanda = new JCheckBox("Imprimir Comanda", true);
+        chkImprimirComanda.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        chkImprimirComanda.setForeground(new Color(0, 102, 102));
+        chkImprimirComanda.setOpaque(false);
+        chkImprimirComanda.setFocusable(false);
+        chkImprimirComanda.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        chkImprimirComanda.setToolTipText("Habilita o deshabilita la emisión automática de la comanda de cocina al enviar el pedido");
+        String confComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
+        chkImprimirComanda.setSelected(!"0".equals(confComanda) && !"false".equalsIgnoreCase(confComanda));
+        chkImprimirComanda.addActionListener(e -> {
+            String val = chkImprimirComanda.isSelected() ? "1" : "0";
+            new Thread(() -> {
+                try {
+                    new Modelo.ConfiguracionSistemaDao().guardar(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, val);
+                } catch (Exception ignored) {}
+            }).start();
+        });
+        pnlBotones.add(chkImprimirComanda);
+
         btnEnviarCocina = new JButton("Enviar a Cocina");
         btnEnviarCocina.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnEnviarCocina.setBackground(new Color(0, 102, 102));
@@ -536,15 +560,45 @@ public class PanelAtencionMesasSplit extends JPanel {
         btnEnviarCocina.addActionListener(e -> enviarPedidoCocina());
         pnlBotones.add(btnEnviarCocina);
 
-        btnCobrar = new JButton("Cobrar / Facturar");
+        btnPreFactura = new JButton("Pre-Factura");
+        btnPreFactura.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnPreFactura.setBackground(new Color(39, 174, 96));
+        btnPreFactura.setForeground(Color.WHITE);
+        btnPreFactura.setPreferredSize(new Dimension(110, 28));
+        btnPreFactura.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnPreFactura.setToolTipText("Emitir la cuenta / pre-factura para el cliente sin cerrar la mesa");
+        btnPreFactura.addActionListener(e -> emitirPreFacturaDirecta());
+        pnlBotones.add(btnPreFactura);
+
+        btnCobrar = new JButton("Cobrar");
         btnCobrar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnCobrar.setBackground(new Color(40, 116, 166));
         btnCobrar.setForeground(Color.WHITE);
-        btnCobrar.setPreferredSize(new Dimension(145, 28));
+        btnCobrar.setPreferredSize(new Dimension(95, 28));
         btnCobrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCobrar.setToolTipText("Cobrar y facturar la comanda de la mesa");
         btnCobrar.addActionListener(e -> cobrarPedidoDirecto());
         pnlBotones.add(btnCobrar);
+
+        btnCortesia = new JButton("Cortesía");
+        btnCortesia.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnCortesia.setBackground(new Color(142, 68, 173));
+        btnCortesia.setForeground(Color.WHITE);
+        btnCortesia.setPreferredSize(new Dimension(95, 28));
+        btnCortesia.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCortesia.setToolTipText("Registrar como consumo de la casa / cortesía autorizada");
+        btnCortesia.addActionListener(e -> aplicarCortesiaDirecto());
+        pnlBotones.add(btnCortesia);
+
+        btnFuga = new JButton("No Pagó");
+        btnFuga.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnFuga.setBackground(new Color(192, 57, 43));
+        btnFuga.setForeground(Color.WHITE);
+        btnFuga.setPreferredSize(new Dimension(95, 28));
+        btnFuga.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnFuga.setToolTipText("Liberar la mesa anulando el pedido por retiro sin pago (Fuga / Incobrable)");
+        btnFuga.addActionListener(e -> anularPedidoPorFugaDirecto());
+        pnlBotones.add(btnFuga);
 
         pnlAcciones.add(pnlBotones);
         pnlDerecho.add(pnlAcciones, BorderLayout.SOUTH);
@@ -653,6 +707,9 @@ public class PanelAtencionMesasSplit extends JPanel {
                 lblCabeceraMesa.setForeground(new Color(0, 102, 102));
                 btnEnviarCocina.setText("Enviar a Cocina");
                 btnCobrar.setEnabled(false);
+                if (btnPreFactura != null) btnPreFactura.setEnabled(false);
+                if (btnCortesia != null) btnCortesia.setEnabled(false);
+                if (btnFuga != null) btnFuga.setEnabled(false);
                 if (cbMesonero != null && cbMesonero.getItemCount() > 0) {
                     cbMesonero.setSelectedIndex(0);
                 }
@@ -906,6 +963,9 @@ public class PanelAtencionMesasSplit extends JPanel {
             lblCabeceraMesa.setForeground(new Color(180, 40, 40));
             btnEnviarCocina.setText("Actualizar Pedido");
             btnCobrar.setEnabled(true);
+            if (btnPreFactura != null) btnPreFactura.setEnabled(true);
+            if (btnCortesia != null) btnCortesia.setEnabled(true);
+            if (btnFuga != null) btnFuga.setEnabled(true);
             cargarMesoneros();
             cbMesonero.setSelectedIndex(0);
             preseleccionarMesoneroDelPedido(idPedidoExistente);
@@ -916,9 +976,13 @@ public class PanelAtencionMesasSplit extends JPanel {
             lblCabeceraMesa.setForeground(new Color(0, 102, 102));
             btnEnviarCocina.setText("Enviar a Cocina");
             btnCobrar.setEnabled(false);
+            if (btnPreFactura != null) btnPreFactura.setEnabled(false);
+            if (btnCortesia != null) btnCortesia.setEnabled(false);
+            if (btnFuga != null) btnFuga.setEnabled(false);
             idMesoneroOriginal = null;
             nombreMesoneroOriginal = null;
             mesoneroQuitadoExplicito = false;
+            detallesExistentesCarrito.clear();
             modeloCarrito.setRowCount(0);
             recalcularTotales();
             txtBuscarPlato.requestFocusInWindow();
@@ -1003,21 +1067,24 @@ public class PanelAtencionMesasSplit extends JPanel {
                 }
                 try {
                     List<DetallePedido> detalles = get();
-                    for (DetallePedido d : detalles) {
+                    detallesExistentesCarrito.clear();
+                    for (int fila = 0; fila < detalles.size(); fila++) {
+                        DetallePedido d = detalles.get(fila);
+                        detallesExistentesCarrito.put(fila, d);
                         int idPlato = (d.getIdPlato() != null && d.getIdPlato() > 0) ? d.getIdPlato() : (d.getId() > 0 ? -d.getId() : 0);
                         if (!platosPorId.containsKey(idPlato)) {
                             Platos platoDummy = new Platos();
                             platoDummy.setId(idPlato);
                             platoDummy.setNombre(d.getNombre());
-                            platoDummy.setMonedaBase(d.getMonedaBase() != null ? d.getMonedaBase() : "USD");
-                            platoDummy.setAplicaIva(d.getAplicaIva() == null || d.getAplicaIva());
-                            platoDummy.setPrecioIncluyeIva(Boolean.TRUE.equals(d.getPrecioIncluyeIva()));
+                            platoDummy.setMonedaBase(d.getMonedaBase() != null && !d.getMonedaBase().isBlank() ? d.getMonedaBase() : "VES");
+                            platoDummy.setAplicaIva(d.getAplicaIva() != null ? d.getAplicaIva() : false);
+                            platoDummy.setPrecioIncluyeIva(Boolean.TRUE.equals(d.getPrecioIncluyeIva()) && platoDummy.isAplicaIva());
                             platosPorId.put(idPlato, platoDummy);
                         }
                         BigDecimal precio = d.getPrecioDecimal().setScale(2, RoundingMode.HALF_UP);
                         BigDecimal sub = precio.multiply(BigDecimal.valueOf(d.getCantidad())).setScale(2, RoundingMode.HALF_UP);
                         BigDecimal tasa = sistema.getTasaActual();
-                        String mBase = d.getMonedaBase() != null ? d.getMonedaBase() : "USD";
+                        String mBase = d.getMonedaBase() != null && !d.getMonedaBase().isBlank() ? d.getMonedaBase() : "VES";
                         modeloCarrito.addRow(new Object[]{
                                 idPlato,
                                 d.getNombre(),
@@ -1276,6 +1343,17 @@ public class PanelAtencionMesasSplit extends JPanel {
         int fila = tblCarrito.getSelectedRow();
         if (fila >= 0) {
             modeloCarrito.removeRow(fila);
+            detallesExistentesCarrito.remove(fila);
+            Map<Integer, DetallePedido> temp = new HashMap<>();
+            for (Map.Entry<Integer, DetallePedido> e : detallesExistentesCarrito.entrySet()) {
+                if (e.getKey() > fila) {
+                    temp.put(e.getKey() - 1, e.getValue());
+                } else if (e.getKey() < fila) {
+                    temp.put(e.getKey(), e.getValue());
+                }
+            }
+            detallesExistentesCarrito.clear();
+            detallesExistentesCarrito.putAll(temp);
             recalcularTotales();
         }
     }
@@ -1287,6 +1365,7 @@ public class PanelAtencionMesasSplit extends JPanel {
                     "Limpiar Comanda", JOptionPane.YES_NO_OPTION);
             if (resp == JOptionPane.YES_OPTION) {
                 modeloCarrito.setRowCount(0);
+                detallesExistentesCarrito.clear();
                 recalcularTotales();
             }
         }
@@ -1296,7 +1375,11 @@ public class PanelAtencionMesasSplit extends JPanel {
         if (modeloCarrito.getRowCount() == 0) {
             lblTotalUsd.setText("USD $ 0.00");
             lblTotalBs.setText("  |  Bs. 0.00");
-            btnCobrar.setEnabled(idPedidoActivo > 0);
+            boolean permitir = idPedidoActivo > 0;
+            btnCobrar.setEnabled(permitir);
+            if (btnPreFactura != null) btnPreFactura.setEnabled(permitir);
+            if (btnCortesia != null) btnCortesia.setEnabled(permitir);
+            if (btnFuga != null) btnFuga.setEnabled(permitir);
             return;
         }
 
@@ -1305,6 +1388,9 @@ public class PanelAtencionMesasSplit extends JPanel {
             lblTotalUsd.setText("USD $ 0.00");
             lblTotalBs.setText("  |  (Tasa no configurada)");
             btnCobrar.setEnabled(false);
+            if (btnPreFactura != null) btnPreFactura.setEnabled(false);
+            if (btnCortesia != null) btnCortesia.setEnabled(false);
+            if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0);
             return;
         }
         BigDecimal ivaPorcentaje = sistema.getIvaPorcentajeActual();
@@ -1312,6 +1398,9 @@ public class PanelAtencionMesasSplit extends JPanel {
             lblTotalUsd.setText("USD $ 0.00");
             lblTotalBs.setText("  |  (IVA no configurado)");
             btnCobrar.setEnabled(false);
+            if (btnPreFactura != null) btnPreFactura.setEnabled(false);
+            if (btnCortesia != null) btnCortesia.setEnabled(false);
+            if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0);
             return;
         }
 
@@ -1320,22 +1409,42 @@ public class PanelAtencionMesasSplit extends JPanel {
             int idPlato = (int) modeloCarrito.getValueAt(i, 0);
             int cant = (int) modeloCarrito.getValueAt(i, 2);
             BigDecimal precio = Sistema.importeMonetario(modeloCarrito.getValueAt(i, 3));
-            Platos plato = platosPorId.get(idPlato);
-            if (plato == null || plato.getMonedaBase() == null || plato.getMonedaBase().isBlank()) {
-                lblTotalUsd.setText("USD $ 0.00");
-                lblTotalBs.setText("  |  (Producto sin clasificar)");
-                btnCobrar.setEnabled(false);
-                return;
+            DetallePedido detExistente = detallesExistentesCarrito.get(i);
+            String mb;
+            boolean gravado;
+            boolean incIva;
+            BigDecimal ivaLinea;
+
+            if (detExistente != null && detExistente.getMonedaBase() != null && !detExistente.getMonedaBase().isBlank()) {
+                mb = detExistente.getMonedaBase();
+                gravado = Boolean.TRUE.equals(detExistente.getAplicaIva());
+                incIva = Boolean.TRUE.equals(detExistente.getPrecioIncluyeIva());
+                ivaLinea = detExistente.getIvaPorcentaje() != null ? detExistente.getIvaPorcentaje() : (gravado ? ivaPorcentaje : BigDecimal.ZERO.setScale(2));
+            } else {
+                Platos plato = platosPorId.get(idPlato);
+                if (plato == null || plato.getMonedaBase() == null || plato.getMonedaBase().isBlank()) {
+                    lblTotalUsd.setText("USD $ 0.00");
+                    lblTotalBs.setText("  |  (Producto sin clasificar)");
+                    btnCobrar.setEnabled(false);
+                    if (btnPreFactura != null) btnPreFactura.setEnabled(false);
+                    if (btnCortesia != null) btnCortesia.setEnabled(false);
+                    if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0);
+                    return;
+                }
+                if (plato.isAplicaIva() && plato.getPrecioIncluyeIva() == null) {
+                    lblTotalUsd.setText("USD $ 0.00");
+                    lblTotalBs.setText("  |  (IVA inc. no definido)");
+                    btnCobrar.setEnabled(false);
+                    if (btnPreFactura != null) btnPreFactura.setEnabled(false);
+                    if (btnCortesia != null) btnCortesia.setEnabled(false);
+                    if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0);
+                    return;
+                }
+                mb = plato.getMonedaBase();
+                gravado = plato.isAplicaIva();
+                incIva = Boolean.TRUE.equals(plato.getPrecioIncluyeIva());
+                ivaLinea = gravado ? ivaPorcentaje : BigDecimal.ZERO.setScale(2);
             }
-            if (plato.isAplicaIva() && plato.getPrecioIncluyeIva() == null) {
-                lblTotalUsd.setText("USD $ 0.00");
-                lblTotalBs.setText("  |  (IVA inc. no definido)");
-                btnCobrar.setEnabled(false);
-                return;
-            }
-            String mb = plato.getMonedaBase();
-            boolean gravado = plato.isAplicaIva();
-            boolean incIva = Boolean.TRUE.equals(plato.getPrecioIncluyeIva());
 
             DetallePedido det = new DetallePedido();
             det.setPrecioDecimal(precio);
@@ -1343,7 +1452,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             det.setMonedaBase(mb);
             det.setAplicaIva(gravado);
             det.setPrecioIncluyeIva(incIva);
-            det.setIvaPorcentaje(gravado ? ivaPorcentaje : BigDecimal.ZERO.setScale(2));
+            det.setIvaPorcentaje(ivaLinea);
             detalles.add(det);
         }
 
@@ -1351,7 +1460,11 @@ public class PanelAtencionMesasSplit extends JPanel {
         lblTotalUsd.setText("USD $ " + String.format(java.util.Locale.US, "%.2f", calc.totalUsd()));
         lblTotalBs.setText("  |  Bs. " + String.format(java.util.Locale.US, "%.2f", calc.totalVes()));
 
-        btnCobrar.setEnabled(idPedidoActivo > 0 || modeloCarrito.getRowCount() > 0);
+        boolean puedeAccion = idPedidoActivo > 0 || modeloCarrito.getRowCount() > 0;
+        btnCobrar.setEnabled(puedeAccion);
+        if (btnPreFactura != null) btnPreFactura.setEnabled(puedeAccion);
+        if (btnCortesia != null) btnCortesia.setEnabled(puedeAccion);
+        if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0);
         actualizarCabecerasMonedaCarrito();
     }
 
@@ -1450,7 +1563,9 @@ public class PanelAtencionMesasSplit extends JPanel {
         }
 
         try {
-            if (idPedidoActivo > 0) {
+            boolean eraEdicion = idPedidoActivo > 0;
+            int idPedidoFinal;
+            if (eraEdicion) {
                 if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS)) {
                     JOptionPane.showMessageDialog(this,
                             "Tu rol no permite modificar pedidos existentes.",
@@ -1458,11 +1573,18 @@ public class PanelAtencionMesasSplit extends JPanel {
                     return;
                 }
                 pedidosControlador.actualizarPedidoCompleto(idPedidoActivo, p, detalles);
+                idPedidoFinal = idPedidoActivo;
                 sistema.mostrarAvisoEnBanda("Pedido actualizado para " + codigoMesaSeleccionada);
             } else {
                 int idNuevo = pedidosControlador.registrarPedidoCompleto(p, detalles);
                 this.idPedidoActivo = idNuevo;
+                idPedidoFinal = idNuevo;
                 sistema.mostrarAvisoEnBanda("Pedido enviado a cocina para " + codigoMesaSeleccionada + " [#" + idNuevo + "]");
+            }
+            if (chkImprimirComanda != null && chkImprimirComanda.isSelected()) {
+                String salaTexto = (nombreSalaSeleccionada != null && !nombreSalaSeleccionada.isBlank()) ? nombreSalaSeleccionada : "Sala " + idSalaSeleccionada;
+                String mesoneroTexto = (p.getMesoneroNombre() != null && !p.getMesoneroNombre().isBlank()) ? p.getMesoneroNombre() : sistema.getNombreUsuarioActual();
+                Servicio.ServicioComandaCocina.imprimirAsync(idPedidoFinal, salaTexto, numMesaSeleccionada, mesoneroTexto, detalles, eraEdicion);
             }
             refrescarMesasSalaActual();
         } catch (Exception ex) {
@@ -1483,6 +1605,102 @@ public class PanelAtencionMesasSplit extends JPanel {
         } else {
             sistema.mostrarAvisoEnBanda("No hay pedido para cobrar en esta mesa");
         }
+    }
+
+    private void emitirPreFacturaDirecta() {
+        if (idPedidoActivo <= 0 && modeloCarrito.getRowCount() == 0) {
+            sistema.mostrarAvisoEnBanda("No hay pedido activo ni consumos en esta mesa");
+            return;
+        }
+
+        // Si hay consumos en el carrito pero el pedido aún no se ha guardado, o se han modificado items,
+        // guardamos/actualizamos primero para tener el pedido persistido en BD.
+        if (modeloCarrito.getRowCount() > 0) {
+            enviarPedidoCocina();
+        }
+
+        if (idPedidoActivo <= 0) {
+            sistema.mostrarAvisoEnBanda("No se pudo emitir la pre-factura: pedido no guardado.");
+            return;
+        }
+
+        try {
+            pedidosControlador.emitirPreFactura(idPedidoActivo);
+            sistema.mostrarAvisoEnBanda("Pre-factura emitida exitosamente para pedido #" + idPedidoActivo);
+        } catch (Exception ex) {
+            sistema.mostrarAvisoEnBanda("Error al emitir pre-factura: " + ex.getMessage());
+            JOptionPane.showMessageDialog(this,
+                    "Error al emitir pre-factura: " + ex.getMessage(),
+                    "Pre-Factura", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void anularPedidoPorFugaDirecto() {
+        if (idPedidoActivo <= 0) {
+            sistema.mostrarAvisoEnBanda("No hay pedido activo en esta mesa para anular por fuga");
+            return;
+        }
+        int id = idPedidoActivo;
+        String motivo = (String) JOptionPane.showInputDialog(this,
+                "Indique el motivo / detalle del no-pago para el pedido #" + id + ":\n"
+                        + "La mesa se liberará inmediatamente sin generar faltantes falsos en caja.",
+                "Anular por Fuga / No Pagó",
+                JOptionPane.WARNING_MESSAGE,
+                null,
+                null,
+                "Cliente se retiró sin pagar");
+
+        if (motivo == null || motivo.trim().isEmpty()) {
+            return;
+        }
+
+        int confirmacion = JOptionPane.showConfirmDialog(this,
+                "¿Confirma anular el pedido #" + id + " por FUGA / NO-PAGO?\nMotivo: " + motivo.trim(),
+                "Confirmar No-Pago (Fuga)",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (confirmacion != JOptionPane.YES_OPTION) return;
+
+        String usr = (sistema != null) ? sistema.getNombreUsuarioActual() : "Sistema";
+        try {
+            boolean exito = pedidosControlador.anularPedido(id, motivo.trim(), usr);
+            if (exito) {
+                sistema.mostrarAvisoEnBanda("Pedido #" + id + " anulado por fuga. Mesa liberada.");
+                idPedidoActivo = -1;
+                idMesoneroOriginal = null;
+                nombreMesoneroOriginal = null;
+                mesoneroQuitadoExplicito = false;
+                modeloCarrito.setRowCount(0);
+                lblCabeceraMesa.setText("MESA: " + codigoMesaSeleccionada + " (" + nombreSalaSeleccionada + ") — DISPONIBLE (Nuevo Pedido)");
+                lblCabeceraMesa.setForeground(new Color(0, 102, 102));
+                btnEnviarCocina.setText("Enviar a Cocina");
+                btnCobrar.setEnabled(false);
+                if (btnPreFactura != null) btnPreFactura.setEnabled(false);
+                if (btnCortesia != null) btnCortesia.setEnabled(false);
+                if (btnFuga != null) btnFuga.setEnabled(false);
+                recalcularTotales();
+                refrescarMesasSalaActual();
+                RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
+                RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
+            } else {
+                JOptionPane.showMessageDialog(this, "No se pudo anular el pedido #" + id + ".", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al anular pedido por fuga: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void aplicarCortesiaDirecto() {
+        if (modeloCarrito.getRowCount() > 0) {
+            enviarPedidoCocina();
+        }
+        if (idPedidoActivo <= 0) {
+            sistema.mostrarAvisoEnBanda("No hay pedido activo en esta mesa para aplicar cortesía");
+            return;
+        }
+        sistema.cargarPedidoEnPantallaDesdeSplit(idPedidoActivo);
+        sistema.aplicarCortesiaActual();
     }
 
     /** Icono de mesa compartido con el modo clásico (48px, se carga una vez). */
@@ -1604,5 +1822,13 @@ public class PanelAtencionMesasSplit extends JPanel {
 
     public void agregarPlatoSeleccionadoACarrito() {
         agregarPlatoSeleccionadoAlCarrito();
+    }
+
+    public JButton getBtnCortesia() {
+        return btnCortesia;
+    }
+
+    public JButton getBtnFuga() {
+        return btnFuga;
     }
 }

@@ -94,6 +94,11 @@ public final class PedidosControlador {
         servicioPdf.previsualizar(idPedido);
     }
 
+    public boolean emitirPreFactura(int idPedido) {
+        exigirPermiso(PoliticaAcceso.Accion.GESTIONAR_PEDIDOS);
+        return servicioPdf.emitirPreFactura(idPedido);
+    }
+
     public Servicio.CierreCajaServicio.ResultadoCierre imprimirCierreCaja(String fecha, Modelo.CierreCaja.TipoCierre tipo, String usuarioEmisor) {
         return imprimirCierreCaja(fecha, tipo, usuarioEmisor, null, null);
     }

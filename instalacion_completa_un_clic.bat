@@ -1,7 +1,6 @@
 @echo off
 setlocal EnableDelayedExpansion
 title Instalador Todo en Uno - Restaurante 2026
-chcp 65001 >nul
 cd /d "%~dp0"
 
 echo ========================================================
@@ -9,7 +8,7 @@ echo     SISTEMA DE RESTAURANTE 2026 - INSTALACION 1-CLIC
 echo ========================================================
 echo.
 
-:: Verificar privilegios de Administrador para permitir configuración completa del sistema si es posible
+:: Verificar privilegios de Administrador para permitir configuracion completa del sistema si es posible
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     if "%~1" neq "--no-elevate" (

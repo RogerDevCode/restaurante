@@ -102,8 +102,12 @@ public final class CalculoMonetarioPedido {
         validarMontoCalculado(totalVes);
         validarMontoCalculado(totalUsdReferencia);
 
+        BigDecimal totalUsdAditivoLinea = ("VES".equalsIgnoreCase(moneda))
+                ? convertirADolaresReferencia(baseVes.add(exentoVes), tasaNormalizada).add(convertirADolaresReferencia(ivaVes, tasaNormalizada))
+                : totalUsdReferencia;
+
         BigDecimal ajusteCambioBs = totalVes.subtract(
-                totalUsdReferencia.multiply(tasaNormalizada).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP))
+                totalUsdAditivoLinea.multiply(tasaNormalizada).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP))
                 .setScale(ESCALA_MONEDA);
 
         return new CalculoLinea(
@@ -271,6 +275,39 @@ public final class CalculoMonetarioPedido {
             BigDecimal totalVes,
             BigDecimal totalUsdReferencia,
             BigDecimal ajusteCambioBs) {
+
+        public BigDecimal baseImponibleUsd(BigDecimal tasa) {
+            if ("VES".equals(monedaBase)) {
+                return convertirADolaresReferencia(baseImponibleVes, tasa);
+            }
+            return baseImponibleFuente;
+        }
+
+        public BigDecimal exentoUsd(BigDecimal tasa) {
+            if ("VES".equals(monedaBase)) {
+                return convertirADolaresReferencia(exentoVes, tasa);
+            }
+            return exentoFuente;
+        }
+
+        public BigDecimal ivaUsd(BigDecimal tasa) {
+            if ("VES".equals(monedaBase)) {
+                return convertirADolaresReferencia(ivaVes, tasa);
+            }
+            return ivaFuente;
+        }
+
+        public BigDecimal subtotalUsd(BigDecimal tasa) {
+            return baseImponibleUsd(tasa).add(exentoUsd(tasa)).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
+        }
+
+        public BigDecimal subtotalVes() {
+            return baseImponibleVes.add(exentoVes).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
+        }
+
+        public BigDecimal totalUsd(BigDecimal tasa) {
+            return subtotalUsd(tasa).add(ivaUsd(tasa)).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
+        }
     }
 
     public record CalculoPedido(
@@ -293,6 +330,30 @@ public final class CalculoMonetarioPedido {
 
         public BigDecimal subtotalVes() {
             return baseImponibleVes.add(exentoVes).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
+        }
+
+        public BigDecimal baseImponibleUsd() {
+            BigDecimal base = CERO;
+            for (CalculoLinea linea : lineas) {
+                if ("VES".equals(linea.monedaBase())) {
+                    base = base.add(convertirADolaresReferencia(linea.baseImponibleVes(), tasa));
+                } else {
+                    base = base.add(linea.baseImponibleFuente());
+                }
+            }
+            return base.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
+        }
+
+        public BigDecimal exentoUsd() {
+            BigDecimal exento = CERO;
+            for (CalculoLinea linea : lineas) {
+                if ("VES".equals(linea.monedaBase())) {
+                    exento = exento.add(convertirADolaresReferencia(linea.exentoVes(), tasa));
+                } else {
+                    exento = exento.add(linea.exentoFuente());
+                }
+            }
+            return exento.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
         }
 
         public BigDecimal subtotalUsd() {

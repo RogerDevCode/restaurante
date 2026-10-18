@@ -320,16 +320,16 @@ public class ClienteDao implements ClienteRepositorio {
                 String sqlTopPlatos = """
                     SELECT d.nombre,
                            SUM(d.cantidad) AS cant,
-                           SUM(CASE
+                           ROUND(SUM(CASE
                                WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES' AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0
                                    THEN (d.precio * d.cantidad) / p.tasa_cambio
                                ELSE (d.precio * d.cantidad)
-                           END) AS total_usd,
-                           SUM(CASE
+                           END), 2) AS total_usd,
+                           ROUND(SUM(CASE
                                WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES'
                                    THEN (d.precio * d.cantidad)
                                ELSE (d.precio * d.cantidad) * COALESCE(p.tasa_cambio, 1)
-                           END) AS total_bs
+                           END), 2) AS total_bs
                     FROM detalle_pedidos d
                     INNER JOIN pedidos p ON d.id_pedido = p.id
                     WHERE p.estado = 'FINALIZADO'

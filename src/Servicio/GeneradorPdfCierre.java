@@ -149,8 +149,14 @@ public final class GeneradorPdfCierre {
             celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getSubtotalBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
 
             celda(tblFin, "Base Imponible:", FONT_REGULAR, Element.ALIGN_LEFT);
-            celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getSubtotalUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
-            celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getSubtotalBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
+            celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getBaseImponibleUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
+            celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getBaseImponibleBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
+
+            if (cierre.getExentoUsd().compareTo(BigDecimal.ZERO) > 0 || cierre.getExentoBs().compareTo(BigDecimal.ZERO) > 0) {
+                celda(tblFin, "Monto Exento:", FONT_REGULAR, Element.ALIGN_LEFT);
+                celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getExentoUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
+                celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getExentoBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
+            }
 
             celda(tblFin, "I.V.A.:", FONT_REGULAR, Element.ALIGN_LEFT);
             celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getIvaUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);

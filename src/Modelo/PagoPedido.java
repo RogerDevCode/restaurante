@@ -23,7 +23,7 @@ public record PagoPedido(
             throw ErrorAplicacionException.validacion("Seleccione un medio de pago.");
         }
         metodo = metodo.trim().toUpperCase(java.util.Locale.ROOT);
-        if (!java.util.Set.of("EFECTIVO_BS", "EFECTIVO_USD", "TRANSFERENCIA", "TARJETA", "PAGO_MOVIL")
+        if (!java.util.Set.of("EFECTIVO_BS", "EFECTIVO_USD", "TRANSFERENCIA", "TARJETA", "PAGO_MOVIL", "CORTESIA")
                 .contains(metodo)) {
             throw ErrorAplicacionException.validacion("El medio de pago no es válido para el desglose.");
         }

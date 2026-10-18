@@ -166,13 +166,104 @@ public class CierreCajaDao {
                     }
                 }
 
+                // 1.1 Desglose fiscal analítico (Base Imponible y Exento de la jornada)
+                String sqlFiscal = """
+                    SELECT
+                        COALESCE(SUM(CASE
+                            WHEN d.aplica_iva = 1 THEN
+                                CASE
+                                    WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES' AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0
+                                        THEN ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, 16.00)/100.0)) ELSE (d.precio * d.cantidad) END) / p.tasa_cambio, 2)
+                                    ELSE
+                                        ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, 16.00)/100.0)) ELSE (d.precio * d.cantidad) END), 2)
+                                END
+                            ELSE 0.00 END), 0.00) AS base_imp_usd,
+                        COALESCE(SUM(CASE
+                            WHEN d.aplica_iva = 1 THEN
+                                CASE
+                                    WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES'
+                                        THEN ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, 16.00)/100.0)) ELSE (d.precio * d.cantidad) END), 2)
+                                    ELSE
+                                        CASE WHEN p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 THEN ROUND((CASE WHEN d.precio_incluye_iva = 1 THEN (d.precio * d.cantidad) / (1 + (COALESCE(d.iva_porcentaje, 16.00)/100.0)) ELSE (d.precio * d.cantidad) END) * p.tasa_cambio, 2) ELSE 0.00 END
+                                END
+                            ELSE 0.00 END), 0.00) AS base_imp_bs,
+                        COALESCE(SUM(CASE
+                            WHEN d.aplica_iva = 0 OR d.aplica_iva IS NULL THEN
+                                CASE
+                                    WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES' AND p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0
+                                        THEN ROUND((d.precio * d.cantidad) / p.tasa_cambio, 2)
+                                    ELSE
+                                        ROUND((d.precio * d.cantidad), 2)
+                                END
+                            ELSE 0.00 END), 0.00) AS exento_usd,
+                        COALESCE(SUM(CASE
+                            WHEN d.aplica_iva = 0 OR d.aplica_iva IS NULL THEN
+                                CASE
+                                    WHEN UPPER(TRIM(COALESCE(d.moneda_base, 'USD'))) = 'VES'
+                                        THEN ROUND((d.precio * d.cantidad), 2)
+                                    ELSE
+                                        CASE WHEN p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 THEN ROUND((d.precio * d.cantidad) * p.tasa_cambio, 2) ELSE 0.00 END
+                                END
+                            ELSE 0.00 END), 0.00) AS exento_bs
+                    FROM detalle_pedidos d
+                    INNER JOIN pedidos p ON d.id_pedido = p.id
+                    WHERE p.estado = 'FINALIZADO'
+                      AND (COALESCE(p.cerrada_en, p.fecha) LIKE ? OR DATE(COALESCE(p.cerrada_en, p.fecha)) = ?)
+                    """;
+                try (PreparedStatement ps = con.prepareStatement(sqlFiscal)) {
+                    ps.setString(1, likeParam);
+                    ps.setString(2, fechaFiltro);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            BigDecimal baseUsd = rs.getBigDecimal("base_imp_usd");
+                            BigDecimal baseBs = rs.getBigDecimal("base_imp_bs");
+                            BigDecimal exUsd = rs.getBigDecimal("exento_usd");
+                            BigDecimal exBs = rs.getBigDecimal("exento_bs");
+
+                            if (baseUsd.signum() == 0 && exUsd.signum() == 0 && cierre.getSubtotalUsd().signum() > 0) {
+                                if (cierre.getIvaUsd().signum() > 0) {
+                                    baseUsd = cierre.getIvaUsd().multiply(new BigDecimal("100")).divide(new BigDecimal("16.00"), 2, RoundingMode.HALF_UP).min(cierre.getSubtotalUsd());
+                                    exUsd = cierre.getSubtotalUsd().subtract(baseUsd).max(BigDecimal.ZERO);
+                                    baseBs = cierre.getIvaBs().multiply(new BigDecimal("100")).divide(new BigDecimal("16.00"), 2, RoundingMode.HALF_UP).min(cierre.getSubtotalBs());
+                                    exBs = cierre.getSubtotalBs().subtract(baseBs).max(BigDecimal.ZERO);
+                                } else {
+                                    exUsd = cierre.getSubtotalUsd();
+                                    exBs = cierre.getSubtotalBs();
+                                }
+                            }
+                            if (cierre.getSubtotalUsd() != null && cierre.getSubtotalUsd().signum() > 0) {
+                                if (baseUsd.signum() > 0 && exUsd.signum() > 0) {
+                                    baseUsd = cierre.getSubtotalUsd().subtract(exUsd).max(BigDecimal.ZERO);
+                                } else if (exUsd.signum() > 0 && baseUsd.signum() == 0) {
+                                    exUsd = cierre.getSubtotalUsd();
+                                } else if (baseUsd.signum() > 0 && exUsd.signum() == 0) {
+                                    baseUsd = cierre.getSubtotalUsd();
+                                }
+                            }
+                            if (cierre.getSubtotalBs() != null && cierre.getSubtotalBs().signum() > 0) {
+                                if (baseBs.signum() > 0 && exBs.signum() > 0) {
+                                    baseBs = cierre.getSubtotalBs().subtract(exBs).max(BigDecimal.ZERO);
+                                } else if (exBs.signum() > 0 && baseBs.signum() == 0) {
+                                    exBs = cierre.getSubtotalBs();
+                                } else if (baseBs.signum() > 0 && exBs.signum() == 0) {
+                                    baseBs = cierre.getSubtotalBs();
+                                }
+                            }
+                            cierre.setBaseImponibleUsd(baseUsd);
+                            cierre.setBaseImponibleBs(baseBs);
+                            cierre.setExentoUsd(exUsd);
+                            cierre.setExentoBs(exBs);
+                        }
+                    }
+                }
+
                 // 2. Pedidos pendientes (abiertos y cerrados pendientes de pago)
                 String sqlPendientes = """
                     SELECT COUNT(*) AS cant,
                            COALESCE(SUM(CASE WHEN cerrada_en IS NOT NULL THEN 1 ELSE 0 END), 0) AS cerradas_pendientes
                     FROM pedidos
                     WHERE estado = 'PENDIENTE'
-                      AND (fecha LIKE ? OR DATE(fecha) = ?)
+                      AND (COALESCE(cerrada_en, fecha) LIKE ? OR DATE(COALESCE(cerrada_en, fecha)) = ?)
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlPendientes)) {
                     ps.setString(1, likeParam);
@@ -433,6 +524,10 @@ public class CierreCajaDao {
         BigDecimal subBs = BigDecimal.ZERO;
         BigDecimal ivUsd = BigDecimal.ZERO;
         BigDecimal ivBs = BigDecimal.ZERO;
+        BigDecimal baseImpUsdAcum = BigDecimal.ZERO;
+        BigDecimal baseImpBsAcum = BigDecimal.ZERO;
+        BigDecimal exentoUsdAcum = BigDecimal.ZERO;
+        BigDecimal exentoBsAcum = BigDecimal.ZERO;
         BigDecimal efectivoEsperadoBs = BigDecimal.ZERO;
         BigDecimal efectivoEsperadoUsd = BigDecimal.ZERO;
         int mixtosSinDesglose = 0;
@@ -473,6 +568,33 @@ public class CierreCajaDao {
                 subBs = subBs.add(sb);
                 ivUsd = ivUsd.add(iu);
                 ivBs = ivBs.add(ib);
+
+                BigDecimal baseUsdPed;
+                BigDecimal exUsdPed;
+                BigDecimal baseBsPed;
+                BigDecimal exBsPed;
+                if (iu.signum() > 0 && p.getIvaPorcentaje() != null && p.getIvaPorcentaje().compareTo(BigDecimal.ZERO) > 0) {
+                    baseUsdPed = iu.multiply(new BigDecimal("100")).divide(p.getIvaPorcentaje(), 2, RoundingMode.HALF_UP).min(su);
+                    exUsdPed = su.subtract(baseUsdPed).max(BigDecimal.ZERO);
+                    baseBsPed = ib.signum() > 0
+                            ? ib.multiply(new BigDecimal("100")).divide(p.getIvaPorcentaje(), 2, RoundingMode.HALF_UP).min(sb)
+                            : baseUsdPed.multiply(tasa).setScale(2, RoundingMode.HALF_UP);
+                    exBsPed = sb.subtract(baseBsPed).max(BigDecimal.ZERO);
+                } else if (iu.signum() > 0) {
+                    baseUsdPed = su;
+                    exUsdPed = BigDecimal.ZERO;
+                    baseBsPed = sb;
+                    exBsPed = BigDecimal.ZERO;
+                } else {
+                    baseUsdPed = BigDecimal.ZERO;
+                    exUsdPed = su;
+                    baseBsPed = BigDecimal.ZERO;
+                    exBsPed = sb;
+                }
+                baseImpUsdAcum = baseImpUsdAcum.add(baseUsdPed);
+                baseImpBsAcum = baseImpBsAcum.add(baseBsPed);
+                exentoUsdAcum = exentoUsdAcum.add(exUsdPed);
+                exentoBsAcum = exentoBsAcum.add(exBsPed);
 
                 if (p.getPagos() != null && !p.getPagos().isEmpty()) {
                     for (PagoPedido pp : p.getPagos()) {
@@ -537,6 +659,10 @@ public class CierreCajaDao {
         cierre.setTotalVentasBs(totBs);
         cierre.setSubtotalUsd(subUsd);
         cierre.setSubtotalBs(subBs);
+        cierre.setBaseImponibleUsd(baseImpUsdAcum);
+        cierre.setBaseImponibleBs(baseImpBsAcum);
+        cierre.setExentoUsd(exentoUsdAcum);
+        cierre.setExentoBs(exentoBsAcum);
         cierre.setIvaUsd(ivUsd);
         cierre.setIvaBs(ivBs);
         cierre.setResumenEfectivo(efectivoEsperadoBs, efectivoEsperadoUsd, mixtosSinDesglose);
