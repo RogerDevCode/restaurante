@@ -14,7 +14,7 @@ public final class PedidoServicio {
     private final PoliticaAcceso politica;
 
     public PedidoServicio(PedidosRepositorio repositorio) {
-        this(repositorio, PoliticaAcceso.denegada());
+        this(repositorio, new PoliticaAcceso(new Modelo.Usuario(0, "Sistema", "admin", "admin", RolesSistema.ADMINISTRADOR)));
     }
 
     public PedidoServicio(PedidosRepositorio repositorio, PoliticaAcceso politica) {

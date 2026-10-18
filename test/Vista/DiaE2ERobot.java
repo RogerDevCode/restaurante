@@ -34,6 +34,10 @@ public final class DiaE2ERobot {
         robot.setAutoWaitForIdle(true);
     }
 
+    public void waitForIdle() {
+        robot.waitForIdle();
+    }
+
     public <T> T edt(Callable<T> tarea) throws Exception {
         if (SwingUtilities.isEventDispatchThread()) return tarea.call();
         Object[] resultado = new Object[1];
@@ -71,6 +75,7 @@ public final class DiaE2ERobot {
     }
 
     public void clic(Component componente) throws Exception {
+        esperar(componente::isShowing, "Componente visible antes de interactuar: " + componente);
         edt(() -> {
             if (componente instanceof javax.swing.JComponent jc) {
                 jc.scrollRectToVisible(new java.awt.Rectangle(0, 0, jc.getWidth(), jc.getHeight()));
@@ -78,7 +83,8 @@ public final class DiaE2ERobot {
             return null;
         });
         robot.waitForIdle();
-        robot.delay(100);
+        robot.delay(50);
+        esperar(componente::isShowing, "Componente visible tras scroll: " + componente);
         Point punto = edt(componente::getLocationOnScreen);
         Dimension tamano = edt(componente::getSize);
         if (tamano.width <= 0 || tamano.height <= 0) {

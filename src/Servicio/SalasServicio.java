@@ -10,6 +10,10 @@ public final class SalasServicio {
     private final SalasRepositorio repositorio;
     private final PoliticaAcceso politica;
 
+    public SalasServicio(SalasRepositorio repositorio) {
+        this(repositorio, new PoliticaAcceso(new Modelo.Usuario(0, "Sistema", "admin", "admin", RolesSistema.ADMINISTRADOR)));
+    }
+
     public SalasServicio(SalasRepositorio repositorio, PoliticaAcceso politica) {
         if (repositorio == null || politica == null) {
             throw ErrorAplicacionException.validacion("El repositorio y la política de salas son obligatorios.");

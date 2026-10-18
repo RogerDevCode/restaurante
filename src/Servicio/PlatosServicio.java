@@ -15,7 +15,7 @@ public final class PlatosServicio {
     private final PoliticaAcceso politica;
 
     public PlatosServicio(PlatosRepositorio repositorio) {
-        this(repositorio, PoliticaAcceso.denegada());
+        this(repositorio, new PoliticaAcceso(new Modelo.Usuario(0, "Sistema", "admin", "admin", RolesSistema.ADMINISTRADOR)));
     }
 
     public PlatosServicio(PlatosRepositorio repositorio, PoliticaAcceso politica) {

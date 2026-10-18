@@ -59,9 +59,8 @@ final class PlatoIdentidadMapeos {
                 ps.executeUpdate();
             }
             try (PreparedStatement ps = conexion.prepareStatement(
-                    "INSERT INTO plato_favorito (nombre_clave) "
-                    + "SELECT ? FROM plato_favorito WHERE nombre_clave = ? "
-                    + "ON DUPLICATE KEY UPDATE nombre_clave = nombre_clave")) {
+                    "INSERT IGNORE INTO plato_favorito (nombre_clave) "
+                    + "SELECT ? FROM plato_favorito WHERE nombre_clave = ?")) {
                 ps.setString(1, claveNueva);
                 ps.setString(2, claveAnterior);
                 ps.executeUpdate();

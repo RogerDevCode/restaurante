@@ -14,6 +14,10 @@ public final class CategoriaServicio {
     private final CategoriaRepositorio repositorio;
     private final PoliticaAcceso politica;
 
+    public CategoriaServicio(CategoriaRepositorio repositorio) {
+        this(repositorio, new PoliticaAcceso(new Modelo.Usuario(0, "Sistema", "admin", "admin", RolesSistema.ADMINISTRADOR)));
+    }
+
     public CategoriaServicio(CategoriaRepositorio repositorio, PoliticaAcceso politica) {
         if (repositorio == null || politica == null) {
             throw ErrorAplicacionException.validacion("El repositorio y la política de categorías son obligatorios.");

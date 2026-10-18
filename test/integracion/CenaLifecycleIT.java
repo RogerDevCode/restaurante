@@ -299,11 +299,23 @@ public final class CenaLifecycleIT {
         }
     }
 
+    @org.junit.Test
+    public void ejecutarCicloCena() throws Exception {
+        String url = System.getenv("DB_URL");
+        if (url == null) url = System.getProperty("DB_URL");
+        if (url == null || !url.contains("restaurante_cena")) {
+            org.junit.Assume.assumeTrue("Exige DB_URL a restaurante_cena (scratch). Se omite en restaurante_test estándar.", false);
+            return;
+        }
+        main(new String[0]);
+    }
+
     public static void main(String[] args) throws Exception {
         String url = System.getenv("DB_URL");
+        if (url == null) url = System.getProperty("DB_URL");
         if (url == null || !url.contains("restaurante_cena")) {
             System.out.println("Seguridad: exige DB_URL a restaurante_cena (scratch). Nada que hacer.");
-            System.exit(2);
+            return;
         }
         ProveedorConexionJdbc prov = new ProveedorConexionJdbc();
         PedidosDao pedidosDao = new PedidosDao(prov);

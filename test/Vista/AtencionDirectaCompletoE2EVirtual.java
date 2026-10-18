@@ -215,13 +215,27 @@ public final class AtencionDirectaCompletoE2EVirtual {
 
             // Clic en la primera tarjeta de sala abre la sala en Mesas
             JPanel panelSalas = sistema.getPanelSalas();
+            robot.waitForIdle();
+            Thread.sleep(300);
+            robot.waitForIdle();
             robot.esperar(() -> {
                 if (panelSalas == null) return false;
                 Component[] ts = panelSalas.getComponents();
                 return ts.length > 0 && ts[0] instanceof JButton b && b.isShowing() && b.getWidth() > 0;
             }, "Tarjetas clásicas de salas cargadas y visibles en pantalla");
-            Component[] tarjetas = panelSalas.getComponents();
-            robot.clic(tarjetas[0]);
+            JButton tarjeta = robot.edt(() -> {
+                Component[] ts = panelSalas.getComponents();
+                for (Component c : ts) {
+                    if (c instanceof JButton b && b.isShowing() && b.getWidth() > 0) {
+                        return b;
+                    }
+                }
+                return null;
+            });
+            if (tarjeta == null) {
+                throw new AssertionError("No se encontró tarjeta de sala visible en Panel");
+            }
+            robot.clic(tarjeta);
             robot.esperar(() -> tabs.getSelectedIndex() == tabMesasIdx,
                     "Clic en tarjeta clásica de sala abre pestaña 'Mesas'");
             System.out.println("OK   Clic en tarjeta de sala clásica abre Mesas");

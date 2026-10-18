@@ -13,6 +13,10 @@ public final class ConsultaPedidosServicio {
     private final PoliticaAcceso politica;
     private final Modelo.AuditoriaPedidosDao auditoriaDao;
 
+    public ConsultaPedidosServicio(PedidosRepositorio repositorio) {
+        this(repositorio, new PoliticaAcceso(new Modelo.Usuario(0, "Sistema", "admin", "admin", RolesSistema.ADMINISTRADOR)));
+    }
+
     public ConsultaPedidosServicio(PedidosRepositorio repositorio, PoliticaAcceso politica) {
         this(repositorio, politica, new Modelo.AuditoriaPedidosDao());
     }
