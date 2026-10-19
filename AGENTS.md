@@ -14,6 +14,7 @@
 | `ant integration-test` | Suite contra MySQL Docker 3307 (`restaurante_test`); levanta/baja compose solo |
 | `./e2e_virtual.sh [clase]` | E2E en Xvfb `:99` (1366x711) con mouse/teclado independientes de `:0`; rechaza destinos distintos de MySQL local `restaurante_test` en 3307 con `E2E_BD_DESECHABLE=SI`. Para jornada aislada usar `./e2e_dia_completo_virtual.sh`. |
 | `./e2e_dia_completo_virtual.sh [clase] [args]` | Crea MySQL efímero aislado en `restaurante_test` (proyecto Compose único), ejecuta la clase indicada (por defecto `Vista.DiaCompletoFiscalE2EVirtual`) en Xvfb `:99` mediante `e2e_virtual.sh` y elimina solo su proyecto/volumen al terminar; falla si 3307 o `:99` ya están ocupados. Requiere Docker, Java 21, Ant, Xvfb y xdotool |
+| `./drill_restauracion_bd.sh` | Drill de respaldo/restauración en MySQL efímero (3307): respalda, verifica en schema temporal, muta, restaura, comprueba reversión y exige que un respaldo descuadrado sea rechazado por conciliación financiera |
 | `ant integration-test` | Suite contra MySQL Docker 3307 (`restaurante_test`); levanta/baja compose solo |
 
 ## Arranque (producción)
@@ -23,6 +24,9 @@
 | `cd Restaurante_Ejecutable && DISPLAY=:0.0 java -jar Restaurante.jar` | Arranque manual |
 | `./iniciar_restaurante.sh` (root o `Restaurante_Ejecutable/`) | Lanza `Restaurante.jar` del dir actual; exige Java 21 |
 | `java -jar Restaurante.jar --migrate-db` | Solo valida migración de esquema y sale |
+| `java -jar Restaurante.jar --respaldar [dir]` | Crea un respaldo firmado (HMAC+manifiesto) sin abrir la UI y sale |
+| `java -jar Restaurante.jar --verificar-respaldo <archivo.sql>` | Verifica estructura y conciliación financiera en un schema temporal desechable, sin tocar la BD viva |
+| `java -jar Restaurante.jar --restaurar-respaldo <archivo.sql>` | Restaura con respaldo previo de emergencia, validación en schema temporal y conciliación; reemplaza la BD viva |
 | Login demo: `admin` / `admin`. Instancia única por puerto 49200 |
 
 ## Base de datos

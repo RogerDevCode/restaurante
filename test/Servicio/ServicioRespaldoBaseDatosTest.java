@@ -63,6 +63,19 @@ public class ServicioRespaldoBaseDatosTest {
     }
 
     @Test
+    public void respaldoIncluyeTablasFinancierasYRestauraConciliando() throws IOException {
+        Path archivo = servicio.crearRespaldo(tempDir);
+        String contenido = Files.readString(archivo);
+
+        for (String tabla : List.of("pedido_liquidaciones", "pedido_saldos_movimientos", "auditoria_cambios_precio")) {
+            assertTrue("El respaldo debe incluir la tabla " + tabla,
+                    contenido.contains("CREATE TABLE `" + tabla + "`"));
+            assertTrue("El respaldo debe declarar la tabla " + tabla + " en su manifiesto",
+                    Files.readString(archivo.resolveSibling(archivo.getFileName() + ".manifest")).contains(tabla));
+        }
+    }
+
+    @Test
     public void respaldoPrevioDeMigracionTieneNombreUnicoYNoSeSobrescribe() throws IOException {
         Path primero = servicio.crearRespaldoPreMigracion();
         Path segundo = servicio.crearRespaldoPreMigracion();
