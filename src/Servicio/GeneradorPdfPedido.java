@@ -271,7 +271,8 @@ public final class GeneradorPdfPedido {
         if (tieneIva) {
             alto += 40f;
         }
-        alto += (detalles.size() * 20f);
+        // Cada detalle ocupa una línea de nombre y dos líneas bimonetarias.
+        alto += (detalles.size() * 30f);
         if (configuracion != null && configuracion.getMensaje() != null && configuracion.getMensaje().length() > 30) {
             alto += 25f;
         }
@@ -440,7 +441,7 @@ public final class GeneradorPdfPedido {
         pDatos.add("Dirección: " + texto(configuracion.getDireccion()));
         documento.add(pDatos);
 
-        Paragraph sep1 = new Paragraph("----------------------------------------------------------------", fontSep);
+        Paragraph sep1 = new Paragraph("----------------------------------------------", fontSep);
         sep1.setAlignment(Element.ALIGN_CENTER);
         documento.add(sep1);
 
@@ -468,7 +469,7 @@ public final class GeneradorPdfPedido {
         info.add("Método de Pago: " + textoFormaPago(pedido) + "\n");
         documento.add(info);
 
-        Paragraph sep2 = new Paragraph("----------------------------------------------------------------", fontSep);
+        Paragraph sep2 = new Paragraph("----------------------------------------------", fontSep);
         sep2.setAlignment(Element.ALIGN_CENTER);
         documento.add(sep2);
     }
@@ -498,7 +499,7 @@ public final class GeneradorPdfPedido {
         pDatos.add("Dirección: " + texto(configuracion.getDireccion()));
         documento.add(pDatos);
 
-        Paragraph sep1 = new Paragraph("----------------------------------------------------------------", fontSep);
+        Paragraph sep1 = new Paragraph("----------------------------------------------", fontSep);
         sep1.setAlignment(Element.ALIGN_CENTER);
         documento.add(sep1);
 
@@ -537,7 +538,7 @@ public final class GeneradorPdfPedido {
         }
         documento.add(info);
 
-        Paragraph sep2 = new Paragraph("----------------------------------------------------------------", fontSep);
+        Paragraph sep2 = new Paragraph("----------------------------------------------", fontSep);
         sep2.setAlignment(Element.ALIGN_CENTER);
         documento.add(sep2);
     }
@@ -548,22 +549,23 @@ public final class GeneradorPdfPedido {
         Font negrita = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, BaseColor.BLACK);
         Font cuerpo = new Font(Font.FontFamily.HELVETICA, 7.0f, Font.NORMAL, BaseColor.BLACK);
 
-        PdfPTable tabla = new PdfPTable(4);
+        PdfPTable tabla = new PdfPTable(2);
         tabla.setWidthPercentage(100);
         tabla.getDefaultCell().setBorder(0);
-        tabla.setWidths(new float[]{9f, 38f, 26.5f, 26.5f});
+        tabla.setWidths(new float[]{50f, 50f});
         tabla.setHorizontalAlignment(Element.ALIGN_LEFT);
 
+        PdfPCell cabeceraDetalle = new PdfPCell(new Phrase("Cant. x Plato", negrita));
+        cabeceraDetalle.setColspan(2);
         PdfPCell[] cabeceras = {
-            new PdfPCell(new Phrase("Cant.", negrita)),
-            new PdfPCell(new Phrase("Plato", negrita)),
-            new PdfPCell(new Phrase("P. Unit.\nUSD / Bs.", negrita)),
-            new PdfPCell(new Phrase("Total\nUSD / Bs.", negrita))
+            cabeceraDetalle,
+            new PdfPCell(new Phrase("P. Unit. USD / Bs.", negrita)),
+            new PdfPCell(new Phrase("Total USD / Bs.", negrita))
         };
+        cabeceras[1].setHorizontalAlignment(Element.ALIGN_RIGHT);
         cabeceras[2].setHorizontalAlignment(Element.ALIGN_RIGHT);
-        cabeceras[3].setHorizontalAlignment(Element.ALIGN_RIGHT);
+        cabeceras[1].setPaddingRight(1f);
         cabeceras[2].setPaddingRight(1f);
-        cabeceras[3].setPaddingRight(1f);
         for (PdfPCell celda : cabeceras) {
             celda.setBorder(Rectangle.BOTTOM);
             celda.setBorderWidth(0.5f);
@@ -601,34 +603,40 @@ public final class GeneradorPdfPedido {
                 precioBs = subtotalBs.divide(BigDecimal.valueOf(detalle.getCantidad()), 2, RoundingMode.HALF_UP);
             }
 
-            PdfPCell cCant = new PdfPCell(new Phrase(String.valueOf(detalle.getCantidad()), cuerpo));
-            PdfPCell cPlato = new PdfPCell(new Phrase(detalle.getNombre(), cuerpo));
+            String nombreLinea = detalle.getCantidad() + " x " + detalle.getNombre();
+            PdfPCell cPlato = new PdfPCell(new Phrase(
+                    recortarTextoUnaLinea(nombreLinea, cuerpo, ANCHO_80MM - 22f), cuerpo));
+            cPlato.setColspan(2);
             String precioUsdTexto = "$" + String.format(java.util.Locale.US, "%.2f", precioUsd);
             String precioBsTexto = "Bs. " + String.format(java.util.Locale.US, "%.2f", precioBs);
             String subtotalUsdTexto = "$" + String.format(java.util.Locale.US, "%.2f", subtotalUsd);
             String subtotalBsTexto = "Bs. " + String.format(java.util.Locale.US, "%.2f", subtotalBs);
             PdfPCell cUnit = new PdfPCell(new Phrase(precioUsdTexto + "\n" + precioBsTexto,
-                    fuenteMontoTicket(precioUsdTexto, precioBsTexto)));
+                    fuenteMontoTicket(0.5f, precioUsdTexto, precioBsTexto)));
             PdfPCell cTot = new PdfPCell(new Phrase(subtotalUsdTexto + "\n" + subtotalBsTexto,
-                    fuenteMontoTicket(subtotalUsdTexto, subtotalBsTexto)));
+                    fuenteMontoTicket(0.5f, subtotalUsdTexto, subtotalBsTexto)));
 
-            cCant.setBorder(Rectangle.NO_BORDER);
             cPlato.setBorder(Rectangle.NO_BORDER);
-            cUnit.setBorder(Rectangle.NO_BORDER);
-            cTot.setBorder(Rectangle.NO_BORDER);
+            cUnit.setBorder(Rectangle.BOTTOM);
+            cTot.setBorder(Rectangle.BOTTOM);
+            cUnit.setBorderWidth(0.25f);
+            cTot.setBorderWidth(0.25f);
             cUnit.setHorizontalAlignment(Element.ALIGN_RIGHT);
             cTot.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            cPlato.setPaddingLeft(1f);
+            cPlato.setPaddingRight(1f);
             cUnit.setPaddingLeft(1f);
             cTot.setPaddingLeft(1f);
             cUnit.setPaddingRight(1f);
             cTot.setPaddingRight(1f);
 
-            cCant.setPaddingTop(2f);
             cPlato.setPaddingTop(2f);
-            cUnit.setPaddingTop(2f);
-            cTot.setPaddingTop(2f);
+            cPlato.setPaddingBottom(1f);
+            cUnit.setPaddingTop(1f);
+            cTot.setPaddingTop(1f);
+            cUnit.setPaddingBottom(3f);
+            cTot.setPaddingBottom(3f);
 
-            tabla.addCell(cCant);
             tabla.addCell(cPlato);
             tabla.addCell(cUnit);
             tabla.addCell(cTot);
@@ -636,8 +644,8 @@ public final class GeneradorPdfPedido {
         documento.add(tabla);
     }
 
-    private Font fuenteMontoTicket(String... lineas) {
-        float anchoColumna = (ANCHO_80MM - 20f) * 0.265f;
+    private Font fuenteMontoTicket(float proporcionColumna, String... lineas) {
+        float anchoColumna = (ANCHO_80MM - 20f) * proporcionColumna;
         float anchoDisponible = anchoColumna - 2f;
         for (float tamaño = 6.5f; tamaño >= 4.0f; tamaño -= 0.25f) {
             Font fuente = new Font(Font.FontFamily.HELVETICA, tamaño, Font.NORMAL, BaseColor.BLACK);
@@ -654,6 +662,35 @@ public final class GeneradorPdfPedido {
             }
         }
         return new Font(Font.FontFamily.HELVETICA, 4.0f, Font.NORMAL, BaseColor.BLACK);
+    }
+
+    private String recortarTextoUnaLinea(String texto, Font fuente, float anchoDisponible) {
+        String linea = texto == null ? "" : texto.replaceAll("\\s+", " ").trim();
+        BaseFont base = fuente.getCalculatedBaseFont(false);
+        float tamaño = fuente.getSize();
+        if (base.getWidthPoint(linea, tamaño) <= anchoDisponible) {
+            return linea;
+        }
+
+        String sufijo = "...";
+        if (base.getWidthPoint(sufijo, tamaño) > anchoDisponible) {
+            return "";
+        }
+        int totalPuntos = linea.codePointCount(0, linea.length());
+        int inferior = 0;
+        int superior = totalPuntos;
+        while (inferior < superior) {
+            int medio = (inferior + superior + 1) >>> 1;
+            int fin = linea.offsetByCodePoints(0, medio);
+            String candidato = linea.substring(0, fin).stripTrailing() + sufijo;
+            if (base.getWidthPoint(candidato, tamaño) <= anchoDisponible) {
+                inferior = medio;
+            } else {
+                superior = medio - 1;
+            }
+        }
+        int fin = linea.offsetByCodePoints(0, inferior);
+        return linea.substring(0, fin).stripTrailing() + sufijo;
     }
 
     private void agregarCierreTicket80mm(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles)
@@ -676,7 +713,7 @@ public final class GeneradorPdfPedido {
         boolean tieneIva = ivaPorcentaje != null && ivaPorcentaje.compareTo(BigDecimal.ZERO) > 0;
 
         Font fontSep = new Font(Font.FontFamily.COURIER, 7, Font.NORMAL, BaseColor.DARK_GRAY);
-        Paragraph sep = new Paragraph("----------------------------------------------------------------", fontSep);
+        Paragraph sep = new Paragraph("----------------------------------------------", fontSep);
         sep.setAlignment(Element.ALIGN_CENTER);
         documento.add(sep);
 

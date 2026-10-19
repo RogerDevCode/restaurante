@@ -121,7 +121,7 @@ public class GeneradorPdfPedidoTest {
         });
 
         reader.close();
-        float bordeDerechoUnidad = 10f + (anchoPagina - 20f) * 0.735f - 1f;
+        float bordeDerechoUnidad = 10f + (anchoPagina - 20f) * 0.5f - 1f;
         float bordeDerechoTotal = anchoPagina - 11f;
         assertEquals("El PDF debe medir 80 mm de ancho", GeneradorPdfPedido.ANCHO_80MM, anchoPagina, 0.1f);
         assertTrue("Debe localizar el monto unitario en USD", !Float.isNaN(extremosDerechos[0]));
@@ -136,6 +136,61 @@ public class GeneradorPdfPedidoTest {
         assertTrue("El monto unitario Bs. excede su columna: " + extremosDerechos[1], extremosDerechos[1] <= bordeDerechoUnidad + 0.05f);
         assertTrue("El total USD excede el margen imprimible: " + extremosDerechos[2], extremosDerechos[2] <= anchoPagina - 10f + 0.05f);
         assertTrue("El total Bs. excede el margen imprimible: " + extremosDerechos[3], extremosDerechos[3] <= anchoPagina - 10f + 0.05f);
+    }
+
+    @Test
+    public void pdfTicketRecortaNombreLargoEnUnaLineaSinPerderMontos() throws Exception {
+        Path destino = temporal.newFolder("ticket-nombre-una-linea").toPath();
+        String nombreLargo = "Hamburguesa " + "W".repeat(188);
+        DetallePedido detalle = detalleValido().get(0);
+        detalle.setNombre(nombreLargo);
+        detalle.setCantidad(2);
+        detalle.setPrecioDecimal(new BigDecimal("1.00"));
+        Pedidos pedido = pedidoValido();
+        pedido.setSubtotal(new BigDecimal("2.00"));
+        pedido.setTotalDecimal(new BigDecimal("2.00"));
+        pedido.setSubtotalBs(new BigDecimal("73.00"));
+        pedido.setTotalBs(new BigDecimal("73.00"));
+
+        Path archivo = new GeneradorPdfPedido(destino).generar(pedido, configuracionValida(), List.of(detalle));
+        PdfReader reader = new PdfReader(archivo.toAbsolutePath().toString());
+        assertEquals("El nombre del detalle no debe aumentar páginas del ticket", 1, reader.getNumberOfPages());
+        String texto = PdfTextExtractor.getTextFromPage(reader, 1);
+        reader.close();
+
+        assertTrue("El detalle debe mostrar el comienzo del nombre y la cantidad", texto.contains("2 x Hamburguesa"));
+        assertTrue("El nombre recortado debe indicar que continúa", texto.contains("..."));
+        assertFalse("El ticket no debe imprimir el nombre completo que excede el ancho", texto.contains(nombreLargo));
+        assertTrue("Debe conservar el monto unitario", texto.contains("$"));
+        assertTrue("Debe conservar la columna de total", texto.contains("Total"));
+        assertEquals("El nombre guardado en el detalle no se debe modificar", nombreLargo, detalle.getNombre());
+    }
+
+    @Test
+    public void pdfTicketConDoceNombresMaximosPermaneceEnUnaPagina() throws Exception {
+        Path destino = temporal.newFolder("ticket-nombres-maximos").toPath();
+        String nombreLargo = "W".repeat(199);
+        List<DetallePedido> detalles = new java.util.ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            DetallePedido detalle = detalleValido().get(0);
+            detalle.setNombre(nombreLargo + i);
+            detalle.setPrecioDecimal(new BigDecimal("1.00"));
+            detalles.add(detalle);
+        }
+        Pedidos pedido = pedidoValido();
+        pedido.setSubtotal(new BigDecimal("12.00"));
+        pedido.setTotalDecimal(new BigDecimal("12.00"));
+        pedido.setSubtotalBs(new BigDecimal("438.00"));
+        pedido.setTotalBs(new BigDecimal("438.00"));
+
+        Path archivo = new GeneradorPdfPedido(destino).generar(pedido, configuracionValida(), detalles);
+        PdfReader reader = new PdfReader(archivo.toAbsolutePath().toString());
+        assertEquals("Doce nombres de hasta 200 caracteres deben caber en una página", 1, reader.getNumberOfPages());
+        String texto = PdfTextExtractor.getTextFromPage(reader, 1);
+        reader.close();
+
+        assertFalse("Ningún nombre completo debe extenderse fuera del ancho", texto.contains(nombreLargo + "0"));
+        assertTrue("Los nombres largos deben quedar marcados con puntos suspensivos", texto.contains("..."));
     }
 
     private float extremoDerechoActual(float extremoAnterior, TextRenderInfo info) {
