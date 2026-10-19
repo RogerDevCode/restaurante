@@ -9771,6 +9771,17 @@ public final class Sistema extends javax.swing.JFrame {
             if (txtNombrePlato != null) {
                 jPanel11.remove(txtNombrePlato);
                 jPanel11.add(txtNombrePlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 55, 240, 28));
+                String ayudaNombreTicket = "Se sugieren nombres cortos o abreviados de platos/productos. "
+                        + "Si el nombre supera el ancho del ticket, se recortará automáticamente al imprimir.";
+                txtNombrePlato.setToolTipText(ayudaNombreTicket);
+
+                javax.swing.JLabel lblAyudaNombreTicket = new javax.swing.JLabel(
+                        "<html>Se sugieren nombres cortos o abreviados<br>para que quepan en el ticket.</html>");
+                lblAyudaNombreTicket.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 10));
+                lblAyudaNombreTicket.setForeground(new java.awt.Color(75, 85, 99));
+                lblAyudaNombreTicket.setToolTipText(ayudaNombreTicket);
+                jPanel11.add(lblAyudaNombreTicket,
+                        new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 84, 240, 28));
             }
             if (jPanel31 != null) {
                 jPanel11.remove(jPanel31);
@@ -9779,44 +9790,44 @@ public final class Sistema extends javax.swing.JFrame {
 
             javax.swing.JLabel lblMoneda = new javax.swing.JLabel("Moneda:");
             lblMoneda.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
-            jPanel11.add(lblMoneda, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 98, 68, 25));
+            jPanel11.add(lblMoneda, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 119, 68, 25));
 
             cbMonedaBasePlato = new javax.swing.JComboBox<>(new String[]{"USD", "VES"});
             cbMonedaBasePlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
             cbMonedaBasePlato.setBackground(java.awt.Color.WHITE);
             cbMonedaBasePlato.setToolTipText("Moneda principal fijada para este producto");
             cbMonedaBasePlato.addActionListener(e -> actualizarPrecioReferenciaPlato());
-            jPanel11.add(cbMonedaBasePlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 96, 75, 26));
+            jPanel11.add(cbMonedaBasePlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 117, 75, 26));
 
             lblPrecioReferenciaPlato = new javax.swing.JLabel("Ref: ---");
             lblPrecioReferenciaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.ITALIC, 11));
             lblPrecioReferenciaPlato.setForeground(new java.awt.Color(90, 90, 90));
             lblPrecioReferenciaPlato.setToolTipText("Precio convertido referencialmente con la tasa activa del sistema");
-            jPanel11.add(lblPrecioReferenciaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(165, 96, 160, 26));
+            jPanel11.add(lblPrecioReferenciaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(165, 117, 160, 26));
 
             if (jLabel25 != null) {
                 jPanel11.remove(jLabel25);
-                jPanel11.add(jLabel25, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 133, 68, 25));
+                jPanel11.add(jLabel25, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 154, 68, 25));
             }
             if (txtPrecioPlato != null) {
                 jPanel11.remove(txtPrecioPlato);
-                jPanel11.add(txtPrecioPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 128, 240, 28));
+                jPanel11.add(txtPrecioPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 149, 240, 28));
             }
             if (jPanel33 != null) {
                 jPanel11.remove(jPanel33);
-                jPanel11.add(jPanel33, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 156, 240, 2));
+                jPanel11.add(jPanel33, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 177, 240, 2));
             }
 
             javax.swing.JLabel lblCategoriaFicha = new javax.swing.JLabel("Categoría:");
             lblCategoriaFicha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
-            jPanel11.add(lblCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 168, 68, 25));
+            jPanel11.add(lblCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 189, 68, 25));
 
             cbCategoriaFicha = new javax.swing.JComboBox<>();
             cbCategoriaFicha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
             cbCategoriaFicha.setBackground(java.awt.Color.WHITE);
             cbCategoriaFicha.setRenderer(new RendererCategoria());
             cbCategoriaFicha.setToolTipText("Categoría del plato (se guarda con Guardar/Editar)");
-            jPanel11.add(cbCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 166, 240, 26));
+            jPanel11.add(cbCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 187, 240, 26));
             cargarCategoriasFicha();
 
             chkAplicaIvaPlato = new javax.swing.JCheckBox(textoCheckboxIvaPlato(), true);
@@ -9826,7 +9837,7 @@ public final class Sistema extends javax.swing.JFrame {
             chkAplicaIvaPlato.setFocusable(false);
             chkAplicaIvaPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
             chkAplicaIvaPlato.setToolTipText("Marcar si el plato genera IVA o desmarcar si está exento");
-            jPanel11.add(chkAplicaIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 200, 150, 25));
+            jPanel11.add(chkAplicaIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 221, 150, 25));
 
             chkPrecioIncluyeIvaPlato = new javax.swing.JCheckBox("Incluye IVA", false);
             chkPrecioIncluyeIvaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
@@ -9835,7 +9846,7 @@ public final class Sistema extends javax.swing.JFrame {
             chkPrecioIncluyeIvaPlato.setFocusable(false);
             chkPrecioIncluyeIvaPlato.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
             chkPrecioIncluyeIvaPlato.setToolTipText("Indica si el precio ingresado ya incluye el porcentaje de IVA");
-            jPanel11.add(chkPrecioIncluyeIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(165, 200, 155, 25));
+            jPanel11.add(chkPrecioIncluyeIvaPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(165, 221, 155, 25));
 
             chkAplicaIvaPlato.addActionListener(e -> {
                 boolean gravado = chkAplicaIvaPlato.isSelected();
@@ -9870,24 +9881,24 @@ public final class Sistema extends javax.swing.JFrame {
             lblFichaIvaMonto.setForeground(new java.awt.Color(180, 50, 0));
             pnlDesgloseFiscalPlato.add(lblFichaIvaMonto);
 
-            jPanel11.add(pnlDesgloseFiscalPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 232, 312, 86));
+            jPanel11.add(pnlDesgloseFiscalPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 253, 312, 86));
 
             // Reubicar botones de acción ordenadamente
             if (btnGuardarPlato != null) {
                 jPanel11.remove(btnGuardarPlato);
-                jPanel11.add(btnGuardarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 328, 150, 42));
+                jPanel11.add(btnGuardarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 349, 150, 42));
             }
             if (btnNuevoPlato != null) {
                 jPanel11.remove(btnNuevoPlato);
-                jPanel11.add(btnNuevoPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(174, 328, 150, 42));
+                jPanel11.add(btnNuevoPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(174, 349, 150, 42));
             }
             if (btnEliminarPlato != null) {
                 jPanel11.remove(btnEliminarPlato);
-                jPanel11.add(btnEliminarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 378, 150, 36));
+                jPanel11.add(btnEliminarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(12, 399, 150, 36));
             }
             if (btnReactivarPlato != null) {
                 jPanel11.remove(btnReactivarPlato);
-                jPanel11.add(btnReactivarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(174, 378, 150, 36));
+                jPanel11.add(btnReactivarPlato, new org.netbeans.lib.awtextra.AbsoluteConstraints(174, 399, 150, 36));
             }
             if (btnEditarPlato != null) {
                 btnEditarPlato.setVisible(false);
