@@ -208,3 +208,8 @@ Mejoras de layout en `Sistema.java`:
 - Cargas de datos desde la UI mediante `SwingWorker` para no bloquear el EDT.
 - El logging de la aplicación se escribe en un archivo diario (`ArchivoLogDiario` /
   `ConfiguracionLogs`).
+
+
+### Ciclo de vida de PDFs
+
+Los tickets/facturas y sus versiones de reimpresión se conservan en `facturas/<AAAA-MM>` para consulta y auditoría; no se consideran temporales y no deben purgarse de forma automática. Los E2E que generan datos o archivos operativos deben usar `e2e_dia_completo_virtual.sh`, que elimina su `E2E_WORKDIR`, contenedor y volumen desechables al terminar.

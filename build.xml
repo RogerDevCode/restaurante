@@ -26,12 +26,12 @@
                 <matches string="${DB_URL}" pattern="(?i)^jdbc:mysql://[^/]+(?::[0-9]+)?/restaurante([?].*)?$"/>
                 <matches string="${env.DB_URL}" pattern="(?i)^jdbc:mysql://[^/]+(?::[0-9]+)?/restaurante([?].*)?$"/>
                 <matches string="${test-sys-prop.DB_URL}" pattern="(?i)^jdbc:mysql://[^/]+(?::[0-9]+)?/restaurante([?].*)?$"/>
-                <equals arg1="${DB_NAME}" arg2="restaurante"/>
-                <equals arg1="${MYSQL_DATABASE}" arg2="restaurante"/>
-                <equals arg1="${env.DB_NAME}" arg2="restaurante"/>
-                <equals arg1="${env.MYSQL_DATABASE}" arg2="restaurante"/>
-                <equals arg1="${test-sys-prop.DB_NAME}" arg2="restaurante"/>
-                <equals arg1="${test-sys-prop.MYSQL_DATABASE}" arg2="restaurante"/>
+                <matches string="${DB_NAME}" pattern="(?i)^restaurante$"/>
+                <matches string="${MYSQL_DATABASE}" pattern="(?i)^restaurante$"/>
+                <matches string="${env.DB_NAME}" pattern="(?i)^restaurante$"/>
+                <matches string="${env.MYSQL_DATABASE}" pattern="(?i)^restaurante$"/>
+                <matches string="${test-sys-prop.DB_NAME}" pattern="(?i)^restaurante$"/>
+                <matches string="${test-sys-prop.MYSQL_DATABASE}" pattern="(?i)^restaurante$"/>
             </or>
         </condition>
         <fail if="unit.db.targets.production"

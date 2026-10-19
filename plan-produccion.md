@@ -18,10 +18,10 @@ Esta sección registra el avance del trabajo en curso. Los cambios indicados com
 | 0 — Línea base y separación | **Implementación aislada; gate parcial** | `feature/persistencia-columnas-jtable` está rebasada sobre `main`; la refactorización UI-only se confirmó en `40688ef` y se publicó en `origin/feature/persistencia-columnas-jtable`. `RedimensionarColumnasJTableE2EVirtual` pasó por UI en Xvfb: redimensionó y recuperó visualmente 14 tablas tras reabrir sesión. | Integrar la rama solo después de cerrar los gates pendientes; hacer aceptación final desde workspace limpio. |
 | 1 — Secretos y empaquetado | **Implementación parcial; Linux validado** | Cambios en clasificación TLS LAN/WAN, rotación HMAC, aprovisionamiento de secretos Windows y listas permitidas para paquetes. Los instaladores configuran `restaurante_app` con privilegios acotados; `actualizar_bd.bat` reporta `.env` ausente. Pasaron pruebas de instaladores. Se generaron e inspeccionaron los dos ZIP Linux: contienen JAR, `.env.example` y seis librerías; no incluyen `.env`, claves, volcados comprimidos ni logs. | Ejecutar/validar los scripts PowerShell en Windows y probar ACL/instalación; validar contra un MySQL nuevo con cuenta runtime; cubrir scanner de ZIP en casos negativos. PowerShell no está disponible en este entorno. |
 | 2 — Bootstrap | **Implementación parcial; integración actual aprobada** | Asistente y servicio de bootstrap, estado inicial en migraciones, composición de la aplicación y fixture de integración. La migración ahora conserva Administradores activos con credenciales personalizadas y fuerza bootstrap para la cuenta demo/bloqueada; integración probó ambos escenarios y la creación transaccional del Administrador. `--migrate-db` terminó correctamente en un contenedor JRE headless conectado únicamente al MySQL efímero; la migración automática también pasó durante los E2E de UI. | Probar instalación limpia por UI y concurrencia; revisar las reglas permanentes sobre el último Administrador y las fixtures E2E. |
-| 3 — Impresión | **Parcial; comandas incrementales implementadas y validadas en BD/UI** | Resultado tipado de salida existente. Comandas v15 ahora guardan un diario inmutable de marchas con detalle congelado. Los flujos clásico y Split entregan al impresor únicamente la marcha recién persistida; los incrementos de cantidades se calculan desde lo ya enviado, las reducciones/cambios de nota salen como `RETIRAR` + `PREPARAR`, y si se omite la impresión los cambios quedan acumulados para la siguiente marcha emitida. Pruebas PDF confirmaron el contenido incremental y que las etiquetas caben en 80 mm. E2E `Vista.E2EVirtual` recorrió por UI una comanda inicial y una segunda ronda de 2 pollos, con marcha #1 y #2 enviadas al spooler simulado. | Confirmar el contrato/manejo de resultados de salida, el flujo Swing asíncrono de reimpresión y limpieza segura de temporales. Validar escalado con impresora/driver físico: no hay impresoras CUPS configuradas aquí. |
+| 3 — Impresión | **Validación local cerrada; falta aceptación física** | Resultado tipado diferencia spooler, visor y fallo; el cobro se conserva si falla la salida; reimpresiones corren fuera del EDT y la reimpresión de marcha toma snapshot exacto. Comandas v15 guardan un diario inmutable; los flujos clásico y Split imprimen solo la marcha persistida. Pruebas PDF y E2E validan incrementos, ajustes y ancho de 80 mm. Los PDF de facturas/reimpresiones se conservan en `facturas/<AAAA-MM>` con versiones timestamp, por lo que no se borran con una limpieza temporal; el runner de E2E elimina su directorio efímero al terminar. | Probar escalado y salida de papel con impresora/driver físico; `lpstat` no encuentra destinos configurados aquí. |
 | 4 — Migración y recuperación | **Implementación parcial; recuperación HMAC probada** | Bootstrap conserva la cuenta Administrador personalizada al inicializar la clave faltante; `MigradorEsquemaJdbc` y los dos scripts SQL implementan la detección y la suite de integración actual pasó ambos escenarios. Se confirmó paridad byte a byte. La suite focalizada de respaldo/restauración pasó **22 pruebas, 0 fallos, 0 errores y 0 omitidas** en BD efímera: incluye restauración con clave HMAC previa, rechazo de alteraciones y entradas SQL firmadas pero fuera de la lista blanca. | Revisar idempotencia global y bloqueo de mantenimiento ante fallo DDL; ampliar la comparación de saldos/conteos de la recuperación. |
 | 5 — Autorización | **Implementación parcial** | Matriz de permisos fail-closed, acceso de Administrador preservado, bloqueo informativo de Cocinero y exclusión del rol Cocinero al crear usuarios. Pruebas focalizadas de autorización pasaron. | Auditar autorización centralizada de todas las acciones sensibles y revocación de sesión en caliente; completar regresión por UI y demostrar que fallos de configuración deniegan operaciones protegidas. |
-| 6 — Aislamiento de pruebas | **Gates locales ejecutados; parcial** | El guard de `build.xml` permite `restaurante_test` y rechaza `restaurante` con puerto explícito u omitido, también vía `test-sys-prop.DB_URL`. En esta iteración `ant -q compile jar` y `compile-test` pasaron; `ant -q test` pasó con **657 pruebas, 0 fallos, 0 errores, 30 omitidas** en 118 suites; integración pasó con **63 pruebas, 0 fallos/errores, 1 omitida**; `ComandasIncrementalesIT` pasó 6/6, incluidos dos cambios concurrentes sin duplicación y consulta de marchas exactas. Los tests puros del modelo pasaron 4/4 y `ServicioComandaCocinaTest` pasó 5/5 leyendo el PDF. `ServicioRespaldoBaseDatosTest` pasó 22/22. E2E `Vista.E2EVirtual` terminó `E2E_OK` por UI en `Xvfb :99`, MySQL y spooler efímeros; confirmó primera ronda y agregado de 2 pollos en marcha #2. `Vista.AtencionDirectaCompletoE2EVirtual` terminó `E2E_ATENCION_DIRECTA_OK`. | Ampliar pruebas del guard a aliases; refactorizar el E2E de platos para crear datos, operar y verificar exclusivamente por UI, y ejecutar los E2E restantes de release. No hay aceptación de impresora física. |
+| 6 — Aislamiento de pruebas | **Gates de base verificados; suites locales aprobadas** | El guard de `build.xml` acepta `restaurante_test` y rechaza URL a `restaurante` y alias `DB_NAME=RESTAURANTE` (comparación sin distinción de mayúsculas); E2E exige URL, usuario y BD desechables. `ant -q test`: **657 pruebas, 0 fallos, 0 errores, 30 omitidas** en 118 suites. `ant -q integration-test`: 12 suites, **63 pruebas, 0 fallos, 0 errores, 1 omitida**. `Vista.Platos70IvaMonedaE2EVirtual` fue migrado a login, preparación, operación y verificación por UI y terminó `E2E70_OK` con los 70 productos; no usa JDBC/DAO para preparar, limpiar o afirmar datos. E2E de comandas `Vista.E2EVirtual` (`E2E_OK`) y de atención directa (`E2E_ATENCION_DIRECTA_OK`) también pasaron en runners efímeros. | Ejecutar los E2E restantes de release en el runner aislado y completar aceptación física de impresora. |
 | 7 — Ensayo de release | **Parcial; ZIP Linux validado** | Se generaron e inspeccionaron paquetes Linux con 34 entradas y un candidato de producción aislado en `/tmp` con SHA-256 `47472d9fcaf3bffebc517c5cc23a16a21d394878e08dd00ee017119ee84a0607`; contiene JAR, `.env.example` y seis librerías, sin secretos ni archivos prohibidos. `--migrate-db` pasó en JRE headless y MySQL desechable. No se desplegó el candidato ni se reinició el proceso activo. | Repetir desde workspace limpio; generar e inspeccionar ZIP Windows; instalación limpia en entorno virgen; smoke test con runtime restringido; validar impresora física, recuperación y documentación operativa. |
 
 ### Evidencia de validación disponible
@@ -36,7 +36,7 @@ Esta sección registra el avance del trabajo en curso. Los cambios indicados com
 - `./e2e_dia_completo_virtual.sh` completó la jornada con `E2E_OK` en MySQL efímero, `Xvfb :99`, interacción solo por UI y spooler `lp` simulado; el primer intento reveló una aserción E2E desactualizada sobre el texto del cierre, que se alineó con el resultado visible “spooler” y pasó en la repetición.
 - `./e2e_dia_completo_virtual.sh Vista.RedimensionarColumnasJTableE2EVirtual` terminó `E2E_OK`: verificó por UI el cambio y la recuperación visual de anchos en 14 tablas. El test fue actualizado para eliminar acceso JDBC/DAO directo y observar proporciones de columna en pantalla tras reabrir sesión.
 - E2E adicionales en runners aislados, con interacción exclusivamente por UI y MySQL efímero: `Vista.AtencionDirectaCompletoE2EVirtual` (`E2E_ATENCION_DIRECTA_OK`), `Vista.UsuariosCrudE2E` (`E2E_USUARIOS_OK`), `Vista.PedidoRapidoE2EVirtual` (`E2E_PEDIDO_RAPIDO_OK`) y `Vista.OpcionCSplitE2EVirtual` (`E2E_OPCION_C_OK`). Cubren conmutación de modos, CRUD de usuarios, pedido/cobro/anulación rápida, apertura de mesa y liberación de comanda.
-- `Vista.AtencionDirectaE2EVirtual` también terminó `E2E_ATENCION_DIRECTA_OK` en runner aislado. `Vista.Platos70IvaMonedaE2EVirtual` no pasó: en una instalación desechable limpia no había categorías para asignar. La revisión del test encontró SQL/JDBC para preparar, borrar y verificar; no se debe volver a usar como evidencia E2E hasta migrarlo a UI-only conforme a `AGENTS.md`.
+- `Vista.AtencionDirectaE2EVirtual` terminó `E2E_ATENCION_DIRECTA_OK`. `Vista.Platos70IvaMonedaE2EVirtual` se rehízo para iniciar sesión y crear una categoría de prueba por interfaz, luego crear y verificar 70 productos leyendo la tabla y ficha visibles; `./e2e_dia_completo_virtual.sh Vista.Platos70IvaMonedaE2EVirtual` terminó `E2E70_OK`. La BD efímera y el directorio de trabajo se retiraron con el wrapper.
 - `ant -q integration-test` se repitió tras los cambios de respaldo y terminó `BUILD SUCCESSFUL`: **56 pruebas, 0 fallos, 0 errores y 1 omitida**.
 - El arranque `java -Djava.awt.headless=true ... restaurante.Restaurante --migrate-db` terminó con “Migración de base de datos validada correctamente” dentro de un contenedor JRE 21 conectado solo a MySQL Compose efímero; los directorios mutables fueron `tmpfs`. No se utilizó ni tocó el puerto de la instancia de escritorio.
 - Se generaron `Restaurante_Ejecutable.zip` y `/tmp/Restaurante_2026_Produccion.zip`. Inspección automatizada de ambos: **34 entradas**, JAR y `.env.example` presentes, las seis librerías presentes, cero `.env`/secretos/volcados `.sql.gz`/logs.
@@ -46,7 +46,7 @@ Esta sección registra el avance del trabajo en curso. Los cambios indicados com
 - Red Team encontró inicialmente que 12 nombres de 100 caracteres fragmentaban el ticket en 3 páginas y que `Cant.` y separadores decorativos se partían. Se ajustó el formato: nombre/cantidad en una línea con recorte por ancho real de fuente; precios USD/Bs debajo; separadores reducidos al ancho. Verificación posterior: `ant test-single` para `GeneradorPdfPedidoTest` pasó; las pruebas nuevas cubren un nombre de 200 caracteres y 12 nombres máximos, ambos en una página. El PDF adversarial quedó en **1 página de 227 x 480 pt**; `pdftotext -layout` confirmó nombre con `...` y montos debajo, y la revisión del render no mostró desbordamientos. La prueba de montos grandes mantiene el control geométrico dentro del margen de 10 pt. No se ha probado con impresora física: `lpstat` no encuentra impresoras ni destino predeterminado.
 - Para comandas parciales se añadió la migración v15 y sus snapshots inmutables. `ant -q integration-test`: 12 suites, **63 pruebas, 0 fallos, 0 errores, 1 omitida**; `ComandasIncrementalesIT` pasó 6/6, incluida la concurrencia y consulta de marchas exactas. `ComandaMarchaTest` pasó 4/4 y `ServicioComandaCocinaTest` pasó 5/5; sus pruebas PDF detectaron y llevaron a corregir el ajuste de ancho de `PREPARAR [cantidad]` para no partir la acción en el ticket de 80 mm. `ant -q compile-test` pasó y los scripts de migración permanecen byte-idénticos. E2E `Vista.E2EVirtual` (`E2E_OK`) imprimió vía spooler simulado la comanda inicial de un pollo y la segunda marcha del incremento de dos; E2E `Vista.AtencionDirectaCompletoE2EVirtual` también pasó. La validación fue aislada; no se reinició ni desplegó en la instancia operativa.
 - Tras incorporar ambas tablas de marchas a la lista blanca de respaldos, `ServicioRespaldoBaseDatosTest` pasó en MySQL Compose efímero: **22 pruebas, 0 fallos, 0 errores, 0 omitidas**. El caso de restauración de respaldo antiguo reejecuta la migración faltante v15 y verifica el esquema sincronizado; no se probó el backfill contra datos de una copia de producción.
-- Falta refactorizar y ejecutar el E2E de platos UI-only, ejecutar los E2E restantes de las pantallas/casos definidos en release, y completar ensayo de instalación desde un workspace limpio, validación Windows, empaquetado final limpio y prueba con impresora física.
+- Falta ejecutar los E2E restantes de release y completar ensayo de instalación desde workspace limpio, validación Windows, empaquetado final limpio y prueba con impresora física.
 - Se creó el commit `8594ec0` (`feat: harden production readiness and ticket printing`) y se subió a `origin/main`; no se desplegó ni reinició la aplicación.
 
 ---
@@ -73,7 +73,7 @@ Esta sección registra el avance del trabajo en curso. Los cambios indicados com
 - `generar_restaurante_ejecutable.sh` y `.ps1` copian o generan `.env` si existe; `empaquetar_produccion.sh` comprime con exclusiones genéricas y requiere exclusión explícita de `.env` y credenciales.
 - La BD semilla de producción debe eliminar la cuenta `admin/admin` activa, pero el entorno de integración y E2E (`restaurante_test`) debe retener fixtures de prueba para no invalidar las suites automatizadas.
 - `reporte.md` describe hallazgos desactualizados de compilación y no debe usarse como referencia sin revalidación directa.
-- La cola de cocina aún no cuenta con modelo persistente de rondas; el rol `Cocinero` debe advertir en UI su condición actual sin ofrecer una pantalla vacía o rota.
+- El diario persistente de marchas de cocina existe; aún no hay una pantalla de operación dedicada al rol `Cocinero`, por lo que debe mantenerse el aviso informativo y evitar una vista vacía.
 
 ---
 
@@ -167,7 +167,7 @@ Esta sección registra el avance del trabajo en curso. Los cambios indicados com
   - Persistir la marcha y el cambio del pedido en una sola transacción; asignar secuencia única por pedido y conservar snapshots para consulta exacta.
   - Reducciones y cambios de comentario generan un comprobante de ajuste con `RETIRAR`/`PREPARAR`; la migración v15 crea un baseline no imprimible para pedidos pendientes existentes. Si la impresión se desactiva, la siguiente marcha incluye todo lo pendiente.
   - Cubrir primera marcha, incremento repetido, reducción, cambio de nota, no-op, omisión de impresión, representación PDF y flujo UI con pruebas aisladas.
-- [ ] **Contrato Tipado de Salida:**
+- [x] **Contrato Tipado de Salida:**
   - Crear el tipo canónico de resultado:
     ```java
     public record ResultadoSalidaTicket(
@@ -179,10 +179,10 @@ Esta sección registra el avance del trabajo en curso. Los cambios indicados com
     }
     ```
   - Clarificar en los mensajes y documentación que `ENVIADO_A_SPOOLER` confirma que el spooler del sistema operativo (`spoolsv.exe` / CUPS) aceptó el documento, sin prometer mecánicamente la salida de papel físico.
-- [ ] **Desacoplar la Reimpresión del Event Dispatch Thread (EDT):**
+- [x] **Desacoplar la Reimpresión del Event Dispatch Thread (EDT):**
   - En `Sistema.java` (líneas 594, 4181, 7207), mover las invocaciones a `pedidosControlador.reimprimirPdfPedido(...)` fuera del EDT usando un hilo virtual (`Thread.startVirtualThread`) o un `SwingWorker` ligero con cursor `WAIT_CURSOR`.
   - Evitar que los reintentos o timeouts de PowerShell (hasta 14 segundos) congelen la ventana principal.
-- [ ] **Manejo Resiliente en `FinalizarPedidoSwingWorker`:**
+- [x] **Manejo Resiliente en `FinalizarPedidoSwingWorker`:**
   - Actualizar `ResultadoFinalizacion` para contener `ResultadoSalidaTicket`:
     ```java
     public record ResultadoFinalizacion(boolean finalizado, ResultadoSalidaTicket salidaTicket) {}
@@ -190,10 +190,10 @@ Esta sección registra el avance del trabajo en curso. Los cambios indicados com
   - Si el cobro se registró en BD pero la impresión falla (`salidaTicket.estado() == FALLO`), mostrar un aviso informativo claro:
     *"Cobro registrado con éxito en caja. La impresión del ticket físico falló; puede reimprimirlo desde el Historial."*
     **Prohibido lanzar excepción fatal que sugiera al cajero que el cobro no se completó.**
-- [ ] **Unificación de Parámetros de Salida:**
+- [x] **Unificación de Parámetros de Salida:**
   - Homogeneizar la variable `ACCION_IMPRESION` (`IMPRIMIR`, `VISOR`, `AUTO`) en `ServicioImpresionTicket`, documentarla en `.env.example` y eliminar referencias a variables huérfanas.
-- [ ] **Limpieza y Ciclo de Vida de Temporales:**
-  - Establecer limpieza automática de PDFs temporales en `temp/tickets/` asegurando no eliminar tickets requeridos para auditoría o comprobantes finales.
+- [x] **Ciclo de vida de documentos de salida:**
+  - Los tickets/facturas se conservan en `facturas/<AAAA-MM>` y las reimpresiones generan copias con timestamp; no se purgan automáticamente porque son comprobantes. Los archivos temporales propiedad del E2E viven en `E2E_WORKDIR` y el wrapper los elimina junto con la BD desechable. No se usa `temp/tickets/` para los documentos fiscales.
 
 **Gate:** Ninguna pantalla muestra "impreso" si sólo se abrió visor o hubo fallo; la reimpresión no congela el cursor de la UI ante timeouts de impresora; un fallo de impresión tras un cobro deja la venta confirmada y notifica al usuario sin error fatal.
 
@@ -231,7 +231,7 @@ Esta sección registra el avance del trabajo en curso. Los cambios indicados com
 **Archivos:** `RolesSistema.java`, `PoliticaAcceso.java`, `ConfiguracionAccesosServicio.java`, `LoginDao.java`, `src/Vista/Sistema.java`, `src/Vista/FrmLogin.java`, pruebas `test/Servicio` y `test/Controlador`.
 
 - [ ] **Manejo Explícito del Rol `Cocinero`:**
-  - Dado que la cola persistente de comandas por rondas se desarrollará en una etapa posterior, evitar que un usuario `Cocinero` entre a una pantalla vacía o rota.
+  - Aunque las marchas de cocina ya persisten, aún no existe una pantalla operativa dedicada al rol `Cocinero`; evitar que entre a una pantalla vacía o rota.
   - Al autenticar un usuario `Cocinero`, mostrar diálogo informativo:
     *"El módulo interactivo de cocina está en desarrollo. Este perfil no cuenta con permisos para operar terminales de sala ni caja."*
   - Deshabilitar temporalmente la asignación del rol `Cocinero` en el formulario de creación de usuarios de `Sistema.java` hasta la entrega del módulo de cocina.
@@ -251,21 +251,21 @@ Esta sección registra el avance del trabajo en curso. Los cambios indicados com
 
 **Archivos:** `build.xml`, `docker-compose.integration.yml`, `test/`, `e2e_virtual.sh`, `e2e_dia_completo_virtual.sh`, `test/Vista/DiaE2EFixture.java`.
 
-- [ ] **Blindaje de suites contra bases productivas:**
+- [x] **Blindaje de suites contra bases productivas:**
   - Asegurar que ninguna prueba unitaria, de integración o E2E pueda ejecutarse si la URL JDBC apunta a la base `restaurante` en 3306.
   - Las suites deben fallar de inmediato si `E2E_BD_DESECHABLE != 'SI'` o si el puerto no es el aislado 3307.
-- [ ] **Pre-siembra controlada en entorno de pruebas:**
-  - Garantizar que el script de inicio del contenedor de integración (`docker-compose.integration.yml`) y `DiaE2EFixture` inserten la cuenta `admin/admin` con `bootstrap_inicial_completado='1'` exclusivamente en `restaurante_test`.
-  - Esto garantiza que todas las pruebas E2E existentes continúen ejecutándose sin modificaciones destructivas en los robots de prueba.
-- [ ] **Corrección del test de columnas:**
+- [x] **Pre-siembra controlada en entorno de pruebas:**
+  - Garantizar que el seed `db/integration/003-seed-integration.sql` inserte la cuenta de prueba `admin/admin` y `bootstrap_inicial_completado='1'` exclusivamente en `restaurante_test`; `DiaE2EFixture` exige por configuración que los E2E apunten a esa BD y hacen login por UI.
+  - Esto permite los flujos de prueba sin preparar usuarios ni datos mediante código de negocio dentro de los robots.
+- [x] **Corrección del test de columnas:**
   - En la rama `feature/persistencia-columnas-jtable`, refactorizar `RedimensionarColumnasJTableE2EVirtual.java` para eliminar llamadas a JDBC y DAOs, basando la prueba en la inspección visual de anchos de columna vía UI.
-- [ ] **Ejecución y registro de suites:**
+- [x] **Ejecución y registro de suites:**
   - Ejecutar `ant -q compile jar`.
   - Ejecutar `ant -q compile-test`.
   - Ejecutar `ant integration-test` en puerto 3307.
-  - Ejecutar `./e2e_virtual.sh` en Xvfb `:99`.
+  - Ejecutar los E2E mediante `./e2e_dia_completo_virtual.sh`, que delega en `e2e_virtual.sh` con Xvfb `:99`, MySQL efímero e interacción UI-only.
 
-**Gate:** Cero riesgo de escribir en BD productiva; suites de integración y E2E pasan 100% en el entorno desechable.
+**Gate:** El destino de las suites está blindado y toda suite ejecutada usa la BD desechable; el gate integral de release aún requiere los E2E restantes listados en Fase 7.
 
 ---
 
