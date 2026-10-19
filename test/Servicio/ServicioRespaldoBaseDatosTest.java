@@ -104,6 +104,50 @@ public class ServicioRespaldoBaseDatosTest {
     }
 
     @Test
+    public void restaurarRespaldoConClaveHmacPreviaRestauraDatos() throws Exception {
+        ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc();
+        Path archivo = servicio.crearRespaldo(tempDir);
+        String nombreOriginal;
+        try (java.sql.Connection con = proveedor.getConnection();
+             java.sql.Statement st = con.createStatement();
+             java.sql.ResultSet rs = st.executeQuery("SELECT nombre FROM config WHERE id=1")) {
+            assertTrue("La configuración de prueba debe contener el registro principal", rs.next());
+            nombreOriginal = rs.getString(1);
+        }
+
+        String claveAnterior = proveedor.settingConfigurado("BACKUP_HMAC_KEY");
+        String claveActual = "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100";
+        String actualAnterior = System.getProperty("BACKUP_HMAC_KEY");
+        String previaAnterior = System.getProperty("BACKUP_HMAC_KEY_PREVIOUS");
+        try {
+            try (java.sql.Connection con = proveedor.getConnection();
+                 java.sql.PreparedStatement ps = con.prepareStatement(
+                         "UPDATE config SET nombre=? WHERE id=1")) {
+                ps.setString(1, "CAMBIO_DESPUES_DEL_RESPALDO");
+                assertEquals(1, ps.executeUpdate());
+            }
+            System.setProperty("BACKUP_HMAC_KEY", claveActual);
+            System.setProperty("BACKUP_HMAC_KEY_PREVIOUS", claveAnterior);
+
+            Path respaldoPrevio = servicio.restaurarRespaldo(archivo);
+
+            assertNotNull("La restauración debe guardar una copia de seguridad previa", respaldoPrevio);
+            try (java.sql.Connection con = proveedor.getConnection();
+                 java.sql.Statement st = con.createStatement();
+                 java.sql.ResultSet rs = st.executeQuery("SELECT nombre FROM config WHERE id=1")) {
+                assertTrue(rs.next());
+                assertEquals("La restauración debe recuperar los datos firmados con la clave previa",
+                        nombreOriginal, rs.getString(1));
+            }
+        } finally {
+            if (actualAnterior == null) System.clearProperty("BACKUP_HMAC_KEY");
+            else System.setProperty("BACKUP_HMAC_KEY", actualAnterior);
+            if (previaAnterior == null) System.clearProperty("BACKUP_HMAC_KEY_PREVIOUS");
+            else System.setProperty("BACKUP_HMAC_KEY_PREVIOUS", previaAnterior);
+        }
+    }
+
+    @Test
     public void crearRespaldoAutomaticoSiEsNecesarioEvitaDuplicadosMismoDia() {
         Path primerRespaldo = servicio.crearRespaldoAutomaticoSiEsNecesario();
         assertNotNull("El primer respaldo automático de hoy debe generarse", primerRespaldo);
@@ -320,6 +364,7 @@ public class ServicioRespaldoBaseDatosTest {
             p.setProperty("tabla." + i + ".filas", "0");
             p.setProperty("tabla." + i + ".columnas", "");
         }
+        p.setProperty("hmac_sha256", firmarManifiestoParaPrueba(p));
         try (var writer = Files.newBufferedWriter(manifestPath, java.nio.charset.StandardCharsets.UTF_8)) {
             p.store(writer, "Manifiesto fabricado");
         }
@@ -332,6 +377,27 @@ public class ServicioRespaldoBaseDatosTest {
                 + "sql=" + shaSql + System.lineSeparator()
                 + "manifest=" + shaManifest + System.lineSeparator();
         Files.writeString(checksumPath, contenidoChecksum, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static String firmarManifiestoParaPrueba(java.util.Properties manifiesto) throws Exception {
+        String clave = new ProveedorConexionJdbc().settingConfigurado("BACKUP_HMAC_KEY");
+        assertNotNull("La prueba destructiva requiere la clave HMAC temporal configurada", clave);
+        byte[] claveBytes = clave.length() >= 64 && clave.length() % 2 == 0 && clave.matches("[0-9a-fA-F]+")
+                ? java.util.HexFormat.of().parseHex(clave)
+                : clave.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        StringBuilder canonico = new StringBuilder();
+        manifiesto.stringPropertyNames().stream()
+                .filter(nombre -> !"hmac_sha256".equals(nombre))
+                .sorted()
+                .forEach(nombre -> {
+                    String valor = manifiesto.getProperty(nombre, "");
+                    canonico.append(nombre.length()).append(':').append(nombre)
+                            .append(valor.length()).append(':').append(valor).append('\n');
+                });
+        javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+        mac.init(new javax.crypto.spec.SecretKeySpec(claveBytes, "HmacSHA256"));
+        return java.util.HexFormat.of().formatHex(mac.doFinal(canonico.toString()
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
     }
 
     @Test
