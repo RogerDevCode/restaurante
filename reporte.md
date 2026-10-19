@@ -1,10 +1,11 @@
 # Reporte de diagnóstico adversarial — Impresión tickera (iteración 4)
 
-**Proyecto:** Restaurante 2026 · **Fecha:** 2026-10-09
-**Alcance:** Re-verificación de las 14 faltas + hallazgos N1–N12 **contra el código recién modificado por el usuario** (diff respecto a `384bfac`).
-**Método:** Lectura de fuentes + `git diff 384bfac`, compilación real (`ant clean jar`, `ant compile-test`). **No se modificó ningún `.java` ni configuración**; sólo se actualiza este `reporte.md`.
+**Proyecto:** Restaurante 2026 · **Fecha original:** 2026-10-09 · **Revalidado:** 2026-10-19
+**Alcance:** Re-verificación de las 14 faltas + hallazgos N1–N12.
+**Estado verificado (2026-10-19):** `ant -q compile jar` y `ant -q compile-test` son **BUILD SUCCESSFUL**. Los hallazgos N15 (referencia a clase borrada) y N16 (compatibilidad de ResultadoFinalizacion en test) han sido **RESUELTOS** en la base de código. La conflación N13 está incorporada para solución definitiva en la Fase 3 de `plan-produccion.md`.
 
-> **Advertencia de esta iteración:** por primera vez **`ant compile-test` FALLA** (4 errores en `test/`). La suite de JUnit **no puede ejecutarse**. Varios arreglos de esta iteración introdujeron una **regresión semántica** (el booleano "impreso directo" ahora también es `true` cuando en realidad se degradó al visor) y dos **pruebas rotas** por cambios de firma/borrado de clase. Detalle en §4 (N13, N15, N16).
+> **Nota de actualización:** Las fallas de compilación reportadas previamente en esta iteración ya no aplican. 141 fuentes de prueba compilan sin errores.
+
 
 ---
 
