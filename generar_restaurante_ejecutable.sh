@@ -12,13 +12,24 @@ OUTPUT_DIR="$DIR/Restaurante_Ejecutable"
 ZIP_FILE="$DIR/Restaurante_Ejecutable.zip"
 DIST_JAR="$DIR/dist/Restaurante.jar"
 LIB_DIR="$DIR/librerias"
+ENV_BACKUP=""
+ZIP_STAGING=""
+TEMP_ZIP=""
+cleanup_temporaries() {
+    [ -z "$ZIP_STAGING" ] || rm -rf "$ZIP_STAGING"
+    [ -z "$TEMP_ZIP" ] || rm -f "$TEMP_ZIP"
+}
+trap cleanup_temporaries EXIT
 
-echo "[1/5] Compilando proyecto con Ant..."
-ant jar
+if [ "${SKIP_COMPILE:-NO}" = "SI" ]; then
+    [ -f "$DIST_JAR" ] || { echo "[ERROR] No existe dist/Restaurante.jar para empaquetar." >&2; exit 1; }
+    echo "[1/5] Usando dist/Restaurante.jar compilado previamente..."
+else
+    echo "[1/5] Compilando proyecto con Ant..."
+    ant jar
+fi
 
-echo "[2/5] Limpiando artefactos previos..."
-rm -rf "$OUTPUT_DIR"
-rm -f "$ZIP_FILE"
+echo "[2/5] Actualizando solo archivos administrados por el empaquetador..."
 
 echo "[3/5] Creando directorios limpios..."
 mkdir -p "$OUTPUT_DIR/lib"
@@ -60,8 +71,8 @@ cp -f "$DIR/actualizar_bd.sql" "$OUTPUT_DIR/actualizar_bd.sql"
 [ -f "$DIR/LEEME_INSTRUCCIONES.txt" ] && cp -f "$DIR/LEEME_INSTRUCCIONES.txt" "$OUTPUT_DIR/"
 [ -f "$DIR/RESUMEN_CAMBIOS_Y_USO.txt" ] && cp -f "$DIR/RESUMEN_CAMBIOS_Y_USO.txt" "$OUTPUT_DIR/"
 
-if [ -f "$DIR/.env" ]; then
-    cp -f "$DIR/.env" "$OUTPUT_DIR/.env"
+if [ -f "$DIR/.env.example" ]; then
+    cp -f "$DIR/.env.example" "$OUTPUT_DIR/.env.example"
 fi
 
 echo "Normalizando terminaciones de linea Windows (CRLF) para scripts .bat, .cmd, .ps1, .vbs..."
@@ -70,8 +81,35 @@ for ext in bat cmd ps1 vbs; do
 done
 
 echo "[5/5] Comprimiendo archivo ZIP..."
-cd "$DIR"
-zip -r "$ZIP_FILE" "Restaurante_Ejecutable" > /dev/null
+ZIP_STAGING="$(mktemp -d)"
+TEMP_ZIP="$(mktemp "$DIR/Restaurante_Ejecutable.zip.tmp.XXXXXX")"
+rm -f "$TEMP_ZIP"
+mkdir -p "$ZIP_STAGING/Restaurante_Ejecutable/lib"
+cp -f "$OUTPUT_DIR/Restaurante.jar" "$ZIP_STAGING/Restaurante_Ejecutable/"
+for library in AbsoluteLayout.jar itextpdf-5.5.1.jar mysql-connector-j-8.0.31.jar pdfbox-2.0.31.jar fontbox-2.0.31.jar commons-logging-1.2.jar; do
+    [ ! -f "$OUTPUT_DIR/lib/$library" ] || cp -f "$OUTPUT_DIR/lib/$library" "$ZIP_STAGING/Restaurante_Ejecutable/lib/"
+done
+FILES=(
+    "BD.sql" "actualizar_bd.sql" "BD RESTAURANTE 2026.sql"
+    "limpiar_para_comenzar_hoy.sql" "limpiar_para_comenzar_hoy.bat" "limpiar_para_comenzar_hoy.sh"
+    "actualizar_datos_cliente.bat" "actualizar_datos_cliente.sh"
+    "iniciar_restaurante.bat" "iniciar_restaurante.sh" "actualizar_bd.bat"
+    "instalar_mysql_y_bd.bat" "instalar_mysql_y_bd.ps1" "configurar_mysql.ps1"
+    "instalar_acceso_directo.bat" "instalar_acceso_directo.ps1" "instalacion_completa_un_clic.bat"
+    "iniciar_restaurante_silencioso.vbs" "icono_restaurante.ico" "icono_restaurante.png"
+    "crear_acceso_directo.bat" "listar_impresoras.bat" "LEEME_INSTRUCCIONES.txt"
+    "RESUMEN_CAMBIOS_Y_USO.txt"
+)
+for file in "${FILES[@]}"; do
+    [ ! -f "$OUTPUT_DIR/$file" ] || cp -f "$OUTPUT_DIR/$file" "$ZIP_STAGING/Restaurante_Ejecutable/$file"
+done
+cp -f "$OUTPUT_DIR/.env.example" "$ZIP_STAGING/Restaurante_Ejecutable/.env.example"
+(cd "$ZIP_STAGING" && zip -qr "$TEMP_ZIP" "Restaurante_Ejecutable")
+if unzip -Z1 "$TEMP_ZIP" | rg -n '(^|/)\.env($|\.)|\.(key|pem|p12|jks)$|\.sql\.gz$|\.log$' | rg -v '/\.env\.example$'; then
+    echo "[ERROR] El ZIP contiene un archivo sensible; no se reemplazó el archivo anterior." >&2
+    exit 1
+fi
+mv -f "$TEMP_ZIP" "$ZIP_FILE"
 
 echo "================================================================================"
 echo "  [OK] Restaurante_Ejecutable y Restaurante_Ejecutable.zip generados con éxito."

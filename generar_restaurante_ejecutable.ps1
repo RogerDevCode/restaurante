@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Script de PowerShell para Windows 11 que borra, regenera y empaqueta la carpeta
     'Restaurante_Ejecutable' y crea su archivo ZIP 'Restaurante_Ejecutable.zip'.
@@ -164,19 +164,19 @@ if (-not $SkipCompile -and $antExe) {
 }
 
 # -----------------------------------------------------------------------------
-# 3. BORRAR Y REGENERAR CARPETA Restaurante_Ejecutable Y ZIP PREVIO
+# 3. REGENERAR CARPETA EJECUTABLE PRESERVANDO CONFIGURACIÓN LOCAL
 # -----------------------------------------------------------------------------
 Write-Host "`n[3/6] Limpiando carpetas y artefactos previos..." -ForegroundColor Cyan
 
+$envLocalAnterior = $null
+$envLocalPath = Join-Path $OutputDir ".env"
+if (Test-Path -LiteralPath $envLocalPath -PathType Leaf) {
+    $envLocalAnterior = [System.IO.File]::ReadAllBytes($envLocalPath)
+}
 if (Test-Path -LiteralPath $OutputDir) {
     Write-Host "  -> Eliminando carpeta anterior '$OutputDir'..." -ForegroundColor Yellow
     Remove-Item -LiteralPath $OutputDir -Recurse -Force -ErrorAction Stop
     Start-Sleep -Milliseconds 200
-}
-
-if (Test-Path -LiteralPath $ZipFile) {
-    Write-Host "  -> Eliminando archivo ZIP anterior '$ZipFile'..." -ForegroundColor Yellow
-    Remove-Item -LiteralPath $ZipFile -Force -ErrorAction Stop
 }
 
 # -----------------------------------------------------------------------------
@@ -196,6 +196,10 @@ foreach ($carpeta in $carpetasRequeridas) {
     if (-not (Test-Path -LiteralPath $carpeta)) {
         New-Item -ItemType Directory -LiteralPath $carpeta -Force | Out-Null
     }
+}
+if ($null -ne $envLocalAnterior) {
+    [System.IO.File]::WriteAllBytes((Join-Path $OutputDir ".env"), $envLocalAnterior)
+    $envLocalAnterior = $null
 }
 Write-Host "  [OK] Subdirectorios lib/, logs/, pdf/, facturas/ creados." -ForegroundColor Green
 
@@ -278,8 +282,8 @@ foreach ($s in $scripts) {
     }
 }
 
-# 4.5 Copiar documentación y archivo .env
-Write-Host "  -> Copiando guias y configuracion .env..." -ForegroundColor Gray
+# 4.5 Copiar documentación y plantilla de configuración (.env.example)
+Write-Host "  -> Copiando guias y plantilla .env.example..." -ForegroundColor Gray
 $docs = @(
     "LEEME_INSTRUCCIONES.txt",
     "RESUMEN_CAMBIOS_Y_USO.txt"
@@ -291,31 +295,11 @@ foreach ($doc in $docs) {
     }
 }
 
-# Archivo .env
-$envOrigen = Join-Path $ProjectRoot ".env"
-$envDestino = Join-Path $OutputDir ".env"
-if (Test-Path -LiteralPath $envOrigen) {
-    Copy-Item -LiteralPath $envOrigen -Destination $envDestino -Force
-} else {
-    # Generar .env estándar por defecto si no existe
-    $envContenido = @"
-# ========================================================
-# Configuración de Conexión a Base de Datos MySQL
-# ========================================================
-MYSQL_HOST=127.0.0.1
-MYSQL_PORT=3306
-MYSQL_DATABASE=restaurante
-MYSQL_USER=admin
-MYSQL_PASSWORD=admin
-
-# Variables alternativas compatibles
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_NAME=restaurante
-DB_USER=admin
-DB_PASSWORD=admin
-"@
-    Set-Content -LiteralPath $envDestino -Value $envContenido -Encoding UTF8
+# Archivo .env.example (No se empaquetan credenciales reales en el ZIP distribuible)
+$envExampleOrigen = Join-Path $ProjectRoot ".env.example"
+$envExampleDestino = Join-Path $OutputDir ".env.example"
+if (Test-Path -LiteralPath $envExampleOrigen) {
+    Copy-Item -LiteralPath $envExampleOrigen -Destination $envExampleDestino -Force
 }
 
 # -----------------------------------------------------------------------------
@@ -348,7 +332,7 @@ if ($errores -eq 0) {
 }
 
 # Verificar BD.sql y scripts
-$archivosCriticos = @("BD.sql", "actualizar_bd.sql", "iniciar_restaurante.bat", ".env")
+$archivosCriticos = @("BD.sql", "actualizar_bd.sql", "iniciar_restaurante.bat", ".env.example")
 foreach ($ac in $archivosCriticos) {
     $rutaAc = Join-Path $OutputDir $ac
     if (-not (Test-Path -LiteralPath $rutaAc)) {
@@ -370,7 +354,30 @@ if ($errores -gt 0) {
 Write-Host "`n[6/6] Generando archivo comprimido ZIP..." -ForegroundColor Cyan
 
 try {
-    Compress-Archive -Path $OutputDir -DestinationPath $ZipFile -Force
+    $zipStageRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("restaurante-release-" + [guid]::NewGuid().ToString("N"))
+    $zipStage = Join-Path $zipStageRoot "Restaurante_Ejecutable"
+    $zipTemporal = "$ZipFile.tmp.zip"
+    New-Item -ItemType Directory -Path $zipStage -Force | Out-Null
+    Copy-Item -Path (Join-Path $OutputDir "*") -Destination $zipStage -Recurse -Force
+    Get-ChildItem -LiteralPath $zipStage -Force -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -eq ".env" -or ($_.Name.StartsWith(".env.") -and $_.Name -ne ".env.example") } |
+        Remove-Item -Force
+    if (Test-Path -LiteralPath $zipTemporal) { Remove-Item -LiteralPath $zipTemporal -Force }
+    Compress-Archive -Path $zipStage -DestinationPath $zipTemporal -Force
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zipLectura = [System.IO.Compression.ZipFile]::OpenRead($zipTemporal)
+    try {
+        $archivosProhibidos = @($zipLectura.Entries | Where-Object {
+            $_.FullName -match '(^|/)\.env($|\.)' -and $_.FullName -notmatch '/\.env\.example$' -or
+            $_.FullName -match '\.(key|pem|p12|jks|sql\.gz|log)$'
+        })
+    } finally {
+        $zipLectura.Dispose()
+    }
+    if ($archivosProhibidos.Count -gt 0) {
+        throw "El ZIP contiene archivos prohibidos: $($archivosProhibidos.FullName -join ', ')"
+    }
+    Move-Item -LiteralPath $zipTemporal -Destination $ZipFile -Force
     if (Test-Path -LiteralPath $ZipFile) {
         $tamZipMb = [math]::Round(((Get-Item -LiteralPath $ZipFile).Length / 1MB), 2)
         Write-Host "  [OK] Archivo ZIP generado exitosamente: $ZipFile ($tamZipMb MB)" -ForegroundColor Green
@@ -380,6 +387,13 @@ try {
 } catch {
     Write-Host "  [ERROR] Falla al comprimir el archivo ZIP: $_" -ForegroundColor Red
     exit 1
+} finally {
+    if ($zipStageRoot -and (Test-Path -LiteralPath $zipStageRoot)) {
+        Remove-Item -LiteralPath $zipStageRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if ($zipTemporal -and (Test-Path -LiteralPath $zipTemporal)) {
+        Remove-Item -LiteralPath $zipTemporal -Force -ErrorAction SilentlyContinue
+    }
 }
 
 # -----------------------------------------------------------------------------

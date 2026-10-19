@@ -339,6 +339,29 @@ foreach ($c in $carpetas) {
     }
 }
 
+function Protect-EnvFileAcl([string]$path) {
+    $acl = Get-Acl -LiteralPath $path
+    $acl.SetAccessRuleProtection($true, $false)
+    $identities = @(
+        [Security.Principal.WindowsIdentity]::GetCurrent().User,
+        (New-Object Security.Principal.SecurityIdentifier("S-1-5-18")),
+        (New-Object Security.Principal.SecurityIdentifier("S-1-5-32-544"))
+    )
+    foreach ($sid in $identities) {
+        $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, "FullControl", "Allow")
+        $acl.SetAccessRule($rule)
+    }
+    Set-Acl -LiteralPath $path -AclObject $acl
+}
+
+function New-RandomDatabasePassword {
+    $bytes = New-Object byte[] 32
+    $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $generator.GetBytes($bytes) }
+    finally { $generator.Dispose() }
+    return ([BitConverter]::ToString($bytes) -replace "-", "").ToLowerInvariant()
+}
+
 $envFile = Join-Path $appEjecutableDir ".env"
 $envExample = Join-Path $appEjecutableDir ".env.example"
 if (-not (Test-Path -LiteralPath $envFile)) {
@@ -346,17 +369,35 @@ if (-not (Test-Path -LiteralPath $envFile)) {
         Copy-Item -LiteralPath $envExample -Destination $envFile -Force
         Write-Host "  [+] Archivo .env inicializado desde .env.example." -ForegroundColor Green
     } else {
+        $pwdGenerada = New-RandomDatabasePassword
+        $hmacGenerada = New-RandomDatabasePassword
         $envContenido = @"
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
 MYSQL_DATABASE=restaurante
-MYSQL_USER=admin
-MYSQL_PASSWORD=admin
+MYSQL_USER=restaurante_app
+MYSQL_PASSWORD=$pwdGenerada
+BACKUP_HMAC_KEY=$hmacGenerada
 "@
         Set-Content -Path $envFile -Value $envContenido -Encoding UTF8
-        Write-Host "  [+] Archivo .env generado con configuracion predeterminada." -ForegroundColor Green
+        Write-Host "  [+] Archivo .env generado con configuracion local segura." -ForegroundColor Green
     }
 }
+$envContenido = [System.IO.File]::ReadAllText($envFile, [System.Text.Encoding]::UTF8)
+$pwdGenerada = New-RandomDatabasePassword
+if ($envContenido -match '(?m)^\s*MYSQL_PASSWORD\s*=\s*(CAMBIAR_POR_CLAVE_LOCAL_APP|admin)?\s*$') {
+    $envContenido = [regex]::Replace($envContenido, '(?m)^\s*MYSQL_PASSWORD\s*=.*$', "MYSQL_PASSWORD=$pwdGenerada")
+}
+if ($envContenido -match '(?m)^\s*BACKUP_HMAC_KEY\s*=\s*(CAMBIAR_POR_CLAVE_HEX_64|.*)?\s*$') {
+    $hmacActual = [regex]::Match($envContenido, '(?m)^\s*BACKUP_HMAC_KEY\s*=\s*(.*?)\s*$').Groups[1].Value
+    if ($hmacActual -notmatch '^[0-9a-fA-F]{64}$') {
+        $envContenido = [regex]::Replace($envContenido, '(?m)^\s*BACKUP_HMAC_KEY\s*=.*$', "BACKUP_HMAC_KEY=$pwdGenerada")
+    }
+} else {
+    $envContenido = $envContenido.TrimEnd("`r", "`n") + "`r`nBACKUP_HMAC_KEY=$pwdGenerada`r`n"
+}
+[System.IO.File]::WriteAllText($envFile, $envContenido, [System.Text.UTF8Encoding]::new($false))
+Protect-EnvFileAcl $envFile
 Write-Host "  [OK] Estructura de carpetas y archivo .env preparados." -ForegroundColor Green
 
 # -----------------------------------------------------------------------------

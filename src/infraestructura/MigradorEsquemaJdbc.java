@@ -1078,7 +1078,51 @@ public final class MigradorEsquemaJdbc {
             try (Statement stModo = con.createStatement()) {
                 stModo.executeUpdate("INSERT IGNORE INTO configuracion_sistema (clave, valor, descripcion) "
                         + "VALUES ('modo_atencion', 'OPCION_B', 'Modo predeterminado de atención de mesas')");
+
+                boolean tieneBootstrap = false;
+                try (ResultSet rsBoot = stModo.executeQuery("SELECT 1 FROM configuracion_sistema WHERE clave = 'bootstrap_inicial_completado'")) {
+                    if (rsBoot.next()) {
+                        tieneBootstrap = true;
+                    }
+                }
+                if (!tieneBootstrap) {
+                    String valorBootstrap = existeAdministradorConClavePersonalizada(con) ? "1" : "0";
+                    try (PreparedStatement psBootstrap = con.prepareStatement(
+                            "INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES "
+                            + "('bootstrap_inicial_completado', ?, 'Indica si se ha completado el asistente de bootstrap inicial')")) {
+                        psBootstrap.setString(1, valorBootstrap);
+                        psBootstrap.executeUpdate();
+                    }
+                }
             }
+        }
+    }
+
+    private static boolean existeAdministradorConClavePersonalizada(Connection con) throws SQLException {
+        String sql = "SELECT pass FROM usuarios WHERE LOWER(TRIM(rol)) = 'administrador' "
+                + "AND (activo = 1 OR activo IS NULL)";
+        char[] claveDemo = "admin".toCharArray();
+        try (PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            PasswordHasher hasher = new PasswordHasher();
+            while (rs.next()) {
+                String hash = rs.getString("pass");
+                if (hash == null || hash.isBlank() || "!BLOQUEADO_BOOTSTRAP_PENDIENTE!".equals(hash)) {
+                    continue;
+                }
+                if (hasher.esHash(hash)) {
+                    if (hasher.verificar(claveDemo, hash)) {
+                        continue;
+                    }
+                    return true;
+                }
+                if (!"admin".equals(hash)) {
+                    return true;
+                }
+            }
+            return false;
+        } finally {
+            java.util.Arrays.fill(claveDemo, '\0');
         }
     }
 

@@ -476,7 +476,7 @@ UNLOCK TABLES;
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` (`id`, `nombre`, `correo`, `pass`, `rol`, `activo`) VALUES (1,'Administrador','admin','pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM','Administrador',1);
+INSERT INTO `usuarios` (`id`, `nombre`, `correo`, `pass`, `rol`, `activo`) VALUES (1,'Administrador','admin','!BLOQUEADO_BOOTSTRAP_PENDIENTE!','Administrador',0);
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -511,7 +511,8 @@ INSERT INTO `configuracion_sistema` (`clave`, `valor`, `descripcion`) VALUES
 ('cliente_predeterminado_nombre', 'Consumidor Final', 'Nombre de cliente por defecto en facturación'),
 ('cliente_predeterminado_documento', 'V-00000000', 'Cédula/RIF de cliente por defecto en facturación'),
 ('meses_retencion_pedidos', '24', 'Meses de retención de pedidos'),
-('modo_atencion', 'OPCION_C', 'Modo predeterminado de atención de mesas');
+('modo_atencion', 'OPCION_C', 'Modo predeterminado de atención de mesas'),
+('bootstrap_inicial_completado', '0', 'Indica si se ha completado el asistente de bootstrap inicial');
 /*!40000 ALTER TABLE `configuracion_sistema` ENABLE KEYS */;
 UNLOCK TABLES;
 

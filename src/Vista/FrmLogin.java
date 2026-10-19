@@ -348,6 +348,15 @@ public class FrmLogin extends javax.swing.JFrame {
         }
         usuarioAutenticado = resultado.get();
         txtPass.setText("");
+        if (Servicio.RolesSistema.COCINERO.equals(usuarioAutenticado.getRol())) {
+            usuarioAutenticado = null;
+            cambiarEstadoFormulario(true);
+            JOptionPane.showMessageDialog(this,
+                    "El módulo interactivo de cocina está en desarrollo. Este perfil aún no puede operar terminales de sala ni caja.",
+                    "Perfil de cocina no disponible", JOptionPane.INFORMATION_MESSAGE);
+            txtIdentificador.requestFocusInWindow();
+            return;
+        }
         barra.setVisible(true);
         contador = -1;
         barra.setValue(0);

@@ -863,6 +863,32 @@ BEGIN
         ALTER TABLE categorias ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1 AFTER orden;
     END IF;
     UPDATE categorias SET activo = 1 WHERE LOWER(TRIM(nombre)) = 'general';
+
+    -- 36. Clave bootstrap_inicial_completado en configuracion_sistema
+    IF NOT EXISTS (
+        SELECT 1 FROM configuracion_sistema WHERE clave = 'bootstrap_inicial_completado'
+    ) THEN
+        -- Preservar cuentas existentes: solo pedir bootstrap si no hay un
+        -- Administrador activo con credenciales distintas del fixture demo.
+        -- El migrador JDBC además verifica el hash demo por PasswordHasher.
+        INSERT INTO configuracion_sistema (clave, valor, descripcion)
+        SELECT 'bootstrap_inicial_completado',
+               IF(EXISTS (
+                   SELECT 1 FROM usuarios
+                   WHERE LOWER(TRIM(rol)) = 'administrador'
+                     AND (activo = 1 OR activo IS NULL)
+                     AND pass IS NOT NULL AND TRIM(pass) <> ''
+                     AND pass NOT IN (
+                         'admin',
+                         '!BLOQUEADO_BOOTSTRAP_PENDIENTE!',
+                         'pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM'
+                     )
+               ), '1', '0'),
+               'Indica si se ha completado el asistente de bootstrap inicial'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM configuracion_sistema WHERE clave = 'bootstrap_inicial_completado'
+        );
+    END IF;
 END$$
 DELIMITER ;
 

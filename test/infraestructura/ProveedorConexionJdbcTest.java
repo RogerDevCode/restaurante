@@ -13,9 +13,26 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class ProveedorConexionJdbcTest {
+
+    @Test
+    public void clasificacionLanSoloAceptaLiteralesPrivadosValidos() {
+        assertTrue(ProveedorConexionJdbc.esRedPrivadaOLan("10.0.0.8"));
+        assertTrue(ProveedorConexionJdbc.esRedPrivadaOLan("172.16.0.1"));
+        assertTrue(ProveedorConexionJdbc.esRedPrivadaOLan("172.31.255.254"));
+        assertTrue(ProveedorConexionJdbc.esRedPrivadaOLan("192.168.1.10"));
+        assertTrue(ProveedorConexionJdbc.esRedPrivadaOLan("fd12::10"));
+        assertFalse(ProveedorConexionJdbc.esRedPrivadaOLan("172.32.0.1"));
+        assertFalse(ProveedorConexionJdbc.esRedPrivadaOLan("192.168.999.1"));
+        assertFalse(ProveedorConexionJdbc.esRedPrivadaOLan("2001:4860:4860::8888"));
+        assertFalse(ProveedorConexionJdbc.esRedPrivadaOLan("db.local"));
+        assertFalse(ProveedorConexionJdbc.esRedPrivadaOLan("db"));
+        assertFalse(ProveedorConexionJdbc.esRedPrivadaOLan(null));
+    }
     @Rule
     public final TemporaryFolder temporal = new TemporaryFolder();
 
@@ -461,6 +478,100 @@ public class ProveedorConexionJdbcTest {
             restaurar("DB_PASSWORD", anteriorPass);
             restaurar("DB_NAME", anteriorName);
             restaurar("DB_SSL", anteriorSsl);
+            restaurar("DB_URL", anteriorUrl);
+        }
+    }
+
+    @Test
+    public void hostLanPrivadaUsaSslModeRequiredPorDefecto() throws Exception {
+        String anteriorPool = System.getProperty("DB_POOL_ENABLED");
+        String anteriorHost = System.getProperty("DB_HOST");
+        String anteriorUser = System.getProperty("DB_USER");
+        String anteriorPass = System.getProperty("DB_PASSWORD");
+        String anteriorName = System.getProperty("DB_NAME");
+        String anteriorUrl = System.getProperty("DB_URL");
+
+        AtomicReference<String> urlCapturada = new AtomicReference<>();
+        try {
+            System.setProperty("DB_POOL_ENABLED", "false");
+            System.setProperty("DB_HOST", "192.168.1.100");
+            System.setProperty("DB_USER", "usuario");
+            System.setProperty("DB_PASSWORD", "clave");
+            System.setProperty("DB_NAME", "restaurante");
+            System.clearProperty("DB_SSL");
+            System.clearProperty("MYSQL_SSL");
+            System.clearProperty("DB_URL");
+
+            ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc() {
+                @Override
+                protected java.sql.Connection crearConexionFisica(String url, String user, String password, Properties localConfig) {
+                    urlCapturada.set(url);
+                    return (java.sql.Connection) java.lang.reflect.Proxy.newProxyInstance(
+                            getClass().getClassLoader(),
+                            new Class<?>[]{java.sql.Connection.class},
+                            (p, m, a) -> null
+                    );
+                }
+            };
+
+            proveedor.getConnection();
+            assertNotNull(urlCapturada.get());
+            String u = urlCapturada.get();
+            org.junit.Assert.assertTrue("LAN privada debe usar sslMode=REQUIRED", u.contains("sslMode=REQUIRED"));
+            org.junit.Assert.assertTrue("LAN privada debe permitir public key retrieval", u.contains("allowPublicKeyRetrieval=true"));
+        } finally {
+            restaurar("DB_POOL_ENABLED", anteriorPool);
+            restaurar("DB_HOST", anteriorHost);
+            restaurar("DB_USER", anteriorUser);
+            restaurar("DB_PASSWORD", anteriorPass);
+            restaurar("DB_NAME", anteriorName);
+            restaurar("DB_URL", anteriorUrl);
+        }
+    }
+
+    @Test
+    public void hostWanPublicoExigeSslModeVerifyIdentityPorDefecto() throws Exception {
+        String anteriorPool = System.getProperty("DB_POOL_ENABLED");
+        String anteriorHost = System.getProperty("DB_HOST");
+        String anteriorUser = System.getProperty("DB_USER");
+        String anteriorPass = System.getProperty("DB_PASSWORD");
+        String anteriorName = System.getProperty("DB_NAME");
+        String anteriorUrl = System.getProperty("DB_URL");
+
+        AtomicReference<String> urlCapturada = new AtomicReference<>();
+        try {
+            System.setProperty("DB_POOL_ENABLED", "false");
+            System.setProperty("DB_HOST", "db.externa.com");
+            System.setProperty("DB_USER", "usuario");
+            System.setProperty("DB_PASSWORD", "clave");
+            System.setProperty("DB_NAME", "restaurante");
+            System.clearProperty("DB_SSL");
+            System.clearProperty("MYSQL_SSL");
+            System.clearProperty("DB_URL");
+
+            ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc() {
+                @Override
+                protected java.sql.Connection crearConexionFisica(String url, String user, String password, Properties localConfig) {
+                    urlCapturada.set(url);
+                    return (java.sql.Connection) java.lang.reflect.Proxy.newProxyInstance(
+                            getClass().getClassLoader(),
+                            new Class<?>[]{java.sql.Connection.class},
+                            (p, m, a) -> null
+                    );
+                }
+            };
+
+            proveedor.getConnection();
+            assertNotNull(urlCapturada.get());
+            String u = urlCapturada.get();
+            org.junit.Assert.assertTrue("WAN pública debe exigir sslMode=VERIFY_IDENTITY", u.contains("sslMode=VERIFY_IDENTITY"));
+            org.junit.Assert.assertTrue("WAN pública debe prohibir allowPublicKeyRetrieval", u.contains("allowPublicKeyRetrieval=false"));
+        } finally {
+            restaurar("DB_POOL_ENABLED", anteriorPool);
+            restaurar("DB_HOST", anteriorHost);
+            restaurar("DB_USER", anteriorUser);
+            restaurar("DB_PASSWORD", anteriorPass);
+            restaurar("DB_NAME", anteriorName);
             restaurar("DB_URL", anteriorUrl);
         }
     }

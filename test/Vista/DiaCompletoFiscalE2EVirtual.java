@@ -508,8 +508,8 @@ public final class DiaCompletoFiscalE2EVirtual {
         robot.esperar(() -> sistema.getTitle() != null
                         && sistema.getTitle().contains("Cierre CORTE Z - CIERRE TOTAL procesado"),
                 "la banda de la aplicación confirma el cierre Z procesado");
-        exigir(robot.edt(() -> sistema.getTitle().contains("impresora térmica")),
-                "la salida del cierre usa la impresora simulada del entorno virtual");
+        exigir(robot.edt(() -> sistema.getTitle().contains("spooler")),
+                "la salida del cierre confirma el envío al spooler simulado del entorno virtual");
         System.out.println("OK   cierre Z solicitado desde la interfaz de caja");
     }
 

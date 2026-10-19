@@ -19,6 +19,7 @@ import Servicio.PedidoServicio;
 import Servicio.PlatosServicio;
 import Servicio.PoliticaAcceso;
 import Servicio.SalasServicio;
+import Servicio.ServicioImpresionTicket;
 import Vista.Sistema;
 import java.util.function.Function;
 import java.awt.Desktop;
@@ -103,6 +104,18 @@ public class Restaurante {
                         .log(java.util.logging.Level.FINE, "Aviso en respaldo automático inicial: " + ex.getMessage());
             }
         });
+
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            Servicio.ServicioBootstrapInicial servicioBootstrap = new Servicio.ServicioBootstrapInicial(new infraestructura.ProveedorConexionJdbc());
+            if (!servicioBootstrap.esBootstrapCompletado()) {
+                boolean completado = Vista.FrmBootstrapInicial.mostrarDialogo(null, servicioBootstrap);
+                if (!completado) {
+                    System.exit(0);
+                    return;
+                }
+            }
+        }
+
         lanzarLogin();
     }
 
@@ -130,7 +143,9 @@ public class Restaurante {
                     id -> pedidosDao.verPedidoDetalle(id),
                     empresaDao::datosEmpresa,
                     GeneradorPdfPedido.conEstructuraMensual(GeneradorPdfPedido.resolverDirectorioFacturasPorDefecto()),
-                    PedidoPdfServicio.AbridorPdf.porDefecto());
+                    PedidoPdfServicio.AbridorPdf.porDefecto(),
+                    ServicioImpresionTicket::abrirVisor,
+                    PedidoPdfServicio.ProcesadorSalidaTicket.porDefecto());
             Servicio.CierreCajaServicio cierreServicio = new Servicio.CierreCajaServicio(
                     new Modelo.CierreCajaDao(),
                     empresaDao::datosEmpresa,

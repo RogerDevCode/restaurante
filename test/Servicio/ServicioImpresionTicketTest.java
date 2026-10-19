@@ -116,6 +116,20 @@ public class ServicioImpresionTicketTest {
     }
 
     @Test
+    public void accionImpresionMapeaAliasesSinCambiarElModoPersistidoCuandoNoHayOverride() {
+        assertEquals(Modelo.ModoSalidaTicket.TERMICA_DIRECTA,
+                ServicioImpresionTicket.resolverModoAccion("IMPRIMIR", Modelo.ModoSalidaTicket.VISOR_PDF));
+        assertEquals(Modelo.ModoSalidaTicket.TERMICA_DIRECTA,
+                ServicioImpresionTicket.resolverModoAccion("AUTO", Modelo.ModoSalidaTicket.VISOR_PDF));
+        assertEquals(Modelo.ModoSalidaTicket.VISOR_PDF,
+                ServicioImpresionTicket.resolverModoAccion("VISOR", Modelo.ModoSalidaTicket.TERMICA_DIRECTA));
+        assertEquals(Modelo.ModoSalidaTicket.PDF24_CREATOR,
+                ServicioImpresionTicket.resolverModoAccion("PDF24", Modelo.ModoSalidaTicket.TERMICA_DIRECTA));
+        assertEquals(Modelo.ModoSalidaTicket.VISOR_PDF,
+                ServicioImpresionTicket.resolverModoAccion("", Modelo.ModoSalidaTicket.VISOR_PDF));
+    }
+
+    @Test
     public void servicioImpresionToleraRutaInexistenteSinLanzarError() throws Exception {
         // No debe lanzar RuntimeException ante archivo inexistente
         ServicioImpresionTicket.procesarSalida(Path.of("archivo-inexistente.pdf"));

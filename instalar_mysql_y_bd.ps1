@@ -83,6 +83,32 @@ function Set-EnvPassword([string]$path, [string]$password) {
     [System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))
 }
 
+function Set-EnvValue([string]$path, [string]$key, [string]$value) {
+    $content = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
+    $pattern = '(?m)^\s*' + [regex]::Escape($key) + '\s*=.*$'
+    if ([regex]::IsMatch($content, $pattern)) {
+        $content = [regex]::Replace($content, $pattern, "$key=$value")
+    } else {
+        $content = $content.TrimEnd("`r", "`n") + "`r`n$key=$value`r`n"
+    }
+    [System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))
+}
+
+function Protect-EnvFileAcl([string]$path) {
+    $acl = Get-Acl -LiteralPath $path
+    $acl.SetAccessRuleProtection($true, $false)
+    $identities = @(
+        [Security.Principal.WindowsIdentity]::GetCurrent().User,
+        (New-Object Security.Principal.SecurityIdentifier("S-1-5-18")),
+        (New-Object Security.Principal.SecurityIdentifier("S-1-5-32-544"))
+    )
+    foreach ($sid in $identities) {
+        $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, "FullControl", "Allow")
+        $acl.SetAccessRule($rule)
+    }
+    Set-Acl -LiteralPath $path -AclObject $acl
+}
+
 $rootSecure = Read-Host "Ingrese la contraseña ROOT de MySQL (Enter si no tiene)" -AsSecureString
 $rootPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($rootSecure)
 $rootFile = $null
@@ -96,8 +122,14 @@ try {
     }
 
     $envFile = Join-Path $scriptDir ".env"
+    $envExample = Join-Path $scriptDir ".env.example"
     if (-not (Test-Path -LiteralPath $envFile -PathType Leaf)) {
-        throw "No se encontró .env. Configure las credenciales antes de crear la base nueva."
+        if (Test-Path -LiteralPath $envExample -PathType Leaf) {
+            Copy-Item -LiteralPath $envExample -Destination $envFile -Force
+            Write-Host "Se inicializo .env a partir de .env.example."
+        } else {
+            throw "No se encontró .env ni .env.example. Configure las credenciales antes de crear la base nueva."
+        }
     }
     $settings = @{}
     foreach ($line in Get-Content -LiteralPath $envFile -Encoding UTF8) {
@@ -112,6 +144,13 @@ try {
         Set-EnvPassword $envFile $dbPassword
         Write-Host "Se generó una contraseña aleatoria de aplicación y se guardó en .env."
     }
+    $backupKey = $settings["BACKUP_HMAC_KEY"]
+    if ([string]::IsNullOrWhiteSpace($backupKey) -or $backupKey -notmatch '^[0-9a-fA-F]{64}$') {
+        $backupKey = New-RandomDatabasePassword
+        Set-EnvValue $envFile "BACKUP_HMAC_KEY" $backupKey
+        Write-Host "Se generó una clave HMAC aleatoria de 256 bits y se guardó en .env."
+    }
+    Protect-EnvFileAcl $envFile
     if ([string]::IsNullOrWhiteSpace($dbUser) -or [string]::IsNullOrEmpty($dbPassword)) {
         throw "La configuración .env no contiene usuario y contraseña de aplicación válidos."
     }
@@ -126,7 +165,7 @@ try {
     }
     $sqlCreate = "CREATE DATABASE restaurante CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; " +
         "CREATE USER '$(& $quote $dbUser)'@'127.0.0.1' IDENTIFIED BY '$(& $quote $dbPassword)'; " +
-        "GRANT ALL PRIVILEGES ON restaurante.* TO '$(& $quote $dbUser)'@'127.0.0.1';"
+        "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES ON restaurante.* TO '$(& $quote $dbUser)'@'127.0.0.1';"
     $create = Invoke-MySql $rootFile @("-e", $sqlCreate) $null
     if ($create.Code -ne 0) { throw "No se pudo crear la base nueva y su usuario de aplicación. $($create.Output)" }
 

@@ -20,8 +20,8 @@ public class CierreCajaServicio {
     private final CierreCajaDao cierreDao;
     private final PedidoPdfServicio.ConsultaConfiguracion consultaConfig;
     private final GeneradorPdfCierre generador;
-    private final PedidoPdfServicio.AbridorPdf impresor;
     private final PedidoPdfServicio.AbridorPdf visor;
+    private final PedidoPdfServicio.ProcesadorSalidaTicket procesadorSalida;
 
     public CierreCajaServicio(
             CierreCajaDao cierreDao,
@@ -29,7 +29,8 @@ public class CierreCajaServicio {
             GeneradorPdfCierre generador) {
         this(cierreDao, consultaConfig, generador,
                 ServicioImpresionTicket::procesarSalida,
-                ServicioImpresionTicket::abrirVisor);
+                ServicioImpresionTicket::abrirVisor,
+                PedidoPdfServicio.ProcesadorSalidaTicket.porDefecto());
     }
 
     public CierreCajaServicio(
@@ -38,17 +39,34 @@ public class CierreCajaServicio {
             GeneradorPdfCierre generador,
             PedidoPdfServicio.AbridorPdf impresor,
             PedidoPdfServicio.AbridorPdf visor) {
-        if (cierreDao == null || consultaConfig == null || generador == null || impresor == null || visor == null) {
+        this(cierreDao, consultaConfig, generador, impresor, visor,
+                archivo -> adaptarResultadoCompatibilidad(impresor, archivo));
+    }
+
+    public CierreCajaServicio(
+            CierreCajaDao cierreDao,
+            PedidoPdfServicio.ConsultaConfiguracion consultaConfig,
+            GeneradorPdfCierre generador,
+            PedidoPdfServicio.AbridorPdf impresor,
+            PedidoPdfServicio.AbridorPdf visor,
+            PedidoPdfServicio.ProcesadorSalidaTicket procesadorSalida) {
+        if (cierreDao == null || consultaConfig == null || generador == null || impresor == null
+                || visor == null || procesadorSalida == null) {
             throw ErrorAplicacionException.validacion("Las dependencias del servicio de cierre de caja son obligatorias.");
         }
         this.cierreDao = cierreDao;
         this.consultaConfig = consultaConfig;
         this.generador = generador;
-        this.impresor = impresor;
         this.visor = visor;
+        this.procesadorSalida = procesadorSalida;
     }
 
-    public record ResultadoCierre(Path archivo, boolean impresoDirecto) {}
+    public record ResultadoCierre(Path archivo, ResultadoSalidaTicket salidaTicket) {
+        public boolean impresoDirecto() {
+            return salidaTicket != null
+                    && salidaTicket.estado() == ResultadoSalidaTicket.EstadoSalida.ENVIADO_A_SPOOLER;
+        }
+    }
 
     /**
      * Genera el Cierre de Caja e imprime directamente a la tickera de 80 mm.
@@ -83,13 +101,13 @@ public class CierreCajaServicio {
             eliminarPdfSiExiste(archivo, error);
             throw error;
         }
-        boolean exito;
+        ResultadoSalidaTicket salida;
         try {
-            exito = impresor.abrir(archivo);
-        } catch (IOException ex) {
-            throw new ErrorAplicacionException("El ticket de cierre se generó, pero falló el envío a la impresora.", ex);
+            salida = procesadorSalida.procesar(archivo);
+        } catch (RuntimeException ex) {
+            salida = ResultadoSalidaTicket.fallo("Cierre de caja", ex.getMessage());
         }
-        return new ResultadoCierre(archivo, exito);
+        return new ResultadoCierre(archivo, salida);
     }
 
     private void eliminarPdfSiExiste(Path archivo, RuntimeException errorOriginal) {
@@ -130,13 +148,31 @@ public class CierreCajaServicio {
         }
         Path archivo = generador.generar(cierre, config);
         // Las previsualizaciones no se insertan en la tabla de auditoría cierres_caja
-        boolean exito;
+        ResultadoSalidaTicket salida;
         try {
-            exito = visor.abrir(archivo);
-        } catch (IOException ex) {
-            throw new ErrorAplicacionException("El ticket de cierre se generó, pero no se pudo abrir en el visor.", ex);
+            salida = visor.abrir(archivo)
+                    ? ResultadoSalidaTicket.visor("Visor Sistema", "PDF abierto para revisión.")
+                    : ResultadoSalidaTicket.fallo("Visor Sistema", "El visor no aceptó el PDF.");
+        } catch (IOException | RuntimeException ex) {
+            salida = ResultadoSalidaTicket.fallo("Visor Sistema", ex.getMessage());
         }
-        return new ResultadoCierre(archivo, exito);
+        return new ResultadoCierre(archivo, salida);
+    }
+
+    private static ResultadoSalidaTicket adaptarResultadoCompatibilidad(
+            PedidoPdfServicio.AbridorPdf impresor, Path archivo) {
+        try {
+            boolean aceptado = impresor.abrir(archivo);
+            if (!aceptado) {
+                return ResultadoSalidaTicket.fallo("Canal de salida legado", "El canal de salida devolvió false.");
+            }
+            if (ServicioImpresionTicket.getModoGlobal() == Modelo.ModoSalidaTicket.VISOR_PDF) {
+                return ResultadoSalidaTicket.visor("Visor Sistema", "PDF abierto en el visor.");
+            }
+            return ResultadoSalidaTicket.spooler("Canal de salida legado");
+        } catch (IOException | RuntimeException ex) {
+            return ResultadoSalidaTicket.fallo("Canal de salida legado", ex.getMessage());
+        }
     }
 
     public CierreCaja obtenerDatosCierre(String fecha, CierreCaja.TipoCierre tipo, String usuarioEmisor) {

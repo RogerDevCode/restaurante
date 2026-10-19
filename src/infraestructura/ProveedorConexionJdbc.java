@@ -83,6 +83,7 @@ public class ProveedorConexionJdbc {
         }
 
         boolean esRemoto = !esHostLocal(hostEfectivo);
+        boolean esLanPrivada = esRemoto && esRedPrivadaOLan(hostEfectivo);
         String sslConfigurado = settingConAlias("DB_SSL", "MYSQL_SSL", localConfig);
         String sslModeConfigurado = settingConAlias("DB_SSL_MODE", "MYSQL_SSL_MODE", localConfig);
         String truststore = settingConAlias("DB_SSL_TRUSTSTORE", "MYSQL_SSL_TRUSTSTORE", localConfig);
@@ -112,12 +113,16 @@ public class ProveedorConexionJdbc {
                     sslMode = sslModeConfigurado.trim().toUpperCase(java.util.Locale.ROOT);
                 } else if (truststore != null && !truststore.isBlank()) {
                     sslMode = "VERIFY_IDENTITY";
-                } else {
+                } else if (esLanPrivada) {
                     sslMode = "REQUIRED";
-                    LOGGER.warning("Conexión remota a MySQL (" + hostEfectivo
+                    LOGGER.warning("Conexión remota a MySQL en LAN privada (" + hostEfectivo
                             + ") configurada con TLS pero sin verificación de certificado (sslMode=REQUIRED). "
                             + "Para autenticar la identidad del servidor y mitigar ataques Man-in-the-Middle (MITM), "
                             + "configure DB_SSL_MODE=VERIFY_IDENTITY y DB_SSL_TRUSTSTORE.");
+                } else {
+                    sslMode = "VERIFY_IDENTITY";
+                    LOGGER.info("Conexión remota WAN a MySQL (" + hostEfectivo
+                            + ") exige verificación estricta de certificado (sslMode=VERIFY_IDENTITY).");
                 }
             }
         } else {
@@ -584,5 +589,62 @@ public class ProveedorConexionJdbc {
         }
         String h = host.trim().toLowerCase(java.util.Locale.ROOT);
         return "localhost".equals(h) || "127.0.0.1".equals(h) || "::1".equals(h) || "[::1]".equals(h);
+    }
+
+    public static boolean esRedPrivadaOLan(String host) {
+        if (host == null || host.isBlank()) {
+            return false;
+        }
+        String h = host.trim().toLowerCase(java.util.Locale.ROOT);
+        if (esHostLocal(h)) {
+            return true;
+        }
+        String literal = h.startsWith("[") && h.endsWith("]")
+                ? h.substring(1, h.length() - 1) : h;
+        if (literal.matches("[0-9.]+")) {
+            String[] partes = literal.split("\\.", -1);
+            if (partes.length != 4) return false;
+            int[] octetos = new int[4];
+            try {
+                for (int i = 0; i < partes.length; i++) {
+                    if (partes[i].isEmpty() || partes[i].length() > 3) return false;
+                    octetos[i] = Integer.parseInt(partes[i]);
+                    if (octetos[i] > 255) return false;
+                }
+            } catch (NumberFormatException ex) {
+                return false;
+            }
+            int primero = octetos[0];
+            int segundo = octetos[1];
+            return primero == 10
+                    || (primero == 172 && segundo >= 16 && segundo <= 31)
+                    || (primero == 192 && segundo == 168)
+                    || (primero == 169 && segundo == 254)
+                    || primero == 127;
+        }
+        // No hacer resolución DNS aquí: una respuesta privada para un FQDN no
+        // convierte su identidad en confiable y podría cambiar entre conexiones.
+        if (literal.indexOf(':') >= 0 && literal.matches("[0-9a-f:.]+")) {
+            try {
+                byte[] bytes = java.net.InetAddress.getByName(literal).getAddress();
+                if (bytes.length == 16) {
+                    int primero = bytes[0] & 0xff;
+                    return java.net.InetAddress.getByAddress(bytes).isLoopbackAddress()
+                            || java.net.InetAddress.getByAddress(bytes).isLinkLocalAddress()
+                            || java.net.InetAddress.getByAddress(bytes).isSiteLocalAddress()
+                            || (primero & 0xfe) == 0xfc;
+                }
+                if (bytes.length == 4) {
+                    return (bytes[0] & 0xff) == 10
+                            || ((bytes[0] & 0xff) == 172 && (bytes[1] & 0xff) >= 16 && (bytes[1] & 0xff) <= 31)
+                            || ((bytes[0] & 0xff) == 192 && (bytes[1] & 0xff) == 168)
+                            || ((bytes[0] & 0xff) == 169 && (bytes[1] & 0xff) == 254)
+                            || (bytes[0] & 0xff) == 127;
+                }
+            } catch (java.net.UnknownHostException ex) {
+                return false;
+            }
+        }
+        return false;
     }
 }

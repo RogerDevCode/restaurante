@@ -82,6 +82,28 @@ public class ServicioRespaldoBaseDatosTest {
     }
 
     @Test
+    public void validacionRespaldoAceptaFirmaConClavePrevia() throws Exception {
+        Path archivo = servicio.crearRespaldo(tempDir);
+        String claveOriginal = new ProveedorConexionJdbc().settingConfigurado("BACKUP_HMAC_KEY");
+        String claveNueva = "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff";
+
+        String prevKeyProp = System.getProperty("BACKUP_HMAC_KEY_PREVIOUS");
+        String curKeyProp = System.getProperty("BACKUP_HMAC_KEY");
+        try {
+            System.setProperty("BACKUP_HMAC_KEY_PREVIOUS", claveOriginal != null ? claveOriginal : "test_default_hmac_32_bytes_long_ok!");
+            System.setProperty("BACKUP_HMAC_KEY", claveNueva);
+
+            servicio.validarArchivoRespaldo(archivo);
+
+            System.clearProperty("BACKUP_HMAC_KEY_PREVIOUS");
+            assertThrows(ErrorAplicacionException.class, () -> servicio.validarArchivoRespaldo(archivo));
+        } finally {
+            if (prevKeyProp != null) System.setProperty("BACKUP_HMAC_KEY_PREVIOUS", prevKeyProp); else System.clearProperty("BACKUP_HMAC_KEY_PREVIOUS");
+            if (curKeyProp != null) System.setProperty("BACKUP_HMAC_KEY", curKeyProp); else System.clearProperty("BACKUP_HMAC_KEY");
+        }
+    }
+
+    @Test
     public void crearRespaldoAutomaticoSiEsNecesarioEvitaDuplicadosMismoDia() {
         Path primerRespaldo = servicio.crearRespaldoAutomaticoSiEsNecesario();
         assertNotNull("El primer respaldo automático de hoy debe generarse", primerRespaldo);

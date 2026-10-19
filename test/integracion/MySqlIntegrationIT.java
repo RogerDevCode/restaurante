@@ -24,9 +24,11 @@ import Modelo.Usuario;
 import Servicio.GeneradorPdfPedido;
 import Servicio.PedidoPdfServicio;
 import Servicio.ServicioRespaldoBaseDatos;
+import Servicio.ServicioBootstrapInicial;
 import infraestructura.ConfiguracionLogs;
 import infraestructura.DiarioRecuperacionBD;
 import infraestructura.ProveedorConexionJdbc;
+import infraestructura.PasswordHasher;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -153,6 +155,78 @@ public class MySqlIntegrationIT {
             assertTrue(conexion.getMetaData().getDatabaseProductVersion().startsWith("8.4"));
             assertTrue(resultado.next());
             assertTrue(resultado.getInt(1) > 0);
+        }
+    }
+
+    @Test
+    public void bootstrapCreaAdministradorConHashYConfirmaEstadoTransaccionalmente() throws Exception {
+        char[] clave = "ClaveBootstrapSegura2026".toCharArray();
+        char[] copiaParaVerificar = clave.clone();
+        try {
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET activo=0, pass='!BLOQUEADO_BOOTSTRAP_PENDIENTE!' WHERE id=1");
+                sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='0' WHERE clave='bootstrap_inicial_completado'");
+            }
+
+            ServicioBootstrapInicial servicio = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
+            assertFalse(servicio.esBootstrapCompletado());
+            servicio.completarBootstrap("Propietario Integración", "propietario-it", clave);
+
+            assertTrue(servicio.esBootstrapCompletado());
+            try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                    "SELECT nombre, correo, pass, rol, activo FROM usuarios WHERE id=1");
+                 ResultSet resultado = sentencia.executeQuery()) {
+                assertTrue(resultado.next());
+                assertEquals("Propietario Integración", resultado.getString("nombre"));
+                assertEquals("propietario-it", resultado.getString("correo"));
+                assertEquals("Administrador", resultado.getString("rol"));
+                assertEquals(1, resultado.getInt("activo"));
+                assertTrue(new PasswordHasher().verificar(copiaParaVerificar, resultado.getString("pass")));
+            }
+        } finally {
+            Arrays.fill(copiaParaVerificar, '\0');
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', pass='pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM', rol='Administrador', activo=1 WHERE id=1");
+                sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='1' WHERE clave='bootstrap_inicial_completado'");
+            }
+        }
+    }
+
+    @Test
+    public void migracionNoReiniciaBootstrapDeAdministradorExistenteConClavePersonalizada() throws Exception {
+        String hashDemo = "pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM";
+        String hashPersonalizado = new PasswordHasher().hash("ClavePersonalizadaSegura2026".toCharArray());
+        try {
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET activo=1, rol='Administrador', pass='" + hashPersonalizado + "' WHERE id=1");
+                sentencia.executeUpdate("DELETE FROM configuracion_sistema WHERE clave='bootstrap_inicial_completado'");
+                infraestructura.MigradorEsquemaJdbc.asegurarEsquema(conexion);
+                assertEquals("1", valorConfig(conexion, "bootstrap_inicial_completado"));
+
+                sentencia.executeUpdate("UPDATE usuarios SET pass='" + hashDemo + "' WHERE id=1");
+                sentencia.executeUpdate("DELETE FROM configuracion_sistema WHERE clave='bootstrap_inicial_completado'");
+                infraestructura.MigradorEsquemaJdbc.asegurarEsquema(conexion);
+                assertEquals("0", valorConfig(conexion, "bootstrap_inicial_completado"));
+            }
+        } finally {
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', pass='" + hashDemo
+                        + "', rol='Administrador', activo=1 WHERE id=1");
+                sentencia.executeUpdate("INSERT INTO configuracion_sistema (clave, valor, descripcion) "
+                        + "VALUES ('bootstrap_inicial_completado', '1', 'Indica si se ha completado el asistente de bootstrap inicial') "
+                        + "ON DUPLICATE KEY UPDATE valor='1'");
+            }
+        }
+    }
+
+    private String valorConfig(Connection conexion, String clave) throws SQLException {
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT valor FROM configuracion_sistema WHERE clave=?")) {
+            sentencia.setString(1, clave);
+            try (ResultSet resultado = sentencia.executeQuery()) {
+                assertTrue("Debe existir la clave de configuración " + clave, resultado.next());
+                return resultado.getString(1);
+            }
         }
     }
 

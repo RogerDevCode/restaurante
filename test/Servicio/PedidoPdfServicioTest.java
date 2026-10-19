@@ -59,6 +59,27 @@ public class PedidoPdfServicioTest {
     }
 
     @Test
+    public void resultadoTipadoConservaCanalVisorSinSimularImpresionFisica() {
+        AtomicReference<Path> procesado = new AtomicReference<>();
+        PedidoPdfServicio servicio = new PedidoPdfServicio(
+                id -> pedido(),
+                id -> Collections.singletonList(detalle()),
+                this::configuracion,
+                new GeneradorPdfPedido(temporal.getRoot().toPath()),
+                archivo -> true,
+                archivo -> true,
+                archivo -> {
+                    procesado.set(archivo);
+                    return ResultadoSalidaTicket.visor("Visor Sistema", "PDF abierto.");
+                });
+
+        ResultadoSalidaTicket resultado = servicio.generarConResultado(42);
+
+        assertEquals(temporal.getRoot().toPath().resolve("pedido-42.pdf"), procesado.get());
+        assertEquals(ResultadoSalidaTicket.EstadoSalida.ABIERTO_EN_VISOR, resultado.estado());
+    }
+
+    @Test
     public void fallaAlAbrirPropagaCausaYRegistraUnSevere() throws Exception {
         Logger logger = Logger.getLogger(ErrorAplicacionException.class.getName());
         CapturadorLogs capturador = new CapturadorLogs();

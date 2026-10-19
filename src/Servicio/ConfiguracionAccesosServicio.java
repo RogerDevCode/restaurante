@@ -31,12 +31,15 @@ public final class ConfiguracionAccesosServicio {
         }
         Map<String, String> valores = configuracion.obtenerTodosEstrictamente();
         EnumSet<PoliticaAcceso.Accion> permisos = EnumSet.noneOf(PoliticaAcceso.Accion.class);
+        boolean matrizConfigurada = valores.keySet().stream().anyMatch(k -> k.startsWith(PREFIJO));
+        if (!matrizConfigurada) {
+            LOGGER.warning("La matriz de permisos está vacía; se deniegan permisos por seguridad hasta configurarla.");
+            return Collections.unmodifiableSet(permisos);
+        }
         for (PoliticaAcceso.Accion accion : PoliticaAcceso.Accion.values()) {
             if (accion.soloAdministrador()) continue;
             String valor = valores.get(clave(rol, accion));
-            boolean otorgado = valor == null
-                    ? permisosPredeterminados(rol).contains(accion)
-                    : "1".equals(valor.trim());
+            boolean otorgado = "1".equals(valor != null ? valor.trim() : "");
             if (otorgado) permisos.add(accion);
         }
         return Collections.unmodifiableSet(permisos);

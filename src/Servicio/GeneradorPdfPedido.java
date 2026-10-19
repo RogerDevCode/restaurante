@@ -546,21 +546,24 @@ public final class GeneradorPdfPedido {
         BigDecimal tasa = obtenerTasa(pedido, configuracion);
         Font negrita = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, BaseColor.BLACK);
         Font cuerpo = new Font(Font.FontFamily.HELVETICA, 7.0f, Font.NORMAL, BaseColor.BLACK);
+        Font cuerpoMonto = new Font(Font.FontFamily.HELVETICA, 6.5f, Font.NORMAL, BaseColor.BLACK);
 
         PdfPTable tabla = new PdfPTable(4);
         tabla.setWidthPercentage(100);
         tabla.getDefaultCell().setBorder(0);
-        tabla.setWidths(new float[]{12f, 44f, 22f, 22f});
+        tabla.setWidths(new float[]{9f, 38f, 26.5f, 26.5f});
         tabla.setHorizontalAlignment(Element.ALIGN_LEFT);
 
         PdfPCell[] cabeceras = {
             new PdfPCell(new Phrase("Cant.", negrita)),
             new PdfPCell(new Phrase("Plato", negrita)),
-            new PdfPCell(new Phrase("P. Unit. ($ / Bs.)", negrita)),
-            new PdfPCell(new Phrase("Total ($ / Bs.)", negrita))
+            new PdfPCell(new Phrase("P. Unit.\nUSD / Bs.", negrita)),
+            new PdfPCell(new Phrase("Total\nUSD / Bs.", negrita))
         };
+        cabeceras[2].setHorizontalAlignment(Element.ALIGN_RIGHT);
         cabeceras[3].setHorizontalAlignment(Element.ALIGN_RIGHT);
-        cabeceras[3].setPaddingRight(5f);
+        cabeceras[2].setPaddingRight(1f);
+        cabeceras[3].setPaddingRight(1f);
         for (PdfPCell celda : cabeceras) {
             celda.setBorder(Rectangle.BOTTOM);
             celda.setBorderWidth(0.5f);
@@ -600,15 +603,19 @@ public final class GeneradorPdfPedido {
 
             PdfPCell cCant = new PdfPCell(new Phrase(String.valueOf(detalle.getCantidad()), cuerpo));
             PdfPCell cPlato = new PdfPCell(new Phrase(detalle.getNombre(), cuerpo));
-            PdfPCell cUnit = new PdfPCell(new Phrase("$" + String.format(java.util.Locale.US, "%.2f", precioUsd) + " (Bs. " + String.format(java.util.Locale.US, "%.2f", precioBs) + ")", cuerpo));
-            PdfPCell cTot = new PdfPCell(new Phrase("$" + String.format(java.util.Locale.US, "%.2f", subtotalUsd) + " (Bs. " + String.format(java.util.Locale.US, "%.2f", subtotalBs) + ")", cuerpo));
+            PdfPCell cUnit = new PdfPCell(new Phrase("$" + String.format(java.util.Locale.US, "%.2f", precioUsd)
+                    + "\nBs. " + String.format(java.util.Locale.US, "%.2f", precioBs), cuerpoMonto));
+            PdfPCell cTot = new PdfPCell(new Phrase("$" + String.format(java.util.Locale.US, "%.2f", subtotalUsd)
+                    + "\nBs. " + String.format(java.util.Locale.US, "%.2f", subtotalBs), cuerpoMonto));
 
             cCant.setBorder(Rectangle.NO_BORDER);
             cPlato.setBorder(Rectangle.NO_BORDER);
             cUnit.setBorder(Rectangle.NO_BORDER);
             cTot.setBorder(Rectangle.NO_BORDER);
+            cUnit.setHorizontalAlignment(Element.ALIGN_RIGHT);
             cTot.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            cTot.setPaddingRight(5f);
+            cUnit.setPaddingRight(1f);
+            cTot.setPaddingRight(1f);
 
             cCant.setPaddingTop(2f);
             cPlato.setPaddingTop(2f);

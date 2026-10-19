@@ -373,6 +373,30 @@ public class ServicioRespaldoBaseDatos {
         return bytes;
     }
 
+    private byte[] obtenerClaveHmacPrevia() {
+        String clave = null;
+        try {
+            if (conexiones != null) {
+                clave = conexiones.settingConfigurado("BACKUP_HMAC_KEY_PREVIOUS");
+            }
+        } catch (Exception ignored) {
+        }
+        if (clave == null || clave.isBlank()) {
+            clave = System.getProperty("BACKUP_HMAC_KEY_PREVIOUS");
+        }
+        if (clave == null || clave.isBlank()) {
+            clave = System.getenv("BACKUP_HMAC_KEY_PREVIOUS");
+        }
+        if (clave == null || clave.isBlank()) {
+            return null;
+        }
+        clave = clave.trim();
+        byte[] bytes = clave.length() >= 64 && clave.length() % 2 == 0 && clave.matches("[0-9a-fA-F]+")
+                ? java.util.HexFormat.of().parseHex(clave)
+                : clave.getBytes(StandardCharsets.UTF_8);
+        return bytes.length >= 32 ? bytes : null;
+    }
+
     private static byte[] contenidoCanonicoManifiesto(Properties manifiesto) {
         StringBuilder canonical = new StringBuilder();
         manifiesto.stringPropertyNames().stream()
@@ -440,8 +464,25 @@ public class ServicioRespaldoBaseDatos {
             }
             byte[] hmacCalculado = calcularHmac(contenidoCanonicoManifiesto(manifiesto), claveHmac);
             String hmacCalculadoHex = java.util.HexFormat.of().formatHex(hmacCalculado);
-            if (!MessageDigest.isEqual(hmacManifest.toLowerCase(java.util.Locale.ROOT).getBytes(StandardCharsets.US_ASCII),
-                    hmacCalculadoHex.getBytes(StandardCharsets.US_ASCII))) {
+            boolean firmaValida = MessageDigest.isEqual(
+                    hmacManifest.toLowerCase(java.util.Locale.ROOT).getBytes(StandardCharsets.US_ASCII),
+                    hmacCalculadoHex.getBytes(StandardCharsets.US_ASCII));
+
+            if (!firmaValida) {
+                byte[] clavePrevia = obtenerClaveHmacPrevia();
+                if (clavePrevia != null) {
+                    byte[] hmacCalculadoPrevio = calcularHmac(contenidoCanonicoManifiesto(manifiesto), clavePrevia);
+                    String hmacCalculadoPrevioHex = java.util.HexFormat.of().formatHex(hmacCalculadoPrevio);
+                    if (MessageDigest.isEqual(
+                            hmacManifest.toLowerCase(java.util.Locale.ROOT).getBytes(StandardCharsets.US_ASCII),
+                            hmacCalculadoPrevioHex.getBytes(StandardCharsets.US_ASCII))) {
+                        firmaValida = true;
+                        LOGGER.info("Respaldo autenticado exitosamente mediante clave HMAC previa (BACKUP_HMAC_KEY_PREVIOUS).");
+                    }
+                }
+            }
+
+            if (!firmaValida) {
                 throw ErrorAplicacionException.validacion(
                         "La firma HMAC del manifiesto de respaldo no coincide. El archivo fue alterado o no proviene de una fuente autorizada.");
             }

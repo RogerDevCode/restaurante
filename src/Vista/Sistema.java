@@ -589,14 +589,12 @@ public final class Sistema extends javax.swing.JFrame {
                         "Ingrese el motivo de la reimpresión del pedido #" + id + ":", "Copia para el cliente");
                 if (motivo == null) return;
                 String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
-                boolean impreso = pedidosControlador.reimprimirPdfPedido(id, motivo, usr);
-                if (!impreso) {
-                    mostrarAvisoEnBanda("PDF generado (impresión degradada a visor PDF)");
-                }
+                ejecutarReimpresionAsync(id, motivo, usr);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                         "Error", JOptionPane.ERROR_MESSAGE);
             }
+
         });
         jPanel6.add(btnReimprimirHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(929, 48, 120, 30));
 
@@ -3746,7 +3744,9 @@ public final class Sistema extends javax.swing.JFrame {
         jLabel37.setText("Rol:");
         jPanel15.add(jLabel37, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 360, 90, -1));
 
-        cbxRol.setModel(new javax.swing.DefaultComboBoxModel<>(Servicio.RolesSistema.todos().toArray(String[]::new)));
+        cbxRol.setModel(new javax.swing.DefaultComboBoxModel<>(Servicio.RolesSistema.todos().stream()
+                .filter(rol -> !Servicio.RolesSistema.COCINERO.equals(rol))
+                .toArray(String[]::new)));
         jPanel15.add(cbxRol, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 380, 300, 30));
 
         jPanel16.setBackground(new java.awt.Color(0, 0, 0));
@@ -4176,10 +4176,8 @@ public final class Sistema extends javax.swing.JFrame {
                         "Ingrese el motivo de la reimpresión del pedido #" + id + ":", "Copia para el cliente");
                 if (motivo == null) return;
                 String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
-                boolean impreso = pedidosControlador.reimprimirPdfPedido(id, motivo, usr);
-                if (!impreso) {
-                    mostrarAvisoEnBanda("PDF generado; impresión abierta en visor PDF");
-                }
+                ejecutarReimpresionAsync(id, motivo, usr);
+
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                         "Error", JOptionPane.ERROR_MESSAGE);
@@ -4330,7 +4328,6 @@ public final class Sistema extends javax.swing.JFrame {
         new FinalizarPedidoSwingWorker(pedidosControlador, idPedido, clienteNombre, clienteDoc, "CORTESIA",
                 pagos, resultado -> {
             boolean finalizado = resultado.finalizado();
-            boolean impresoDirecto = resultado.impresoDirecto();
             boolean mismoPedido = version == versionPedidoPantalla
                     && String.valueOf(idPedido).equals(txtIdPedido.getText());
             if (finalizado) {
@@ -5224,7 +5221,7 @@ public final class Sistema extends javax.swing.JFrame {
             new FinalizarPedidoSwingWorker(pedidosControlador, idPedido, clienteNombre, clienteDoc, metodoPagoSel,
                     pagos, resultado -> {
                 boolean finalizado = resultado.finalizado();
-                boolean impresoDirecto = resultado.impresoDirecto();
+                Servicio.ResultadoSalidaTicket salidaTicket = resultado.salidaTicket();
                 boolean mismoPedido = version == versionPedidoPantalla
                         && String.valueOf(idPedido).equals(txtIdPedido.getText());
                 if (finalizado) {
@@ -5236,13 +5233,17 @@ public final class Sistema extends javax.swing.JFrame {
                     RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
                     RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
                     RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
-                    if (impresoDirecto) {
+                    if (salidaTicket != null && salidaTicket.estado() == Servicio.ResultadoSalidaTicket.EstadoSalida.FALLO) {
+                        // El cobro quedó registrado; el fallo es solo de impresión — nunca fatal.
+                        mostrarAvisoEnBanda("Cobro registrado con éxito en caja. La impresión del ticket físico falló; puede reimprimirlo desde el Historial.");
+                    } else if (resultado.impresoDirecto()) {
                         mostrarAvisoEnBanda(mesaInfo.isEmpty()
                                 ? "Pedido facturado — " + totalInfo
                                 : "Mesa " + mesaInfo + " facturada — " + totalInfo);
                     } else {
-                        mostrarAvisoEnBanda("Pedido finalizado; falló la impresión directa y el PDF se abrió en el visor");
+                        mostrarAvisoEnBanda("Pedido finalizado; el PDF se abrió en el visor");
                     }
+
                 } else {
                     if (mismoPedido) btnFinalizar.setEnabled(true);
                     mostrarAvisoEnBanda("El pedido no se finalizó");
@@ -6109,7 +6110,7 @@ public final class Sistema extends javax.swing.JFrame {
         String[] opciones = {"Reintentar PDF", "Abrir historial", "Cerrar"};
         int opcion = JOptionPane.showOptionDialog(this,
                 "La factura del pedido #" + idPedido + " quedó registrada y la mesa está cerrada, "
-                + "pero no se pudo generar o abrir el PDF tras dos intentos.\n\n"
+                + "pero no se pudo enviar el ticket a la impresora ni abrir el PDF.\n\n"
                 + mensajeError(error) + "\n\nPuede reintentar el PDF sin volver a facturar.",
                 "Factura registrada; PDF pendiente",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE, null, opciones, opciones[0]);
@@ -6121,20 +6122,24 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void reintentarPdfFinalizado(int idPedido) {
-        new javax.swing.SwingWorker<Boolean, Void>() {
+        new javax.swing.SwingWorker<Servicio.ResultadoSalidaTicket, Void>() {
             @Override
-            protected Boolean doInBackground() {
+            protected Servicio.ResultadoSalidaTicket doInBackground() {
                 // Este flujo solo vuelve a generar/abrir el PDF; no toca el estado de la mesa ni la factura.
-                return pedidosControlador.generarPdfPedido(idPedido);
+                return pedidosControlador.generarPdfPedidoConResultado(idPedido);
             }
 
             @Override
             protected void done() {
                 try {
-                    boolean salidaDirecta = get();
-                    mostrarAvisoEnBanda(salidaDirecta
-                            ? "PDF del pedido #" + idPedido + " generado y enviado correctamente"
-                            : "PDF del pedido #" + idPedido + " generado; revise el visor o reintente desde el historial");
+                    Servicio.ResultadoSalidaTicket salida = get();
+                    if (salida.estado() == Servicio.ResultadoSalidaTicket.EstadoSalida.FALLO) {
+                        mostrarAvisoEnBanda("El cobro sigue registrado; no se pudo procesar el ticket: " + salida.detalleError());
+                    } else if (salida.estado() == Servicio.ResultadoSalidaTicket.EstadoSalida.ABIERTO_EN_VISOR) {
+                        mostrarAvisoEnBanda("PDF del pedido #" + idPedido + " abierto en el visor.");
+                    } else {
+                        mostrarAvisoEnBanda("PDF del pedido #" + idPedido + " enviado al spooler del sistema.");
+                    }
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                     mostrarErrorPdfFinalizado(idPedido, ex);
@@ -6144,6 +6149,40 @@ public final class Sistema extends javax.swing.JFrame {
                 }
             }
         }.execute();
+    }
+
+    /**
+     * Ejecuta la reimpresión de un pedido fuera del EDT usando un hilo virtual,
+     * mostrando cursor WAIT durante la operación para no congelar la ventana ante
+     * timeouts de impresora (hasta 14 segundos en PowerShell / CUPS).
+     */
+    private void ejecutarReimpresionAsync(int idPedido, String motivo, String usuario) {
+        java.awt.Cursor cursorOriginal = getCursor();
+        setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
+        Thread.startVirtualThread(() -> {
+            Servicio.ResultadoSalidaTicket salida = null;
+            Throwable error = null;
+            try {
+                salida = pedidosControlador.reimprimirPdfPedidoConResultado(idPedido, motivo, usuario);
+            } catch (Exception ex) {
+                error = ex;
+            }
+            final Servicio.ResultadoSalidaTicket resultado = salida;
+            final Throwable causa = error;
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                setCursor(cursorOriginal);
+                if (causa != null) {
+                    JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(causa),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                } else if (resultado.estado() == Servicio.ResultadoSalidaTicket.EstadoSalida.FALLO) {
+                    mostrarAvisoEnBanda("No se pudo procesar la salida del ticket: " + resultado.detalleError());
+                } else if (resultado.estado() == Servicio.ResultadoSalidaTicket.EstadoSalida.ABIERTO_EN_VISOR) {
+                    mostrarAvisoEnBanda("PDF generado y abierto en el visor.");
+                } else {
+                    mostrarAvisoEnBanda("Ticket enviado al spooler del sistema.");
+                }
+            });
+        });
     }
 
     private void abrirHistorialPedido(int idPedido) {
@@ -7202,13 +7241,13 @@ public final class Sistema extends javax.swing.JFrame {
                     "Ingrese el motivo de la reimpresión del pedido #" + idPedido + ":", "Copia solicitada por cliente");
             if (motivo == null) return;
             String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
-            boolean impreso = pedidosControlador.reimprimirPdfPedido(idPedido, motivo, usr);
-            if (!impreso) mostrarAvisoEnBanda("PDF generado; impresión abierta en visor PDF");
-            } catch (Exception ex) {
+            ejecutarReimpresionAsync(idPedido, motivo, usr);
+        } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "No se pudo generar el PDF: " + mensajeError(ex),
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+
 
     public void previsualizarFacturaClienteSeleccionada() {
         int fila = tableFacturasCliente.getSelectedRow();
@@ -7782,17 +7821,13 @@ public final class Sistema extends javax.swing.JFrame {
                     try {
                         Servicio.CierreCajaServicio.ResultadoCierre resultado = get();
                         if (esImpresionDirecta) {
-                            Modelo.ModoSalidaTicket modoActual = Servicio.ServicioImpresionTicket.getModoGlobal();
-                            String detalleDestino;
-                            if (resultado.impresoDirecto()) {
-                                detalleDestino = switch (modoActual) {
-                                    case TERMICA_DIRECTA -> "enviado a la impresora térmica (" + Servicio.ServicioImpresionTicket.getImpresoraGlobal() + ").";
-                                    case PDF24_CREATOR -> "despachado a PDF24 Creator.";
-                                    case VISOR_PDF -> "abierto en el visor de documentos PDF.";
-                                };
-                            } else {
-                                detalleDestino = "falló el envío a la impresora, degradado a visor PDF.";
-                            }
+                            Servicio.ResultadoSalidaTicket salida = resultado.salidaTicket();
+                            String detalleDestino = salida == null ? "sin resultado de salida."
+                                    : switch (salida.estado()) {
+                                        case ENVIADO_A_SPOOLER -> "enviado al spooler (" + salida.canal() + ").";
+                                        case ABIERTO_EN_VISOR -> "abierto en visor PDF.";
+                                        case FALLO -> "falló la salida del ticket: " + salida.detalleError();
+                                    };
                             mostrarAvisoEnBanda("Cierre " + tipo.getEtiqueta() + " procesado (" + detalleDestino + ")");
                         }
                     } catch (Exception ex) {

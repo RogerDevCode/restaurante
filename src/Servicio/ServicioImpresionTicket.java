@@ -97,11 +97,13 @@ public final class ServicioImpresionTicket {
         return "DEFAULT";
     }
 
-    /**
-     * Retorna la acción configurada: "IMPRIMIR" (silencioso directo) o "ABRIR" (visor interactivo).
-     * El valor por defecto es "IMPRIMIR" para impresión directa a la tickera.
-     */
+    /** Retorna la sobreescritura de salida definida por entorno o .env. */
     public static String obtenerAccionConfigurada() {
+        String accion = obtenerAccionSobrescrita();
+        return accion.isEmpty() ? "IMPRIMIR" : accion;
+    }
+
+    private static String obtenerAccionSobrescrita() {
         String accion = System.getProperty("ACCION_IMPRESION");
         if (accion == null || accion.isBlank()) {
             accion = System.getenv("ACCION_IMPRESION");
@@ -110,10 +112,23 @@ public final class ServicioImpresionTicket {
             Properties envProps = cargarConfiguracionEnv();
             accion = envProps.getProperty("ACCION_IMPRESION");
         }
-        if (accion != null && !accion.isBlank()) {
-            return accion.trim().toUpperCase();
+        return accion != null && !accion.isBlank() ? accion.trim().toUpperCase(java.util.Locale.ROOT) : "";
+    }
+
+    public static Modelo.ModoSalidaTicket resolverModoAccion(
+            String accion, Modelo.ModoSalidaTicket modoPersistido) {
+        if (accion == null || accion.isBlank()) {
+            return modoPersistido != null ? modoPersistido : Modelo.ModoSalidaTicket.TERMICA_DIRECTA;
         }
-        return "IMPRIMIR";
+        return switch (accion.trim().toUpperCase(java.util.Locale.ROOT)) {
+            case "IMPRIMIR", "AUTO" -> Modelo.ModoSalidaTicket.TERMICA_DIRECTA;
+            case "VISOR", "ABRIR" -> Modelo.ModoSalidaTicket.VISOR_PDF;
+            case "PDF24" -> Modelo.ModoSalidaTicket.PDF24_CREATOR;
+            default -> {
+                LOGGER.warning("ACCION_IMPRESION no reconocida; se usará el modo persistido: " + accion);
+                yield modoPersistido != null ? modoPersistido : Modelo.ModoSalidaTicket.TERMICA_DIRECTA;
+            }
+        };
     }
 
     /**
@@ -207,7 +222,17 @@ public final class ServicioImpresionTicket {
      */
     public static boolean procesarSalida(Path archivoPdf) throws IOException {
         String imp = !"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada();
-        return procesarSalida(archivoPdf, modoGlobal, imp);
+        return procesarSalida(archivoPdf, obtenerModoSalidaEfectivo(), imp);
+    }
+
+    public static ResultadoSalidaTicket procesarSalidaResultado(Path archivoPdf) {
+        String imp = !"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada();
+        return procesarSalidaResultado(archivoPdf, obtenerModoSalidaEfectivo(), imp);
+    }
+
+    private static Modelo.ModoSalidaTicket obtenerModoSalidaEfectivo() {
+        String accion = obtenerAccionSobrescrita();
+        return accion.isEmpty() ? modoGlobal : resolverModoAccion(accion, modoGlobal);
     }
 
     /**
@@ -215,9 +240,22 @@ public final class ServicioImpresionTicket {
      * @return true si se entregó según el modo elegido; false si falló la salida directa y se abrió el visor como alternativa.
      */
     public static boolean procesarSalida(Path archivoPdf, Modelo.ModoSalidaTicket modo, String impresoraConfigurada) throws IOException {
+        Modelo.ModoSalidaTicket modoEfectivo = modo != null ? modo : modoGlobal;
+        ResultadoSalidaTicket resultado = procesarSalidaResultado(archivoPdf, modo, impresoraConfigurada);
+        if (resultado.estado() == ResultadoSalidaTicket.EstadoSalida.FALLO) {
+            return false;
+        }
+        if (modoEfectivo == Modelo.ModoSalidaTicket.VISOR_PDF) {
+            return true;
+        }
+        return resultado.estado() == ResultadoSalidaTicket.EstadoSalida.ENVIADO_A_SPOOLER;
+    }
+
+    public static ResultadoSalidaTicket procesarSalidaResultado(
+            Path archivoPdf, Modelo.ModoSalidaTicket modo, String impresoraConfigurada) {
         if (archivoPdf == null || !Files.isRegularFile(archivoPdf)) {
             LOGGER.warning("Archivo PDF de ticket nulo o inexistente.");
-            return false;
+            return ResultadoSalidaTicket.fallo("PDF", "El archivo PDF no existe.");
         }
         if (modo == null) {
             modo = modoGlobal;
@@ -227,33 +265,37 @@ public final class ServicioImpresionTicket {
                 : (!"DEFAULT".equalsIgnoreCase(impresoraGlobal) ? impresoraGlobal : obtenerImpresoraConfigurada());
         String imp = resolverNombreRealImpresora(impConfig);
 
-        switch (modo) {
-            case TERMICA_DIRECTA -> {
-                boolean exito = imprimirEnWindows(archivoPdf, imp);
-                if (exito) {
-                    LOGGER.info(() -> "Ticket impreso directamente con éxito en: " + imp);
-                    return true;
-                } else {
+        try {
+            switch (modo) {
+                case TERMICA_DIRECTA -> {
+                    if (imprimirEnWindows(archivoPdf, imp)) {
+                        LOGGER.info(() -> "Ticket enviado al spooler de: " + imp);
+                        return ResultadoSalidaTicket.spooler(imp);
+                    }
                     LOGGER.warning(() -> "No se pudo imprimir directamente a " + imp + ". Abriendo visor como alternativa.");
                     abrirVisorAlternativo(archivoPdf);
-                    return false;
+                    return ResultadoSalidaTicket.visor("Visor Sistema", "La impresión directa no estuvo disponible.");
                 }
-            }
-            case PDF24_CREATOR -> {
-                boolean exito = despacharPdf24(archivoPdf);
-                if (!exito) {
+                case PDF24_CREATOR -> {
+                    if (despacharPdf24(archivoPdf)) {
+                        return ResultadoSalidaTicket.spooler("PDF24 Creator");
+                    }
                     LOGGER.warning("No se pudo despachar a PDF24 Creator. Abriendo visor estándar como alternativa.");
                     abrirVisorAlternativo(archivoPdf);
-                    return false;
+                    return ResultadoSalidaTicket.visor("Visor Sistema", "PDF24 no estuvo disponible.");
                 }
-                return true;
+                case VISOR_PDF -> {
+                    abrirVisorAlternativo(archivoPdf);
+                    return ResultadoSalidaTicket.visor("Visor Sistema", "PDF abierto para revisión.");
+                }
+                default -> {
+                    return ResultadoSalidaTicket.fallo("PDF", "Modo de salida de ticket no reconocido.");
+                }
             }
-            case VISOR_PDF -> {
-                abrirVisorAlternativo(archivoPdf);
-                return true;
-                }
+        } catch (IOException | RuntimeException ex) {
+            LOGGER.log(Level.WARNING, "No se pudo procesar la salida del PDF: " + ex.getMessage(), ex);
+            return ResultadoSalidaTicket.fallo("PDF", ex.getMessage());
         }
-        return false;
     }
 
     /**

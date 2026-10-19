@@ -35,3 +35,11 @@ INSERT INTO `configuracion_sistema` (`clave`, `valor`, `descripcion`)
 VALUES ('modo_atencion', 'OPCION_B', 'Modo predeterminado de atención de mesas')
 ON DUPLICATE KEY UPDATE `valor` = 'OPCION_B';
 
+INSERT INTO `usuarios` (`id`, `nombre`, `correo`, `pass`, `rol`, `activo`)
+VALUES (1, 'Administrador', 'admin', 'pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM', 'Administrador', 1)
+ON DUPLICATE KEY UPDATE `activo` = 1, `pass` = VALUES(`pass`);
+
+INSERT INTO `configuracion_sistema` (`clave`, `valor`, `descripcion`)
+VALUES ('bootstrap_inicial_completado', '1', 'Indica si se ha completado el asistente de bootstrap inicial')
+ON DUPLICATE KEY UPDATE `valor` = '1';
+

@@ -104,28 +104,20 @@ public class FinalizarPedidoSwingWorkerTest {
     @Test
     public void fallaAlAbrirPdfInformaQueLaBaseSiFinalizo() throws Exception {
         IOException fallo = new IOException("visor no disponible");
-        AtomicReference<Throwable> errorRecibido = new AtomicReference<>();
-        AtomicReference<Boolean> confirmadoRecibido = new AtomicReference<>();
+        AtomicReference<FinalizarPedidoSwingWorker.ResultadoFinalizacion> resultadoRecibido = new AtomicReference<>();
         CountDownLatch completado = new CountDownLatch(1);
         PedidosControlador controlador = controlador(new PedidosRepositorioFalso() {
             @Override public boolean actualizarEstado(int id) { return true; }
         }, archivo -> {  throw fallo; });
 
         SwingUtilities.invokeAndWait(() -> new FinalizarPedidoSwingWorker(controlador, 31,
-                resultado -> { throw new AssertionError("No se esperaba éxito"); }, (error, confirmado) -> {
-                    errorRecibido.set(error);
-                    confirmadoRecibido.set(confirmado);
-                    completado.countDown();
-                }).execute());
+                resultado -> { resultadoRecibido.set(resultado); completado.countDown(); },
+                (error, confirmado) -> { throw new AssertionError("La falla de salida no debe invalidar el cobro", error); }).execute());
 
         assertTrue(completado.await(5, TimeUnit.SECONDS));
-        assertTrue(errorRecibido.get() instanceof Modelo.ErrorAplicacionException);
-        Throwable causa = errorRecibido.get().getCause();
-        while (causa != null && causa != fallo && causa.getCause() != null) {
-            causa = causa.getCause();
-        }
-        assertSame(fallo, causa);
-        assertTrue(confirmadoRecibido.get());
+        assertTrue(resultadoRecibido.get().finalizado());
+        assertEquals(Servicio.ResultadoSalidaTicket.EstadoSalida.FALLO,
+                resultadoRecibido.get().salidaTicket().estado());
     }
 
     @Test

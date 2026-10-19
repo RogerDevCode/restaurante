@@ -60,6 +60,11 @@ public final class PedidosControlador {
         return servicioPdf.generar(idPedido);
     }
 
+    public Servicio.ResultadoSalidaTicket generarPdfPedidoConResultado(int idPedido) {
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
+        return servicioPdf.generarConResultado(idPedido);
+    }
+
     public boolean reimprimirPdfPedido(int idPedido) {
         return reimprimirPdfPedido(idPedido, "Reimpresión de ticket solicitada", "Sistema");
     }
@@ -74,6 +79,25 @@ public final class PedidosControlador {
             boolean ok = servicioPdf.reimprimir(idPedido);
             consultas.registrarAuditoria(idPedido, "REIMPRESION", motivo.trim(), usr);
             return ok;
+        } catch (RuntimeException ex) {
+            try {
+                consultas.registrarAuditoria(idPedido, "REIMPRESION_FALLIDA", motivo.trim() + " [FALLO: " + ex.getMessage() + "]", usr);
+            } catch (Exception ignored) {
+            }
+            throw ex;
+        }
+    }
+
+    public Servicio.ResultadoSalidaTicket reimprimirPdfPedidoConResultado(int idPedido, String motivo, String usuario) {
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
+        if (motivo == null || motivo.trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("Debe indicar el motivo de la reimpresión.");
+        }
+        String usr = (usuario != null && !usuario.isBlank()) ? usuario.trim() : "Sistema";
+        try {
+            Servicio.ResultadoSalidaTicket resultado = servicioPdf.reimprimirConResultado(idPedido);
+            consultas.registrarAuditoria(idPedido, "REIMPRESION", motivo.trim() + " [" + resultado.estado() + "]", usr);
+            return resultado;
         } catch (RuntimeException ex) {
             try {
                 consultas.registrarAuditoria(idPedido, "REIMPRESION_FALLIDA", motivo.trim() + " [FALLO: " + ex.getMessage() + "]", usr);

@@ -17,6 +17,36 @@
     <property name="integration.db.user" value="restaurante_test_app"/>
     <property name="integration.db.password" value="test_only_app_password"/>
 
+    <!-- Los tests unitarios no deben conectarse a la BD operativa desde .env ni desde el entorno. -->
+    <target name="-unit-db-safety">
+        <property file=".env"/>
+        <property environment="env"/>
+        <condition property="unit.db.targets.production">
+            <or>
+                <matches string="${DB_URL}" pattern="(?i)^jdbc:mysql://[^/]+(?::[0-9]+)?/restaurante([?].*)?$"/>
+                <matches string="${env.DB_URL}" pattern="(?i)^jdbc:mysql://[^/]+(?::[0-9]+)?/restaurante([?].*)?$"/>
+                <matches string="${test-sys-prop.DB_URL}" pattern="(?i)^jdbc:mysql://[^/]+(?::[0-9]+)?/restaurante([?].*)?$"/>
+                <equals arg1="${DB_NAME}" arg2="restaurante"/>
+                <equals arg1="${MYSQL_DATABASE}" arg2="restaurante"/>
+                <equals arg1="${env.DB_NAME}" arg2="restaurante"/>
+                <equals arg1="${env.MYSQL_DATABASE}" arg2="restaurante"/>
+                <equals arg1="${test-sys-prop.DB_NAME}" arg2="restaurante"/>
+                <equals arg1="${test-sys-prop.MYSQL_DATABASE}" arg2="restaurante"/>
+            </or>
+        </condition>
+        <fail if="unit.db.targets.production"
+              message="Tests unitarios abortados: DB_URL/DB_NAME apunta a la base restaurante. Use únicamente una BD desechable."/>
+    </target>
+
+    <target name="unit-db-safety-check" depends="-unit-db-safety"/>
+
+    <target name="test"
+            depends="-unit-db-safety,init,compile-test,-pre-test-run,-do-test-run,test-report,-post-test-run,-test-browse"/>
+    <target name="test-single"
+            depends="-unit-db-safety,init,compile-test-single,-init-test-run-module-properties,-pre-test-run-single,-do-test-run-single,-post-test-run-single"/>
+    <target name="test-single-method"
+            depends="-unit-db-safety,init,compile-test-single,-init-test-run-module-properties,-pre-test-run-single,-do-test-run-single-method,-post-test-run-single-method"/>
+
     <target name="-integration-url-safety">
         <condition property="integration.db.configuration.safe">
             <and>

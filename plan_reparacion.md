@@ -1,5 +1,7 @@
 # Plan de Reparación Arquitectónica - Subsistema de Impresión (Restaurante 2026)
 
+> **Plan histórico/sustituido:** este documento se redactó para un diagnóstico anterior. No ejecutar sus acciones como pendientes actuales: el estado vigente está en `reporte.md` y los gates de implementación en `plan-produccion.md` (Fases 3, 4 y 7). El diagnóstico de origen se conserva en `reporte-impresion-historico.md`.
+
 Este plan aborda las vulnerabilidades remanentes (Puntos 3, 6, 7, 8, 9, 10, 11, 13, A3, N5, N9, N10 y N12) identificadas en el diagnóstico `reporte.md`.
 
 ## Fase 1: Control de Flujo y Saneamiento de API (N12, P6, P10, A3)
