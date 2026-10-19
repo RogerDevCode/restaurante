@@ -8,7 +8,9 @@ import java.awt.Window;
 import java.nio.file.Path;
 import java.util.function.Predicate;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
@@ -64,8 +66,10 @@ public class E2EVirtual {
                 login.setLocationRelativeTo(null);
                 return null;
             });
-            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), "admin");
-            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), "admin");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"),
+                    System.getenv().getOrDefault("E2E_LOGIN_USERNAME", "admin"));
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"),
+                    System.getenv().getOrDefault("E2E_LOGIN_PASSWORD", "admin"));
             robot.clic((Component) robot.campo(login, "btnIniciar"));
 
             System.out.println("== [E2E] Paso 2: Espera de la ventana principal de Sistema ==");
@@ -183,8 +187,15 @@ public class E2EVirtual {
             System.out.println("OK   Mesa 1 marcada como OCUPADA");
 
             System.out.println("== [E2E] Paso 6: Reabrir Mesa 1 -> Cuenta en Caja muestra 1 pollo ==");
-            robot.clic(robot.edt(() -> buscarBoton(panelMesas, esMesa1)));
-            robot.esperar(() -> tabs.getSelectedIndex() == 4, "Clic en mesa ocupada abre Caja/Cuenta (tab=4)");
+            JButton mesaOcupada = robot.edt(() -> buscarBoton(panelMesas, esMesa1));
+            robot.clic(mesaOcupada);
+            try {
+                robot.esperar(() -> tabs.getSelectedIndex() == 4,
+                        "Clic en mesa ocupada abre Caja/Cuenta (tab=4)");
+            } catch (AssertionError error) {
+                throw new AssertionError(error.getMessage() + "; estado al fallar: "
+                        + diagnosticoNavegacion(robot, sistema, tabs, mesaOcupada), error);
+            }
 
             JTable tblFinalizar = (JTable) robot.campo(sistema, "tableFinalizar");
             robot.esperar(() -> tblFinalizar.getRowCount() >= 1, "Detalle de cuenta visible");
@@ -280,6 +291,36 @@ public class E2EVirtual {
 
         System.out.println("E2E_OK");
         System.exit(0);
+    }
+
+    private static String diagnosticoNavegacion(DiaE2ERobot robot, Sistema sistema,
+            JTabbedPane tabs, JButton mesa) throws Exception {
+        return robot.edt(() -> {
+            StringBuilder estado = new StringBuilder()
+                    .append("tab=").append(tabs.getSelectedIndex())
+                    .append("/").append(tabs.getTitleAt(tabs.getSelectedIndex()))
+                    .append(", mesa.enabled=").append(mesa.isEnabled())
+                    .append(", mesa.text=").append(mesa.getText())
+                    .append(", mesa.tooltip=").append(mesa.getToolTipText());
+            for (Window ventana : Window.getWindows()) {
+                if (!ventana.isShowing() || ventana == sistema) continue;
+                estado.append(", ventana=");
+                if (ventana instanceof JDialog dialogo) estado.append(dialogo.getTitle());
+                else estado.append(ventana.getClass().getSimpleName());
+                java.util.ArrayDeque<Component> pendientes = new java.util.ArrayDeque<>();
+                if (ventana instanceof Container contenedor) pendientes.add(contenedor);
+                while (!pendientes.isEmpty()) {
+                    Component actual = pendientes.removeFirst();
+                    if (actual instanceof JLabel etiqueta && etiqueta.getText() != null) {
+                        estado.append("[").append(etiqueta.getText()).append("]");
+                    }
+                    if (actual instanceof Container contenedor) {
+                        java.util.Collections.addAll(pendientes, contenedor.getComponents());
+                    }
+                }
+            }
+            return estado.toString();
+        });
     }
 
     private static JButton buscarBoton(Container raiz, Predicate<JButton> criterio) {

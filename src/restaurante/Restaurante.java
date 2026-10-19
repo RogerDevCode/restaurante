@@ -31,7 +31,9 @@ public class Restaurante {
     private static java.net.ServerSocket socketInstanciaUnica;
     private static boolean verificarInstanciaUnica() {
         try {
-            socketInstanciaUnica = new java.net.ServerSocket(49200, 1, java.net.InetAddress.getByName("127.0.0.1"));
+            // El puerto puede sobrescribirse en pruebas aisladas; el arranque normal conserva 49200.
+            int puerto = Integer.getInteger("restaurante.instancia.puerto", 49200);
+            socketInstanciaUnica = new java.net.ServerSocket(puerto, 1, java.net.InetAddress.getByName("127.0.0.1"));
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
                     if (socketInstanciaUnica != null && !socketInstanciaUnica.isClosed()) {

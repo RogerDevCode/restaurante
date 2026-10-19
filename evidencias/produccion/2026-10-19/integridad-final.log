@@ -1,0 +1,4 @@
+$ cmp -s actualizar_bd.sql db/migrations/actualizar_bd.sql
+PASS: SQL idénticos byte a byte
+$ git diff --check
+PASS: diff sin errores de whitespace

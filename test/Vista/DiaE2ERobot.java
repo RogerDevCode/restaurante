@@ -10,6 +10,8 @@ import java.awt.Window;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.Callable;
@@ -24,6 +26,7 @@ import javax.swing.JTextField;
 import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 import javax.swing.JTabbedPane;
+import javax.imageio.ImageIO;
 
 /** Acciones humanas con Robot y observación de componentes Swing desde el EDT. */
 public final class DiaE2ERobot {
@@ -352,7 +355,45 @@ public final class DiaE2ERobot {
             clic(btnVentas);
             Thread.sleep(250);
         }
-        throw new AssertionError("No se pudo navegar a la pestaña Historial Pedidos");
+        String diagnostico = edt(() -> {
+            javax.swing.JTabbedPane tabs = sistema.getJTabbedPane1();
+            StringBuilder estado = new StringBuilder("tab=")
+                    .append(tabs.getSelectedIndex()).append('/')
+                    .append(tabs.getTitleAt(tabs.getSelectedIndex()))
+                    .append(", btnVentas.enabled=").append(btnVentas.isEnabled())
+                    .append(", historial.enabled=").append(tabs.isEnabledAt(targetTab))
+                    .append(", btnVentas.showing=").append(btnVentas.isShowing())
+                    .append(", btnVentas.bounds=").append(btnVentas.getBounds())
+                    .append("@screen=").append(btnVentas.getLocationOnScreen())
+                    .append(", screen=").append(java.awt.Toolkit.getDefaultToolkit().getScreenSize());
+            for (Window ventana : Window.getWindows()) {
+                if (!ventana.isShowing() || ventana == sistema) continue;
+                estado.append(", ventana=");
+                if (ventana instanceof JDialog dialogo) estado.append(dialogo.getTitle());
+                else estado.append(ventana.getClass().getSimpleName());
+                java.util.ArrayDeque<Component> pendientes = new java.util.ArrayDeque<>();
+                if (ventana instanceof java.awt.Container contenedor) pendientes.add(contenedor);
+                while (!pendientes.isEmpty()) {
+                    Component actual = pendientes.removeFirst();
+                    if (actual instanceof JLabel etiqueta && etiqueta.getText() != null) {
+                        estado.append('[').append(etiqueta.getText()).append(']');
+                    }
+                    if (actual instanceof java.awt.Container contenedor) {
+                        java.util.Collections.addAll(pendientes, contenedor.getComponents());
+                    }
+                }
+            }
+            return estado.toString();
+        });
+        String rutaCaptura = System.getenv("E2E_DIAG_SCREENSHOT");
+        if (rutaCaptura != null && !rutaCaptura.isBlank()) {
+            Path captura = Path.of(rutaCaptura);
+            if (captura.getParent() != null) Files.createDirectories(captura.getParent());
+            ImageIO.write(robot.createScreenCapture(new Rectangle(
+                    java.awt.Toolkit.getDefaultToolkit().getScreenSize())), "png", captura.toFile());
+            diagnostico += ", captura=" + captura;
+        }
+        throw new AssertionError("No se pudo navegar a la pestaña Historial Pedidos; " + diagnostico);
     }
 
     public void abrirPedidoEnHistorial(Sistema sistema, int idPedido, int mesa) throws Exception {
