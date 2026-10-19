@@ -5,7 +5,11 @@ import Modelo.DetallePedido;
 import Modelo.ErrorAplicacionException;
 import Modelo.Pedidos;
 import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.parser.ImageRenderInfo;
+import com.itextpdf.text.pdf.parser.PdfReaderContentParser;
 import com.itextpdf.text.pdf.parser.PdfTextExtractor;
+import com.itextpdf.text.pdf.parser.RenderListener;
+import com.itextpdf.text.pdf.parser.TextRenderInfo;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -65,6 +69,78 @@ public class GeneradorPdfPedidoTest {
         assertTrue(Files.size(archivo) > 100);
         String encabezado = new String(Files.readAllBytes(archivo), 0, 5, StandardCharsets.US_ASCII);
         assertEquals("%PDF-", encabezado);
+    }
+
+    @Test
+    public void pdfTicketDetalleMantieneMontosDentroDelAnchoImprimible80mm() throws Exception {
+        Path destino = temporal.newFolder("ticket-80mm-ancho").toPath();
+        DetallePedido detalle = detalleValido().get(0);
+        detalle.setPrecioDecimal(new BigDecimal("499999999999.99"));
+        detalle.setCantidad(2);
+        detalle.setMonedaBase("VES");
+        Pedidos pedido = pedidoValido();
+        pedido.setSubtotal(new BigDecimal("27397260273.97"));
+        pedido.setSubtotalBs(new BigDecimal("999999999999.98"));
+        pedido.setTotalDecimal(new BigDecimal("27397260273.97"));
+        pedido.setTotalBs(new BigDecimal("999999999999.98"));
+
+        Path archivo = new GeneradorPdfPedido(destino).generar(pedido, configuracionValida(), List.of(detalle));
+        PdfReader reader = new PdfReader(archivo.toAbsolutePath().toString());
+        float anchoPagina = reader.getPageSize(1).getWidth();
+        float[] extremosDerechos = {Float.NaN, Float.NaN, Float.NaN, Float.NaN};
+
+        new PdfReaderContentParser(reader).processContent(1, new RenderListener() {
+            @Override
+            public void beginTextBlock() {
+            }
+
+            @Override
+            public void renderText(TextRenderInfo info) {
+                String texto = info.getText();
+                if (texto.contains("$13698630136.99")) {
+                    extremosDerechos[0] = extremoDerechoActual(extremosDerechos[0], info);
+                }
+                if (texto.contains("Bs. 499999999999.99")) {
+                    extremosDerechos[1] = extremoDerechoActual(extremosDerechos[1], info);
+                }
+                if (texto.contains("$27397260273.97")) {
+                    extremosDerechos[2] = extremoDerechoActual(extremosDerechos[2], info);
+                }
+                if (texto.contains("Bs. 999999999999.98")) {
+                    extremosDerechos[3] = extremoDerechoActual(extremosDerechos[3], info);
+                }
+            }
+
+            @Override
+            public void endTextBlock() {
+            }
+
+            @Override
+            public void renderImage(ImageRenderInfo info) {
+            }
+        });
+
+        reader.close();
+        float bordeDerechoUnidad = 10f + (anchoPagina - 20f) * 0.735f - 1f;
+        float bordeDerechoTotal = anchoPagina - 11f;
+        assertEquals("El PDF debe medir 80 mm de ancho", GeneradorPdfPedido.ANCHO_80MM, anchoPagina, 0.1f);
+        assertTrue("Debe localizar el monto unitario en USD", !Float.isNaN(extremosDerechos[0]));
+        assertTrue("Debe localizar el monto unitario en Bs.", !Float.isNaN(extremosDerechos[1]));
+        assertTrue("Debe localizar el total de la línea en USD", !Float.isNaN(extremosDerechos[2]));
+        assertTrue("Debe localizar el total de la línea en Bs.", !Float.isNaN(extremosDerechos[3]));
+        assertTrue("El monto unitario USD no está alineado al borde de su columna", extremosDerechos[0] >= bordeDerechoUnidad - 3f);
+        assertTrue("El monto unitario Bs. no está alineado al borde de su columna", extremosDerechos[1] >= bordeDerechoUnidad - 3f);
+        assertTrue("El total USD no está alineado al borde de su columna", extremosDerechos[2] >= bordeDerechoTotal - 3f);
+        assertTrue("El total Bs. no está alineado al borde de su columna", extremosDerechos[3] >= bordeDerechoTotal - 3f);
+        assertTrue("El monto unitario USD excede su columna: " + extremosDerechos[0], extremosDerechos[0] <= bordeDerechoUnidad + 0.05f);
+        assertTrue("El monto unitario Bs. excede su columna: " + extremosDerechos[1], extremosDerechos[1] <= bordeDerechoUnidad + 0.05f);
+        assertTrue("El total USD excede el margen imprimible: " + extremosDerechos[2], extremosDerechos[2] <= anchoPagina - 10f + 0.05f);
+        assertTrue("El total Bs. excede el margen imprimible: " + extremosDerechos[3], extremosDerechos[3] <= anchoPagina - 10f + 0.05f);
+    }
+
+    private float extremoDerechoActual(float extremoAnterior, TextRenderInfo info) {
+        float extremoActual = (float) info.getAscentLine().getBoundingRectange().getMaxX();
+        return Float.isNaN(extremoAnterior) ? extremoActual : Math.max(extremoAnterior, extremoActual);
     }
 
     @Test

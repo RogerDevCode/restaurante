@@ -14,6 +14,7 @@ import com.itextpdf.text.Image;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Phrase;
 import com.itextpdf.text.Rectangle;
+import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
@@ -546,7 +547,6 @@ public final class GeneradorPdfPedido {
         BigDecimal tasa = obtenerTasa(pedido, configuracion);
         Font negrita = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, BaseColor.BLACK);
         Font cuerpo = new Font(Font.FontFamily.HELVETICA, 7.0f, Font.NORMAL, BaseColor.BLACK);
-        Font cuerpoMonto = new Font(Font.FontFamily.HELVETICA, 6.5f, Font.NORMAL, BaseColor.BLACK);
 
         PdfPTable tabla = new PdfPTable(4);
         tabla.setWidthPercentage(100);
@@ -603,10 +603,14 @@ public final class GeneradorPdfPedido {
 
             PdfPCell cCant = new PdfPCell(new Phrase(String.valueOf(detalle.getCantidad()), cuerpo));
             PdfPCell cPlato = new PdfPCell(new Phrase(detalle.getNombre(), cuerpo));
-            PdfPCell cUnit = new PdfPCell(new Phrase("$" + String.format(java.util.Locale.US, "%.2f", precioUsd)
-                    + "\nBs. " + String.format(java.util.Locale.US, "%.2f", precioBs), cuerpoMonto));
-            PdfPCell cTot = new PdfPCell(new Phrase("$" + String.format(java.util.Locale.US, "%.2f", subtotalUsd)
-                    + "\nBs. " + String.format(java.util.Locale.US, "%.2f", subtotalBs), cuerpoMonto));
+            String precioUsdTexto = "$" + String.format(java.util.Locale.US, "%.2f", precioUsd);
+            String precioBsTexto = "Bs. " + String.format(java.util.Locale.US, "%.2f", precioBs);
+            String subtotalUsdTexto = "$" + String.format(java.util.Locale.US, "%.2f", subtotalUsd);
+            String subtotalBsTexto = "Bs. " + String.format(java.util.Locale.US, "%.2f", subtotalBs);
+            PdfPCell cUnit = new PdfPCell(new Phrase(precioUsdTexto + "\n" + precioBsTexto,
+                    fuenteMontoTicket(precioUsdTexto, precioBsTexto)));
+            PdfPCell cTot = new PdfPCell(new Phrase(subtotalUsdTexto + "\n" + subtotalBsTexto,
+                    fuenteMontoTicket(subtotalUsdTexto, subtotalBsTexto)));
 
             cCant.setBorder(Rectangle.NO_BORDER);
             cPlato.setBorder(Rectangle.NO_BORDER);
@@ -614,6 +618,8 @@ public final class GeneradorPdfPedido {
             cTot.setBorder(Rectangle.NO_BORDER);
             cUnit.setHorizontalAlignment(Element.ALIGN_RIGHT);
             cTot.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            cUnit.setPaddingLeft(1f);
+            cTot.setPaddingLeft(1f);
             cUnit.setPaddingRight(1f);
             cTot.setPaddingRight(1f);
 
@@ -628,6 +634,26 @@ public final class GeneradorPdfPedido {
             tabla.addCell(cTot);
         }
         documento.add(tabla);
+    }
+
+    private Font fuenteMontoTicket(String... lineas) {
+        float anchoColumna = (ANCHO_80MM - 20f) * 0.265f;
+        float anchoDisponible = anchoColumna - 2f;
+        for (float tamaño = 6.5f; tamaño >= 4.0f; tamaño -= 0.25f) {
+            Font fuente = new Font(Font.FontFamily.HELVETICA, tamaño, Font.NORMAL, BaseColor.BLACK);
+            BaseFont base = fuente.getCalculatedBaseFont(false);
+            boolean cabe = true;
+            for (String linea : lineas) {
+                if (base.getWidthPoint(linea, tamaño) > anchoDisponible) {
+                    cabe = false;
+                    break;
+                }
+            }
+            if (cabe) {
+                return fuente;
+            }
+        }
+        return new Font(Font.FontFamily.HELVETICA, 4.0f, Font.NORMAL, BaseColor.BLACK);
     }
 
     private void agregarCierreTicket80mm(Document documento, Pedidos pedido, Config configuracion, List<DetallePedido> detalles)
