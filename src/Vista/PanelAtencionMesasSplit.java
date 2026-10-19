@@ -87,6 +87,7 @@ public class PanelAtencionMesasSplit extends JPanel {
     private Integer idMesoneroOriginal = null;
     private String nombreMesoneroOriginal = null;
     private boolean mesoneroQuitadoExplicito = false;
+    private boolean sincronizandoComandaProgramaticamente = false;
     private final java.util.concurrent.atomic.AtomicLong tokenRevisionMesas = new java.util.concurrent.atomic.AtomicLong(0);
     private final java.util.concurrent.atomic.AtomicLong tokenRevisionPedido = new java.util.concurrent.atomic.AtomicLong(0);
 
@@ -509,6 +510,19 @@ public class PanelAtencionMesasSplit extends JPanel {
         String confComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
         chkImprimirComanda.setSelected(!"0".equals(confComanda) && !"false".equalsIgnoreCase(confComanda));
         chkImprimirComanda.addActionListener(e -> {
+            if (sincronizandoComandaProgramaticamente) return;
+            if (politicaAcceso == null || !politicaAcceso.esAdministrador()) {
+                sincronizandoComandaProgramaticamente = true;
+                try {
+                    chkImprimirComanda.setSelected(!chkImprimirComanda.isSelected());
+                } finally {
+                    sincronizandoComandaProgramaticamente = false;
+                }
+                JOptionPane.showMessageDialog(this,
+                        "Solo un Administrador puede cambiar la emisión automática de comandas.",
+                        "Acceso restringido", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             String val = chkImprimirComanda.isSelected() ? "1" : "0";
             new Thread(() -> {
                 try {
@@ -1597,7 +1611,10 @@ public class PanelAtencionMesasSplit extends JPanel {
             boolean imprimirComanda = chkImprimirComanda != null && chkImprimirComanda.isSelected();
             Modelo.ResultadoPedidoComanda resultado;
             if (eraEdicion) {
-                if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) {
+                if (sistema != null) {
+                    if (!sistema.autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return;
+                } else if (politicaAcceso != null
+                        && !politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) {
                     JOptionPane.showMessageDialog(this,
                             "Tu rol no permite modificar pedidos existentes.",
                             "Acceso Denegado", JOptionPane.WARNING_MESSAGE);

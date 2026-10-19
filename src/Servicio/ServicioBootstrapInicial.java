@@ -109,6 +109,7 @@ public class ServicioBootstrapInicial {
             } finally {
                 liberarBloqueo(con);
             }
+            new ConfiguracionAccesosServicio().asegurarMatrizPredeterminada();
             } catch (SQLException ex) {
                 throw new DataAccessException("Error de conexión durante el bootstrap inicial: " + ex.getMessage(), ex);
             }

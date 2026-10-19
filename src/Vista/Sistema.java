@@ -159,6 +159,9 @@ public final class Sistema extends javax.swing.JFrame {
     private String nombreSalaActualMesas;
     private int cantMesasActual;
     private javax.swing.Timer temporizadorRefrescoModos;
+    private javax.swing.Timer temporizadorVigenciaSesion;
+    private boolean revocacionEnCurso;
+    private long ultimaVerificacionVigenciaMs;
     private javax.swing.JLabel lblLogoPreview;
     private javax.swing.JTextField txtRutaLogo;
     private javax.swing.JButton btnCambiarLogo;
@@ -280,6 +283,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JComboBox<String> cbModoAtencionGlobal;
     private javax.swing.JPanel panelConmutadorModoGlobal;
     private boolean cambiandoModoProgramaticamente = false;
+    private boolean actualizandoFiltroProgramaticamente = false;
     private javax.swing.JButton btnAtencionDirecta;
     private String modoAtencionActual = "OPCION_B";
 
@@ -2053,6 +2057,7 @@ public final class Sistema extends javax.swing.JFrame {
         RefrescoVistas.suscribir(RefrescoVistas.CONFIG, this::ListarConfig);
         RefrescoVistas.suscribir(RefrescoVistas.DASHBOARD, () -> { if (politicaAcceso.esAdministrador()) cargarDashboardYClientes(); });
         iniciarRefrescoPeriodicoModos();
+        iniciarVigilanciaSesion();
     }
 
     /** Vuelve a leer el menú/selector de platos (pestaña de toma de pedido). */
@@ -2079,6 +2084,61 @@ public final class Sistema extends javax.swing.JFrame {
         temporizadorRefrescoModos.setRepeats(true);
         temporizadorRefrescoModos.setCoalesce(true);
         temporizadorRefrescoModos.start();
+    }
+
+    /**
+     * Revoca la sesión en caliente cuando el usuario es desactivado o pierde su
+     * rol, aunque no intente ejecutar ninguna acción. Se comprueba al recuperar
+     * el foco de la ventana y cada minuto, con una ventana mínima de 5 s entre
+     * consultas para no saturar la BD.
+     */
+    private void iniciarVigilanciaSesion() {
+        if (temporizadorVigenciaSesion != null) {
+            return;
+        }
+        addWindowFocusListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowGainedFocus(java.awt.event.WindowEvent e) {
+                verificarVigenciaSesion();
+            }
+        });
+        temporizadorVigenciaSesion = new javax.swing.Timer(60000, e -> verificarVigenciaSesion());
+        temporizadorVigenciaSesion.setRepeats(true);
+        temporizadorVigenciaSesion.setCoalesce(true);
+        temporizadorVigenciaSesion.start();
+    }
+
+    private void verificarVigenciaSesion() {
+        if (revocacionEnCurso || usuarioActual == null || usuarioActual.getId() <= 0) {
+            return;
+        }
+        long ahora = System.currentTimeMillis();
+        if (ahora - ultimaVerificacionVigenciaMs < 5000L) {
+            return;
+        }
+        ultimaVerificacionVigenciaMs = ahora;
+        boolean activo;
+        try {
+            activo = lgDao.esUsuarioActivoConRol(usuarioActual.getId(), usuarioActual.getRol());
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(Sistema.class.getName())
+                    .log(java.util.logging.Level.FINE,
+                            "No se pudo verificar la vigencia de la sesión; se reintentará: " + ex.getMessage());
+            return;
+        }
+        if (activo) {
+            return;
+        }
+        revocacionEnCurso = true;
+        if (temporizadorVigenciaSesion != null) {
+            temporizadorVigenciaSesion.stop();
+        }
+        usuarioActual.setActivo(false);
+        JOptionPane.showMessageDialog(this,
+                "Tu cuenta fue desactivada o cambió de rol. La sesión ha sido revocada.",
+                "Acceso revocado", JOptionPane.ERROR_MESSAGE);
+        this.dispose();
+        restaurante.Restaurante.lanzarLogin();
     }
 
     private void refrescarVistaModoVisible() {
@@ -2176,7 +2236,7 @@ public final class Sistema extends javax.swing.JFrame {
         return favoritoControlador;
     }
 
-    private boolean autorizar(PoliticaAcceso.Accion accion) {
+    boolean autorizar(PoliticaAcceso.Accion accion) {
         if (usuarioActual != null && usuarioActual.getId() > 0) {
             boolean activo;
             try {
@@ -10602,6 +10662,10 @@ public final class Sistema extends javax.swing.JFrame {
 
     void cambiarModoAtencion(int nuevoIndice) {
         if (cambiandoModoProgramaticamente) return;
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) {
+            sincronizarCombosModo(modoAtencionActual);
+            return;
+        }
         cambiandoModoProgramaticamente = true;
         try {
             switch (nuevoIndice) {
@@ -10665,6 +10729,20 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     void guardarPreferenciaFiltroRapido(boolean sel) {
+        if (actualizandoFiltroProgramaticamente) {
+            return;
+        }
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_PLATOS)) {
+            actualizandoFiltroProgramaticamente = true;
+            try {
+                if (chkFiltroRapido != null) chkFiltroRapido.setSelected(!sel);
+                if (chkFiltroRapidoAdminPlatos != null) chkFiltroRapidoAdminPlatos.setSelected(!sel);
+                if (panelSplitScreen != null) panelSplitScreen.setFiltroRapido(!sel);
+            } finally {
+                actualizandoFiltroProgramaticamente = false;
+            }
+            return;
+        }
         if (chkFiltroRapido != null && chkFiltroRapido.isSelected() != sel) {
             chkFiltroRapido.setSelected(sel);
         }
