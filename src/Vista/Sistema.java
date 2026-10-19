@@ -187,6 +187,8 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JTable tableClientes;
     private javax.swing.JTable tableFacturasCliente;
     private javax.swing.JTable tableTopPlatos;
+    private javax.swing.JTabbedPane tabLeftDashboard;
+    private javax.swing.JTabbedPane tabConfigDerecha;
     private javax.swing.JLabel lblVentasHoy;
     private javax.swing.JLabel lblVentasHistoricas;
     private javax.swing.JLabel lblTicketPromedio;
@@ -824,7 +826,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtInfoModos.setBounds(30, 255, 480, 120);
         panelImpresionConfig.add(txtInfoModos);
 
-        javax.swing.JTabbedPane tabConfigDerecha = new javax.swing.JTabbedPane();
+        tabConfigDerecha = new javax.swing.JTabbedPane();
         tabConfigDerecha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         tabConfigDerecha.addTab("Impresión y Tickets", panelImpresionConfig);
         tabConfigDerecha.addTab("Logo e Ícono", panelLogoConfig);
@@ -1115,19 +1117,19 @@ public final class Sistema extends javax.swing.JFrame {
         javax.swing.UIManager.put("TabbedPane.focus", new javax.swing.plaf.ColorUIResource(new java.awt.Color(0, 102, 102)));
     }
 
-    /** Tabla de salas proporcional: Mesas y Tipo fijas, la columna Nombre absorbe el 100 % del ancho libre. */
+    /** Tabla de salas proporcional: sin topes rígidos para permitir redimensionado manual persistido. */
     private void configurarTablaSalasProporcional() {
         if (tableSala == null || tableSala.getColumnModel().getColumnCount() < 2) {
             return;
         }
         tableSala.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
-        tableSala.getColumnModel().getColumn(0).setMinWidth(150);
+        tableSala.getColumnModel().getColumn(0).setMinWidth(100);
         tableSala.getColumnModel().getColumn(0).setPreferredWidth(200);
-        tableSala.getColumnModel().getColumn(1).setMinWidth(110);
-        tableSala.getColumnModel().getColumn(1).setMaxWidth(110);
+        tableSala.getColumnModel().getColumn(1).setMinWidth(60);
+        tableSala.getColumnModel().getColumn(1).setPreferredWidth(110);
         if (tableSala.getColumnModel().getColumnCount() > 2) {
-            tableSala.getColumnModel().getColumn(2).setMinWidth(110);
-            tableSala.getColumnModel().getColumn(2).setMaxWidth(110);
+            tableSala.getColumnModel().getColumn(2).setMinWidth(60);
+            tableSala.getColumnModel().getColumn(2).setPreferredWidth(110);
         }
     }
 
@@ -6682,7 +6684,7 @@ public final class Sistema extends javax.swing.JFrame {
         splitPrincipal.setOpaque(false);
 
         // Panel Izquierdo: Tabbed con Top Platos y Rendimiento Mesoneros
-        javax.swing.JTabbedPane tabLeftDashboard = new javax.swing.JTabbedPane();
+        tabLeftDashboard = new javax.swing.JTabbedPane();
         tabLeftDashboard.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
 
         javax.swing.JPanel pnlTopPlatos = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
@@ -10887,6 +10889,66 @@ public final class Sistema extends javax.swing.JFrame {
 
     public javax.swing.JButton getBtnConfig() {
         return btnConfig;
+    }
+
+    public javax.swing.JButton getBtnPlatos() {
+        return btnPlatos;
+    }
+
+    public javax.swing.JButton getBtnDashboard() {
+        return btnDashboard;
+    }
+
+    public javax.swing.JButton getBtnUsuarios() {
+        return btnUsuarios;
+    }
+
+    public javax.swing.JButton getBtnVentas() {
+        return btnVentas;
+    }
+
+    public javax.swing.JTabbedPane getTabConfigDerecha() {
+        return tabConfigDerecha;
+    }
+
+    public javax.swing.JTabbedPane getTabLeftDashboard() {
+        return tabLeftDashboard;
+    }
+
+    public javax.swing.JTable getTableUsuarios() {
+        return TableUsuarios;
+    }
+
+    public javax.swing.JTable getTableMesonerosConfig() {
+        return tableMesonerosConfig;
+    }
+
+    public javax.swing.JTable getTableTopPlatos() {
+        return tableTopPlatos;
+    }
+
+    public javax.swing.JTable getTableMesonerosDashboard() {
+        return tableMesonerosDashboard;
+    }
+
+    public javax.swing.JTable getTableClientes() {
+        return tableClientes;
+    }
+
+    public javax.swing.JTable getTableFacturasCliente() {
+        return tableFacturasCliente;
+    }
+
+    public javax.swing.JTable getTblTemPlatos() {
+        return tblTemPlatos;
+    }
+
+    public javax.swing.JTable getTableMenu() {
+        return tableMenu;
+    }
+
+    public javax.swing.JTable getTableFinalizar() {
+        return tableFinalizar;
     }
 
     public javax.swing.JPanel getPanelSalas() {

@@ -331,12 +331,13 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCatalogoPlatos.setRowHeight(25);
         tblCatalogoPlatos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tblCatalogoPlatos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
-        tblCatalogoPlatos.getColumnModel().getColumn(0).setPreferredWidth(45);
-        tblCatalogoPlatos.getColumnModel().getColumn(0).setMaxWidth(55);
+        for (int i = 0; i < tblCatalogoPlatos.getColumnModel().getColumnCount(); i++) {
+            tblCatalogoPlatos.getColumnModel().getColumn(i).setPreferredWidth(100);
+            tblCatalogoPlatos.getColumnModel().getColumn(i).setMaxWidth(Integer.MAX_VALUE);
+            tblCatalogoPlatos.getColumnModel().getColumn(i).setMinWidth(30);
+        }
         tblCatalogoPlatos.getColumnModel().getColumn(1).setPreferredWidth(300);
         tblCatalogoPlatos.getColumnModel().getColumn(2).setPreferredWidth(160);
-        tblCatalogoPlatos.getColumnModel().getColumn(2).setMinWidth(160);
-        tblCatalogoPlatos.getColumnModel().getColumn(2).setMaxWidth(220);
         Tables.ocultarColumnaModelo(tblCatalogoPlatos, 0); // ID interno: oculto, sigue en el modelo
         Tables.agregarColumnaMoneda(tblCatalogoPlatos, 2, this::monedaUbFilaCatalogo);
         tblCatalogoPlatos.addMouseListener(new MouseAdapter() {
@@ -1847,6 +1848,10 @@ public class PanelAtencionMesasSplit extends JPanel {
 
     public JTable getTablaCatalogo() {
         return tblCatalogoPlatos;
+    }
+
+    public JTable getTablaCarrito() {
+        return tblCarrito;
     }
 
     public void agregarPlatoSeleccionadoACarrito() {

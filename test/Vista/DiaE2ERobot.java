@@ -4,6 +4,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.Window;
 import java.awt.event.InputEvent;
@@ -107,6 +108,50 @@ public final class DiaE2ERobot {
             return new Point(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
         });
         clicarPunto(punto, false);
+    }
+
+    public void arrastrarBordeColumna(JTable tabla, int colVista, int dx) throws Exception {
+        esperar(tabla::isShowing, "Tabla debe estar visible para arrastrar columna");
+        Point puntoInicial = edt(() -> {
+            Rectangle r = tabla.getTableHeader().getHeaderRect(colVista);
+            Point pt = new Point(r.x + r.width - 2, r.y + r.height / 2);
+            SwingUtilities.convertPointToScreen(pt, tabla.getTableHeader());
+            return pt;
+        });
+
+        robot.mouseMove(puntoInicial.x, puntoInicial.y);
+        robot.delay(100);
+        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        robot.delay(100);
+
+        for (int i = 1; i <= 10; i++) {
+            robot.mouseMove(puntoInicial.x + (dx * i / 10), puntoInicial.y);
+            robot.delay(30);
+        }
+        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        robot.waitForIdle();
+        robot.delay(200);
+    }
+
+    public void seleccionarPestaña(JTabbedPane tabs, int indice) throws Exception {
+        esperar(tabs::isShowing, "JTabbedPane debe estar visible");
+        Point punto = edt(() -> {
+            Rectangle r = tabs.getBoundsAt(indice);
+            Point origen = tabs.getLocationOnScreen();
+            return new Point(origen.x + r.x + r.width / 2, origen.y + r.y + r.height / 2);
+        });
+        clicarPunto(punto, false);
+        robot.waitForIdle();
+        esperar(() -> tabs.getSelectedIndex() == indice, "Pestaña " + indice + " seleccionada");
+    }
+
+    public void seleccionarPestaña(JTabbedPane tabs, String titulo) throws Exception {
+        esperar(tabs::isShowing, "JTabbedPane debe estar visible");
+        int idx = edt(() -> tabs.indexOfTab(titulo));
+        if (idx < 0) {
+            throw new IllegalArgumentException("No se encontró pestaña con título: " + titulo);
+        }
+        seleccionarPestaña(tabs, idx);
     }
 
     public void reemplazarCelda(JTable tabla, int fila, int columna, String valor) throws Exception {
