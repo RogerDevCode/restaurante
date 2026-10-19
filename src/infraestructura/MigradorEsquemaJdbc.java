@@ -872,6 +872,8 @@ public final class MigradorEsquemaJdbc {
                 }
             }
         }
+        asegurarCheck(con, "login_intentos", "chk_login_intentos_no_negativos",
+                "(intentos >= 0 AND bloqueado_hasta_ms >= 0)");
     }
 
     /** Repara la relación que puede perderse al reemplazar usuarios durante una restauración. */

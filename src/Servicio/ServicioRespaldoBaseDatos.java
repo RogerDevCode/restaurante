@@ -1124,7 +1124,7 @@ public class ServicioRespaldoBaseDatos {
         Properties manifiesto = leerManifiesto(archivo);
         int cantidad = Integer.parseInt(manifiesto.getProperty("tablas.cantidad", "-1"));
         DatabaseMetaData meta = con.getMetaData();
-        String catalogo = con.getCatalog();
+        String catalogo = catalogoEfectivo(con);
         for (int i = 0; i < cantidad; i++) {
             String prefijo = "tabla." + i + ".";
             String tabla = manifiesto.getProperty(prefijo + "nombre");
@@ -1145,6 +1145,24 @@ public class ServicioRespaldoBaseDatos {
             }
         }
         validarConciliacionFinanciera(con);
+    }
+
+    /**
+     * Devuelve el schema efectivo de la sesión. {@code Connection.getCatalog()}
+     * queda obsoleto tras un {@code USE} (Connector/J no lo actualiza), por lo
+     * que la validación estructural en schema temporal consultaría la BD viva
+     * en lugar del schema restaurado recién importado.
+     */
+    private static String catalogoEfectivo(Connection con) throws SQLException {
+        try (Statement st = con.createStatement(); ResultSet rs = st.executeQuery("SELECT DATABASE()")) {
+            if (rs.next()) {
+                String actual = rs.getString(1);
+                if (actual != null && !actual.isBlank()) {
+                    return actual;
+                }
+            }
+        }
+        return con.getCatalog();
     }
 
     /**

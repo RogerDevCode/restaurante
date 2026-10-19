@@ -1,5 +1,30 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 19/10/2026 23:30
+
+## Autoreparación de esquema sobre BD de cliente (redteam) — verificada y 3 correcciones
+
+Se añadió `redteam_autoreparacion_bd.sh`: siembra una BD con datos de negocio, degrada el esquema como una instalación vieja (faltan tablas v5–v15, columnas, índices, FKs y checks; `schema_migrations` en v13; columna legado `config.modo_atencion`), ejecuta la ruta real del cliente (`Restaurante --migrate-db`, la misma de `actualizar_bd.bat`) y verifica reparación completa, cero pérdida de datos, respaldo pre-migración verificable, idempotencia, reanudación de migración interrumpida y guardas fail-closed.
+
+| Comando | Archivo de salida | Estado y alcance |
+|---|---|---|
+| `./redteam_autoreparacion_bd.sh` (MySQL efímero 3307) | `evidencias/produccion/2026-10-19/redteam-autoreparacion-2020.log` | **PASS** — `REDTEAM_AUTOREPARACION_OK`: 6 tablas y 12 artefactos (columnas/índices/FKs/checks) reparados, v15 APLICADA, 242 filas intactas, respaldo verificado, segunda corrida sin cambios ni respaldos nuevos, reanudación EN_CURSO OK, BD vacía y BD futura rechazadas sin escribir. |
+| `DISPLAY=:98 ant -q test` (props de BD aislada 3307) | `evidencias/produccion/2026-10-19/unit-post-autoreparacion-2023.log` | **PASS** — 121 suites, 671 tests, 0 fallos, 0 errores, 31 omitidos. |
+| `DISPLAY=:98 ant -q integration-test` | `evidencias/produccion/2026-10-19/integration-post-autoreparacion-2028.log` | **PASS** — 38 suites, 174 tests, 0 fallos, 0 errores. |
+| `./drill_restauracion_bd.sh` (con el fix de catálogo) | `evidencias/produccion/2026-10-19/drill-restauracion-post-autoreparacion-2021.log` | **PASS** — `DRILL_RESTAURACION_OK`: respaldo, verificación temporal, mutación, restauración, reversión y rechazo por conciliación. |
+
+### Correcciones derivadas del redteam (sin commit)
+
+| # | Defecto encontrado | Corrección |
+|---|---|---|
+| R1 | `chk_login_intentos_no_negativos` no se reafirmaba si `login_intentos` ya existía (solo se creaba en el `CREATE TABLE` inicial): una BD degradada quedaba sin el CHECK | `MigradorEsquemaJdbc.asegurarTablaIntentosLogin` reafirma el CHECK con `asegurarCheck` |
+| R2 | `validarContenidoVivo` usaba `Connection.getCatalog()`, que queda obsoleto tras `USE` (Connector/J no lo actualiza): la verificación en schema temporal inspeccionaba la BD viva y rechazaba respaldos válidos cuando el esquema vivo difiere del respaldado (caso real: respaldo pre-migración verificado después de migrar) | `ServicioRespaldoBaseDatos.catalogoEfectivo(con)` resuelve el schema real con `SELECT DATABASE()` |
+| R3 | `--migrate-db` fallaba en silencio ante rechazos fail-closed (mensaje solo en el log de archivo); `actualizar_bd.bat` no mostraba la causa al operador | La rama CLI imprime `MIGRACION_FALLIDA: <causa raíz>` en stderr y sale 1 |
+
+Comportamiento intencional documentado (no defecto): la migración normaliza `configuracion_sistema.imprimir_logo_ticket` de `'true'` a `'1'` (parámetro migrado desde `config`; `LoginDao` los trata equivalentes). El redteam lo permite explícitamente y lo verifica tras migrar.
+
+La instancia operativa del puerto 49200 no se reinició ni se tocó. Los tres archivos corregidos y el script del redteam están sin commit; `Restaurante_Ejecutable/` aún no se regeneró con estos cambios.
+
 snapshot 19/10/2026 22:10
 
 ## Campaña final de pruebas (etapas A–D cerradas)

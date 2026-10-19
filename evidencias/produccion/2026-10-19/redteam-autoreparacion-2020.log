@@ -1,0 +1,89 @@
+== Compilando ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+
+BUILD SUCCESSFUL
+Total time: 0 seconds
+== Levantando MySQL efímero (proyecto restaurante-redteam-auto-761720-1792452011) ==
+ Network restaurante-redteam-auto-761720-1792452011_default  Creating
+ Network restaurante-redteam-auto-761720-1792452011_default  Created
+ Volume restaurante-redteam-auto-761720-1792452011_restaurante_integration_mysql_data  Creating
+ Volume restaurante-redteam-auto-761720-1792452011_restaurante_integration_mysql_data  Created
+ Container restaurante-redteam-auto-761720-1792452011-db-1  Creating
+ Container restaurante-redteam-auto-761720-1792452011-db-1  Created
+ Container restaurante-redteam-auto-761720-1792452011-db-1  Starting
+ Container restaurante-redteam-auto-761720-1792452011-db-1  Started
+ Container restaurante-redteam-auto-761720-1792452011-db-1  Waiting
+ Container restaurante-redteam-auto-761720-1792452011-db-1  Healthy
+== 0. Fixture: datos de negocio sobre la semilla ==
+  datos base: pedidos=3 clientes=2 platos=90 detalle=3 pagos=2
+== 1. Degradación controlada del esquema (BD cliente vieja) ==
+  OK (fixture seguro): categorias.activo solo con valor 1
+  OK (fixture seguro): pedidos.version_precio solo con valor 1
+  OK (fixture seguro): detalle_pedidos.congelado_* en default
+  foto de referencia: 16 tablas del cliente viejo
+  degradación aplicada
+  filas de datos existentes (base): 242
+== 2. Autoreparación: Restaurante --migrate-db (ruta real del cliente) ==
+  OK: run1 termina con código 0
+  OK: run1 confirmó 'Migración de base de datos validada correctamente'
+== 3. Verificación de la reparación ==
+  OK: tabla reparada: comandas_marchas
+  OK: tabla reparada: comandas_marchas_detalle
+  OK: tabla reparada: auditoria_cambios_precio
+  OK: tabla reparada: pedido_liquidaciones
+  OK: tabla reparada: pedido_saldos_movimientos
+  OK: tabla reparada: preferencias_tabla
+  OK: columna reparada: categorias.activo
+  OK: columna reparada: pedidos.version_precio
+  OK: columna reparada: pedidos.id_sala_pendiente
+  OK: columna reparada: pedidos.num_mesa_pendiente
+  OK: columna reparada: detalle_pedidos.precio_congelado
+  OK: columna derivada reparada: usuarios.nombre_unico
+  OK: columna legado config.modo_atencion eliminada
+  OK: índice reparado: uq_pedidos_mesa_pendiente
+  OK: índice reparado: idx_pedidos_estado_fecha
+  OK: índice reparado: idx_pedidos_cliente_doc
+  OK: índice reparado: idx_pedidos_mesonero
+  OK: índice reparado: uq_usuarios_nombre
+  OK: FK reparada: fk_login_intentos_usuario
+  OK: FK reparada: fk_pedido_pagos_liquidacion
+  OK: FK reparada: fk_detalle_pedidos_plato
+  OK: CHECK reparado: chk_login_intentos_no_negativos
+  OK: CHECK reparado: chk_detalle_precio_iva_coherente
+  OK: huérfano de login_intentos eliminado
+  OK: intento válido preservado
+  OK: clave _sec_login_* purgada
+  OK: configuracion_sistema.modo_atencion intacto
+  OK: schema_migrations v15 APLICADA
+  OK: estado de control OPERATIVO
+  OK: sin operación de mantenimiento colgada
+  OK: categorias.activo restaurado como default 1
+  OK: columnas generadas coherentes en PENDIENTES
+  OK: columnas generadas nulas en no PENDIENTES
+  OK: usuarios.nombre_unico coherente
+  OK: parámetro legacy normalizado: imprimir_logo_ticket 'true'->'1' (equivalente para la app)
+== 4. Integridad de datos existentes (foto antes/después) ==
+  OK: datos intactos tras la autoreparación (cero filas perdidas o cambiadas; solo limpiezas intencionales)
+== 5. Respaldo previo a la migración ==
+  OK: exactamente un respaldo pre_migracion_* creado
+  respaldo: pre_migracion_restaurante_20261019_232035_929_0cd006ae-4732-4800-9fde-858544d95556.sql
+  OK: el respaldo previo pasa --verificar-respaldo
+== 6. Idempotencia: segunda corrida no cambia nada ==
+  OK: run2 termina con código 0
+  OK: run2 no crea respaldos adicionales (esquema ya aplicado)
+  OK: datos estables tras segunda corrida (cero filas perdidas o cambiadas; solo limpiezas intencionales)
+== 7. Reanudación de migración interrumpida (EN_CURSO + artefacto faltante) ==
+  OK: run3 termina con código 0
+  OK: v15 vuelve a APLICADA
+  OK: tabla reparada tras interrupción: comandas_marchas
+  OK: la reanudación creó su propio respaldo (total 2)
+  OK: datos intactos tras reanudación (cero filas perdidas o cambiadas; solo limpiezas intencionales)
+== 8. Guardas fail-closed ==
+  OK: BD vacía quedó intacta (0 tablas creadas)
+  OK: una BD vacía se rechaza sin escribir nada
+  OK: BD futura sin rastro de migración aplicada
+  OK: una BD de versión futura se rechaza sin escribir esquema v15
+  OK: las guardas no crearon respaldos
+
+REDTEAM_AUTOREPARACION_OK
+== Conservando directorio de trabajo (REDTEAM_AUTOREPARACION_KEEP=1): /tmp/restaurante-redteam-auto-5ls5vy

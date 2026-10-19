@@ -15,6 +15,7 @@
 | `./e2e_virtual.sh [clase]` | E2E en Xvfb `:99` (1366x711) con mouse/teclado independientes de `:0`; rechaza destinos distintos de MySQL local `restaurante_test` en 3307 con `E2E_BD_DESECHABLE=SI`. Para jornada aislada usar `./e2e_dia_completo_virtual.sh`. |
 | `./e2e_dia_completo_virtual.sh [clase] [args]` | Crea MySQL efímero aislado en `restaurante_test` (proyecto Compose único), ejecuta la clase indicada (por defecto `Vista.DiaCompletoFiscalE2EVirtual`) en Xvfb `:99` mediante `e2e_virtual.sh` y elimina solo su proyecto/volumen al terminar; falla si 3307 o `:99` ya están ocupados. Requiere Docker, Java 21, Ant, Xvfb y xdotool |
 | `./drill_restauracion_bd.sh` | Drill de respaldo/restauración en MySQL efímero (3307): respalda, verifica en schema temporal, muta, restaura, comprueba reversión y exige que un respaldo descuadrado sea rechazado por conciliación financiera |
+| `./redteam_autoreparacion_bd.sh` | Redteam de autoreparación en MySQL efímero (3307): siembra datos, degrada el esquema (faltan tablas v5–v15, columnas/índices/FKs/checks, marcador v13) y exige que `Restaurante --migrate-db` repare sin perder datos; cubre respaldo pre-migración verificable, idempotencia, reanudación EN_CURSO y guardas fail-closed (BD vacía/futura). `REDTEAM_AUTOREPARACION_KEEP=1` conserva el directorio de trabajo; imprime `REDTEAM_AUTOREPARACION_OK` |
 | `ant integration-test` | Suite contra MySQL Docker 3307 (`restaurante_test`); levanta/baja compose solo |
 
 ## Arranque (producción)

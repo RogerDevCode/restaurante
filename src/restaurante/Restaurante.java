@@ -147,9 +147,21 @@ public class Restaurante {
         ManejadorErroresSwing.instalar();
         infraestructura.ConfiguracionLogs.configurar();
         if (args != null && args.length == 1 && "--migrate-db".equalsIgnoreCase(args[0])) {
-            new Servicio.ServicioRespaldoBaseDatos().recuperarOperacionInterrumpida();
-            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
-            new Servicio.ConfiguracionAccesosServicio().asegurarMatrizPredeterminada();
+            try {
+                new Servicio.ServicioRespaldoBaseDatos().recuperarOperacionInterrumpida();
+                infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
+                new Servicio.ConfiguracionAccesosServicio().asegurarMatrizPredeterminada();
+            } catch (Exception ex) {
+                Throwable raiz = ex;
+                while (raiz.getCause() != null && raiz.getCause() != raiz) {
+                    raiz = raiz.getCause();
+                }
+                String detalle = raiz.getMessage() != null && !raiz.getMessage().isBlank()
+                        ? raiz.getMessage() : ex.getMessage();
+                System.err.println("MIGRACION_FALLIDA: " + detalle);
+                System.exit(1);
+                return;
+            }
             System.out.println("Migración de base de datos validada correctamente.");
             return;
         }
