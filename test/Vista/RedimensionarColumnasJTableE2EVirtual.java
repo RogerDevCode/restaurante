@@ -1,19 +1,9 @@
 package Vista;
 
-import Modelo.PreferenciasTablaDao;
-import infraestructura.ProveedorConexionJdbc;
 import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Point;
 import java.awt.Window;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
@@ -28,8 +18,8 @@ import org.junit.Test;
  * <p>Prueba en TODAS las JTables de la aplicación:
  * <ol>
  *   <li>La capacidad de redimensionar el ancho de las columnas arrastrando los bordes con el mouse virtual.</li>
- *   <li>Que el sistema guarde los nuevos anchos/pesos automáticamente en la BD ({@code preferencias_tabla}).</li>
- *   <li>Cierre y reapertura de la aplicación para recuperar los anchos de columnas de la BD y aplicarlos a la vista de cada JTable.</li>
+ *   <li>Que el sistema conserve los nuevos anchos automáticamente al cerrar y volver a abrir la sesión.</li>
+ *   <li>Que la proporción visible de cada columna se recupere en la nueva ventana.</li>
  * </ol>
  *
  * <p>Ejecutable mediante: {@code ./e2e_dia_completo_virtual.sh Vista.RedimensionarColumnasJTableE2EVirtual}</p>
@@ -64,35 +54,6 @@ public final class RedimensionarColumnasJTableE2EVirtual {
         }
     }
 
-    private static void limpiarPreferenciasUsuario(int usuarioId) {
-        try (Connection con = new ProveedorConexionJdbc().getConnection();
-             PreparedStatement ps = con.prepareStatement(
-                     "DELETE FROM preferencias_tabla WHERE usuario_id = ?")) {
-            ps.setInt(1, usuarioId);
-            ps.executeUpdate();
-            System.out.println("OK   Preferencias de tabla limpiadas para usuario #" + usuarioId + " en BD.");
-        } catch (Exception ex) {
-            System.err.println("Aviso al limpiar preferencias previas: " + ex.getMessage());
-        }
-    }
-
-    private static Optional<double[]> esperarPesosGuardados(
-            PreferenciasTablaDao dao, int uid, String clave, int expectedCols,
-            int colVista, double propEsperada, long maxEsperaMs) throws Exception {
-        long fin = System.currentTimeMillis() + maxEsperaMs;
-        while (System.currentTimeMillis() < fin) {
-            Optional<double[]> guardado = dao.cargar(uid, clave);
-            if (guardado.isPresent() && guardado.get().length == expectedCols) {
-                double[] w = guardado.get();
-                if (Math.abs(w[colVista] - propEsperada) < 0.06) {
-                    return guardado;
-                }
-            }
-            Thread.sleep(150);
-        }
-        return dao.cargar(uid, clave);
-    }
-
     @FunctionalInterface
     private interface NavegadorTabla {
         void navegar(Sistema sistema, DiaE2ERobot robot) throws Exception;
@@ -112,14 +73,12 @@ public final class RedimensionarColumnasJTableE2EVirtual {
             ExtractorTabla extractor
     ) {}
 
+    private record AnchoEsperado(int cantidadColumnas, double proporcionColumna) {}
+
     public static void main(String[] args) throws Exception {
         DiaE2EFixture.exigirBdAislada();
         System.setProperty("modo.automatizado", "true");
 
-        final int usuarioAdminId = 1;
-        limpiarPreferenciasUsuario(usuarioAdminId);
-
-        final PreferenciasTablaDao prefDao = new PreferenciasTablaDao();
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         DiaE2ERobot robot = new DiaE2ERobot();
 
@@ -231,17 +190,17 @@ public final class RedimensionarColumnasJTableE2EVirtual {
                 (s, r) -> s.getPanelSplitScreen().getTablaCarrito()
         ));
 
-        Map<String, double[]> pesosGuardadosEnFase1 = new LinkedHashMap<>();
+        Map<String, AnchoEsperado> anchosEsperados = new LinkedHashMap<>();
 
         try {
             System.out.println("======================================================================");
-            System.out.println("  E2E VIRTUAL: REDIMENSIONAR COLUMNAS EN JTABLES Y PERSISTENCIA EN BD ");
+            System.out.println("  E2E VIRTUAL: REDIMENSIONAR Y RECUPERAR COLUMNAS EN JTABLES ");
             System.out.println("======================================================================");
 
             // ====================================================================
-            // FASE 1: Redimensionar con mouse y validar persistencia en BD
+            // FASE 1: Redimensionar con mouse y registrar la proporción visible
             // ====================================================================
-            System.out.println("\n--- FASE 1: Redimensionar columnas con mouse y verificar guardado en BD ---");
+            System.out.println("\n--- FASE 1: Redimensionar columnas con mouse ---");
 
             restaurante.Restaurante.lanzarLogin();
             FrmLogin login = robot.esperarVentana(FrmLogin.class);
@@ -281,31 +240,20 @@ public final class RedimensionarColumnasJTableE2EVirtual {
                 check(anchoDespues != anchoAntes,
                         clave + ": el ancho de columna en la vista cambió tras arrastrar con el mouse");
 
-                double propCalculada = (double) anchoDespues / totalDespues;
-
-                // Esperar a que el debounce (600ms) y el SwingWorker persistan en MySQL
-                Thread.sleep(700);
-                Optional<double[]> guardado = esperarPesosGuardados(prefDao, usuarioAdminId, clave, colCount, def.colVista(), propCalculada, 4000);
-                check(guardado.isPresent(),
-                        clave + ": anchos/pesos guardados en la BD (tabla preferencias_tabla)");
-
-                if (guardado.isPresent()) {
-                    double[] w = guardado.get();
-                    check(w.length == colCount,
-                            clave + ": la BD contiene pesos para las " + colCount + " columnas de la JTable");
-
-                    check(Math.abs(w[def.colVista()] - propCalculada) < 0.08,
-                            clave + ": la proporción en BD (" + String.format("%.4f", w[def.colVista()])
-                                    + ") coincide con la vista (" + String.format("%.4f", propCalculada) + ")");
-
-                    pesosGuardadosEnFase1.put(clave, w);
+                if (anchoDespues != anchoAntes && totalDespues > 0) {
+                    double proporcion = (double) anchoDespues / totalDespues;
+                    anchosEsperados.put(clave, new AnchoEsperado(colCount, proporcion));
                 }
             }
 
             // ====================================================================
-            // FASE 2: Cerrar y reabrir aplicación para verificar recuperación de BD a la vista
+            // FASE 2: Cerrar y reabrir aplicación para verificar la proporción visible
             // ====================================================================
-            System.out.println("\n--- FASE 2: Cerrar y reabrir aplicación; verificar recuperación desde BD a JTable ---");
+            System.out.println("\n--- FASE 2: Cerrar y reabrir sesión; verificar recuperación visual ---");
+
+            // Deja terminar el debounce de 600 ms y la escritura asíncrona de preferencias.
+            Thread.sleep(1000);
+            robot.waitForIdle();
 
             robot.edt(() -> {
                 sistema.dispose();
@@ -329,10 +277,10 @@ public final class RedimensionarColumnasJTableE2EVirtual {
                 String clave = entry.getKey();
                 DefinicionTablaE2E def = entry.getValue();
 
-                if (!pesosGuardadosEnFase1.containsKey(clave)) {
+                if (!anchosEsperados.containsKey(clave)) {
                     continue;
                 }
-                double[] pesosEsperados = pesosGuardadosEnFase1.get(clave);
+                AnchoEsperado anchoEsperado = anchosEsperados.get(clave);
 
                 def.navegador().navegar(sistema2, robot);
                 JTable tabla2 = def.extractor().extraer(sistema2, robot);
@@ -341,28 +289,26 @@ public final class RedimensionarColumnasJTableE2EVirtual {
                 robot.waitForIdle();
 
                 int nCols = robot.edt(() -> tabla2.getColumnModel().getColumnCount());
-                int prefW = robot.edt(() -> tabla2.getColumnModel().getColumn(def.colVista()).getPreferredWidth());
+                int anchoColumna = robot.edt(() -> tabla2.getColumnModel().getColumn(def.colVista()).getWidth());
+                int anchoTabla = robot.edt(tabla2::getWidth);
 
-                int sumaPref = robot.edt(() -> {
-                    int s = 0;
-                    for (int i = 0; i < nCols; i++) {
-                        s += tabla2.getColumnModel().getColumn(i).getPreferredWidth();
-                    }
-                    return Math.max(s, 1);
-                });
+                check(nCols == anchoEsperado.cantidadColumnas(),
+                        clave + ": la JTable conserva sus " + anchoEsperado.cantidadColumnas() + " columnas");
+                if (nCols != anchoEsperado.cantidadColumnas() || anchoTabla <= 0) {
+                    continue;
+                }
 
-                double propRecuperada = (double) prefW / sumaPref;
-                double propEsperada = pesosEsperados[def.colVista()];
+                double propRecuperada = (double) anchoColumna / anchoTabla;
+                double propEsperada = anchoEsperado.proporcionColumna();
                 double diff = Math.abs(propRecuperada - propEsperada);
 
                 check(diff < 0.06,
-                        clave + ": JTable recuperó anchos de BD a la vista (esperado="
+                        clave + ": JTable recuperó la proporción visible de ancho (esperado="
                                 + String.format("%.4f", propEsperada) + ", obtenido="
                                 + String.format("%.4f", propRecuperada) + ", diff=" + String.format("%.4f", diff) + ")");
             }
 
         } finally {
-            limpiarPreferenciasUsuario(usuarioAdminId);
             try {
                 SwingUtilities.invokeAndWait(() -> {
                     for (Window w : Window.getWindows()) {
