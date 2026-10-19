@@ -1,0 +1,605 @@
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [junit] Oct 19, 2026 6:29:59 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] java.lang.IllegalArgumentException: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:431)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.restaurarRespaldo(ServicioRespaldoBaseDatos.java:897)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$restaurarRespaldoRechazaArchivoTruncadoSinPie$8(ServicioRespaldoBaseDatosTest.java:259)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.restaurarRespaldoRechazaArchivoTruncadoSinPie(ServicioRespaldoBaseDatosTest.java:258)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:29:59 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_5214461485895282785/respaldo_restaurante_20261019_182959_075_ed769d8c-ba18-4341-839c-18dcb293c869.sql
+    [junit] Oct 19, 2026 6:29:59 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo intenta reemplazar una tabla de infraestructura protegida ('schema_migrations') y fue rechazado.
+    [junit] java.lang.IllegalArgumentException: El respaldo intenta reemplazar una tabla de infraestructura protegida ('schema_migrations') y fue rechazado.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarTablaPermitida(ServicioRespaldoBaseDatos.java:110)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarSentenciaRespaldo(ServicioRespaldoBaseDatos.java:719)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:604)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$rechazaRespaldoQueIntenteReemplazarSchemaMigrations$14(ServicioRespaldoBaseDatosTest.java:457)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.rechazaRespaldoQueIntenteReemplazarSchemaMigrations(ServicioRespaldoBaseDatosTest.java:456)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:29:59 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] java.lang.IllegalArgumentException: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:431)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.restaurarRespaldo(ServicioRespaldoBaseDatos.java:897)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$restaurarRespaldoRechazaArchivoSinFirmaOficial$3(ServicioRespaldoBaseDatosTest.java:184)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.restaurarRespaldoRechazaArchivoSinFirmaOficial(ServicioRespaldoBaseDatosTest.java:183)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:29:59 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] java.lang.IllegalArgumentException: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:431)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$rechazaSqlAnadidoDespuesDelPie$6(ServicioRespaldoBaseDatosTest.java:221)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.rechazaSqlAnadidoDespuesDelPie(ServicioRespaldoBaseDatosTest.java:221)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:00 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_13767914884660219643/respaldo_restaurante_20261019_182959_887_bfa13734-2575-42c8-b95f-098a666ed17d.sql
+    [junit] Oct 19, 2026 6:30:00 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El checksum SHA-256 del respaldo no coincide.
+    [junit] java.lang.IllegalArgumentException: El checksum SHA-256 del respaldo no coincide.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:454)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$checksumDetectaCambiosPosterioresAlRespaldo$0(ServicioRespaldoBaseDatosTest.java:94)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.checksumDetectaCambiosPosterioresAlRespaldo(ServicioRespaldoBaseDatosTest.java:94)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:00 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo contiene una tabla no reconocida o fuera de la lista blanca ('tabla_arbitraria_externa') y fue rechazado.
+    [junit] java.lang.IllegalArgumentException: El respaldo contiene una tabla no reconocida o fuera de la lista blanca ('tabla_arbitraria_externa') y fue rechazado.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarTablaPermitida(ServicioRespaldoBaseDatos.java:114)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarSentenciaRespaldo(ServicioRespaldoBaseDatos.java:719)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:604)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$rechazaRespaldoConTablaArbitrariaFueraDeListaBlanca$13(ServicioRespaldoBaseDatosTest.java:434)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.rechazaRespaldoConTablaArbitrariaFueraDeListaBlanca(ServicioRespaldoBaseDatosTest.java:433)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:00 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_3206168108082463733/respaldo_restaurante_20261019_183000_202_3232922f-d535-4a98-8b23-d9c3285f921c.sql
+    [junit] Oct 19, 2026 6:30:02 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_3206168108082463733/pre_restauracion_seguridad_20261019_183002_589_6c91b4aa-a9a5-4a1e-8c03-7a2c58626eaf.sql
+    [junit] Oct 19, 2026 6:30:06 PM Servicio.ServicioRespaldoBaseDatos restaurarRespaldo
+    [junit] INFO: Restauración verificada y completada: /tmp/test_respaldos_3206168108082463733/respaldo_restaurante_20261019_183000_202_3232922f-d535-4a98-8b23-d9c3285f921c.sql
+    [junit] Oct 19, 2026 6:30:07 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+    [junit] INFO: Esquema de base de datos verificado y sincronizado correctamente.
+    [junit] Oct 19, 2026 6:30:07 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] java.lang.IllegalArgumentException: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:431)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$rechazaMultiplesSentenciasEnUnMismoBloque$7(ServicioRespaldoBaseDatosTest.java:233)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.rechazaMultiplesSentenciasEnUnMismoBloque(ServicioRespaldoBaseDatosTest.java:233)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:07 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_5719137004146583270/respaldo_restaurante_20261019_183007_121_0cace733-0f2d-43a6-8ae0-30178e524763.sql
+    [junit] Oct 19, 2026 6:30:09 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_5719137004146583270/pre_restauracion_seguridad_20261019_183009_331_f48c5074-e87c-458a-b7fa-0df2f0ce1d74.sql
+    [junit] Oct 19, 2026 6:30:13 PM Servicio.ServicioRespaldoBaseDatos restaurarRespaldo
+    [junit] INFO: Restauración verificada y completada: /tmp/test_respaldos_5719137004146583270/respaldo_restaurante_20261019_183007_121_0cace733-0f2d-43a6-8ae0-30178e524763.sql
+    [junit] Oct 19, 2026 6:30:13 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/respaldos/pre_migracion_restaurante_20261019_183013_631_8a20cdcf-0ffc-4377-83f9-6cf9179d77ca.sql
+    [junit] Oct 19, 2026 6:30:15 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+    [junit] INFO: Respaldo previo a migración confirmado: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/respaldos/pre_migracion_restaurante_20261019_183013_631_8a20cdcf-0ffc-4377-83f9-6cf9179d77ca.sql
+    [junit] Oct 19, 2026 6:30:15 PM infraestructura.MigradorEsquemaJdbc asegurarTablaConfiguracionSistema
+    [junit] INFO: Tabla configuracion_sistema verificada.
+    [junit] Oct 19, 2026 6:30:15 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCierresCaja
+    [junit] INFO: Tabla cierres_caja verificada.
+    [junit] Oct 19, 2026 6:30:15 PM infraestructura.MigradorEsquemaJdbc asegurarTablaMesoneros
+    [junit] INFO: Tabla mesoneros verificada.
+    [junit] Oct 19, 2026 6:30:16 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCategorias
+    [junit] INFO: Tabla categorias verificada (soft-delete activo soportado).
+    [junit] Oct 19, 2026 6:30:16 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoCategoria
+    [junit] INFO: Tabla plato_categoria verificada.
+    [junit] Oct 19, 2026 6:30:16 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoFavorito
+    [junit] INFO: Tabla plato_favorito verificada.
+    [junit] Oct 19, 2026 6:30:16 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+    [junit] INFO: Esquema de base de datos verificado y sincronizado correctamente.
+    [junit] Oct 19, 2026 6:30:16 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+    [junit] INFO: Esquema de base de datos verificado y sincronizado correctamente.
+    [junit] Oct 19, 2026 6:30:16 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo intenta reemplazar una tabla de infraestructura protegida ('restaurante_control') y fue rechazado.
+    [junit] java.lang.IllegalArgumentException: El respaldo intenta reemplazar una tabla de infraestructura protegida ('restaurante_control') y fue rechazado.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarTablaPermitida(ServicioRespaldoBaseDatos.java:110)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarSentenciaRespaldo(ServicioRespaldoBaseDatos.java:719)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:604)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$rechazaRespaldoQueIntenteReemplazarRestauranteControl$15(ServicioRespaldoBaseDatosTest.java:480)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.rechazaRespaldoQueIntenteReemplazarRestauranteControl(ServicioRespaldoBaseDatosTest.java:479)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:16 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo contiene inserciones para tablas no declaradas en el manifiesto.
+    [junit] java.lang.IllegalArgumentException: El respaldo contiene inserciones para tablas no declaradas en el manifiesto.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarCoberturaManifiesto(ServicioRespaldoBaseDatos.java:841)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:617)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$rechazaRespaldoConInsertEnTablaNoDeclaradaEnManifiesto$16(ServicioRespaldoBaseDatosTest.java:511)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.rechazaRespaldoConInsertEnTablaNoDeclaradaEnManifiesto(ServicioRespaldoBaseDatosTest.java:510)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:16 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_2103290745722855208/respaldo_restaurante_20261019_183016_805_9fb881c0-d064-423d-9ae8-d08cd04a51ef.sql
+    [junit] Oct 19, 2026 6:30:17 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_2891842861402529594/respaldo_restaurante_20261019_183016_911_941eba10-512b-4028-92ad-7ee568055013.sql
+    [junit] Oct 19, 2026 6:30:17 PM Servicio.ServicioRespaldoBaseDatos validarChecksumSiExiste
+    [junit] INFO: Respaldo autenticado exitosamente mediante clave HMAC previa (BACKUP_HMAC_KEY_PREVIOUS).
+    [junit] Oct 19, 2026 6:30:17 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: La firma HMAC del manifiesto de respaldo no coincide. El archivo fue alterado o no proviene de una fuente autorizada.
+    [junit] java.lang.IllegalArgumentException: La firma HMAC del manifiesto de respaldo no coincide. El archivo fue alterado o no proviene de una fuente autorizada.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:491)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$validacionRespaldoAceptaFirmaConClavePrevia$1(ServicioRespaldoBaseDatosTest.java:112)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.validacionRespaldoAceptaFirmaConClavePrevia(ServicioRespaldoBaseDatosTest.java:112)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:17 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] java.lang.IllegalArgumentException: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:431)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$rechazaSentenciasFueraDelFormatoAunqueLaFirmaSeaCorrecta$5(ServicioRespaldoBaseDatosTest.java:207)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.rechazaSentenciasFueraDelFormatoAunqueLaFirmaSeaCorrecta(ServicioRespaldoBaseDatosTest.java:207)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:17 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El archivo de respaldo especificado no existe o es inválido.
+    [junit] java.lang.IllegalArgumentException: El archivo de respaldo especificado no existe o es inválido.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:564)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.restaurarRespaldo(ServicioRespaldoBaseDatos.java:897)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$restaurarRespaldoFallaSiArchivoNoExiste$2(ServicioRespaldoBaseDatosTest.java:175)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.restaurarRespaldoFallaSiArchivoNoExiste(ServicioRespaldoBaseDatosTest.java:175)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:17 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_11281972632073927917/respaldo_restaurante_20261019_183017_049_643120c4-df3b-4559-a976-271e1edb5894.sql
+    [junit] Oct 19, 2026 6:30:17 PM Servicio.ServicioRespaldoBaseDatos validarChecksumSiExiste
+    [junit] INFO: Respaldo autenticado exitosamente mediante clave HMAC previa (BACKUP_HMAC_KEY_PREVIOUS).
+    [junit] Oct 19, 2026 6:30:17 PM Servicio.ServicioRespaldoBaseDatos validarChecksumSiExiste
+    [junit] INFO: Respaldo autenticado exitosamente mediante clave HMAC previa (BACKUP_HMAC_KEY_PREVIOUS).
+    [junit] Oct 19, 2026 6:30:19 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_11281972632073927917/pre_restauracion_seguridad_20261019_183019_209_2ef583c1-a8a7-448d-b4bf-93272a5cb132.sql
+    [junit] Oct 19, 2026 6:30:21 PM Servicio.ServicioRespaldoBaseDatos validarChecksumSiExiste
+    [junit] INFO: Respaldo autenticado exitosamente mediante clave HMAC previa (BACKUP_HMAC_KEY_PREVIOUS).
+    [junit] Oct 19, 2026 6:30:23 PM Servicio.ServicioRespaldoBaseDatos restaurarRespaldo
+    [junit] INFO: Restauración verificada y completada: /tmp/test_respaldos_11281972632073927917/respaldo_restaurante_20261019_183017_049_643120c4-df3b-4559-a976-271e1edb5894.sql
+    [junit] Oct 19, 2026 6:30:23 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+    [junit] INFO: Esquema de base de datos verificado y sincronizado correctamente.
+    [junit] Oct 19, 2026 6:30:23 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] java.lang.IllegalArgumentException: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:431)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.restaurarRespaldo(ServicioRespaldoBaseDatos.java:897)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$restaurarRespaldoRechazaComandosPeligrosos$4(ServicioRespaldoBaseDatosTest.java:195)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.restaurarRespaldoRechazaComandosPeligrosos(ServicioRespaldoBaseDatosTest.java:194)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:23 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_8358696282968899110/respaldo_restaurante_20261019_183023_490_b8fabdf5-4257-467b-83ea-f1abff16cf2c.sql
+    [junit] Oct 19, 2026 6:30:23 PM Modelo.ErrorAplicacionException <init>
+    [junit] SEVERE: El respaldo no pasó la restauración aislada en schema temporal; no se reemplazará la BD viva: You have an error in your SQL syntax
+    [junit] java.sql.SQLException: You have an error in your SQL syntax
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest$1.lambda$getConnection$0(ServicioRespaldoBaseDatosTest.java:345)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarRestaurableEnEsquemaTemporal(ServicioRespaldoBaseDatos.java:636)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$validacionTemporalNoOmiteErroresSqlGenericos$10(ServicioRespaldoBaseDatosTest.java:359)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.validacionTemporalNoOmiteErroresSqlGenericos(ServicioRespaldoBaseDatosTest.java:358)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 19, 2026 6:30:23 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_15002741931997851774/pre_migracion_restaurante_20261019_183023_631_faed25c4-667b-4d7b-a0c7-85b16aa65042.sql
+    [junit] Oct 19, 2026 6:30:23 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_15002741931997851774/pre_migracion_restaurante_20261019_183023_766_d0957679-07a0-4b69-80e8-2d5526c3e010.sql
+    [junit] Oct 19, 2026 6:30:24 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_6815370664940125042/respaldo_restaurante_20261019_183023_890_24ac2dd2-28de-42a1-94c5-dccad59a06ff.sql
+    [junit] Oct 19, 2026 6:30:26 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_6815370664940125042/pre_restauracion_seguridad_20261019_183026_022_3e935e4e-b138-42f6-a1e0-a532463de8ba.sql
+    [junit] Oct 19, 2026 6:30:30 PM Servicio.ServicioRespaldoBaseDatos restaurarRespaldo
+    [junit] INFO: Restauración verificada y completada: /tmp/test_respaldos_6815370664940125042/respaldo_restaurante_20261019_183023_890_24ac2dd2-28de-42a1-94c5-dccad59a06ff.sql
+    [junit] Oct 19, 2026 6:30:30 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+    [junit] INFO: Esquema de base de datos verificado y sincronizado correctamente.
+    [junit] Oct 19, 2026 6:30:30 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /tmp/test_respaldos_6545173592549815698/respaldo_restaurante_20261019_183030_344_7252442b-0891-46e2-86e5-5567d0e09993.sql
+    [junit] Oct 19, 2026 6:30:30 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] java.lang.IllegalArgumentException: El respaldo no tiene checksum; no se puede verificar su integridad.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:431)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatos.restaurarRespaldo(ServicioRespaldoBaseDatos.java:897)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.lambda$restaurarRespaldoInterrumpeInmediatamenteAnteErrorSqlFailFast$9(ServicioRespaldoBaseDatosTest.java:278)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at Servicio.ServicioRespaldoBaseDatosTest.restaurarRespaldoInterrumpeInmediatamenteAnteErrorSqlFailFast(ServicioRespaldoBaseDatosTest.java:277)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+
+BUILD SUCCESSFUL
+Total time: 34 seconds

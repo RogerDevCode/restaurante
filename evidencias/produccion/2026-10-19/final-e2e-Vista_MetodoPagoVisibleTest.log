@@ -1,0 +1,26 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.MetodoPagoVisibleTest (DISPLAY=:99) ==
+Oct 19, 2026 9:55:49 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+OK   pestaña Finalizar Pedido seleccionada
+OK   tabla de pagos inline se muestra en pantalla
+OK   tabla de pagos completamente visible; visibleRect=java.awt.Rectangle[x=0,y=0,width=617,height=48]
+OK   botón + Medio se muestra en pantalla
+OK   botón − Medio se muestra en pantalla
+OK   tabla de pagos está por encima del botón Finalizar; y=531
+OK   botón Finalizar completamente visible; visibleRect=java.awt.Rectangle[x=0,y=0,width=110,height=36]
+OK   tabla inicia con al menos una fila
+OK   primera fila inicia con EFECTIVO_BS / VES
+UBICACION Tabla Pagos: x=331, y=531, ancho=617, alto=48, filas=1
+CAPTURA /tmp/opencode/e2e_forma_pago.png
+OK   botón + Medio agrega una nueva fila (antes=1, despues=2)
+OK   botón − Medio quita la fila seleccionada (actual=1)
+E2E_OK

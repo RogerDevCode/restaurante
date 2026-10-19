@@ -1,6 +1,34 @@
 # Bitácora de continuidad — preparación para producción
 
-snapshot 19/10/2026 16:08
+snapshot 19/10/2026 22:10
+
+## Campaña final de pruebas (etapas A–D cerradas)
+
+Etapas A (matriz de permisos + revocación de sesión), B (conciliación financiera + CLI de respaldo/restauración + drill), C (empaquetado reproducible con guarda de árbol limpio e inventario SHA-256) y D (espera acotada del spooler) quedaron implementadas y pusheadas: `6037cc3`, `2f1a962`, `56bc5a8`, `3c68835`, `e9e6335`.
+
+| Comando | Archivo de salida | Estado y alcance |
+|---|---|---|
+| `ant -q integration-test` | `evidencias/produccion/2026-10-19/final-integration-test.log` | **PASS** — 12 suites, 66 tests, 0 fallos, 0 errores, 1 omitido. |
+| `DISPLAY=:98 ant -q test` con `-Dtest-sys-prop.MYSQL_PORT=3307 -Dtest-sys-prop.MYSQL_DATABASE=restaurante_test -Dtest-sys-prop.MYSQL_USER=restaurante_test_app -Dtest-sys-prop.MYSQL_PASSWORD=…` sobre MySQL efímero 3307 | `evidencias/produccion/2026-10-19/final-unit-test-authoritative.log` | **PASS** — 121 suites, 671 tests, 0 fallos, 0 errores, 31 omitidos. |
+| `RUN_DESTRUCTIVE_DB_TESTS=YES MYSQL_DATABASE=restaurante_test MYSQL_HOST=127.0.0.1 MYSQL_PORT=3307 ant -q test-single -Djavac.includes=Servicio/ServicioRespaldoBaseDatosTest.java …` | `evidencias/produccion/2026-10-19/final-respaldo-destructivo.log` | **PASS** — 23/23 del respaldo/restauración en schema desechable (incluye tablas financieras). |
+| `./drill_restauracion_bd.sh` | `/tmp/redteam/B-drill.log` | **PASS** — `DRILL_RESTAURACION_OK`: respaldo, verificación en schema temporal, mutación, restauración, reversión y rechazo de respaldo descuadrado por conciliación. |
+| `./e2e_dia_completo_virtual.sh` | `evidencias/produccion/2026-10-19/final-e2e-dia-completo.log` | **PASS** — `E2E_OK`, 8 facturas, 1 anulación, 0 pendientes, Bs 5783.60 conciliados, cierre Z aceptado por spooler simulado. |
+| `E2E_BOOTSTRAP_FULL_DAY=SI ./e2e_bootstrap_virtual.sh` | `evidencias/produccion/2026-10-19/final-e2e-bootstrap-full-day.log` | **PASS** — `E2E_OK` con bootstrap limpio y privilegios mínimos de runtime. |
+| `./e2e_virtual.sh <clase>` (15 clases UI en stack compartido) | `evidencias/produccion/2026-10-19/final-e2e-Vista_*.log`, `final-e2e-aceptacion_*.log` | **12 PASS / 3 FAIL** — fallos en `Vista.RedimensionarColumnasJTableE2EVirtual`, `Vista.PreciosVisiblesComponenteTest`, `Vista.TablasIdOcultoComponenteTest`. |
+| Repetición aislada en stack limpio (`./e2e_dia_completo_virtual.sh <clase>`) | `evidencias/produccion/2026-10-19/aislado-e2e-*.log` | **1 PASS / 2 FAIL** — `RedimensionarColumnasJTableE2EVirtual` pasa aislado (era contaminación); `PreciosVisiblesComponenteTest` y `TablasIdOcultoComponenteTest` fallan también aislados. |
+| Repetición de los 2 fallos en `git worktree HEAD~5` (antes de A–D) | `/tmp/prevbc/log-Vista_Precios*.log`, `/tmp/prevbc/log-Vista_TablasId*.log` | **FAIL** — ambos fallos son preexistentes, no los introdujo A–D. |
+
+### Hallazgos abiertos (con evidencia)
+
+| # | Hallazgo | Evidencia | Severidad |
+|---|---|---|---|
+| H1 | `Vista.PreciosVisiblesComponenteTest`: la columna `Precio` de `tblTemPlatos` no cubre el precio más largo (158 px < 172 px) | `aislado-e2e-Vista_PreciosVisiblesComponenteTest.log:80` | Media (cosmético, preexistente) |
+| H2 | `Vista.TablasIdOcultoComponenteTest`: al hacer clic en una fila de la tabla ordenada no se carga el pedido (`sel=0`, `txtHist` vacío) | `aislado-e2e-Vista_TablasIdOcultoComponenteTest.log:69` | Media (funcional, preexistente) |
+| H3 | `test/aceptacion/PruebaRedTeamIvaIncluidoPlatosTest.java:72` borra de `plato_categorias` (tabla inexistente, columna `id_plato` inexistente); la tabla real es `plato_categoria` por `nombre_clave` | `final-unit-test-authoritative.log:1634+` (SQLSTATE 42S02, código 1146) | Baja (hixiene de test; contamina la BD compartida) |
+| H4 | El stack compartido entre clases E2E contamina estado dependiente de orden/anchuras guardadas en config | `final-e2e` vs `aislado-e2e` de `RedimensionarColumnasJTableE2EVirtual` | Baja (proceso de prueba) |
+| H5 | `ant test` con solo `-D` de Ant no aísla la BD: los tests sin guard de escritura golpean la BD viva y fallan; hay que usar `-Dtest-sys-prop.*` y `RUN_DESTRUCTIVE_DB_TESTS=YES` para la suite destructiva | `evidencias/…/final-unit-test-isolated.log` (5 fallos por `DB_URL` forzado), `final-unit-test-isolated2.log` (6 fallos por `MYSQL_HOST` forzado) | Baja (documentación de comando) |
+
+Sin hallazgos en la verificación de esquema: `information_schema` de la BD operativa (`restaurante`, 24 tablas, migraciones hasta v15) coincide con `BD.sql`, y `actualizar_bd.sql` == `db/migrations/actualizar_bd.sql`. La instancia del puerto 49200 no se reinició ni se desplegó.
 
 ## Objetivo vigente
 

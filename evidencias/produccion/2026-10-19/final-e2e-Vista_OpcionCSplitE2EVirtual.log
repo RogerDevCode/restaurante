@@ -1,0 +1,35 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 10 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.OpcionCSplitE2EVirtual (DISPLAY=:99) ==
+== [Opción C Split E2E] Paso 1: Login interactivo ==
+== [Opción C Split E2E] Paso 2: Esperar ventana Sistema y conmutar a Opción C ==
+Oct 19, 2026 9:43:23 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+== [Opción C Split E2E] Paso 3: Dimensionamiento y ergonomía de tarjetas ==
+OK   Panel Split cabe en pantalla (541px <= 700px)
+OK   Tarjetas de mesa ergonómicas (110px)
+== [Opción C Split E2E] Paso 4: Selección de Mesa 1 (P-1) ==
+OK   Mesa P-1 seleccionada
+== [Opción C Split E2E] Paso 5: Catálogo de platos y adición al pedido ==
+OK   Plato agregado al carrito
+== [Opción C Split E2E] Paso 6: Incrementar cantidad con botón '+' ==
+OK   Botón '+' pulsado
+== [Opción C Split E2E] Paso 7: Enviar a Cocina -> Mesa pasa a OCUPADA ==
+Oct 19, 2026 9:43:29 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+Oct 19, 2026 9:43:29 PM Servicio.ServicioComandaCocina lambda$imprimirAsync$4
+INFO: Comanda de cocina para pedido #102, marcha #1 impresa exitosamente.
+OK   Mesa P-1 en estado OCUPADA
+OK   Botón Cobrar habilitado
+== [Opción C Split E2E] Paso 8: Conmutar a Mesa 2 y regresar a Mesa 1 ==
+OK   Recarga automática de comanda existente validada (Pedido #102)
+== [Opción C Split E2E] Paso 9: Liberar comanda mediante 'No Pagó' (btnFuga) ==
+OK   Mesa P-1 liberada limpiamente a través de la interfaz
+E2E_OPCION_C_OK

@@ -1,0 +1,24 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: aceptacion.E2EF09Virtual (DISPLAY=:99) ==
+== [F-09 E2E] Paso 1: Inicio e inicio de sesión interactivo ==
+Oct 19, 2026 9:54:21 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+== [F-09 E2E] Paso 2: Navegar a mesas y seleccionar Mesa 1 ==
+== [F-09 E2E] Paso 3: Agregar 2 platos reales al carrito por la UI ==
+OK   Carrito contiene 2 platos seleccionados desde el catálogo
+== [F-09 E2E] Paso 4: Tipear 0 -> rechazo y reversión a 1 ==
+OK   Fila 0 conserva cantidad 1
+== [F-09 E2E] Paso 5: Tipear 4 en fila 0 y hacer clic en fila 1 ==
+OK   Fila 0 actualizada a 4
+OK   Fila 1 se mantiene en 1
+OK   txtCantidadManual refleja '1' de la fila 1 seleccionada
+== [F-09 E2E] Paso 6: Cancelar comanda sin guardar para dejar mesa limpia ==
+E2E_F09_OK

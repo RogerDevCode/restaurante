@@ -1,0 +1,54 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 8 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.E2EVirtual (DISPLAY=:99) ==
+== [E2E] Paso 1: Lanzamiento de la aplicación y Login interactivo ==
+== [E2E] Paso 2: Espera de la ventana principal de Sistema ==
+Oct 19, 2026 9:41:29 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+INFO: Respaldo de base de datos generado exitosamente: /tmp/restaurante-e2e-batch-9sbXVA/respaldos/pre_migracion_restaurante_20261019_214129_373_db8c84f6-f0fc-4f4f-a327-0ca6de1d62a1.sql
+Oct 19, 2026 9:41:32 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Respaldo previo a migración confirmado: /tmp/restaurante-e2e-batch-9sbXVA/respaldos/pre_migracion_restaurante_20261019_214129_373_db8c84f6-f0fc-4f4f-a327-0ca6de1d62a1.sql
+Oct 19, 2026 9:41:33 PM infraestructura.MigradorEsquemaJdbc asegurarTablaConfiguracionSistema
+INFO: Tabla configuracion_sistema verificada.
+Oct 19, 2026 9:41:33 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCierresCaja
+INFO: Tabla cierres_caja verificada.
+Oct 19, 2026 9:41:33 PM infraestructura.MigradorEsquemaJdbc asegurarTablaMesoneros
+INFO: Tabla mesoneros verificada.
+Oct 19, 2026 9:41:33 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCategorias
+INFO: Tabla categorias verificada (soft-delete activo soportado).
+Oct 19, 2026 9:41:33 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoCategoria
+INFO: Tabla plato_categoria verificada.
+Oct 19, 2026 9:41:33 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoFavorito
+INFO: Tabla plato_favorito verificada.
+Oct 19, 2026 9:41:34 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+== [E2E] Paso 3: Navegación al mapa de mesas (Atención Directa) ==
+OK   Mesa 1 libre y lista
+== [E2E] Paso 4: Abrir Mesa 1 y tomar comanda (Ronda 1: 1 Pollo) ==
+OK   Carrito con 1 pollo en ronda 1
+== [E2E] Paso 5: Enviar a cocina -> Mesa pasa a OCUPADA ==
+Oct 19, 2026 9:41:39 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+Oct 19, 2026 9:41:39 PM Servicio.ServicioComandaCocina lambda$imprimirAsync$4
+INFO: Comanda de cocina para pedido #101, marcha #1 impresa exitosamente.
+OK   Mesa 1 marcada como OCUPADA
+== [E2E] Paso 6: Reabrir Mesa 1 -> Cuenta en Caja muestra 1 pollo ==
+OK   Cuenta en pantalla confirma 1 pollo
+== [E2E] Paso 7: Ronda 2 -> Modificar pedido y agregar 2 pollos más ==
+OK   Carrito suma 3 pollos (1 inicial + 2 nueva ronda)
+== [E2E] Paso 8: Actualizar comanda en cocina ==
+Oct 19, 2026 9:41:43 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+Oct 19, 2026 9:41:43 PM Servicio.ServicioComandaCocina lambda$imprimirAsync$4
+INFO: Comanda de cocina para pedido #101, marcha #2 impresa exitosamente.
+== [E2E] Paso 9: Reabrir Mesa 1 -> Verificar 3 pollos en la cuenta ==
+OK   Cuenta en pantalla confirma 3 pollos actualizados
+== [E2E] Paso 10: Liberar mesa por UI (Anular Cuenta / Fuga) ==
+OK   Mesa 1 liberada limpiamente a través de la interfaz
+E2E_OK

@@ -1,0 +1,456 @@
+ Network restaurante-dia-e2e-598526-1792445440_default  Creating
+ Network restaurante-dia-e2e-598526-1792445440_default  Created
+ Volume restaurante-dia-e2e-598526-1792445440_restaurante_integration_mysql_data  Creating
+ Volume restaurante-dia-e2e-598526-1792445440_restaurante_integration_mysql_data  Created
+ Container restaurante-dia-e2e-598526-1792445440-db-1  Creating
+ Container restaurante-dia-e2e-598526-1792445440-db-1  Created
+ Container restaurante-dia-e2e-598526-1792445440-db-1  Starting
+ Container restaurante-dia-e2e-598526-1792445440-db-1  Started
+ Container restaurante-dia-e2e-598526-1792445440-db-1  Waiting
+ Container restaurante-dia-e2e-598526-1792445440-db-1  Healthy
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 10 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.DiaCompletoFiscalE2EVirtual (DISPLAY=:99) ==
+Oct 19, 2026 9:31:15 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+INFO: Respaldo de base de datos generado exitosamente: /tmp/restaurante-dia-e2e-ViiX4x/respaldos/pre_migracion_restaurante_20261019_213114_896_b806e845-7663-4b04-88df-48431ff53b78.sql
+Oct 19, 2026 9:31:17 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Respaldo previo a migración confirmado: /tmp/restaurante-dia-e2e-ViiX4x/respaldos/pre_migracion_restaurante_20261019_213114_896_b806e845-7663-4b04-88df-48431ff53b78.sql
+Oct 19, 2026 9:31:17 PM infraestructura.MigradorEsquemaJdbc asegurarTablaConfiguracionSistema
+INFO: Tabla configuracion_sistema verificada.
+Oct 19, 2026 9:31:17 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCierresCaja
+INFO: Tabla cierres_caja verificada.
+Oct 19, 2026 9:31:17 PM infraestructura.MigradorEsquemaJdbc asegurarTablaMesoneros
+INFO: Tabla mesoneros verificada.
+Oct 19, 2026 9:31:17 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCategorias
+INFO: Tabla categorias verificada (soft-delete activo soportado).
+Oct 19, 2026 9:31:17 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoCategoria
+INFO: Tabla plato_categoria verificada.
+Oct 19, 2026 9:31:17 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoFavorito
+INFO: Tabla plato_favorito verificada.
+Oct 19, 2026 9:31:18 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+OK   campos de tasa e IVA reciben los valores por teclado
+OK   la UI muestra tasa 40.0000 e IVA 16.00
+OK   la sala de la jornada muestra ocho mesas en la tabla de salas
+OK   EX_USD se presenta como exento en la ficha
+OK   EX_USD muestra su precio exento sin recargo
+OK   EX_USD conserva su moneda principal en la ficha visible
+OK   EX_USD conserva el precio principal en la ficha visible
+OK   EX_USD conserva la bandera Aplica IVA
+OK   EX_USD conserva la bandera Incluye IVA
+OK   EX_VES se presenta como exento en la ficha
+OK   EX_VES muestra su precio exento sin recargo
+OK   EX_VES conserva su moneda principal en la ficha visible
+OK   EX_VES conserva el precio principal en la ficha visible
+OK   EX_VES conserva la bandera Aplica IVA
+OK   EX_VES conserva la bandera Incluye IVA
+OK   MAS_USD muestra la base antes de IVA
+OK   MAS_USD muestra el IVA añadido a la base
+OK   MAS_USD muestra precio final con IVA añadido una sola vez
+OK   MAS_USD conserva su moneda principal en la ficha visible
+OK   MAS_USD conserva el precio principal en la ficha visible
+OK   MAS_USD conserva la bandera Aplica IVA
+OK   MAS_USD conserva la bandera Incluye IVA
+OK   MAS_VES muestra la base antes de IVA
+OK   MAS_VES muestra el IVA añadido a la base
+OK   MAS_VES muestra precio final con IVA añadido una sola vez
+OK   MAS_VES conserva su moneda principal en la ficha visible
+OK   MAS_VES conserva el precio principal en la ficha visible
+OK   MAS_VES conserva la bandera Aplica IVA
+OK   MAS_VES conserva la bandera Incluye IVA
+OK   INC_USD muestra la base neta del precio con IVA incluido
+OK   INC_USD muestra el IVA extraído del precio incluido
+OK   INC_USD no suma IVA dos veces al precio incluido
+OK   INC_USD conserva su moneda principal en la ficha visible
+OK   INC_USD conserva el precio principal en la ficha visible
+OK   INC_USD conserva la bandera Aplica IVA
+OK   INC_USD conserva la bandera Incluye IVA
+OK   INC_VES muestra la base neta del precio con IVA incluido
+OK   INC_VES muestra el IVA extraído del precio incluido
+OK   INC_VES no suma IVA dos veces al precio incluido
+OK   INC_VES conserva su moneda principal en la ficha visible
+OK   INC_VES conserva el precio principal en la ficha visible
+OK   INC_VES conserva la bandera Aplica IVA
+OK   INC_VES conserva la bandera Incluye IVA
+OK   MAS_VES aparece en el carrito
+OK   MAS_VES tiene cantidad 1 en carrito
+OK   MAS_VES conserva moneda y precio base visibles en el carrito
+OK   MAS_VES muestra la condición fiscal actual en el carrito
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+OK   INC_USD aparece en el carrito
+OK   INC_USD tiene cantidad 1 en carrito
+OK   INC_USD conserva moneda y precio base visibles en el carrito
+OK   INC_USD muestra la condición fiscal actual en el carrito
+OK   EX_VES aparece en el carrito
+OK   EX_VES tiene cantidad 1 en carrito
+OK   EX_VES conserva moneda y precio base visibles en el carrito
+OK   EX_VES muestra la condición fiscal actual en el carrito
+OK   EX_USD aparece en el carrito
+OK   EX_USD tiene cantidad 1 en carrito
+OK   EX_USD conserva moneda y precio base visibles en el carrito
+OK   EX_USD muestra la condición fiscal actual en el carrito
+OK   el historial mantiene la sala fixture
+OK   la cuenta aparece PENDIENTE en el historial
+OK   el historial muestra $ 52.40 y Bs. 2096.00
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   desglose fiscal de la cuenta conserva el exento
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 1 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 1 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_VES aparece en el carrito
+OK   MAS_VES tiene cantidad 2 en carrito
+OK   MAS_VES conserva moneda y precio base visibles en el carrito
+OK   MAS_VES muestra la condición fiscal actual en el carrito
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+OK   INC_USD aparece en el carrito
+OK   INC_USD tiene cantidad 1 en carrito
+OK   INC_USD conserva moneda y precio base visibles en el carrito
+OK   INC_USD muestra la condición fiscal actual en el carrito
+OK   EX_VES aparece en el carrito
+OK   EX_VES tiene cantidad 1 en carrito
+OK   EX_VES conserva moneda y precio base visibles en el carrito
+OK   EX_VES muestra la condición fiscal actual en el carrito
+OK   EX_USD aparece en el carrito
+OK   EX_USD tiene cantidad 2 en carrito
+OK   EX_USD conserva moneda y precio base visibles en el carrito
+OK   EX_USD muestra la condición fiscal actual en el carrito
+OK   la segunda ronda conserva el mismo folio de cuenta
+OK   segunda ronda incrementa la cuenta en vez de abrir una nueva
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   desglose fiscal de la cuenta conserva el exento
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 2 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 2 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_USD aparece en el carrito
+OK   EX_USD tiene cantidad 1 en carrito
+OK   EX_USD conserva moneda y precio base visibles en el carrito
+OK   EX_USD muestra la condición fiscal actual en el carrito
+OK   EX_USD da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta conserva el exento
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 1 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_VES aparece en el carrito
+OK   EX_VES tiene cantidad 1 en carrito
+OK   EX_VES conserva moneda y precio base visibles en el carrito
+OK   EX_VES muestra la condición fiscal actual en el carrito
+OK   EX_VES da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta conserva el exento
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+OK   MAS_USD da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_VES aparece en el carrito
+OK   MAS_VES tiene cantidad 1 en carrito
+OK   MAS_VES conserva moneda y precio base visibles en el carrito
+OK   MAS_VES muestra la condición fiscal actual en el carrito
+OK   MAS_VES da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 1 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_USD aparece en el carrito
+OK   INC_USD tiene cantidad 1 en carrito
+OK   INC_USD conserva moneda y precio base visibles en el carrito
+OK   INC_USD muestra la condición fiscal actual en el carrito
+OK   INC_USD da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+OK   INC_VES da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 19, 2026 9:33:51 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 103 figura FINALIZADO en el historial
+OK   la factura #103 muestra los medios/importes [EFECTIVO_BS|VES|120.00]
+Oct 19, 2026 9:33:54 PM Modelo.ErrorAplicacionException <init>
+WARNING: La moneda no corresponde al medio de efectivo seleccionado.
+java.lang.IllegalArgumentException: La moneda no corresponde al medio de efectivo seleccionado.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:39)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5375)
+	at Vista.Sistema.lambda$crearCamposFacturacionRapida$48(Sistema.java:1822)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableChanged(AbstractTableModel.java:302)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableCellUpdated(AbstractTableModel.java:281)
+	at java.desktop/javax.swing.table.DefaultTableModel.setValueAt(DefaultTableModel.java:679)
+	at Vista.Sistema$10.setValueAt(Sistema.java:1729)
+	at java.desktop/javax.swing.JTable.setValueAt(JTable.java:2793)
+	at Vista.DiaE2ERobot.lambda$seleccionarMedioPago$10(DiaE2ERobot.java:213)
+	at Vista.DiaE2ERobot.lambda$edt$0(DiaE2ERobot.java:50)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:308)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+Oct 19, 2026 9:33:56 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 102 figura FINALIZADO en el historial
+OK   la factura #102 muestra los medios/importes [EFECTIVO_USD|USD|3.00]
+OK   la factura #103 muestra los medios/importes [EFECTIVO_BS|VES|120.00]
+OK   la factura #102 muestra los medios/importes [EFECTIVO_USD|USD|3.00]
+Oct 19, 2026 9:34:01 PM Modelo.ErrorAplicacionException <init>
+WARNING: La moneda no corresponde al medio de efectivo seleccionado.
+java.lang.IllegalArgumentException: La moneda no corresponde al medio de efectivo seleccionado.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:39)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5375)
+	at Vista.Sistema.lambda$crearCamposFacturacionRapida$48(Sistema.java:1822)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableChanged(AbstractTableModel.java:302)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableCellUpdated(AbstractTableModel.java:281)
+	at java.desktop/javax.swing.table.DefaultTableModel.setValueAt(DefaultTableModel.java:679)
+	at Vista.Sistema$10.setValueAt(Sistema.java:1729)
+	at java.desktop/javax.swing.JTable.setValueAt(JTable.java:2793)
+	at Vista.DiaE2ERobot.lambda$seleccionarMedioPago$10(DiaE2ERobot.java:213)
+	at Vista.DiaE2ERobot.lambda$edt$0(DiaE2ERobot.java:50)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:308)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+OK   el pago corto deja la cuenta abierta para corregirla
+OK   el pago excedido deja la cuenta abierta para corregirla
+OK   validación visible de pago corto y pago excedido antes del monto exacto
+Oct 19, 2026 9:34:07 PM Modelo.ErrorAplicacionException <init>
+WARNING: La moneda no corresponde al medio de efectivo seleccionado.
+java.lang.IllegalArgumentException: La moneda no corresponde al medio de efectivo seleccionado.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:39)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5375)
+	at Vista.Sistema.lambda$crearCamposFacturacionRapida$48(Sistema.java:1822)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableChanged(AbstractTableModel.java:302)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableCellUpdated(AbstractTableModel.java:281)
+	at java.desktop/javax.swing.table.DefaultTableModel.setValueAt(DefaultTableModel.java:679)
+	at Vista.Sistema$10.setValueAt(Sistema.java:1729)
+	at java.desktop/javax.swing.JTable.setValueAt(JTable.java:2793)
+	at Vista.DiaE2ERobot.lambda$seleccionarMedioPago$10(DiaE2ERobot.java:213)
+	at Vista.DiaE2ERobot.lambda$edt$0(DiaE2ERobot.java:50)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:308)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+Oct 19, 2026 9:34:08 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 104 figura FINALIZADO en el historial
+OK   la factura #104 muestra los medios/importes [EFECTIVO_USD|USD|11.60]
+OK   campos de tasa e IVA reciben los valores por teclado
+OK   la UI muestra tasa 42.0000 e IVA 10.00
+OK   factura pagada #103 mantiene total, estado y método tras cambio de tasa
+OK   factura pagada #102 mantiene total, estado y método tras cambio de tasa
+OK   factura pagada #104 mantiene total, estado y método tras cambio de tasa
+OK   el historial muestra la cuenta abierta recalculada a tasa 42.0000
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   desglose fiscal de la cuenta conserva el exento
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 2 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 2 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+Oct 19, 2026 9:34:17 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 105 figura FINALIZADO en el historial
+OK   la factura #105 muestra los medios/importes [EFECTIVO_BS|VES|464.00]
+Oct 19, 2026 9:34:20 PM Modelo.ErrorAplicacionException <init>
+WARNING: La moneda no corresponde al medio de efectivo seleccionado.
+java.lang.IllegalArgumentException: La moneda no corresponde al medio de efectivo seleccionado.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:39)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5375)
+	at Vista.Sistema.lambda$crearCamposFacturacionRapida$48(Sistema.java:1822)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableChanged(AbstractTableModel.java:302)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableCellUpdated(AbstractTableModel.java:281)
+	at java.desktop/javax.swing.table.DefaultTableModel.setValueAt(DefaultTableModel.java:679)
+	at Vista.Sistema$10.setValueAt(Sistema.java:1729)
+	at java.desktop/javax.swing.JTable.setValueAt(JTable.java:2793)
+	at Vista.DiaE2ERobot.lambda$seleccionarMedioPago$10(DiaE2ERobot.java:213)
+	at Vista.DiaE2ERobot.lambda$edt$0(DiaE2ERobot.java:50)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:308)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+Oct 19, 2026 9:34:21 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 106 figura FINALIZADO en el historial
+OK   la factura #106 muestra los medios/importes [EFECTIVO_USD|USD|11.60]
+Oct 19, 2026 9:34:25 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 107 figura FINALIZADO en el historial
+OK   la factura #107 muestra los medios/importes [EFECTIVO_BS|VES|464.00]
+Oct 19, 2026 9:34:31 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 101 figura FINALIZADO en el historial
+OK   la factura #101 muestra los medios/importes [EFECTIVO_BS|VES|1369.20, EFECTIVO_USD|USD|32.60]
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+OK   el historial muestra el pedido nuevo calculado con IVA 10% y tasa 42
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 10.00%
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 19, 2026 9:34:46 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 108 figura FINALIZADO en el historial
+OK   la factura #108 muestra los medios/importes [EFECTIVO_BS|VES|926.00]
+OK   la cuenta para cancelar aparece pendiente en el historial
+OK   la UI registra la anulación por fuga
+OK   el historial de fuga no muestra un método de cobro
+OK   mesa 8 aparece libre en el mapa después de la fuga
+OK   la única cuenta anulada corresponde a la mesa de fuga
+OK   el historial de hoy muestra ocho facturas finalizadas
+OK   el historial de hoy muestra una cuenta anulada
+OK   el historial de hoy no deja cuentas pendientes
+OK   suma visible de facturas finalizadas esperado=5783.60 real=5783.60
+OK   la UI concilia los importes de la jornada en bolívares
+Oct 19, 2026 9:35:00 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+Oct 19, 2026 9:35:01 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+INFO: Respaldo de base de datos generado exitosamente: /tmp/restaurante-dia-e2e-ViiX4x/respaldos/respaldo_restaurante_20261019_213500_919_818e7c1e-d4ad-4668-bbc0-28d6671bc3f0.sql
+OK   la salida del cierre confirma el envío al spooler simulado del entorno virtual
+OK   cierre Z solicitado desde la interfaz de caja
+OK   la única cuenta anulada corresponde a la mesa de fuga
+OK   el historial de hoy muestra ocho facturas finalizadas
+OK   el historial de hoy muestra una cuenta anulada
+OK   el historial de hoy no deja cuentas pendientes
+OK   suma visible de facturas finalizadas esperado=5783.60 real=5783.60
+OK   la UI concilia los importes de la jornada en bolívares
+E2E_OK

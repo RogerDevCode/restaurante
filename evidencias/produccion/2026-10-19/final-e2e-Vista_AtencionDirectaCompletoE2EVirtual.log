@@ -1,0 +1,60 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 8 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.AtencionDirectaCompletoE2EVirtual (DISPLAY=:99) ==
+==========================================================================
+=== TEST E2E COMPLETO UI: SELECTOR DE MODALIDADES DE ATENCIÓN DIRECTA ===
+==========================================================================
+== [Atención Directa E2E] Paso 1: Login interactivo ==
+== [Atención Directa E2E] Paso 2: Esperar ventana Sistema ==
+Oct 19, 2026 9:42:45 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+
+--- [Posibilidad 1] Apertura de Atención Directa en Modo B ---
+OK   Pestaña 'Mesas' abierta
+OK   Pestañas de salas visibles en modo Opción B
+
+--- [Posibilidad 2] Cambiar combobox a Opción A (Digitado Rápido) ---
+OK   Modo Opción A sincronizado y activo en pestaña 3
+  -> Operador digita 'P-2' y pulsa Enter
+OK   Código 'P-2' asignado: 📍 Mesa: P-2 ▾
+  -> Operador digita 'T3' (sin guion) y pulsa Enter
+OK   Código 'T3' normalizado a 'T-3': 📍 Mesa: T-3 ▾
+  -> Operador digita 'B1' y pulsa Enter
+OK   Código 'B1' normalizado a 'B-1': 📍 Mesa: B-1 ▾
+
+--- [Posibilidad 3] Cambiar combobox a Opción C (Split-Screen) ---
+OK   Split-Screen visible y activo
+OK   Ítem agregado a la comanda activa en Split
+OK   Carrito vaciado mediante botón Limpiar
+
+--- [Posibilidad 4] Cambiar combobox a Modo Clásico ---
+OK   Modo Clásico activo en pestaña 'Panel'
+OK   Clic en tarjeta de sala clásica abre Mesas
+
+--- [Posibilidad 5] Cambiar modo usando combobox local de Mesas a Opción B ---
+OK   Sincronización bidireccional local -> global confirmada
+
+--- [Posibilidad 6] Preservación de modo al navegar y volver ---
+OK   Retorno a Opción C preservado
+OK   Retorno a Opción A preservado
+
+--- [Posibilidad 7] Ciclo completo entre modalidades (0->1->2->3->0) ---
+OK   Ciclo paso 1 a OPCION_B validado
+OK   Ciclo paso 2 a OPCION_A validado
+OK   Ciclo paso 3 a OPCION_C validado
+OK   Ciclo paso 4 a CLASICO validado
+OK   Ciclo paso 5 a OPCION_B validado
+
+--- [Posibilidad 8] Responsividad y visibilidad en ventana ---
+OK   Dimensiones del conmutador: 280x65px
+
+==========================================================================
+E2E_ATENCION_DIRECTA_OK
+==========================================================================
