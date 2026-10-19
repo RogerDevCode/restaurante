@@ -793,11 +793,34 @@ public class MySqlIntegrationIT {
             org.junit.Assert.assertThrows(DataAccessException.class, () -> dao.purgarPedidosFinalizados(1));
             assertEquals("FINALIZADO", estadoPedido(idPedido));
             assertEquals(2, contarFilas("SELECT COUNT(*) FROM detalle_pedidos WHERE id_pedido=" + idPedido));
+            assertEquals("La transacción también debe conservar la marcha y sus líneas",
+                    1, contarFilas("SELECT COUNT(*) FROM comandas_marchas WHERE id_pedido=" + idPedido));
+            assertEquals(2, contarFilas("SELECT COUNT(*) FROM comandas_marchas_detalle md JOIN comandas_marchas m "
+                    + "ON md.id_marcha=m.id WHERE m.id_pedido=" + idPedido));
         } finally {
             try (Connection con = conexion(); Statement st = con.createStatement()) {
                 st.execute("DROP TRIGGER IF EXISTS " + trigger);
             }
         }
+    }
+
+    @Test
+    public void purgarPedidoFinalizadoEliminaDiarioDeCocinaEnLaMismaOperacion() throws Exception {
+        int idSala = crearSalaPrueba();
+        PedidosDao dao = new PedidosDao();
+        int idPedido = dao.registrarPedidoCompleto(pedido(idSala, mesaPrueba()), detallesValidos());
+        assertTrue(dao.actualizarEstado(idPedido));
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE pedidos SET fecha='2000-01-01 00:00:00' WHERE id=?")) {
+            ps.setInt(1, idPedido);
+            assertEquals(1, ps.executeUpdate());
+        }
+
+        assertTrue("La purga debe eliminar al menos el pedido vencido de la prueba",
+                dao.purgarPedidosFinalizados(1) >= 1);
+        assertEquals(0, contarFilas("SELECT COUNT(*) FROM pedidos WHERE id=" + idPedido));
+        assertEquals(0, contarFilas("SELECT COUNT(*) FROM comandas_marchas WHERE id_pedido=" + idPedido));
+        assertEquals(0, contarFilas("SELECT COUNT(*) FROM detalle_pedidos WHERE id_pedido=" + idPedido));
     }
 
     @Test
@@ -1222,6 +1245,8 @@ public class MySqlIntegrationIT {
 
     private static void limpiar(Connection conexion) throws SQLException {
         try (Statement sentencia = conexion.createStatement()) {
+            sentencia.executeUpdate("DELETE md FROM comandas_marchas_detalle md INNER JOIN comandas_marchas m ON m.id=md.id_marcha INNER JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
+            sentencia.executeUpdate("DELETE m FROM comandas_marchas m INNER JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE d FROM detalle_pedidos d INNER JOIN pedidos p ON p.id=d.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE m FROM pedido_saldos_movimientos m INNER JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE pg FROM pedido_pagos pg INNER JOIN pedidos p ON p.id=pg.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");

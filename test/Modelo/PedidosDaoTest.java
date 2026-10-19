@@ -182,12 +182,16 @@ public class PedidosDaoTest {
         assertEquals(5, eliminados);
         assertTrue(autoCommitDesactivado.get());
         assertTrue(transaccionConfirmada.get());
-        assertEquals(2, sqlEjecutados.size());
-        assertTrue(sqlEjecutados.get(0).contains("detalle_pedidos"));
+        assertEquals(4, sqlEjecutados.size());
+        assertTrue(sqlEjecutados.get(0).contains("comandas_marchas_detalle"));
         assertTrue(sqlEjecutados.get(0).contains("FINALIZADO"));
-        assertTrue(sqlEjecutados.get(1).contains("pedidos"));
+        assertTrue(sqlEjecutados.get(1).contains("comandas_marchas"));
         assertTrue(sqlEjecutados.get(1).contains("FINALIZADO"));
-        assertEquals(2, mesesParametros.size());
+        assertTrue(sqlEjecutados.get(2).contains("detalle_pedidos"));
+        assertTrue(sqlEjecutados.get(2).contains("FINALIZADO"));
+        assertTrue(sqlEjecutados.get(3).contains("pedidos"));
+        assertTrue(sqlEjecutados.get(3).contains("FINALIZADO"));
+        assertEquals(4, mesesParametros.size());
         assertEquals(Integer.valueOf(6), mesesParametros.get(0));
         assertEquals(Integer.valueOf(6), mesesParametros.get(1));
     }

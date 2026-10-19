@@ -129,6 +129,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnMasCantidad;
     private javax.swing.JButton btnMenosCantidad;
     private javax.swing.JButton btnReimprimirHistorial;
+    private javax.swing.JButton btnReimprimirComandaHistorial;
     private javax.swing.JButton btnPrevisualizarHistorial;
     private javax.swing.JButton btnPrevisualizarPedido;
     private javax.swing.JButton btnCierreParcial;
@@ -625,6 +626,14 @@ public final class Sistema extends javax.swing.JFrame {
         });
         jPanel6.add(btnPrevisualizarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(1057, 48, 130, 30));
 
+        btnReimprimirComandaHistorial = new javax.swing.JButton("Comanda");
+        btnReimprimirComandaHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnReimprimirComandaHistorial.setToolTipText("Elegir y reimprimir una marcha exacta de cocina del pedido seleccionado");
+        btnReimprimirComandaHistorial.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnReimprimirComandaHistorial.setEnabled(false);
+        btnReimprimirComandaHistorial.addActionListener(e -> reimprimirMarchaSeleccionada());
+        jPanel6.add(btnReimprimirComandaHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(1192, 48, 95, 30));
+
         btnPrevisualizarPedido = new javax.swing.JButton("Previsualizar");
         btnPrevisualizarPedido.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnPrevisualizarPedido.setToolTipText("Pre-visualizar ticket en pantalla (opcional - puede imprimir desde el visor)");
@@ -670,6 +679,10 @@ public final class Sistema extends javax.swing.JFrame {
                     if (btnPrevisualizarHistorial != null) {
                         btnPrevisualizarHistorial.setEnabled(finalizado);
                     }
+                    if (btnReimprimirComandaHistorial != null) {
+                        btnReimprimirComandaHistorial.setEnabled(
+                                politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL));
+                    }
                     if (btnPrevisualizarPedido != null) {
                         btnPrevisualizarPedido.setEnabled(finalizado);
                     }
@@ -686,6 +699,9 @@ public final class Sistema extends javax.swing.JFrame {
                     }
                     if (btnPrevisualizarHistorial != null) {
                         btnPrevisualizarHistorial.setEnabled(false);
+                    }
+                    if (btnReimprimirComandaHistorial != null) {
+                        btnReimprimirComandaHistorial.setEnabled(false);
                     }
                     if (btnAnularPedido != null) {
                         btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL));
@@ -4916,10 +4932,12 @@ public final class Sistema extends javax.swing.JFrame {
             }
 
             try {
-                int idPedidoRegistrado = -1;
+                boolean emitirComanda = debeEmitirComandaCocina();
+                Modelo.ResultadoPedidoComanda resultado;
                 if (eraEdicion) {
-                    idPedidoRegistrado = idPedidoEdicion;
-                    actualizarPedidoEnEdicion();
+                    resultado = actualizarPedidoEnEdicion(emitirComanda);
+                    if (resultado == null) return;
+                    if (!resultado.guardado()) return;
                     idPedidoEdicion = -1;
                     idSalaEdicion = -1;
                     numMesaEdicion = -1;
@@ -4928,10 +4946,11 @@ public final class Sistema extends javax.swing.JFrame {
                     quitarMesoneroEdicion = false;
                     btnGenerarPedido.setText("Realizar Pedido");
                 } else {
-                    idPedidoRegistrado = registrarPedidoCompleto();
+                    resultado = registrarPedidoCompleto(emitirComanda);
                 }
+                int idPedidoRegistrado = resultado.idPedido();
                 if (idPedidoRegistrado > 0) {
-                    imprimirComandaCocinaSiHabilitada(idPedidoRegistrado, eraEdicion);
+                    imprimirComandaCocina(resultado.marcha());
                 }
                 LimpiarTableMenu();
                 RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
@@ -4945,7 +4964,9 @@ public final class Sistema extends javax.swing.JFrame {
                 } else if (esPedidoRapido && idPedidoRegistrado > 0) {
                     modoPedidoRapido = false;
                     jTabbedPane1.setSelectedIndex(0);
-                    mostrarAvisoEnBanda("Pedido rápido enviado a cocina");
+                    mostrarAvisoEnBanda(resultado.marcha() == null
+                            ? "Pedido rápido guardado; comanda no emitida"
+                            : "Pedido rápido enviado a cocina");
                 } else {
                     modoPedidoRapido = false;
                     if (idSalaActualMesas > 0 && cantMesasActual > 0) {
@@ -4956,9 +4977,10 @@ public final class Sistema extends javax.swing.JFrame {
                     } else {
                         jTabbedPane1.setSelectedIndex(0);
                     }
-                    mostrarAvisoEnBanda(numMesa.isEmpty()
-                            ? (eraEdicion ? "Pedido actualizado" : "Pedido enviado a cocina")
-                            : (eraEdicion ? "Pedido actualizado — Mesa " + numMesa : "Pedido enviado a cocina — Mesa " + numMesa));
+                    String estadoComanda = resultado.marcha() == null
+                            ? (eraEdicion ? "Pedido actualizado; sin salida nueva para cocina" : "Pedido guardado; comanda no emitida")
+                            : (eraEdicion ? "Comanda parcial enviada a cocina" : "Pedido enviado a cocina");
+                    mostrarAvisoEnBanda(numMesa.isEmpty() ? estadoComanda : estadoComanda + " — Mesa " + numMesa);
                 }
             } catch (Modelo.PedidoPendienteExistenteException ex) {
                 JOptionPane.showMessageDialog(this,
@@ -6185,6 +6207,81 @@ public final class Sistema extends javax.swing.JFrame {
                 }
             });
         });
+    }
+
+    private void reimprimirMarchaSeleccionada() {
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
+        if (txtIdHistorialPedido.getText().isBlank()) {
+            mostrarAvisoEnBanda("Seleccione un pedido del historial para consultar sus comandas");
+            return;
+        }
+        final int idPedido;
+        try {
+            idPedido = Integer.parseInt(txtIdHistorialPedido.getText().trim());
+        } catch (NumberFormatException ex) {
+            mostrarAvisoEnBanda("El pedido seleccionado no tiene un identificador válido");
+            return;
+        }
+
+        new javax.swing.SwingWorker<java.util.List<Modelo.ComandaMarcha>, Void>() {
+            @Override
+            protected java.util.List<Modelo.ComandaMarcha> doInBackground() {
+                return pedidosControlador.listarComandasMarchas(idPedido);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    java.util.List<Modelo.ComandaMarcha> marchas = get();
+                    if (marchas.isEmpty()) {
+                        mostrarAvisoEnBanda("Este pedido no tiene marchas de cocina imprimibles");
+                        return;
+                    }
+                    String[] opciones = marchas.stream()
+                            .map(m -> "Marcha #" + m.secuencia() + " — " + m.tipo()
+                                    + " — " + m.movimientos().size() + " línea(s)")
+                            .toArray(String[]::new);
+                    Object elegida = JOptionPane.showInputDialog(Sistema.this,
+                            "Seleccione la marcha exacta que desea reimprimir:",
+                            "Historial de comandas — Pedido #" + idPedido,
+                            JOptionPane.QUESTION_MESSAGE, null, opciones, opciones[opciones.length - 1]);
+                    if (elegida == null) return;
+                    int indice = java.util.Arrays.asList(opciones).indexOf(elegida.toString());
+                    if (indice < 0 || indice >= marchas.size()) return;
+                    Modelo.ComandaMarcha seleccionada = marchas.get(indice);
+                    String motivo = solicitarMotivoAccion("Reimpresión de Comanda",
+                            "Indique el motivo para reimprimir la marcha #" + seleccionada.secuencia()
+                                    + " del pedido #" + idPedido + ":", "Copia solicitada por cocina");
+                    if (motivo == null) return;
+                    String actor = LabelVendedor != null && !LabelVendedor.getText().isBlank()
+                            ? LabelVendedor.getText().trim() : "Sistema";
+                    Thread.startVirtualThread(() -> {
+                        try {
+                            Modelo.ComandaMarcha marcha = pedidosControlador.solicitarReimpresionComanda(
+                                    seleccionada.id(), motivo, actor);
+                            Modelo.Pedidos pedido = pedidosControlador.verPedidoDesdeHistorial(idPedido);
+                            if (pedido == null) throw Modelo.ErrorAplicacionException.validacion("No se encontró el pedido seleccionado.");
+                            String sala = pedido.getSala() == null || pedido.getSala().isBlank()
+                                    ? "Sala " + pedido.getId_sala() : pedido.getSala();
+                            String mesonero = pedido.getMesoneroNombre() == null || pedido.getMesoneroNombre().isBlank()
+                                    ? pedido.getUsuario() : pedido.getMesoneroNombre();
+                            Servicio.ServicioComandaCocina.imprimirAsync(marcha, sala,
+                                    pedido.getNum_mesa(), mesonero);
+                            javax.swing.SwingUtilities.invokeLater(() -> mostrarAvisoEnBanda(
+                                    "Reimpresión de marcha #" + marcha.secuencia() + " enviada al spooler"));
+                        } catch (Exception ex) {
+                            javax.swing.SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(Sistema.this,
+                                    "No se pudo reimprimir la comanda: " + mensajeError(ex),
+                                    "Error de impresión", JOptionPane.ERROR_MESSAGE));
+                        }
+                    });
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(Sistema.this,
+                            "No se pudo consultar el historial de comandas: " + mensajeError(ex),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     private void abrirHistorialPedido(int idPedido) {
@@ -7447,6 +7544,7 @@ public final class Sistema extends javax.swing.JFrame {
     public javax.swing.JTextField getTxtFiltroFechaHasta() { return txtFiltroFechaHasta; }
     public javax.swing.JButton getBtnLimpiarFiltrosHistorial() { return btnLimpiarFiltrosHistorial; }
     public javax.swing.JButton getBtnReimprimirHistorial() { return btnReimprimirHistorial; }
+    public javax.swing.JButton getBtnReimprimirComandaHistorial() { return btnReimprimirComandaHistorial; }
     public javax.swing.JButton getBtnPrevisualizarHistorial() { return btnPrevisualizarHistorial; }
     public javax.swing.JButton getBtnPrevisualizarPedido() { return btnPrevisualizarPedido; }
     public javax.swing.JButton getBtnPdfPedido() { return btnPdfPedido; }
@@ -7471,11 +7569,15 @@ public final class Sistema extends javax.swing.JFrame {
     public javax.swing.JTable getTablePedidos() { return TablePedidos; }
     public javax.swing.JTable getTablaPagosFac() { return tablaPagosFac; }
 
+    /** Compatibilidad con llamadas legadas: la impresión ahora requiere la marcha incremental exacta. */
+    @Deprecated
     public void imprimirComandaCocinaSiHabilitada(int idPedido, boolean esActualizacion) {
-        String confComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
-        if ("0".equals(confComanda) || "false".equalsIgnoreCase(confComanda)) {
-            return;
-        }
+        java.util.logging.Logger.getLogger(Sistema.class.getName()).fine(
+                "Se omite impresión heredada del pedido #" + idPedido + "; use una ComandaMarcha persistida.");
+    }
+
+    private boolean debeEmitirComandaCocina() {
+        if (chkImprimirComandaCocina == null || !chkImprimirComandaCocina.isSelected()) return false;
         if (!java.awt.GraphicsEnvironment.isHeadless() && isDisplayable()
                 && !Boolean.getBoolean("test.headless") && !Boolean.getBoolean("modo.automatizado")) {
             int opcion = JOptionPane.showConfirmDialog(this,
@@ -7485,15 +7587,18 @@ public final class Sistema extends javax.swing.JFrame {
                     JOptionPane.QUESTION_MESSAGE);
             if (opcion != JOptionPane.YES_OPTION) {
                 mostrarAvisoEnBanda("Impresión de comanda omitida por el operador");
-                return;
+                return false;
             }
         }
+        return true;
+    }
+
+    private void imprimirComandaCocina(Modelo.ComandaMarcha marcha) {
+        if (marcha == null) return;
         new Thread(() -> {
             try {
-                Modelo.Pedidos ped = pedidosControlador.verPedido(idPedido);
+                Modelo.Pedidos ped = pedidosControlador.verPedido(marcha.idPedido());
                 if (ped == null) return;
-                java.util.List<Modelo.DetallePedido> dets = pedidosControlador.verPedidoDetalle(idPedido);
-                if (dets == null || dets.isEmpty()) return;
                 String salaNom = "Sala " + ped.getId_sala();
                 for (Modelo.Salas s : salasControlador.listar()) {
                     if (s.getId() == ped.getId_sala()) {
@@ -7502,10 +7607,10 @@ public final class Sistema extends javax.swing.JFrame {
                     }
                 }
                 String mesoneroNom = ped.getMesoneroNombre() != null ? ped.getMesoneroNombre() : ped.getUsuario();
-                Servicio.ServicioComandaCocina.imprimirAsync(idPedido, salaNom, ped.getNum_mesa(), mesoneroNom, dets, esActualizacion);
+                Servicio.ServicioComandaCocina.imprimirAsync(marcha, salaNom, ped.getNum_mesa(), mesoneroNom);
             } catch (Exception ex) {
                 java.util.logging.Logger.getLogger(Sistema.class.getName())
-                        .log(java.util.logging.Level.WARNING, "Error al imprimir comanda de cocina para pedido #" + idPedido + ": " + ex.getMessage());
+                        .log(java.util.logging.Level.WARNING, "Error al imprimir comanda de cocina para pedido #" + marcha.idPedido() + ": " + ex.getMessage());
             }
         }, "Hilo-Verif-Comanda-Cocina").start();
     }
@@ -11726,7 +11831,12 @@ public final class Sistema extends javax.swing.JFrame {
 
 
     //registrar pedido
+    /** Compatibilidad con pruebas y llamadas legadas que guardan el pedido sin controlar la salida. */
     private int registrarPedidoCompleto() {
+        return registrarPedidoCompleto(false).idPedido();
+    }
+
+    private Modelo.ResultadoPedidoComanda registrarPedidoCompleto(boolean imprimirComanda) {
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
         BigDecimal tasa = getTasaActual();
@@ -11760,11 +11870,11 @@ public final class Sistema extends javax.swing.JFrame {
             pedido.setMesoneroNombre(m.getNombreCompleto());
         }
 
-        return pedidosControlador.registrarPedidoCompleto(pedido, detalles);
+        return pedidosControlador.registrarPedidoCompletoConMarcha(pedido, detalles, imprimirComanda);
     }
 
-    private void actualizarPedidoEnEdicion() {
-        if (!autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return;
+    private Modelo.ResultadoPedidoComanda actualizarPedidoEnEdicion(boolean imprimirComanda) {
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return null;
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
         BigDecimal tasa = getTasaActual();
@@ -11801,7 +11911,7 @@ public final class Sistema extends javax.swing.JFrame {
             pedido.setMesoneroNombre(nombreMesoneroEdicionOriginal);
         }
 
-        pedidosControlador.actualizarPedidoCompleto(idPedidoEdicion, pedido, detalles);
+        return pedidosControlador.actualizarPedidoCompletoConMarcha(idPedidoEdicion, pedido, detalles, imprimirComanda);
     }
 
     private List<DetallePedido> construirDetallesDesdeCarrito() {

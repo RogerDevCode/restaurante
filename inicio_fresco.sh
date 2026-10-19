@@ -61,6 +61,8 @@ fi
 echo "== [3/6] Vaciado (se preserva schema_migrations) =="
 q <<'EOSQL'
 SET FOREIGN_KEY_CHECKS=0;
+TRUNCATE TABLE comandas_marchas_detalle;
+TRUNCATE TABLE comandas_marchas;
 TRUNCATE TABLE detalle_pedidos;
 TRUNCATE TABLE auditoria_pedidos;
 TRUNCATE TABLE pedido_pagos;

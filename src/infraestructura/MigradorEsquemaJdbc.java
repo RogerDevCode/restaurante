@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 14;
+    private static final int VERSION_ESQUEMA = 15;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
@@ -52,7 +52,9 @@ public final class MigradorEsquemaJdbc {
     private static final String CHECKSUM_MIGRACION_V13 = calcularChecksum(DEFINICION_MIGRACION_V13);
     private static final String DEFINICION_MIGRACION_V14 = "v14:categorias_activo_soft_delete";
     private static final String CHECKSUM_MIGRACION_V14 = calcularChecksum(DEFINICION_MIGRACION_V14);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v14";
+    private static final String DEFINICION_MIGRACION_V15 = "v15:comandas_marchas_incrementales_inmutables";
+    private static final String CHECKSUM_MIGRACION_V15 = calcularChecksum(DEFINICION_MIGRACION_V15);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v15";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
@@ -190,7 +192,7 @@ public final class MigradorEsquemaJdbc {
             if (!rs.next()) return false;
             String checksum = rs.getString("checksum");
             String estado = rs.getString("estado");
-            if (!CHECKSUM_MIGRACION_V14.equals(checksum)) {
+            if (!CHECKSUM_MIGRACION_V15.equals(checksum)) {
                 throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
             }
             return "APLICADA".equalsIgnoreCase(estado);
@@ -227,7 +229,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ",'" + NOMBRE_MIGRACION + "','" + CHECKSUM_MIGRACION_V14 + "','EN_CURSO','asegurar_esquema') "
+                    + VERSION_ESQUEMA + ", '" + NOMBRE_MIGRACION + "', '" + CHECKSUM_MIGRACION_V15 + "', 'EN_CURSO', 'asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -243,7 +245,8 @@ public final class MigradorEsquemaJdbc {
         String catalogo = con.getCatalog();
         for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja", "mesoneros",
                 "categorias", "plato_categoria", "plato_favorito", "preferencias_tabla", "pedido_pagos", "login_intentos",
-                "auditoria_cambios_precio", "pedido_liquidaciones", "pedido_saldos_movimientos")) {
+                "auditoria_cambios_precio", "pedido_liquidaciones", "pedido_saldos_movimientos",
+                "comandas_marchas", "comandas_marchas_detalle")) {
             if (!tablaExiste(con, tabla)) throw new SQLException("Postcondición no cumplida: falta tabla " + tabla);
         }
         for (String[] par : new String[][] {
@@ -581,7 +584,67 @@ public final class MigradorEsquemaJdbc {
         asegurarTablaAuditoriaPrecios(con);
         asegurarTablaPedidoLiquidaciones(con);
         asegurarTablaMovimientosSaldo(con);
+        asegurarTablasComandasMarchas(con);
         asegurarColumnasPagoYRestriccion(con, meta, catalogo);
+    }
+
+    private static void asegurarTablasComandasMarchas(Connection con) throws SQLException {
+        try (Statement st = con.createStatement()) {
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS comandas_marchas (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    id_pedido INT NOT NULL,
+                    secuencia INT NOT NULL,
+                    tipo VARCHAR(20) NOT NULL,
+                    actor VARCHAR(100) NOT NULL,
+                    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_comandas_marchas_pedido_secuencia (id_pedido, secuencia),
+                    KEY idx_comandas_marchas_pedido_fecha (id_pedido, creado_en),
+                    CONSTRAINT chk_comandas_marchas_tipo CHECK (tipo IN ('INICIAL','INCREMENTO','AJUSTE','BASE_LEGADA')),
+                    CONSTRAINT fk_comandas_marchas_pedido FOREIGN KEY (id_pedido)
+                        REFERENCES pedidos(id) ON DELETE RESTRICT
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS comandas_marchas_detalle (
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    id_marcha BIGINT NOT NULL,
+                    accion VARCHAR(12) NOT NULL,
+                    nombre VARCHAR(200) NOT NULL,
+                    cantidad INT NOT NULL,
+                    comentario TEXT NULL,
+                    id_plato INT NULL,
+                    moneda_base CHAR(3) NULL,
+                    precio DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+                    aplica_iva TINYINT(1) NULL,
+                    precio_incluye_iva TINYINT(1) NULL,
+                    iva_porcentaje DECIMAL(5,2) NULL,
+                    KEY idx_comandas_marchas_detalle_marcha (id_marcha),
+                    CONSTRAINT chk_comandas_marchas_accion CHECK (accion IN ('PREPARAR','RETIRAR')),
+                    CONSTRAINT chk_comandas_marchas_cantidad CHECK (cantidad > 0),
+                    CONSTRAINT fk_comandas_marchas_detalle_marcha FOREIGN KEY (id_marcha)
+                        REFERENCES comandas_marchas(id) ON DELETE RESTRICT
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci
+                """);
+            st.executeUpdate("""
+                INSERT INTO comandas_marchas (id_pedido, secuencia, tipo, actor)
+                SELECT p.id, 1, 'BASE_LEGADA', COALESCE(NULLIF(TRIM(p.usuario), ''), 'Sistema')
+                FROM pedidos p
+                WHERE p.estado = 'PENDIENTE' AND p.cerrada_en IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM comandas_marchas m WHERE m.id_pedido = p.id)
+                """);
+            st.executeUpdate("""
+                INSERT INTO comandas_marchas_detalle
+                    (id_marcha, accion, nombre, cantidad, comentario, id_plato, moneda_base, precio,
+                     aplica_iva, precio_incluye_iva, iva_porcentaje)
+                SELECT m.id, 'PREPARAR', d.nombre, d.cantidad, d.comentario, d.id_plato, d.moneda_base,
+                       d.precio, d.aplica_iva, d.precio_incluye_iva, d.iva_porcentaje
+                FROM comandas_marchas m
+                JOIN detalle_pedidos d ON d.id_pedido = m.id_pedido
+                WHERE m.tipo = 'BASE_LEGADA'
+                  AND NOT EXISTS (SELECT 1 FROM comandas_marchas_detalle md WHERE md.id_marcha = m.id)
+                """);
+        }
     }
 
     private static void asegurarCierreMesaEIndice(Connection con, DatabaseMetaData meta, String catalogo) throws SQLException {

@@ -31,10 +31,45 @@ public final class PedidoServicio {
         return repositorio.registrarPedidoCompleto(pedido, detalles);
     }
 
+    public Modelo.ResultadoPedidoComanda registrarPedidoCompletoConMarcha(Pedidos pedido, List<DetallePedido> detalles) {
+        return registrarPedidoCompletoConMarcha(pedido, detalles, true);
+    }
+
+    public Modelo.ResultadoPedidoComanda registrarPedidoCompletoConMarcha(
+            Pedidos pedido, List<DetallePedido> detalles, boolean imprimirComanda) {
+        exigir(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
+        validar(pedido, detalles);
+        return repositorio.registrarPedidoCompletoConMarcha(pedido, detalles, imprimirComanda);
+    }
+
     public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedido, List<DetallePedido> detalles) {
         exigir(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS);
         validar(pedido, detalles);
         return repositorio.actualizarPedidoCompleto(idPedido, pedido, detalles);
+    }
+
+    public Modelo.ResultadoPedidoComanda actualizarPedidoCompletoConMarcha(
+            int idPedido, Pedidos pedido, List<DetallePedido> detalles) {
+        return actualizarPedidoCompletoConMarcha(idPedido, pedido, detalles, true);
+    }
+
+    public Modelo.ResultadoPedidoComanda actualizarPedidoCompletoConMarcha(
+            int idPedido, Pedidos pedido, List<DetallePedido> detalles, boolean imprimirComanda) {
+        exigir(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS);
+        validar(pedido, detalles);
+        return repositorio.actualizarPedidoCompletoConMarcha(idPedido, pedido, detalles, imprimirComanda);
+    }
+
+    public Modelo.ComandaMarcha obtenerComandaMarcha(long idMarcha) {
+        exigir(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
+        if (idMarcha <= 0) throw ErrorAplicacionException.validacion("El identificador de marcha debe ser válido.");
+        return repositorio.obtenerComandaMarcha(idMarcha);
+    }
+
+    public List<Modelo.ComandaMarcha> listarComandasMarchas(int idPedido) {
+        exigir(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
+        if (idPedido <= 0) throw ErrorAplicacionException.validacion("El pedido debe ser válido para consultar sus marchas.");
+        return repositorio.listarComandasMarchas(idPedido);
     }
 
     public boolean cerrarMesa(int idPedido, int versionEsperada) {

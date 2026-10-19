@@ -90,6 +90,8 @@ public class AuditoriaTransaccionalPreciosIT {
 
     public void limpiarBase() throws SQLException {
         try (Connection con = conexion(); Statement st = con.createStatement()) {
+            st.executeUpdate("DELETE md FROM comandas_marchas_detalle md JOIN comandas_marchas m ON m.id=md.id_marcha JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
+            st.executeUpdate("DELETE m FROM comandas_marchas m JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
             st.executeUpdate("DELETE FROM detalle_pedidos WHERE id_pedido IN (SELECT id FROM pedidos WHERE usuario='" + USUARIO_PRUEBA + "')");
             st.executeUpdate("DELETE FROM pedidos WHERE usuario='" + USUARIO_PRUEBA + "'");
             st.executeUpdate("DELETE FROM platos WHERE nombre LIKE 'IT-AUD-%'");

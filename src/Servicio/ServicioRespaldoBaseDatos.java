@@ -73,6 +73,8 @@ public class ServicioRespaldoBaseDatos {
             "salas",
             "pedidos",
             "detalle_pedidos",
+            "comandas_marchas",
+            "comandas_marchas_detalle",
             "pedido_pagos",
             "clientes",
             "configuracion_sistema",

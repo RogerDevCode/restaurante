@@ -50,9 +50,55 @@ public final class PedidosControlador {
         return servicio.registrarPedidoCompleto(pedido, detalles);
     }
 
+    public Modelo.ResultadoPedidoComanda registrarPedidoCompletoConMarcha(Pedidos pedido, List<DetallePedido> detalles) {
+        return registrarPedidoCompletoConMarcha(pedido, detalles, true);
+    }
+
+    public Modelo.ResultadoPedidoComanda registrarPedidoCompletoConMarcha(
+            Pedidos pedido, List<DetallePedido> detalles, boolean imprimirComanda) {
+        exigirPermiso(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
+        return servicio.registrarPedidoCompletoConMarcha(pedido, detalles, imprimirComanda);
+    }
+
     public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedido, List<DetallePedido> detalles) {
         exigirPermiso(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS);
         return servicio.actualizarPedidoCompleto(idPedido, pedido, detalles);
+    }
+
+    public Modelo.ResultadoPedidoComanda actualizarPedidoCompletoConMarcha(
+            int idPedido, Pedidos pedido, List<DetallePedido> detalles) {
+        return actualizarPedidoCompletoConMarcha(idPedido, pedido, detalles, true);
+    }
+
+    public Modelo.ResultadoPedidoComanda actualizarPedidoCompletoConMarcha(
+            int idPedido, Pedidos pedido, List<DetallePedido> detalles, boolean imprimirComanda) {
+        exigirPermiso(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS);
+        return servicio.actualizarPedidoCompletoConMarcha(idPedido, pedido, detalles, imprimirComanda);
+    }
+
+    public Modelo.ComandaMarcha obtenerComandaMarcha(long idMarcha) {
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
+        return servicio.obtenerComandaMarcha(idMarcha);
+    }
+
+    public java.util.List<Modelo.ComandaMarcha> listarComandasMarchas(int idPedido) {
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
+        return servicio.listarComandasMarchas(idPedido);
+    }
+
+    public Modelo.ComandaMarcha solicitarReimpresionComanda(long idMarcha, String motivo, String usuario) {
+        exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
+        if (motivo == null || motivo.isBlank()) {
+            throw ErrorAplicacionException.validacion("Debe indicar el motivo de la reimpresión de comanda.");
+        }
+        Modelo.ComandaMarcha marcha = servicio.obtenerComandaMarcha(idMarcha);
+        if (marcha == null || marcha.tipo() == Modelo.ComandaMarcha.Tipo.BASE_LEGADA) {
+            throw ErrorAplicacionException.validacion("La marcha solicitada no está disponible para reimpresión.");
+        }
+        String actor = usuario == null || usuario.isBlank() ? "Sistema" : usuario.trim();
+        consultas.registrarAuditoria(marcha.idPedido(), "REIMPRESION_COMANDA",
+                "Marcha #" + marcha.secuencia() + " (" + marcha.tipo() + "): " + motivo.trim(), actor);
+        return marcha;
     }
 
     public boolean generarPdfPedido(int idPedido) {
@@ -166,6 +212,10 @@ public final class PedidosControlador {
 
     public Pedidos verPedido(int idPedido) {
         return consultas.obtenerPedido(idPedido);
+    }
+
+    public Pedidos verPedidoDesdeHistorial(int idPedido) {
+        return consultas.obtenerPedidoParaHistorial(idPedido);
     }
 
     public List<DetallePedido> verPedidoDetalle(int idPedido) {

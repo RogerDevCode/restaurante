@@ -128,6 +128,8 @@ public class CombinatoriaEndToEndTotalIT {
 
     private void limpiarEntidades() throws SQLException {
         try (Connection con = abrirConexion(); Statement stmt = con.createStatement()) {
+            stmt.execute("DELETE md FROM comandas_marchas_detalle md JOIN comandas_marchas m ON m.id=md.id_marcha JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario LIKE 'E2E_%'");
+            stmt.execute("DELETE m FROM comandas_marchas m JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario LIKE 'E2E_%'");
             stmt.execute("DELETE d FROM detalle_pedidos d JOIN pedidos p ON p.id=d.id_pedido WHERE p.usuario LIKE 'E2E_%'");
             stmt.execute("DELETE FROM pedidos WHERE usuario LIKE 'E2E_%'");
             stmt.execute("DELETE FROM platos WHERE nombre LIKE 'E2E_PLATO_%'");

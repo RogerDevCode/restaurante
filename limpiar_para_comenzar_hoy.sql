@@ -20,6 +20,8 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. Vaciar pedidos y consumo
+TRUNCATE TABLE `comandas_marchas_detalle`;
+TRUNCATE TABLE `comandas_marchas`;
 TRUNCATE TABLE `detalle_pedidos`;
 TRUNCATE TABLE `pedido_pagos`;
 TRUNCATE TABLE `pedido_liquidaciones`;
@@ -36,6 +38,8 @@ TRUNCATE TABLE `preferencias_tabla`;
 -- 3. Reiniciar contadores AUTO_INCREMENT a 1
 ALTER TABLE `pedidos` AUTO_INCREMENT = 1;
 ALTER TABLE `detalle_pedidos` AUTO_INCREMENT = 1;
+ALTER TABLE `comandas_marchas` AUTO_INCREMENT = 1;
+ALTER TABLE `comandas_marchas_detalle` AUTO_INCREMENT = 1;
 ALTER TABLE `pedido_liquidaciones` AUTO_INCREMENT = 1;
 ALTER TABLE `pedido_saldos_movimientos` AUTO_INCREMENT = 1;
 ALTER TABLE `pedido_pagos` AUTO_INCREMENT = 1;

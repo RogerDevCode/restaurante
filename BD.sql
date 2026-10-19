@@ -48,6 +48,8 @@ CREATE TABLE `config` (
 -- Table structure for table `pedidos`
 --
 
+DROP TABLE IF EXISTS `comandas_marchas_detalle`;
+DROP TABLE IF EXISTS `comandas_marchas`;
 DROP TABLE IF EXISTS `pedidos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
@@ -464,10 +466,54 @@ CREATE TABLE `detalle_pedidos` (
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+-- Marchas de cocina inmutables y snapshots de líneas.
+CREATE TABLE `comandas_marchas` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `id_pedido` int(11) NOT NULL,
+  `secuencia` int(11) NOT NULL,
+  `tipo` varchar(20) COLLATE utf8_spanish_ci NOT NULL,
+  `actor` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_comandas_marchas_pedido_secuencia` (`id_pedido`,`secuencia`),
+  KEY `idx_comandas_marchas_pedido_fecha` (`id_pedido`,`creado_en`),
+  CONSTRAINT `chk_comandas_marchas_tipo` CHECK (`tipo` in ('INICIAL','INCREMENTO','AJUSTE','BASE_LEGADA')),
+  CONSTRAINT `fk_comandas_marchas_pedido` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+CREATE TABLE `comandas_marchas_detalle` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `id_marcha` bigint(20) NOT NULL,
+  `accion` varchar(12) COLLATE utf8_spanish_ci NOT NULL,
+  `nombre` varchar(200) COLLATE utf8_spanish_ci NOT NULL,
+  `cantidad` int(11) NOT NULL,
+  `comentario` text COLLATE utf8_spanish_ci DEFAULT NULL,
+  `id_plato` int(11) DEFAULT NULL,
+  `moneda_base` char(3) COLLATE utf8_spanish_ci DEFAULT NULL,
+  `precio` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `aplica_iva` tinyint(1) DEFAULT NULL,
+  `precio_incluye_iva` tinyint(1) DEFAULT NULL,
+  `iva_porcentaje` decimal(5,2) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_comandas_marchas_detalle_marcha` (`id_marcha`),
+  CONSTRAINT `chk_comandas_marchas_accion` CHECK (`accion` in ('PREPARAR','RETIRAR')),
+  CONSTRAINT `chk_comandas_marchas_cantidad` CHECK (`cantidad` > 0),
+  CONSTRAINT `fk_comandas_marchas_detalle_marcha` FOREIGN KEY (`id_marcha`) REFERENCES `comandas_marchas` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
 -- Dumping data for table `detalle_pedidos`
 LOCK TABLES `detalle_pedidos` WRITE;
 /*!40000 ALTER TABLE `detalle_pedidos` DISABLE KEYS */;
 /*!40000 ALTER TABLE `detalle_pedidos` ENABLE KEYS */;
+UNLOCK TABLES;
+
+LOCK TABLES `comandas_marchas` WRITE;
+/*!40000 ALTER TABLE `comandas_marchas` DISABLE KEYS */;
+/*!40000 ALTER TABLE `comandas_marchas` ENABLE KEYS */;
+UNLOCK TABLES;
+
+LOCK TABLES `comandas_marchas_detalle` WRITE;
+/*!40000 ALTER TABLE `comandas_marchas_detalle` DISABLE KEYS */;
+/*!40000 ALTER TABLE `comandas_marchas_detalle` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --

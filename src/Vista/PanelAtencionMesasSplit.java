@@ -1594,7 +1594,8 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         try {
             boolean eraEdicion = idPedidoActivo > 0;
-            int idPedidoFinal;
+            boolean imprimirComanda = chkImprimirComanda != null && chkImprimirComanda.isSelected();
+            Modelo.ResultadoPedidoComanda resultado;
             if (eraEdicion) {
                 if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) {
                     JOptionPane.showMessageDialog(this,
@@ -1602,19 +1603,24 @@ public class PanelAtencionMesasSplit extends JPanel {
                             "Acceso Denegado", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
-                pedidosControlador.actualizarPedidoCompleto(idPedidoActivo, p, detalles);
-                idPedidoFinal = idPedidoActivo;
-                sistema.mostrarAvisoEnBanda("Pedido actualizado para " + codigoMesaSeleccionada);
+                resultado = pedidosControlador.actualizarPedidoCompletoConMarcha(
+                        idPedidoActivo, p, detalles, imprimirComanda);
+                sistema.mostrarAvisoEnBanda(resultado.marcha() == null
+                        ? "Pedido actualizado; sin salida de cocina nueva para " + codigoMesaSeleccionada
+                        : "Pedido actualizado para " + codigoMesaSeleccionada);
             } else {
-                int idNuevo = pedidosControlador.registrarPedidoCompleto(p, detalles);
+                resultado = pedidosControlador.registrarPedidoCompletoConMarcha(p, detalles, imprimirComanda);
+                int idNuevo = resultado.idPedido();
                 this.idPedidoActivo = idNuevo;
-                idPedidoFinal = idNuevo;
-                sistema.mostrarAvisoEnBanda("Pedido enviado a cocina para " + codigoMesaSeleccionada + " [#" + idNuevo + "]");
+                sistema.mostrarAvisoEnBanda(imprimirComanda
+                        ? "Pedido enviado a cocina para " + codigoMesaSeleccionada + " [#" + idNuevo + "]"
+                        : "Pedido guardado sin emitir comanda para " + codigoMesaSeleccionada + " [#" + idNuevo + "]");
             }
-            if (chkImprimirComanda != null && chkImprimirComanda.isSelected()) {
+            if (resultado.marcha() != null) {
                 String salaTexto = (nombreSalaSeleccionada != null && !nombreSalaSeleccionada.isBlank()) ? nombreSalaSeleccionada : "Sala " + idSalaSeleccionada;
                 String mesoneroTexto = (p.getMesoneroNombre() != null && !p.getMesoneroNombre().isBlank()) ? p.getMesoneroNombre() : sistema.getNombreUsuarioActual();
-                Servicio.ServicioComandaCocina.imprimirAsync(idPedidoFinal, salaTexto, numMesaSeleccionada, mesoneroTexto, detalles, eraEdicion);
+                Servicio.ServicioComandaCocina.imprimirAsync(resultado.marcha(), salaTexto,
+                        numMesaSeleccionada, mesoneroTexto);
             }
             refrescarMesasSalaActual();
         } catch (Exception ex) {

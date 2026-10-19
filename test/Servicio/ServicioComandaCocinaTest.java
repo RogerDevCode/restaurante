@@ -3,6 +3,10 @@ package Servicio;
 import Modelo.ConfigClaves;
 import Modelo.ConfiguracionSistemaDao;
 import Modelo.DetallePedido;
+import Modelo.ComandaMarcha;
+import Modelo.MovimientoComanda;
+import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import org.junit.Test;
 
 import java.io.File;
@@ -68,6 +72,47 @@ public class ServicioComandaCocinaTest {
         assertNotNull(archivo);
         assertTrue(Files.isRegularFile(archivo));
         archivo.toFile().deleteOnExit();
+    }
+
+    @Test
+    public void testTicketIncrementalContieneSoloCantidadNueva() throws Exception {
+        ComandaMarcha marcha = new ComandaMarcha(71, 107, 2, ComandaMarcha.Tipo.INCREMENTO,
+                List.of(new MovimientoComanda(MovimientoComanda.Accion.PREPARAR,
+                        "POLLO", 3, "", 41, "USD", null, false, false, null)));
+
+        Path archivo = ServicioComandaCocina.generarDocumentoComanda(marcha, "SALÓN", 2, "Ana");
+        archivo.toFile().deleteOnExit();
+
+        PdfReader reader = new PdfReader(archivo.toString());
+        try {
+            String texto = PdfTextExtractor.getTextFromPage(reader, 1);
+            assertTrue(texto, texto.contains("Marcha: #2"));
+            assertTrue(texto, texto.contains("PREPARAR [3]"));
+            assertTrue(texto, texto.contains("POLLO"));
+            assertFalse("No debe reimprimir la cantidad anterior", texto.contains("PREPARAR [5]"));
+        } finally {
+            reader.close();
+        }
+    }
+
+    @Test
+    public void testTicketDeAjusteIdentificaProductosQueDebenRetirarse() throws Exception {
+        ComandaMarcha marcha = new ComandaMarcha(72, 108, 3, ComandaMarcha.Tipo.AJUSTE,
+                List.of(new MovimientoComanda(MovimientoComanda.Accion.RETIRAR,
+                        "PAPAS", 1, "", 42, "USD", null, false, false, null)));
+
+        Path archivo = ServicioComandaCocina.generarDocumentoComanda(marcha, "SALÓN", 2, "Ana");
+        archivo.toFile().deleteOnExit();
+
+        PdfReader reader = new PdfReader(archivo.toString());
+        try {
+            String texto = PdfTextExtractor.getTextFromPage(reader, 1);
+            assertTrue(texto, texto.contains("AJUSTE DE COMANDA"));
+            assertTrue(texto, texto.contains("RETIRAR [1]"));
+            assertTrue(texto, texto.contains("PAPAS"));
+        } finally {
+            reader.close();
+        }
     }
 
     @Test

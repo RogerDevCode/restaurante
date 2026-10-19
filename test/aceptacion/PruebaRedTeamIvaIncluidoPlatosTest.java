@@ -48,6 +48,17 @@ public class PruebaRedTeamIvaIncluidoPlatosTest {
     public void tearDown() {
         try (Connection con = proveedor.getConnection()) {
             for (Integer idPed : pedidosCreados) {
+                try (PreparedStatement ps = con.prepareStatement("""
+                        DELETE md FROM comandas_marchas_detalle md
+                        JOIN comandas_marchas m ON md.id_marcha=m.id WHERE m.id_pedido=?
+                        """)) {
+                    ps.setInt(1, idPed);
+                    ps.executeUpdate();
+                } catch (Exception ignored) {}
+                try (PreparedStatement ps = con.prepareStatement("DELETE FROM comandas_marchas WHERE id_pedido=?")) {
+                    ps.setInt(1, idPed);
+                    ps.executeUpdate();
+                } catch (Exception ignored) {}
                 try (PreparedStatement ps = con.prepareStatement("DELETE FROM detalle_pedidos WHERE id_pedido = ?")) {
                     ps.setInt(1, idPed);
                     ps.executeUpdate();
