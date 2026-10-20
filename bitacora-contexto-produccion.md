@@ -1,5 +1,25 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 20/10/2026 10:30
+
+## Restauración en BD secundaria heterogénea (drill S1–S7) — PASS integral
+
+`drill_restauracion_bd_secundaria.sh` (nuevo): leva **tres servidores MySQL efímeros y heterogéneos** — origen (3307, TZ UTC, runtime con privilegios mínimos), secundaria (3308, TZ America/Caracas, admin) y verificador (3309, admin) — y ejecuta la ruta CLI completa del operador en cada servidor distinto: `--migrate-db` + siembra del pedido 13 REAL de producción (mysqldump read-only), `--respaldar`, `--verificar-respaldo` en schema temporal DE LA SECUNDARIA (servidor distinto), `--restaurar-respaldo` completo (con respaldo previo de emergencia), conciliación financiera y conteo por tabla contra el origen, invariantes v15/OPERATIVO, CHECK TABLE EXTENDED, verificación en tercer servidor, fail-closed (corrupto/truncado rechazados sin tocar la secundaria) y verificación del respaldo REAL de producción en el servidor 3309 con la HMAC real de producción.
+
+| Comando | Archivo de salida | Estado y alcance |
+|---|---|---|
+| `./drill_restauracion_bd_secundaria.sh` (origen 3307 / secundaria 3308 / verificador 3309) | `evidencias/produccion/2026-10-20/secundaria-drill-completo.log` (+ `secundaria-*.log`) | **PASS** — `RESTAURACION_SECUNDARIA_OK`: respaldo en origen (46,413 B), VERIFICACION_OK en schema temporal del servidor 3308, RESTAURACION_OK con respaldo previo de emergencia, conciliación idéntica con datos reales (total 132.24 / bs 5,924.35 / pagos 5,924.35+132.24), todas las tablas base con conteo idéntico, v15 APLICADA en ambos, restaurante_control=OPERATIVO, CHECK TABLE EXTENDED limpio, VERIFICACION_OK en el tercer servidor, corrupto y truncado rechazados sin alterar la secundaria, respaldo REAL de producción verificado e importado en el servidor distinto (firma HMAC de producción). |
+| `--respaldar` de producción con jar actual (solo lectura) | `evidencias/produccion/2026-10-20/secundaria-respaldo-produccion-fresco.log` + `respaldos-produccion/respaldo_restaurante_20261020_102249_986_097614a2…sql(+.manifest+.sha256)` (69,239 B, sha256 cb8972aeb9ebd39e…) | **ÉXITO** — RESPALDO_OK: genera respaldo firmado con checksum desde la BD viva sin modificarla; este triplete es el que se verificó en el servidor distinto. |
+
+Hallazgos y decisiones del drill:
+
+1. **El respaldo histórico de producción del 19/10 20:40 (69097 B) NO lleva sección de checksum**: fue creado por el despliegue previo al jar con checksum (verificado `VERIFICACION_FALLIDA: El respaldo no tiene checksum`). Por eso se generó y verificó un respaldo fresco con el jar actual → `VERIFICACION_OK` en el servidor 3309. El siguiente respaldo automático nocturno de producción, ya con el jar desplegado, quedará firmado y verificable.
+2. **La comparación de contenido A↔B es exacta para todas las tablas base** (sin exclusiones: no hay tablas de artefactos; el diario de recuperación es archivo, no tabla). La siembra demostró además que la fila viva de producción (pedido 13 + detalle + pago + liquidación) sobrevive restaurada con referencias consistentes.
+3. **La BD de producción quedó intocada**: el drill solo le lee (mysqldump y `--respaldar`). La app del puerto 49200 no fue诊 toda la sesión (está DETENIDA desde el 19/10 21:21 — falta reiniciarla con el usuario).
+4. El levantamiento del esquema sobre BD.sql determina `schema_migrations` → una sola fila `15 APLICADA` (sonda en MySQL efímero ad-hoc con `--migrate-db` + confirmación igual en la BD viva de producción) — por eso el criterio de igualdad A↔B usa v15.
+
+Archivos sin commit (pendiente de OK del usuario): `drill_restauracion_bd_secundaria.sh`, evidencias `evidencias/produccion/2026-10-20/*`, y los cambios de bootstrap/admin-imborrable del 19/10.
+
 snapshot 19/10/2026 23:30
 
 ## Autoreparación de esquema sobre BD de cliente (redteam) — verificada y 3 correcciones
