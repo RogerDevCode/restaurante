@@ -1,5 +1,16 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 20/10/2026 10:57
+
+## Artefacto de producción regenerado sobre el commit 6e239fd
+
+| Comando | Archivo de salida | Estado y alcance |
+|---|---|---|
+| `./empaquetar_produccion.sh` (árbol limpio, guarda vigente) | `evidencias/produccion/2026-10-20/paquete-produccion-empaquetado.log` | **PASS** — BUILD SUCCESSFUL, staging con lista blanca, prohibidos ausentes; `../../Restaurante_2026_Produccion.zip` (10 MB) + `.sha256` propio; SHA-256 zip `b183d26084886b86c7e6470dc0c5bb6b31797aedd18044cc19428b2118333a48` (verificado contra `.sha256`), jar dentro del zip `c7294b993ade22aad056adbf81e2c754a72f5edbff85290b4cbb6604d474e074`. |
+| `diff -rq` de `dist/Restaurante.jar` vs `Restaurante_Ejecutable/Restaurante.jar` extraídos | salida en consola de sesión | **CONTENIDO IDÉNTICO** — 0 diferencias en todas las entradas (manifest y listado de entradas iguales); el jar desplegado (`a12fb108…`) y el jar del release (`c7294b99…`) difieren solo en metadatos de timestamp de zip, no en bytes de contenido. Criterio de equivalencia usado: contenido extraído idéntico. |
+
+Completado el reempaquetado, los gates restantes requieren entorno externo: instalación Windows un-clic (`.bat`/`.ps1` nativos), impresora/tickera física y verificación de revocación de sesión en caliente con operador. La app del puerto 49200 quedó activa (pid 1261593, unidad `restaurante-app`) con commit `6e239fd`.
+
 snapshot 20/10/2026 10:30
 
 ## Restauración en BD secundaria heterogénea (drill S1–S7) — PASS integral
