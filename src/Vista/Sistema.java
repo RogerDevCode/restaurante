@@ -950,8 +950,8 @@ public final class Sistema extends javax.swing.JFrame {
                 new int[]{220, 50, 110, 100, 160, 60},
                 new int[]{-1, 50, -1, -1, -1, 60});
         configurarColumnasProporcionales(tblTemPlatos,
-                new int[]{150, 110},
-                new int[]{200, 110},
+                new int[]{150, 175},
+                new int[]{200, 175},
                 new int[]{-1, -1});
         configurarColumnasProporcionales(TablePlatos,
                 new int[]{150, 110, 70},
