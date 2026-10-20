@@ -578,8 +578,7 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnPreFactura = new JButton("Pre-Factura");
         btnPreFactura.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        Sistema.botonSolido(btnPreFactura, new Color(39, 174, 96),
-                Sistema.colorTextoContraste(new Color(39, 174, 96)));
+        Sistema.botonSolido(btnPreFactura, new Color(39, 174, 96), new Color(0, 0, 0));
         btnPreFactura.setPreferredSize(new Dimension(95, 28));
         btnPreFactura.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnPreFactura.setToolTipText("Emitir la cuenta / pre-factura para el cliente sin cerrar la mesa");
@@ -588,8 +587,7 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnCortesia = new JButton("Cortesía");
         btnCortesia.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        Sistema.botonSolido(btnCortesia, new Color(142, 68, 173),
-                Sistema.colorTextoContraste(new Color(142, 68, 173)));
+        Sistema.botonSolido(btnCortesia, new Color(142, 68, 173), new Color(0, 0, 0));
         btnCortesia.setPreferredSize(new Dimension(80, 28));
         btnCortesia.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCortesia.setToolTipText("Registrar como consumo de la casa / cortesía autorizada");
@@ -598,8 +596,7 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnFuga = new JButton("No Pagó");
         btnFuga.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        Sistema.botonSolido(btnFuga, new Color(192, 57, 43),
-                Sistema.colorTextoContraste(new Color(192, 57, 43)));
+        Sistema.botonSolido(btnFuga, new Color(192, 57, 43), new Color(0, 0, 0));
         btnFuga.setPreferredSize(new Dimension(80, 28));
         btnFuga.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnFuga.setToolTipText("Liberar la mesa anulando el pedido por retiro sin pago (Fuga / Incobrable)");

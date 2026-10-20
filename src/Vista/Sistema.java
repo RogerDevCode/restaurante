@@ -1864,6 +1864,37 @@ public final class Sistema extends javax.swing.JFrame {
             g.fillRect(0, 0, c.getWidth(), c.getHeight());
             super.paint(g, c);
         }
+
+        /**
+         * Texto siempre del color del boton (el LaF sustiuiria el fg por el gris
+         * "disabled" del tema, que sobre fondos de color deja la letra fantasma);
+         * en estado deshabilitado se atiranta con alpha en vez de cambiar de color.
+         */
+        @Override
+        protected void paintText(java.awt.Graphics g, javax.swing.JComponent c,
+                java.awt.Rectangle rectTexto, String texto) {
+            javax.swing.AbstractButton b = (javax.swing.AbstractButton) c;
+            String cadena = b.getText();
+            if (cadena == null) {
+                return;
+            }
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            if (!b.isEnabled()) {
+                g2.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.45f));
+            }
+            java.awt.FontMetrics fm = g2.getFontMetrics(c.getFont());
+            java.awt.Rectangle vistaIcono = new java.awt.Rectangle();
+            java.awt.Rectangle vistaTexto = new java.awt.Rectangle();
+            javax.swing.SwingUtilities.layoutCompoundLabel(b, fm, cadena, b.getIcon(),
+                    javax.swing.SwingConstants.CENTER, javax.swing.SwingConstants.CENTER,
+                    javax.swing.SwingConstants.CENTER, javax.swing.SwingConstants.CENTER,
+                    new java.awt.Rectangle(c.getWidth(), c.getHeight()),
+                    vistaIcono, vistaTexto, b.getDisplayedMnemonicIndex());
+            g2.setFont(c.getFont());
+            g2.setColor(b.getForeground());
+            g2.drawString(cadena, vistaTexto.x, vistaTexto.y + fm.getAscent());
+            g2.dispose();
+        }
     }
 
     /** Aplica botonSolido a todo boton con fondo personalizado (el nativo ignora el color en Windows). */
