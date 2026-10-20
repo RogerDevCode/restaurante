@@ -416,35 +416,77 @@ public final class TablasIdOcultoComponenteTest {
             check(String.valueOf(idMayor).equals(String.valueOf(primeroVista)),
                     "tras ordenar desc, la fila visible 0 es el pedido " + idMayor);
             clicCelda(tablePedidos, 0, 1);
-            String txtHist = "";
+            // La carga es asíncrona (SwingWorker): esperar hasta que caja muestre el pedido.
+            // Semántica real del app: PENDIENTE -> txtIdPedido con el id y caja lista para finalizar;
+            // txtIdHistorialPedido queda vacío (se fija solo para FINALIZADO, para reimpresión/PDF).
+            String txtIdPed = "";
             long finEd = System.currentTimeMillis() + 9000;
             while (System.currentTimeMillis() < finEd) {
-                txtHist = enEdt(() -> campo(sistema, "txtIdHistorialPedido", JTextField.class).getText());
-                if (String.valueOf(idMayor).equals(txtHist)) {
+                txtIdPed = enEdt(() -> campo(sistema, "txtIdPedido", JTextField.class).getText());
+                if (String.valueOf(idMayor).equals(txtIdPed)) {
                     break;
                 }
                 Thread.sleep(400);
             }
-            String dialogs = enEdt(() -> {
-                StringBuilder sb = new StringBuilder("[");
-                for (java.awt.Window w : java.awt.Window.getWindows()) {
-                    if (w instanceof JDialog d && d.isVisible()) {
-                        sb.append(d.getTitle()).append("; ");
-                    }
-                }
-                return sb.append("]").toString();
-            });
             int selRow = enEdt(tablePedidos::getSelectedRow);
-            txtHist = enEdt(() -> campo(sistema, "txtIdHistorialPedido", JTextField.class).getText());
-            check(selRow == 0 && String.valueOf(idMayor).equals(txtHist),
-                    "clic en fila ordenada cargó el pedido " + idMayor
-                    + " (sel=" + selRow + ", txtHist=" + txtHist + ", dialogos=" + dialogs + ")");
+            String txtHist = enEdt(() -> campo(sistema, "txtIdHistorialPedido", JTextField.class).getText());
+            check(selRow == 0 && String.valueOf(idMayor).equals(txtIdPed),
+                    "clic en fila ordenada (PENDIENTE) cargó el pedido " + idMayor
+                    + " en caja (sel=" + selRow + ", txtIdPedido=" + txtIdPed + ")");
+            check(txtHist.isEmpty(),
+                    "PENDIENTE: txtIdHistorialPedido queda vacío por semántica (txtHist='" + txtHist + "')");
             Object nombreCargado = enEdt(() -> {
                 JTable fin = campo(sistema, "tableFinalizar", JTable.class);
                 return Tables.valorModelo(fin, 0, 1);
             });
             check("E2E-SplitPollo".equals(String.valueOf(nombreCargado)),
                     "el pedido cargado en caja trae su línea E2E-SplitPollo (nombre=" + nombreCargado + ")");
+
+            // Subcaso FINALIZADO: el clic debe fijar txtIdHistorialPedido y habilitar PDF.
+            Pedidos pC = nuevoPedidoHistorial("Salon E2E", 3, "2026-10-03", "10.00", "FINALIZADO");
+            int idC = pedidosCtrl.registrarPedidoCompleto(pC, List.of(nuevoDetalle(952, "E2E-Arepa", 1, "10.00")));
+            enEdtV(() -> {
+                try {
+                    invocar(sistema, "mostrarPedidosEnTabla",
+                            new Class<?>[]{List.class}, new Object[]{List.of(pA, pB, pC)});
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
+            check(enEdt(tablePedidos::getRowCount) == 3, "historial con 3 pedidos de prueba");
+            enEdtV(() -> {
+                @SuppressWarnings("unchecked")
+                TableRowSorter<javax.swing.table.TableModel> sorter =
+                        (TableRowSorter<javax.swing.table.TableModel>) tablePedidos.getRowSorter();
+                sorter.setSortKeys(List.of(new RowSorter.SortKey(0, SortOrder.DESCENDING)));
+            });
+            // La carga del pendiente anterior cambió a la pestaña de caja: volver al historial.
+            seleccionarTabDe(sistema, tablePedidos);
+            enEdtV(() -> {
+                @SuppressWarnings("unchecked")
+                TableRowSorter<javax.swing.table.TableModel> sorter =
+                        (TableRowSorter<javax.swing.table.TableModel>) tablePedidos.getRowSorter();
+                sorter.setSortKeys(List.of(new RowSorter.SortKey(0, SortOrder.DESCENDING)));
+            });
+            Thread.sleep(800);
+            Object primeroFin = enEdt(() -> Tables.valorModelo(tablePedidos, 0, 0));
+            check(String.valueOf(idC).equals(String.valueOf(primeroFin)),
+                    "tras ordenar desc, la fila visible 0 es el pedido FINALIZADO " + idC);
+            clicCelda(tablePedidos, 0, 1);
+            String txtHistFin = "";
+            long finFin = System.currentTimeMillis() + 9000;
+            while (System.currentTimeMillis() < finFin) {
+                txtHistFin = enEdt(() -> campo(sistema, "txtIdHistorialPedido", JTextField.class).getText());
+                if (String.valueOf(idC).equals(txtHistFin)) {
+                    break;
+                }
+                Thread.sleep(400);
+            }
+            int selRowFin = enEdt(tablePedidos::getSelectedRow);
+            boolean pdfHabilitado = enEdt(() -> campo(sistema, "btnPdfPedido", JButton.class).isEnabled());
+            check(selRowFin == 0 && String.valueOf(idC).equals(txtHistFin) && pdfHabilitado,
+                    "clic en fila FINALIZADA fijó txtIdHistorialPedido=" + txtHistFin
+                    + " y habilitó PDF (sel=" + selRowFin + ", pdf=" + pdfHabilitado + ")");
 
             // ================= CASO 4: split catálogo -> carrito conserva el ID =================
             System.out.println("\n--- CASO 4: split 1 clic agrega con ID correcto ---");

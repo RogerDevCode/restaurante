@@ -4,11 +4,14 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.Window;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.Callable;
@@ -23,6 +26,7 @@ import javax.swing.JTextField;
 import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 import javax.swing.JTabbedPane;
+import javax.imageio.ImageIO;
 
 /** Acciones humanas con Robot y observación de componentes Swing desde el EDT. */
 public final class DiaE2ERobot {
@@ -107,6 +111,50 @@ public final class DiaE2ERobot {
             return new Point(origen.x + celda.x + celda.width / 2, origen.y + celda.y + celda.height / 2);
         });
         clicarPunto(punto, false);
+    }
+
+    public void arrastrarBordeColumna(JTable tabla, int colVista, int dx) throws Exception {
+        esperar(tabla::isShowing, "Tabla debe estar visible para arrastrar columna");
+        Point puntoInicial = edt(() -> {
+            Rectangle r = tabla.getTableHeader().getHeaderRect(colVista);
+            Point pt = new Point(r.x + r.width - 2, r.y + r.height / 2);
+            SwingUtilities.convertPointToScreen(pt, tabla.getTableHeader());
+            return pt;
+        });
+
+        robot.mouseMove(puntoInicial.x, puntoInicial.y);
+        robot.delay(100);
+        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        robot.delay(100);
+
+        for (int i = 1; i <= 10; i++) {
+            robot.mouseMove(puntoInicial.x + (dx * i / 10), puntoInicial.y);
+            robot.delay(30);
+        }
+        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        robot.waitForIdle();
+        robot.delay(200);
+    }
+
+    public void seleccionarPestaña(JTabbedPane tabs, int indice) throws Exception {
+        esperar(tabs::isShowing, "JTabbedPane debe estar visible");
+        Point punto = edt(() -> {
+            Rectangle r = tabs.getBoundsAt(indice);
+            Point origen = tabs.getLocationOnScreen();
+            return new Point(origen.x + r.x + r.width / 2, origen.y + r.y + r.height / 2);
+        });
+        clicarPunto(punto, false);
+        robot.waitForIdle();
+        esperar(() -> tabs.getSelectedIndex() == indice, "Pestaña " + indice + " seleccionada");
+    }
+
+    public void seleccionarPestaña(JTabbedPane tabs, String titulo) throws Exception {
+        esperar(tabs::isShowing, "JTabbedPane debe estar visible");
+        int idx = edt(() -> tabs.indexOfTab(titulo));
+        if (idx < 0) {
+            throw new IllegalArgumentException("No se encontró pestaña con título: " + titulo);
+        }
+        seleccionarPestaña(tabs, idx);
     }
 
     public void reemplazarCelda(JTable tabla, int fila, int columna, String valor) throws Exception {
@@ -307,7 +355,45 @@ public final class DiaE2ERobot {
             clic(btnVentas);
             Thread.sleep(250);
         }
-        throw new AssertionError("No se pudo navegar a la pestaña Historial Pedidos");
+        String diagnostico = edt(() -> {
+            javax.swing.JTabbedPane tabs = sistema.getJTabbedPane1();
+            StringBuilder estado = new StringBuilder("tab=")
+                    .append(tabs.getSelectedIndex()).append('/')
+                    .append(tabs.getTitleAt(tabs.getSelectedIndex()))
+                    .append(", btnVentas.enabled=").append(btnVentas.isEnabled())
+                    .append(", historial.enabled=").append(tabs.isEnabledAt(targetTab))
+                    .append(", btnVentas.showing=").append(btnVentas.isShowing())
+                    .append(", btnVentas.bounds=").append(btnVentas.getBounds())
+                    .append("@screen=").append(btnVentas.getLocationOnScreen())
+                    .append(", screen=").append(java.awt.Toolkit.getDefaultToolkit().getScreenSize());
+            for (Window ventana : Window.getWindows()) {
+                if (!ventana.isShowing() || ventana == sistema) continue;
+                estado.append(", ventana=");
+                if (ventana instanceof JDialog dialogo) estado.append(dialogo.getTitle());
+                else estado.append(ventana.getClass().getSimpleName());
+                java.util.ArrayDeque<Component> pendientes = new java.util.ArrayDeque<>();
+                if (ventana instanceof java.awt.Container contenedor) pendientes.add(contenedor);
+                while (!pendientes.isEmpty()) {
+                    Component actual = pendientes.removeFirst();
+                    if (actual instanceof JLabel etiqueta && etiqueta.getText() != null) {
+                        estado.append('[').append(etiqueta.getText()).append(']');
+                    }
+                    if (actual instanceof java.awt.Container contenedor) {
+                        java.util.Collections.addAll(pendientes, contenedor.getComponents());
+                    }
+                }
+            }
+            return estado.toString();
+        });
+        String rutaCaptura = System.getenv("E2E_DIAG_SCREENSHOT");
+        if (rutaCaptura != null && !rutaCaptura.isBlank()) {
+            Path captura = Path.of(rutaCaptura);
+            if (captura.getParent() != null) Files.createDirectories(captura.getParent());
+            ImageIO.write(robot.createScreenCapture(new Rectangle(
+                    java.awt.Toolkit.getDefaultToolkit().getScreenSize())), "png", captura.toFile());
+            diagnostico += ", captura=" + captura;
+        }
+        throw new AssertionError("No se pudo navegar a la pestaña Historial Pedidos; " + diagnostico);
     }
 
     public void abrirPedidoEnHistorial(Sistema sistema, int idPedido, int mesa) throws Exception {

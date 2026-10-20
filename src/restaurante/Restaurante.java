@@ -29,9 +29,64 @@ import javax.swing.SwingUtilities;
 public class Restaurante {
 
     private static java.net.ServerSocket socketInstanciaUnica;
+    /**
+     * Comandos de mantenimiento sin interfaz: respaldo y restauración desde la
+     * línea de comandos. Devuelve {@code true} si la invocación era un comando
+     * y ya fue atendida (el proceso debe terminar).
+     */
+    private static boolean ejecutarComandoMantenimiento(String[] args) {
+        if (args == null || args.length == 0) {
+            return false;
+        }
+        boolean respaldar = "--respaldar".equalsIgnoreCase(args[0]);
+        boolean restaurar = "--restaurar-respaldo".equalsIgnoreCase(args[0]);
+        boolean verificar = "--verificar-respaldo".equalsIgnoreCase(args[0]);
+        if (!respaldar && !restaurar && !verificar) {
+            return false;
+        }
+        try {
+            infraestructura.ConfiguracionLogs.configurar();
+        } catch (Exception ignored) {
+        }
+        try {
+            Servicio.ServicioRespaldoBaseDatos servicio = new Servicio.ServicioRespaldoBaseDatos();
+            servicio.recuperarOperacionInterrumpida();
+            if (respaldar) {
+                java.nio.file.Path directorio = args.length >= 2 && !args[1].isBlank()
+                        ? java.nio.file.Paths.get(args[1])
+                        : Servicio.ServicioRespaldoBaseDatos.DIRECTORIO_RESPALDOS_DEFAULT;
+                java.nio.file.Path archivo = servicio.crearRespaldo(directorio);
+                System.out.println("RESPALDO_OK " + archivo.toAbsolutePath());
+            } else {
+                if (args.length < 2 || args[1].isBlank()) {
+                    System.err.println("Uso: java -jar Restaurante.jar "
+                            + (verificar ? "--verificar-respaldo" : "--restaurar-respaldo") + " <archivo.sql>");
+                    System.exit(2);
+                }
+                java.nio.file.Path archivo = java.nio.file.Paths.get(args[1]).toAbsolutePath().normalize();
+                if (verificar) {
+                    servicio.validarRestaurableEnEsquemaTemporal(archivo);
+                    System.out.println("VERIFICACION_OK " + archivo);
+                } else {
+                    java.nio.file.Path previo = servicio.restaurarRespaldo(archivo);
+                    System.out.println("RESTAURACION_OK respaldo_previo=" + previo.toAbsolutePath());
+                }
+            }
+        } catch (Exception ex) {
+            String prefijo = respaldar ? "RESPALDO_FALLIDO: "
+                    : verificar ? "VERIFICACION_FALLIDA: " : "RESTAURACION_FALLIDA: ";
+            System.err.println(prefijo + ex.getMessage());
+            ex.printStackTrace(System.err);
+            System.exit(1);
+        }
+        return true;
+    }
+
     private static boolean verificarInstanciaUnica() {
         try {
-            socketInstanciaUnica = new java.net.ServerSocket(49200, 1, java.net.InetAddress.getByName("127.0.0.1"));
+            // El puerto puede sobrescribirse en pruebas aisladas; el arranque normal conserva 49200.
+            int puerto = Integer.getInteger("restaurante.instancia.puerto", 49200);
+            socketInstanciaUnica = new java.net.ServerSocket(puerto, 1, java.net.InetAddress.getByName("127.0.0.1"));
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
                     if (socketInstanciaUnica != null && !socketInstanciaUnica.isClosed()) {
@@ -47,6 +102,9 @@ public class Restaurante {
     }
 
     public static void main(String[] args) {
+        if (ejecutarComandoMantenimiento(args)) {
+            return;
+        }
         if (!verificarInstanciaUnica()) {
             javax.swing.JOptionPane.showMessageDialog(null, "El sistema ya se encuentra en ejecución.\nPor favor revisa la barra de tareas o las aplicaciones abiertas.", "Instancia en Ejecución", javax.swing.JOptionPane.WARNING_MESSAGE);
             System.exit(0);
@@ -89,13 +147,27 @@ public class Restaurante {
         ManejadorErroresSwing.instalar();
         infraestructura.ConfiguracionLogs.configurar();
         if (args != null && args.length == 1 && "--migrate-db".equalsIgnoreCase(args[0])) {
-            new Servicio.ServicioRespaldoBaseDatos().recuperarOperacionInterrumpida();
-            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
+            try {
+                new Servicio.ServicioRespaldoBaseDatos().recuperarOperacionInterrumpida();
+                infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
+                new Servicio.ConfiguracionAccesosServicio().asegurarMatrizPredeterminada();
+            } catch (Exception ex) {
+                Throwable raiz = ex;
+                while (raiz.getCause() != null && raiz.getCause() != raiz) {
+                    raiz = raiz.getCause();
+                }
+                String detalle = raiz.getMessage() != null && !raiz.getMessage().isBlank()
+                        ? raiz.getMessage() : ex.getMessage();
+                System.err.println("MIGRACION_FALLIDA: " + detalle);
+                System.exit(1);
+                return;
+            }
             System.out.println("Migración de base de datos validada correctamente.");
             return;
         }
         new Servicio.ServicioRespaldoBaseDatos().recuperarOperacionInterrumpida();
         infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
+        new Servicio.ConfiguracionAccesosServicio().asegurarMatrizPredeterminada();
         Thread.ofVirtual().name("backup-diario-inicio").start(() -> {
             try {
                 new Servicio.ServicioRespaldoBaseDatos().crearRespaldoAutomaticoSiEsNecesario();

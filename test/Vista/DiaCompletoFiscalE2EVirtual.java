@@ -48,8 +48,10 @@ public final class DiaCompletoFiscalE2EVirtual {
             restaurante.Restaurante.lanzarLogin();
             Vista.FrmLogin login = robot.esperarVentana(Vista.FrmLogin.class);
             maximizar(login);
-            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), "admin");
-            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), "admin");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"),
+                    System.getenv().getOrDefault("E2E_LOGIN_USERNAME", "admin"));
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"),
+                    System.getenv().getOrDefault("E2E_LOGIN_PASSWORD", "admin"));
             robot.clic((Component) robot.campo(login, "btnIniciar"));
 
             Sistema sistema = robot.esperarVentana(Sistema.class);

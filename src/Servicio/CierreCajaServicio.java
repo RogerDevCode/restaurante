@@ -179,4 +179,32 @@ public class CierreCajaServicio {
         Config config = consultaConfig.obtener();
         return cierreDao.consultarCierre(fecha, tipo, usuarioEmisor, config);
     }
+
+    /**
+     * Datos del Resumen de Ventas de un rango de fechas (solo lectura, sin persistir en cierres_caja).
+     */
+    public CierreCaja obtenerResumenVentas(String desde, String hasta, String usuarioEmisor) {
+        Config config = consultaConfig.obtener();
+        return cierreDao.consultarResumenVentas(desde, hasta, usuarioEmisor, config);
+    }
+
+    /**
+     * Genera el Resumen de Ventas (documento informativo NO fiscal) de un rango de fechas y lo
+     * entrega por el canal de salida configurado. No persiste en cierres_caja ni avanza correlativos.
+     */
+    public ResultadoCierre generarResumenVentas(String desde, String hasta, String usuarioEmisor) {
+        Config config = consultaConfig.obtener();
+        if (config == null) {
+            throw ErrorAplicacionException.validacion("No existe la configuración del restaurante para generar el resumen de ventas.");
+        }
+        CierreCaja resumen = cierreDao.consultarResumenVentas(desde, hasta, usuarioEmisor, config);
+        Path archivo = generador.generar(resumen, config);
+        ResultadoSalidaTicket salida;
+        try {
+            salida = procesadorSalida.procesar(archivo);
+        } catch (RuntimeException ex) {
+            salida = ResultadoSalidaTicket.fallo("Resumen de Ventas", ex.getMessage());
+        }
+        return new ResultadoCierre(archivo, salida);
+    }
 }

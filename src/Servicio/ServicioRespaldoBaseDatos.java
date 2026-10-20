@@ -73,7 +73,12 @@ public class ServicioRespaldoBaseDatos {
             "salas",
             "pedidos",
             "detalle_pedidos",
+            "comandas_marchas",
+            "comandas_marchas_detalle",
             "pedido_pagos",
+            "pedido_liquidaciones",
+            "pedido_saldos_movimientos",
+            "auditoria_cambios_precio",
             "clientes",
             "configuracion_sistema",
             "auditoria_pedidos",
@@ -1119,7 +1124,7 @@ public class ServicioRespaldoBaseDatos {
         Properties manifiesto = leerManifiesto(archivo);
         int cantidad = Integer.parseInt(manifiesto.getProperty("tablas.cantidad", "-1"));
         DatabaseMetaData meta = con.getMetaData();
-        String catalogo = con.getCatalog();
+        String catalogo = catalogoEfectivo(con);
         for (int i = 0; i < cantidad; i++) {
             String prefijo = "tabla." + i + ".";
             String tabla = manifiesto.getProperty(prefijo + "nombre");
@@ -1137,6 +1142,81 @@ public class ServicioRespaldoBaseDatos {
                 if (!rs.next() || rs.getLong(1) != filasEsperadas) {
                     throw new SQLException("El conteo de filas de " + tabla + " no coincide con el manifiesto.");
                 }
+            }
+        }
+        validarConciliacionFinanciera(con);
+    }
+
+    /**
+     * Devuelve el schema efectivo de la sesión. {@code Connection.getCatalog()}
+     * queda obsoleto tras un {@code USE} (Connector/J no lo actualiza), por lo
+     * que la validación estructural en schema temporal consultaría la BD viva
+     * en lugar del schema restaurado recién importado.
+     */
+    private static String catalogoEfectivo(Connection con) throws SQLException {
+        try (Statement st = con.createStatement(); ResultSet rs = st.executeQuery("SELECT DATABASE()")) {
+            if (rs.next()) {
+                String actual = rs.getString(1);
+                if (actual != null && !actual.isBlank()) {
+                    return actual;
+                }
+            }
+        }
+        return con.getCatalog();
+    }
+
+    /**
+     * Conciliación posterior a la restauración: integridad referencial de las
+     * tablas financieras y cuadre de pagos/cierres. Una restauración que no
+     * concilie se rechaza para no dejar la caja ni el Cierre Z descuadrados.
+     */
+    private void validarConciliacionFinanciera(Connection con) throws SQLException {
+        exigirSinFilas(con, "pedido_pagos", "id_pedido", "pedidos", "pagos sin pedido");
+        exigirSinFilas(con, "pedido_liquidaciones", "id_pedido", "pedidos", "liquidaciones sin pedido");
+        exigirSinFilas(con, "pedido_saldos_movimientos", "id_pedido", "pedidos", "movimientos de saldo sin pedido");
+
+        if (tablaExiste(con, "pedidos") && tablaExiste(con, "pedido_pagos") && contarFilas(con, "pedido_pagos") > 0) {
+            exigirConsultaEnCero(con,
+                    "SELECT COUNT(*) FROM pedidos p WHERE p.estado = 'FINALIZADO' "
+                    + "AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id)",
+                    "Hay pedidos FINALIZADOS sin ningún pago registrado.");
+            exigirConsultaEnCero(con,
+                    "SELECT COUNT(*) FROM (SELECT p.id FROM pedidos p "
+                    + "JOIN pedido_pagos pp ON pp.id_pedido = p.id WHERE p.estado = 'FINALIZADO' "
+                    + "GROUP BY p.id, p.total HAVING ABS(p.total - SUM(pp.monto_usd)) > 0.011) descuadre",
+                    "El total de los pagos no cuadra con el total del pedido en uno o más pedidos FINALIZADOS.");
+        }
+
+        if (tablaExiste(con, "cierres_caja")) {
+            exigirConsultaEnCero(con,
+                    "SELECT COUNT(*) FROM cierres_caja WHERE "
+                    + "(efectivo_declarado_bs IS NOT NULL AND ABS((efectivo_declarado_bs - efectivo_esperado_bs) - COALESCE(diferencia_bs, 0)) > 0.011) "
+                    + "OR (efectivo_declarado_usd IS NOT NULL AND ABS((efectivo_declarado_usd - efectivo_esperado_usd) - COALESCE(diferencia_usd, 0)) > 0.011)",
+                    "Hay cierres de caja con diferencias declaradas que no concuerdan con sus totales esperados.");
+        }
+    }
+
+    private void exigirSinFilas(Connection con, String tabla, String columna, String referencia, String etiqueta)
+            throws SQLException {
+        if (!tablaExiste(con, tabla) || !tablaExiste(con, referencia)) {
+            return;
+        }
+        exigirConsultaEnCero(con,
+                "SELECT COUNT(*) FROM `" + tabla + "` h LEFT JOIN `" + referencia + "` r "
+                + "ON r.id = h.`" + columna + "` WHERE r.id IS NULL",
+                "La restauración contiene " + etiqueta + " (" + tabla + "." + columna + ").");
+    }
+
+    private long contarFilas(Connection con, String tabla) throws SQLException {
+        try (Statement st = con.createStatement(); ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM `" + tabla + "`")) {
+            return rs.next() ? rs.getLong(1) : 0L;
+        }
+    }
+
+    private void exigirConsultaEnCero(Connection con, String consulta, String mensaje) throws SQLException {
+        try (Statement st = con.createStatement(); ResultSet rs = st.executeQuery(consulta)) {
+            if (!rs.next() || rs.getLong(1) != 0) {
+                throw new SQLException(mensaje);
             }
         }
     }

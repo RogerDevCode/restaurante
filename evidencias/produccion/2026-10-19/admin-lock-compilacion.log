@@ -1,0 +1,13 @@
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+     [echo] Cycle detected: Restaurante was already built
+
+BUILD SUCCESSFUL
+Total time: 0 seconds
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 5 seconds

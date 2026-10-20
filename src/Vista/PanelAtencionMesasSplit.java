@@ -87,6 +87,7 @@ public class PanelAtencionMesasSplit extends JPanel {
     private Integer idMesoneroOriginal = null;
     private String nombreMesoneroOriginal = null;
     private boolean mesoneroQuitadoExplicito = false;
+    private boolean sincronizandoComandaProgramaticamente = false;
     private final java.util.concurrent.atomic.AtomicLong tokenRevisionMesas = new java.util.concurrent.atomic.AtomicLong(0);
     private final java.util.concurrent.atomic.AtomicLong tokenRevisionPedido = new java.util.concurrent.atomic.AtomicLong(0);
 
@@ -331,12 +332,13 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCatalogoPlatos.setRowHeight(25);
         tblCatalogoPlatos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tblCatalogoPlatos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
-        tblCatalogoPlatos.getColumnModel().getColumn(0).setPreferredWidth(45);
-        tblCatalogoPlatos.getColumnModel().getColumn(0).setMaxWidth(55);
+        for (int i = 0; i < tblCatalogoPlatos.getColumnModel().getColumnCount(); i++) {
+            tblCatalogoPlatos.getColumnModel().getColumn(i).setPreferredWidth(100);
+            tblCatalogoPlatos.getColumnModel().getColumn(i).setMaxWidth(Integer.MAX_VALUE);
+            tblCatalogoPlatos.getColumnModel().getColumn(i).setMinWidth(30);
+        }
         tblCatalogoPlatos.getColumnModel().getColumn(1).setPreferredWidth(300);
         tblCatalogoPlatos.getColumnModel().getColumn(2).setPreferredWidth(160);
-        tblCatalogoPlatos.getColumnModel().getColumn(2).setMinWidth(160);
-        tblCatalogoPlatos.getColumnModel().getColumn(2).setMaxWidth(220);
         Tables.ocultarColumnaModelo(tblCatalogoPlatos, 0); // ID interno: oculto, sigue en el modelo
         Tables.agregarColumnaMoneda(tblCatalogoPlatos, 2, this::monedaUbFilaCatalogo);
         tblCatalogoPlatos.addMouseListener(new MouseAdapter() {
@@ -508,6 +510,19 @@ public class PanelAtencionMesasSplit extends JPanel {
         String confComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
         chkImprimirComanda.setSelected(!"0".equals(confComanda) && !"false".equalsIgnoreCase(confComanda));
         chkImprimirComanda.addActionListener(e -> {
+            if (sincronizandoComandaProgramaticamente) return;
+            if (politicaAcceso == null || !politicaAcceso.esAdministrador()) {
+                sincronizandoComandaProgramaticamente = true;
+                try {
+                    chkImprimirComanda.setSelected(!chkImprimirComanda.isSelected());
+                } finally {
+                    sincronizandoComandaProgramaticamente = false;
+                }
+                JOptionPane.showMessageDialog(this,
+                        "Solo un Administrador puede cambiar la emisión automática de comandas.",
+                        "Acceso restringido", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             String val = chkImprimirComanda.isSelected() ? "1" : "0";
             new Thread(() -> {
                 try {
@@ -553,8 +568,8 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnEnviarCocina = new JButton("Enviar a Cocina");
         btnEnviarCocina.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnEnviarCocina.setBackground(new Color(0, 102, 102));
-        btnEnviarCocina.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnEnviarCocina, new Color(0, 102, 102),
+                Sistema.colorTextoContraste(new Color(0, 102, 102)));
         btnEnviarCocina.setPreferredSize(new Dimension(130, 28));
         btnEnviarCocina.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnEnviarCocina.setToolTipText("Guardar la comanda y enviarla a cocina");
@@ -563,8 +578,7 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnPreFactura = new JButton("Pre-Factura");
         btnPreFactura.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnPreFactura.setBackground(new Color(39, 174, 96));
-        btnPreFactura.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnPreFactura, new Color(39, 174, 96), new Color(0, 0, 0));
         btnPreFactura.setPreferredSize(new Dimension(95, 28));
         btnPreFactura.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnPreFactura.setToolTipText("Emitir la cuenta / pre-factura para el cliente sin cerrar la mesa");
@@ -573,8 +587,7 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnCortesia = new JButton("Cortesía");
         btnCortesia.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnCortesia.setBackground(new Color(142, 68, 173));
-        btnCortesia.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnCortesia, new Color(142, 68, 173), new Color(0, 0, 0));
         btnCortesia.setPreferredSize(new Dimension(80, 28));
         btnCortesia.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCortesia.setToolTipText("Registrar como consumo de la casa / cortesía autorizada");
@@ -583,8 +596,7 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnFuga = new JButton("No Pagó");
         btnFuga.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnFuga.setBackground(new Color(192, 57, 43));
-        btnFuga.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnFuga, new Color(192, 57, 43), new Color(0, 0, 0));
         btnFuga.setPreferredSize(new Dimension(80, 28));
         btnFuga.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnFuga.setToolTipText("Liberar la mesa anulando el pedido por retiro sin pago (Fuga / Incobrable)");
@@ -593,8 +605,8 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnCobrar = new JButton("Cobrar");
         btnCobrar.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnCobrar.setBackground(new Color(40, 116, 166));
-        btnCobrar.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnCobrar, new Color(40, 116, 166),
+                Sistema.colorTextoContraste(new Color(40, 116, 166)));
         btnCobrar.setPreferredSize(new Dimension(80, 28));
         btnCobrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCobrar.setToolTipText("Cobrar y facturar la comanda de la mesa");
@@ -1593,27 +1605,36 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         try {
             boolean eraEdicion = idPedidoActivo > 0;
-            int idPedidoFinal;
+            boolean imprimirComanda = chkImprimirComanda != null && chkImprimirComanda.isSelected();
+            Modelo.ResultadoPedidoComanda resultado;
             if (eraEdicion) {
-                if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) {
+                if (sistema != null) {
+                    if (!sistema.autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return;
+                } else if (politicaAcceso != null
+                        && !politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) {
                     JOptionPane.showMessageDialog(this,
                             "Tu rol no permite modificar pedidos existentes.",
                             "Acceso Denegado", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
-                pedidosControlador.actualizarPedidoCompleto(idPedidoActivo, p, detalles);
-                idPedidoFinal = idPedidoActivo;
-                sistema.mostrarAvisoEnBanda("Pedido actualizado para " + codigoMesaSeleccionada);
+                resultado = pedidosControlador.actualizarPedidoCompletoConMarcha(
+                        idPedidoActivo, p, detalles, imprimirComanda);
+                sistema.mostrarAvisoEnBanda(resultado.marcha() == null
+                        ? "Pedido actualizado; sin salida de cocina nueva para " + codigoMesaSeleccionada
+                        : "Pedido actualizado para " + codigoMesaSeleccionada);
             } else {
-                int idNuevo = pedidosControlador.registrarPedidoCompleto(p, detalles);
+                resultado = pedidosControlador.registrarPedidoCompletoConMarcha(p, detalles, imprimirComanda);
+                int idNuevo = resultado.idPedido();
                 this.idPedidoActivo = idNuevo;
-                idPedidoFinal = idNuevo;
-                sistema.mostrarAvisoEnBanda("Pedido enviado a cocina para " + codigoMesaSeleccionada + " [#" + idNuevo + "]");
+                sistema.mostrarAvisoEnBanda(imprimirComanda
+                        ? "Pedido enviado a cocina para " + codigoMesaSeleccionada + " [#" + idNuevo + "]"
+                        : "Pedido guardado sin emitir comanda para " + codigoMesaSeleccionada + " [#" + idNuevo + "]");
             }
-            if (chkImprimirComanda != null && chkImprimirComanda.isSelected()) {
+            if (resultado.marcha() != null) {
                 String salaTexto = (nombreSalaSeleccionada != null && !nombreSalaSeleccionada.isBlank()) ? nombreSalaSeleccionada : "Sala " + idSalaSeleccionada;
                 String mesoneroTexto = (p.getMesoneroNombre() != null && !p.getMesoneroNombre().isBlank()) ? p.getMesoneroNombre() : sistema.getNombreUsuarioActual();
-                Servicio.ServicioComandaCocina.imprimirAsync(idPedidoFinal, salaTexto, numMesaSeleccionada, mesoneroTexto, detalles, eraEdicion);
+                Servicio.ServicioComandaCocina.imprimirAsync(resultado.marcha(), salaTexto,
+                        numMesaSeleccionada, mesoneroTexto);
             }
             refrescarMesasSalaActual();
         } catch (Exception ex) {
@@ -1847,6 +1868,10 @@ public class PanelAtencionMesasSplit extends JPanel {
 
     public JTable getTablaCatalogo() {
         return tblCatalogoPlatos;
+    }
+
+    public JTable getTablaCarrito() {
+        return tblCarrito;
     }
 
     public void agregarPlatoSeleccionadoACarrito() {

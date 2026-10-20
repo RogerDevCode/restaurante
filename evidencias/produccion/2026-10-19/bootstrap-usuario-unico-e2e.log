@@ -1,0 +1,117 @@
+ Network restaurante-bootstrap-e2e-821748-1792454921_default  Creating
+ Network restaurante-bootstrap-e2e-821748-1792454921_default  Created
+ Volume restaurante-bootstrap-e2e-821748-1792454921_bootstrap_mysql_data  Creating
+ Volume restaurante-bootstrap-e2e-821748-1792454921_bootstrap_mysql_data  Created
+ Container restaurante-bootstrap-e2e-821748-1792454921-db-1  Creating
+ Container restaurante-bootstrap-e2e-821748-1792454921-db-1  Created
+ Container restaurante-bootstrap-e2e-821748-1792454921-db-1  Starting
+ Container restaurante-bootstrap-e2e-821748-1792454921-db-1  Started
+ Container restaurante-bootstrap-e2e-821748-1792454921-db-1  Waiting
+ Container restaurante-bootstrap-e2e-821748-1792454921-db-1  Healthy
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 11 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.BootstrapInicialE2EVirtual (DISPLAY=:99) ==
+BOOTSTRAP_E2E_OK: instalación limpia, validaciones, demo bloqueada y login nuevo por UI
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 10 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.E2EVirtual (DISPLAY=:99) ==
+== [E2E] Paso 1: Lanzamiento de la aplicación y Login interactivo ==
+== [E2E] Paso 2: Espera de la ventana principal de Sistema ==
+Oct 20, 2026 12:10:11 AM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 20, 2026 12:10:12 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 20, 2026 12:10:12 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+== [E2E] Paso 3: Navegación al mapa de mesas (Atención Directa) ==
+OK   Mesa 1 libre y lista
+== [E2E] Paso 4: Abrir Mesa 1 y tomar comanda (Ronda 1: 1 Pollo) ==
+OK   Carrito con 1 pollo en ronda 1
+== [E2E] Paso 5: Enviar a cocina -> Mesa pasa a OCUPADA ==
+Oct 20, 2026 12:10:18 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 20, 2026 12:10:18 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+Oct 20, 2026 12:10:19 AM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+Oct 20, 2026 12:10:19 AM Servicio.ServicioComandaCocina lambda$imprimirAsync$4
+INFO: Comanda de cocina para pedido #5, marcha #1 impresa exitosamente.
+OK   Mesa 1 marcada como OCUPADA
+== [E2E] Paso 6: Reabrir Mesa 1 -> Cuenta en Caja muestra 1 pollo ==
+OK   Cuenta en pantalla confirma 1 pollo
+== [E2E] Paso 7: Ronda 2 -> Modificar pedido y agregar 2 pollos más ==
+OK   Carrito suma 3 pollos (1 inicial + 2 nueva ronda)
+== [E2E] Paso 8: Actualizar comanda en cocina ==
+Oct 20, 2026 12:10:24 AM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+Oct 20, 2026 12:10:24 AM Servicio.ServicioComandaCocina lambda$imprimirAsync$4
+INFO: Comanda de cocina para pedido #5, marcha #2 impresa exitosamente.
+Oct 20, 2026 12:10:24 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 20, 2026 12:10:24 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+== [E2E] Paso 9: Reabrir Mesa 1 -> Verificar 3 pollos en la cuenta ==
+OK   Cuenta en pantalla confirma 3 pollos actualizados
+== [E2E] Paso 10: Liberar mesa por UI (Anular Cuenta / Fuga) ==
+Oct 20, 2026 12:10:28 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 20, 2026 12:10:28 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   Mesa 1 liberada limpiamente a través de la interfaz
+E2E_OK
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.PedidoRapidoE2EVirtual (DISPLAY=:99) ==
+== [Pedido Rápido E2E] Paso 1: Login interactivo ==
+== [Pedido Rápido E2E] Paso 2: Esperar ventana principal Sistema ==
+Oct 20, 2026 12:10:50 AM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 20, 2026 12:10:50 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 20, 2026 12:10:50 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+== [Pedido Rápido E2E] Paso 3: Clic en 'Pedido rápido' ==
+== [Pedido Rápido E2E] Paso 4: Carrito vacío no avanza ==
+== [Pedido Rápido E2E] Paso 5: Buscar plato y agregar al carrito ==
+OK   Plato agregado al carrito (1 unidad)
+== [Pedido Rápido E2E] Paso 6: Incrementar cantidad con btnMasCantidad ==
+OK   Cantidad incrementada a 2
+== [Pedido Rápido E2E] Paso 7: Cobrar y finalizar -> Pasa a Caja ==
+Oct 20, 2026 12:10:55 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 20, 2026 12:10:55 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+Oct 20, 2026 12:10:55 AM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+Oct 20, 2026 12:10:55 AM Servicio.ServicioComandaCocina lambda$imprimirAsync$4
+INFO: Comanda de cocina para pedido #6, marcha #1 impresa exitosamente.
+== [Pedido Rápido E2E] Paso 8: Probar tabla de pagos en Caja ==
+OK   Tabla de pagos interactiva probada
+== [Pedido Rápido E2E] Paso 9: Cancelar / anular cuenta rápida por UI ==
+Oct 20, 2026 12:11:00 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 20, 2026 12:11:00 AM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   Pedido rápido cancelado limpiamente por UI
+E2E_PEDIDO_RAPIDO_OK

@@ -1,0 +1,41 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 10 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: aceptacion.E2EGuardadoPlatosVirtual (DISPLAY=:99) ==
+== [Guardado Platos E2E] Paso 1: Login interactivo ==
+Oct 19, 2026 9:54:49 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+== [Guardado Platos E2E] Paso 2: Navegar a pestaña Platos ==
+OK   Formulario inicia con txtIdPlato vacío
+OK   Botón izquierdo inicia como 'Guardar'
+OK   Botón derecho inicia como 'Editar'
+OK   Botón de limpieza dice 'Limpiar Campos'
+== [Guardado Platos E2E] Paso 3: Enter en modo creación NO registra ==
+OK   Plato NO se registró prematuramente con Enter en creación
+== [Guardado Platos E2E] Paso 4: Clic en Guardar registra el plato ==
+OK   Plato registrado exitosamente mediante botón 'Guardar'
+OK   Tras registrar, el formulario se autolimpia
+OK   Botón regresa a 'Guardar'
+== [Guardado Platos E2E] Paso 5: Clic en la fila del plato activa 'Guardar Cambios' ==
+OK   Botón izquierdo cambia a 'Guardar Cambios'
+OK   Botón derecho cambia a 'Guardar Cambios'
+== [Guardado Platos E2E] Paso 6: Modificar precio a 29.50 y pulsar botón izquierdo ==
+OK   Precio actualizado a 29.50 con botón 'Guardar Cambios'
+== [Guardado Platos E2E] Paso 7: Modificar precio a 35.00 con Enter en plato existente ==
+OK   Precio actualizado a 35.00 con Enter en plato existente
+== [Guardado Platos E2E] Paso 8: Probar Limpiar Campos en Platos, Salas y Usuarios ==
+OK   txtNombrePlato vacío tras limpiar
+OK   txtPrecioPlato vacío tras limpiar
+OK   Botón reseteado a 'Guardar'
+OK   txtNombreSala limpio tras pulsar Limpiar
+OK   txtMesas limpio tras pulsar Limpiar
+OK   txtNombre usuario limpio tras pulsar Limpiar
+OK   txtCorreo usuario limpio tras pulsar Limpiar
+OK   txtPass usuario limpio tras pulsar Limpiar
+E2E_GUARDADO_PLATOS_OK

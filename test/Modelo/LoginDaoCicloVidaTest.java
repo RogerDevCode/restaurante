@@ -93,6 +93,7 @@ public class LoginDaoCicloVidaTest {
                     String name = method.getName();
                     if ("executeQuery".equals(name)) {
                         String sql = sqlEjecutado.get();
+                        if (sql != null && (sql.contains("GET_LOCK") || sql.contains("RELEASE_LOCK"))) return mockResultSetSingleInt(1);
                         if (sql != null && sql.contains("SELECT rol") && sql.contains("FROM usuarios")) {
                             return mockResultSetRow(Map.of("rol", "Administrador", "correo", "carlos@rest.com", "nombre", "Carlos"));
                         }
@@ -146,6 +147,7 @@ public class LoginDaoCicloVidaTest {
                     String name = method.getName();
                     if ("executeQuery".equals(name)) {
                         String sql = currentSqlRef.get();
+                        if (sql.contains("GET_LOCK") || sql.contains("RELEASE_LOCK")) return mockResultSetSingleInt(1);
                         if (sql.contains("SELECT rol") && sql.contains("FROM usuarios")) {
                             return mockResultSetRow(Map.of("rol", "Administrador", "correo", "carlos@rest.com", "nombre", "Carlos"));
                         }
@@ -200,6 +202,7 @@ public class LoginDaoCicloVidaTest {
                     String name = method.getName();
                     if ("executeQuery".equals(name)) {
                         String sql = currentSqlRef.get();
+                        if (sql.contains("GET_LOCK") || sql.contains("RELEASE_LOCK")) return mockResultSetSingleInt(1);
                         if (sql.contains("SELECT rol") && sql.contains("FROM usuarios")) {
                             return mockResultSetRow(Map.of("rol", "Administrador", "correo", "admin", "nombre", "Administrador"));
                         }
@@ -262,6 +265,7 @@ public class LoginDaoCicloVidaTest {
                                         (pStmt, mStmt, aStmt) -> {
                                             String stName = mStmt.getName();
                                             if ("executeQuery".equals(stName)) {
+                                                if (sql.contains("GET_LOCK") || sql.contains("RELEASE_LOCK")) return mockResultSetSingleInt(1);
                                                 if (sql.contains("SELECT rol") && sql.contains("FROM usuarios")) {
                                                     return mockResultSetRow(Map.of("rol", "Administrador", "correo", "adminX@rest.com", "nombre", "AdminX"));
                                                 }
@@ -352,6 +356,7 @@ public class LoginDaoCicloVidaTest {
                 (proxy, method, args) -> {
                     if ("next".equals(method.getName())) return !nextCalled.getAndSet(true);
                     if ("getInt".equals(method.getName())) return val;
+                    if ("getObject".equals(method.getName())) return val;
                     if ("close".equals(method.getName())) return null;
                     return null;
                 }
@@ -437,6 +442,7 @@ public class LoginDaoCicloVidaTest {
                     String name = method.getName();
                     if ("executeQuery".equals(name)) {
                         String sql = currentSqlRef.get();
+                        if (sql.contains("GET_LOCK") || sql.contains("RELEASE_LOCK")) return mockResultSetSingleInt(1);
                         if (sql.contains("SELECT rol") && sql.contains("FROM usuarios")) {
                             return mockResultSetRow(Map.of("rol", "Administrador", "correo", "admin", "nombre", "Administrador"));
                         }

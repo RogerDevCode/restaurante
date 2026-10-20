@@ -1,0 +1,119 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.RedimensionarColumnasJTableE2EVirtual (DISPLAY=:99) ==
+======================================================================
+  E2E VIRTUAL: REDIMENSIONAR Y RECUPERAR COLUMNAS EN JTABLES 
+======================================================================
+
+--- FASE 1: Redimensionar columnas con mouse ---
+Oct 19, 2026 9:52:43 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+
+[Probando CRUD Usuarios (TableUsuarios) (usuarios)]
+  Ancho inicial de columna 0: 228 px (total=637)
+  Ancho tras arrastrar con mouse: 265 px (total=637)
+OK   usuarios: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando CRUD Salas (tableSala) (salas_crud)]
+  Ancho inicial de columna 0: 257 px (total=687)
+  Ancho tras arrastrar con mouse: 299 px (total=687)
+OK   salas_crud: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando CRUD Platos (TablePlatos) (platos_crud)]
+  Ancho inicial de columna 0: 262 px (total=657)
+  Ancho tras arrastrar con mouse: 303 px (total=657)
+OK   platos_crud: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Historial Pedidos (TablePedidos) (historial)]
+  Ancho inicial de columna 0: 160 px (total=992)
+  Ancho tras arrastrar con mouse: 203 px (total=992)
+OK   historial: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Personal Mesoneros (tableMesonerosConfig) (mesoneros_config)]
+  Ancho inicial de columna 0: 252 px (total=542)
+  Ancho tras arrastrar con mouse: 252 px (total=542)
+FALLO mesoneros_config: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Dashboard Top Platos (tableTopPlatos) (dash_top)]
+  Ancho inicial de columna 0: 124 px (total=341)
+  Ancho tras arrastrar con mouse: 131 px (total=341)
+OK   dash_top: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Dashboard Mesoneros (tableMesonerosDashboard) (dash_mesoneros)]
+  Ancho inicial de columna 0: 104 px (total=341)
+  Ancho tras arrastrar con mouse: 111 px (total=341)
+OK   dash_mesoneros: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Dashboard Clientes (tableClientes) (dash_clientes)]
+  Ancho inicial de columna 0: 100 px (total=723)
+  Ancho tras arrastrar con mouse: 120 px (total=723)
+OK   dash_clientes: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Dashboard Facturas Cliente (tableFacturasCliente) (dash_facturas)]
+  Ancho inicial de columna 0: 100 px (total=723)
+  Ancho tras arrastrar con mouse: 110 px (total=723)
+OK   dash_facturas: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Toma Pedido Catálogo (tblTemPlatos) (toma_menu)]
+  Ancho inicial de columna 0: 232 px (total=420)
+  Ancho tras arrastrar con mouse: 260 px (total=420)
+OK   toma_menu: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Toma Pedido Carrito (tableMenu) (toma_carrito)]
+  Ancho inicial de columna 0: 125 px (total=567)
+  Ancho tras arrastrar con mouse: 132 px (total=567)
+OK   toma_carrito: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Caja / Finalizar Pedido (tableFinalizar) (caja)]
+  Ancho inicial de columna 0: 258 px (total=983)
+  Ancho tras arrastrar con mouse: 297 px (total=983)
+OK   caja: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Split POS Catálogo (tblCatalogoPlatos) (split_catalogo)]
+  Ancho inicial de columna 0: 283 px (total=568)
+  Ancho tras arrastrar con mouse: 318 px (total=568)
+OK   split_catalogo: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Split POS Carrito (tblCarrito) (split_carrito)]
+  Ancho inicial de columna 0: 138 px (total=585)
+  Ancho tras arrastrar con mouse: 174 px (total=585)
+OK   split_carrito: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+--- FASE 2: Cerrar y reabrir sesión; verificar recuperación visual ---
+OK   usuarios: la JTable conserva sus 4 columnas
+OK   usuarios: JTable recuperó la proporción visible de ancho (esperado=0.4160, obtenido=0.4160, diff=0.0000)
+OK   salas_crud: la JTable conserva sus 3 columnas
+OK   salas_crud: JTable recuperó la proporción visible de ancho (esperado=0.4352, obtenido=0.4352, diff=0.0000)
+OK   platos_crud: la JTable conserva sus 4 columnas
+OK   platos_crud: JTable recuperó la proporción visible de ancho (esperado=0.4612, obtenido=0.4597, diff=0.0015)
+OK   historial: la JTable conserva sus 7 columnas
+OK   historial: JTable recuperó la proporción visible de ancho (esperado=0.2046, obtenido=0.2016, diff=0.0030)
+OK   dash_top: la JTable conserva sus 4 columnas
+OK   dash_top: JTable recuperó la proporción visible de ancho (esperado=0.3842, obtenido=0.3666, diff=0.0176)
+OK   dash_mesoneros: la JTable conserva sus 4 columnas
+OK   dash_mesoneros: JTable recuperó la proporción visible de ancho (esperado=0.3255, obtenido=0.3079, diff=0.0176)
+OK   dash_clientes: la JTable conserva sus 6 columnas
+OK   dash_clientes: JTable recuperó la proporción visible de ancho (esperado=0.1660, obtenido=0.1549, diff=0.0111)
+OK   dash_facturas: la JTable conserva sus 7 columnas
+OK   dash_facturas: JTable recuperó la proporción visible de ancho (esperado=0.1521, obtenido=0.1508, diff=0.0014)
+OK   toma_menu: la JTable conserva sus 3 columnas
+OK   toma_menu: JTable recuperó la proporción visible de ancho (esperado=0.6190, obtenido=0.6119, diff=0.0071)
+OK   toma_carrito: la JTable conserva sus 7 columnas
+OK   toma_carrito: JTable recuperó la proporción visible de ancho (esperado=0.2328, obtenido=0.2328, diff=0.0000)
+OK   caja: la JTable conserva sus 6 columnas
+OK   caja: JTable recuperó la proporción visible de ancho (esperado=0.3021, obtenido=0.3032, diff=0.0010)
+OK   split_catalogo: la JTable conserva sus 3 columnas
+OK   split_catalogo: JTable recuperó la proporción visible de ancho (esperado=0.5599, obtenido=0.5475, diff=0.0123)
+OK   split_carrito: la JTable conserva sus 5 columnas
+OK   split_carrito: JTable recuperó la proporción visible de ancho (esperado=0.2974, obtenido=0.2786, diff=0.0188)
+======================================================================
+E2E_FALLO: Se encontraron 1 fallos durante la prueba.
+Exception in thread "main" java.lang.AssertionError: Falló la suite E2E de Redimensionar Columnas JTable (1 fallos).
+	at Vista.RedimensionarColumnasJTableE2EVirtual.main(RedimensionarColumnasJTableE2EVirtual.java:327)

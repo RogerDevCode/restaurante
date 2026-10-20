@@ -6,8 +6,48 @@ import java.util.List;
 public interface PedidosRepositorio {
     int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles);
 
+    /** Registra el pedido y su primera marcha de cocina de forma atómica. */
+    default ResultadoPedidoComanda registrarPedidoCompletoConMarcha(Pedidos pedido, List<DetallePedido> detalles) {
+        return registrarPedidoCompletoConMarcha(pedido, detalles, true);
+    }
+
+    default ResultadoPedidoComanda registrarPedidoCompletoConMarcha(
+            Pedidos pedido, List<DetallePedido> detalles, boolean imprimirComanda) {
+        int idPedido = registrarPedidoCompleto(pedido, detalles);
+        if (!imprimirComanda) return new ResultadoPedidoComanda(idPedido, true, null);
+        List<MovimientoComanda> movimientos = detalles.stream()
+                .map(d -> MovimientoComanda.desde(MovimientoComanda.Accion.PREPARAR, d, d.getCantidad()))
+                .toList();
+        return new ResultadoPedidoComanda(idPedido, true,
+                new ComandaMarcha(0, idPedido, 1, ComandaMarcha.Tipo.INICIAL, movimientos));
+    }
+
     /** Actualiza un pedido pendiente sobrescribiendo sus totales y detalles. */
     boolean actualizarPedidoCompleto(int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos);
+
+    /** Actualiza el pedido y devuelve solo la marcha incremental persistida; null si no hubo movimiento de cocina. */
+    default ResultadoPedidoComanda actualizarPedidoCompletoConMarcha(
+            int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos) {
+        return actualizarPedidoCompletoConMarcha(idPedido, pedidoModificado, detallesNuevos, true);
+    }
+
+    default ResultadoPedidoComanda actualizarPedidoCompletoConMarcha(
+            int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos, boolean imprimirComanda) {
+        if (!actualizarPedidoCompleto(idPedido, pedidoModificado, detallesNuevos)) {
+            throw ErrorAplicacionException.validacion("No se pudo actualizar el pedido pendiente.");
+        }
+        return new ResultadoPedidoComanda(idPedido, true, null);
+    }
+
+    /** Recupera una marcha exacta e inmutable para reimpresión. */
+    default ComandaMarcha obtenerComandaMarcha(long idMarcha) {
+        return null;
+    }
+
+    /** Devuelve las marchas imprimibles de un pedido ordenadas por secuencia. */
+    default List<ComandaMarcha> listarComandasMarchas(int idPedido) {
+        return List.of();
+    }
 
     /** Devuelve el identificador pendiente de una mesa o cero cuando no tiene pedido abierto. */
     int verificarStado(int mesa, int idSala);

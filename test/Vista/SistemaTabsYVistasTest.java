@@ -47,6 +47,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
+import javax.swing.Timer;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
@@ -237,6 +238,27 @@ public class SistemaTabsYVistasTest {
             return (T) f.get(target);
         } catch (Exception ex) {
             throw new RuntimeException("Error accediendo a campo " + nombre, ex);
+        }
+    }
+
+    private static void confirmarDialogoSi() {
+        for (java.awt.Window ventana : java.awt.Window.getWindows()) {
+            if (!(ventana instanceof java.awt.Dialog dialogo) || !dialogo.isVisible()) continue;
+            java.util.ArrayDeque<java.awt.Container> pendientes = new java.util.ArrayDeque<>();
+            pendientes.add(dialogo);
+            while (!pendientes.isEmpty()) {
+                java.awt.Container contenedor = pendientes.removeFirst();
+                for (java.awt.Component componente : contenedor.getComponents()) {
+                    if (componente instanceof JButton boton
+                            && ("Sí".equalsIgnoreCase(boton.getText())
+                            || "Si".equalsIgnoreCase(boton.getText())
+                            || "Yes".equalsIgnoreCase(boton.getText()))) {
+                        boton.doClick();
+                        return;
+                    }
+                    if (componente instanceof java.awt.Container hijo) pendientes.addLast(hijo);
+                }
+            }
         }
     }
 
@@ -757,11 +779,18 @@ public class SistemaTabsYVistasTest {
             assertEquals("16.00", txtIva.getText());
 
             // Actualización con nueva tasa y nuevo IVA
-            SwingUtilities.invokeAndWait(() -> {
-                txtTasa.setText("40.0000");
-                txtIva.setText("8.00");
-                btnActualizar.doClick();
-            });
+            Timer confirmarCambioDeTasa = new Timer(100, e -> confirmarDialogoSi());
+            confirmarCambioDeTasa.setRepeats(true);
+            confirmarCambioDeTasa.start();
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    txtTasa.setText("40.0000");
+                    txtIva.setText("8.00");
+                    btnActualizar.doClick();
+                });
+            } finally {
+                confirmarCambioDeTasa.stop();
+            }
 
             for (int i = 0; i < 30 && !new BigDecimal("40.0000").equals(loginDaoFalso.configuracionActual.getTasaDolar()); i++) {
                 Thread.sleep(50);

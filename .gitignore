@@ -24,3 +24,6 @@ target.txt
 tablet.txt
 tickets/
 respaldo_*.sql
+
+# Checksums de artefactos de release
+*.zip.sha256

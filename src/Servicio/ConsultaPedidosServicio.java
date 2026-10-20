@@ -61,6 +61,16 @@ public final class ConsultaPedidosServicio {
         return pedido;
     }
 
+    public Pedidos obtenerPedidoParaHistorial(int idPedido) {
+        exigir(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
+        validarId(idPedido);
+        Pedidos pedido = repositorio.verPedido(idPedido);
+        if (pedido == null) {
+            throw ErrorAplicacionException.validacion("No se encontró el pedido seleccionado para la comanda.");
+        }
+        return pedido;
+    }
+
     public List<DetallePedido> obtenerDetalles(int idPedido) {
         exigir(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES);
         validarId(idPedido);

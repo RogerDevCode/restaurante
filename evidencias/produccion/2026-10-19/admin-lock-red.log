@@ -1,0 +1,9 @@
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+    [junit] Test integracion.MySqlIntegrationIT FAILED
+
+BUILD FAILED
+/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build.xml:126: Falló la suite de integración MySQL; revisa build/test/results/integration.
+
+Total time: 58 seconds

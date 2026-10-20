@@ -64,6 +64,17 @@ public class PedidosDao implements PedidosRepositorio {
 
     @Override
     public int registrarPedidoCompleto(Pedidos pedido, List<DetallePedido> detalles) {
+        return registrarPedidoCompletoConMarcha(pedido, detalles, true).idPedido();
+    }
+
+    @Override
+    public ResultadoPedidoComanda registrarPedidoCompletoConMarcha(Pedidos pedido, List<DetallePedido> detalles) {
+        return registrarPedidoCompletoConMarcha(pedido, detalles, true);
+    }
+
+    @Override
+    public ResultadoPedidoComanda registrarPedidoCompletoConMarcha(
+            Pedidos pedido, List<DetallePedido> detalles, boolean imprimirComanda) {
         validarEstructuraPedido(pedido, detalles);
 
         String sqlPedido = """
@@ -152,8 +163,16 @@ public class PedidosDao implements PedidosRepositorio {
                     }
                 }
 
+                ComandaMarcha marcha = null;
+                if (imprimirComanda) {
+                    List<MovimientoComanda> movimientosIniciales = detalles.stream()
+                            .map(det -> MovimientoComanda.desde(MovimientoComanda.Accion.PREPARAR, det, det.getCantidad()))
+                            .toList();
+                    marcha = insertarComandaMarcha(
+                            conexion, idPedido, ComandaMarcha.Tipo.INICIAL, pedido.getUsuario(), movimientosIniciales);
+                }
                 conexion.commit();
-                return idPedido;
+                return new ResultadoPedidoComanda(idPedido, true, marcha);
             } catch (SQLException | RuntimeException error) {
                 try {
                     conexion.rollback();
@@ -170,9 +189,8 @@ public class PedidosDao implements PedidosRepositorio {
                     if (errorSql.getErrorCode() == 1054 && mensaje != null && mensaje.contains("aplica_iva")) {
                         throw new DataAccessException("La base de datos requiere la migración fiscal de detalles antes de guardar pedidos.", errorSql);
                     }
-                    if (errorSql.getErrorCode() == 1054) {
-                        return registrarPedidoCompletoLegacy(conexion, pedido, detalles);
-                    }
+                    if (errorSql.getErrorCode() == 1054) throw new DataAccessException(
+                            "La base de datos requiere aplicar la migración antes de guardar comandas.", errorSql);
                     throw new DataAccessException("No se pudo guardar el pedido completo.", errorSql);
                 }
                 throw new ErrorAplicacionException("Falló el guardado completo del pedido.", error);
@@ -189,6 +207,18 @@ public class PedidosDao implements PedidosRepositorio {
 
     @Override
     public boolean actualizarPedidoCompleto(int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos) {
+        return actualizarPedidoCompletoConMarcha(idPedido, pedidoModificado, detallesNuevos, true).guardado();
+    }
+
+    @Override
+    public ResultadoPedidoComanda actualizarPedidoCompletoConMarcha(
+            int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos) {
+        return actualizarPedidoCompletoConMarcha(idPedido, pedidoModificado, detallesNuevos, true);
+    }
+
+    @Override
+    public ResultadoPedidoComanda actualizarPedidoCompletoConMarcha(
+            int idPedido, Pedidos pedidoModificado, List<DetallePedido> detallesNuevos, boolean imprimirComanda) {
         validarEstructuraPedido(pedidoModificado, detallesNuevos);
         
         String sqlUpdatePedido = """
@@ -206,8 +236,15 @@ public class PedidosDao implements PedidosRepositorio {
         try (Connection conexion = conexiones.getConnection()) {
             boolean autoCommitPrevio = conexion.getAutoCommit();
             conexion.setAutoCommit(false);
+            List<MovimientoComanda> movimientosComanda;
+            boolean primeraMarcha;
             try {
+                bloquearPedidoPendiente(conexion, idPedido);
                 calcularYConsolidarSnapshot(conexion, pedidoModificado, detallesNuevos);
+                List<MovimientoComanda> historial = leerMovimientosComanda(conexion, idPedido);
+                primeraMarcha = historial.isEmpty();
+                List<DetallePedido> enviados = ComandaMarcha.componerEstadoEnviado(historial);
+                movimientosComanda = ComandaMarcha.calcularDiferencias(enviados, detallesNuevos);
             } catch (SQLException | RuntimeException ex) {
                 try {
                     conexion.rollback();
@@ -221,6 +258,7 @@ public class PedidosDao implements PedidosRepositorio {
                 throw ex;
             }
 
+            ComandaMarcha marchaGenerada = null;
             try (PreparedStatement updatePed = conexion.prepareStatement(sqlUpdatePedido);
                  PreparedStatement delDetalles = conexion.prepareStatement(sqlDeleteDetalles);
                  PreparedStatement insDetalle = conexion.prepareStatement(sqlInsertDetalle)) {
@@ -276,16 +314,23 @@ public class PedidosDao implements PedidosRepositorio {
                     insDetalle.addBatch();
                 }
                 insDetalle.executeBatch();
+                if (imprimirComanda && !movimientosComanda.isEmpty()) {
+                    boolean tieneRetiro = movimientosComanda.stream()
+                            .anyMatch(m -> m.accion() == MovimientoComanda.Accion.RETIRAR);
+                    marchaGenerada = insertarComandaMarcha(conexion, idPedido,
+                            primeraMarcha ? ComandaMarcha.Tipo.INICIAL
+                                    : (tieneRetiro ? ComandaMarcha.Tipo.AJUSTE : ComandaMarcha.Tipo.INCREMENTO),
+                            pedidoModificado.getUsuario(), movimientosComanda);
+                }
                 conexion.commit();
-                return true;
+                return new ResultadoPedidoComanda(idPedido, true, marchaGenerada);
             } catch (SQLException error) {
                 conexion.rollback();
                 if (error.getErrorCode() == 1054 && error.getMessage() != null && error.getMessage().contains("aplica_iva")) {
                     throw new DataAccessException("La base de datos requiere la migración fiscal de detalles antes de actualizar pedidos.", error);
                 }
-                if (error.getErrorCode() == 1054) {
-                    return actualizarPedidoCompletoLegacy(conexion, idPedido, pedidoModificado, detallesNuevos);
-                }
+                if (error.getErrorCode() == 1054) throw new DataAccessException(
+                        "La base de datos requiere aplicar la migración antes de actualizar comandas.", error);
                 throw error;
             } finally {
                 try {
@@ -718,6 +763,160 @@ public class PedidosDao implements PedidosRepositorio {
                     new IllegalStateException("Un pedido debe contener al menos un detalle."));
         }
         return lista;
+    }
+
+    private static void bloquearPedidoPendiente(Connection conexion, int idPedido) throws SQLException {
+        try (PreparedStatement ps = conexion.prepareStatement(
+                "SELECT id FROM pedidos WHERE id=? AND estado='PENDIENTE' AND cerrada_en IS NULL FOR UPDATE")) {
+            ps.setInt(1, idPedido);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) throw new SQLException("El pedido ya no existe, no está PENDIENTE o ya fue cerrado.");
+            }
+        }
+    }
+
+    private static List<MovimientoComanda> leerMovimientosComanda(Connection conexion, int idPedido)
+            throws SQLException {
+        String sql = """
+            SELECT md.accion,md.nombre,md.cantidad,md.comentario,md.id_plato,md.moneda_base,md.precio,
+                   md.aplica_iva,md.precio_incluye_iva,md.iva_porcentaje
+            FROM comandas_marchas m
+            JOIN comandas_marchas_detalle md ON md.id_marcha=m.id
+            WHERE m.id_pedido=? ORDER BY m.secuencia,md.id
+            """;
+        List<MovimientoComanda> movimientos = new ArrayList<>();
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, idPedido);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int idPlato = rs.getInt("id_plato");
+                    Integer plato = rs.wasNull() ? null : idPlato;
+                    boolean aplica = rs.getBoolean("aplica_iva");
+                    Boolean aplicaIva = rs.wasNull() ? null : aplica;
+                    int incluye = rs.getInt("precio_incluye_iva");
+                    Boolean precioIncluye = rs.wasNull() ? null : incluye != 0;
+                    movimientos.add(new MovimientoComanda(
+                            MovimientoComanda.Accion.valueOf(rs.getString("accion")), rs.getString("nombre"),
+                            rs.getInt("cantidad"), rs.getString("comentario"), plato,
+                            rs.getString("moneda_base"), rs.getBigDecimal("precio"),
+                            aplicaIva, precioIncluye, rs.getBigDecimal("iva_porcentaje")));
+                }
+            }
+        }
+        return movimientos;
+    }
+
+    private static ComandaMarcha insertarComandaMarcha(Connection conexion, int idPedido,
+            ComandaMarcha.Tipo tipo, String actor, List<MovimientoComanda> movimientos) throws SQLException {
+        int secuencia;
+        try (PreparedStatement ps = conexion.prepareStatement(
+                "SELECT COALESCE(MAX(secuencia),0)+1 FROM comandas_marchas WHERE id_pedido=?")) {
+            ps.setInt(1, idPedido);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) throw new SQLException("No se pudo determinar la secuencia de comanda.");
+                secuencia = rs.getInt(1);
+            }
+        }
+        long idMarcha;
+        try (PreparedStatement ps = conexion.prepareStatement(
+                "INSERT INTO comandas_marchas (id_pedido,secuencia,tipo,actor) VALUES (?,?,?,?)",
+                Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, idPedido);
+            ps.setInt(2, secuencia);
+            ps.setString(3, tipo.name());
+            ps.setString(4, actor == null || actor.isBlank() ? "Sistema" : actor.trim());
+            if (ps.executeUpdate() != 1) throw new SQLException("No se pudo registrar la marcha de cocina.");
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (!rs.next()) throw new SQLException("MySQL no devolvió el identificador de la marcha.");
+                idMarcha = rs.getLong(1);
+            }
+        }
+        String sql = """
+            INSERT INTO comandas_marchas_detalle
+                (id_marcha,accion,nombre,cantidad,comentario,id_plato,moneda_base,precio,aplica_iva,precio_incluye_iva,iva_porcentaje)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            """;
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            for (MovimientoComanda movimiento : movimientos) {
+                ps.setLong(1, idMarcha);
+                ps.setString(2, movimiento.accion().name());
+                ps.setString(3, movimiento.nombre());
+                ps.setInt(4, movimiento.cantidad());
+                ps.setString(5, movimiento.comentario());
+                if (movimiento.idPlato() == null) ps.setNull(6, Types.INTEGER); else ps.setInt(6, movimiento.idPlato());
+                ps.setString(7, movimiento.monedaBase());
+                ps.setBigDecimal(8, movimiento.precio());
+                if (movimiento.aplicaIva() == null) ps.setNull(9, Types.TINYINT); else ps.setBoolean(9, movimiento.aplicaIva());
+                if (movimiento.precioIncluyeIva() == null) ps.setNull(10, Types.TINYINT); else ps.setBoolean(10, movimiento.precioIncluyeIva());
+                if (movimiento.ivaPorcentaje() == null) ps.setNull(11, Types.DECIMAL); else ps.setBigDecimal(11, movimiento.ivaPorcentaje());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+        return new ComandaMarcha(idMarcha, idPedido, secuencia, tipo, movimientos);
+    }
+
+    @Override
+    public ComandaMarcha obtenerComandaMarcha(long idMarcha) {
+        if (idMarcha <= 0) throw ErrorAplicacionException.validacion("El identificador de marcha debe ser válido.");
+        String sqlCabecera = "SELECT id,id_pedido,secuencia,tipo FROM comandas_marchas WHERE id=?";
+        String sqlDetalle = """
+            SELECT accion,nombre,cantidad,comentario,id_plato,moneda_base,precio,aplica_iva,precio_incluye_iva,iva_porcentaje
+            FROM comandas_marchas_detalle WHERE id_marcha=? ORDER BY id
+            """;
+        try (Connection conexion = conexiones.getConnection();
+             PreparedStatement cabecera = conexion.prepareStatement(sqlCabecera);
+             PreparedStatement detalles = conexion.prepareStatement(sqlDetalle)) {
+            cabecera.setLong(1, idMarcha);
+            try (ResultSet rs = cabecera.executeQuery()) {
+                if (!rs.next()) return null;
+                int idPedido = rs.getInt("id_pedido");
+                int secuencia = rs.getInt("secuencia");
+                ComandaMarcha.Tipo tipo = ComandaMarcha.Tipo.valueOf(rs.getString("tipo"));
+                detalles.setLong(1, idMarcha);
+                List<MovimientoComanda> movimientos = new ArrayList<>();
+                try (ResultSet dr = detalles.executeQuery()) {
+                    while (dr.next()) {
+                        int idPlato = dr.getInt("id_plato");
+                        Integer plato = dr.wasNull() ? null : idPlato;
+                        boolean aplica = dr.getBoolean("aplica_iva");
+                        Boolean aplicaIva = dr.wasNull() ? null : aplica;
+                        boolean incluye = dr.getBoolean("precio_incluye_iva");
+                        Boolean precioIncluyeIva = dr.wasNull() ? null : incluye;
+                        movimientos.add(new MovimientoComanda(
+                                MovimientoComanda.Accion.valueOf(dr.getString("accion")), dr.getString("nombre"),
+                                dr.getInt("cantidad"), dr.getString("comentario"), plato,
+                                dr.getString("moneda_base"), dr.getBigDecimal("precio"), aplicaIva,
+                                precioIncluyeIva, dr.getBigDecimal("iva_porcentaje")));
+                    }
+                }
+                return new ComandaMarcha(idMarcha, idPedido, secuencia, tipo, movimientos);
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudo consultar la marcha de cocina.", ex);
+        }
+    }
+
+    @Override
+    public List<ComandaMarcha> listarComandasMarchas(int idPedido) {
+        if (idPedido <= 0) throw ErrorAplicacionException.validacion("El pedido debe ser válido para consultar sus marchas.");
+        List<Long> ids = new ArrayList<>();
+        try (Connection conexion = conexiones.getConnection();
+             PreparedStatement ps = conexion.prepareStatement(
+                     "SELECT id FROM comandas_marchas WHERE id_pedido=? AND tipo<>'BASE_LEGADA' ORDER BY secuencia")) {
+            ps.setInt(1, idPedido);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) ids.add(rs.getLong(1));
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("No se pudieron consultar las marchas de cocina del pedido.", ex);
+        }
+        List<ComandaMarcha> marchas = new ArrayList<>(ids.size());
+        for (Long id : ids) {
+            ComandaMarcha marcha = obtenerComandaMarcha(id);
+            if (marcha != null && !marcha.movimientos().isEmpty()) marchas.add(marcha);
+        }
+        return List.copyOf(marchas);
     }
 
     private List<DetallePedido> verPedidoDetalleLegacy(int id_pedido) {
@@ -2121,6 +2320,19 @@ public class PedidosDao implements PedidosRepositorio {
         if (mesesAnteriores < 1) {
             throw ErrorAplicacionException.validacion("El período de retención debe ser al menos 1 mes.");
         }
+        String sqlDetallesMarcha = """
+            DELETE md FROM comandas_marchas_detalle md
+            INNER JOIN comandas_marchas m ON md.id_marcha = m.id
+            INNER JOIN pedidos p ON m.id_pedido = p.id
+            WHERE p.estado = 'FINALIZADO'
+              AND p.fecha < DATE_SUB(NOW(), INTERVAL ? MONTH)
+            """;
+        String sqlMarchas = """
+            DELETE m FROM comandas_marchas m
+            INNER JOIN pedidos p ON m.id_pedido = p.id
+            WHERE p.estado = 'FINALIZADO'
+              AND p.fecha < DATE_SUB(NOW(), INTERVAL ? MONTH)
+            """;
         String sqlDetalles = """
             DELETE d FROM detalle_pedidos d
             INNER JOIN pedidos p ON d.id_pedido = p.id
@@ -2136,6 +2348,15 @@ public class PedidosDao implements PedidosRepositorio {
             boolean autoCommitOriginal = conexion.getAutoCommit();
             conexion.setAutoCommit(false);
             try {
+                // La purga explícita cumple la política de retención también para el diario de cocina.
+                try (PreparedStatement ps = conexion.prepareStatement(sqlDetallesMarcha)) {
+                    ps.setInt(1, mesesAnteriores);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conexion.prepareStatement(sqlMarchas)) {
+                    ps.setInt(1, mesesAnteriores);
+                    ps.executeUpdate();
+                }
                 try (PreparedStatement psDetalles = conexion.prepareStatement(sqlDetalles)) {
                     psDetalles.setInt(1, mesesAnteriores);
                     psDetalles.executeUpdate();

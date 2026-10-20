@@ -14,7 +14,8 @@ public class CierreCaja {
 
     public enum TipoCierre {
         PARCIAL("CORTE X - CIERRE PARCIAL"),
-        TOTAL("CORTE Z - CIERRE TOTAL");
+        TOTAL("CORTE Z - CIERRE TOTAL"),
+        RESUMEN("RESUMEN DE VENTAS");
 
         private final String etiqueta;
 

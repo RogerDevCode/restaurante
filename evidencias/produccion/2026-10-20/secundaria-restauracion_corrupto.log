@@ -1,0 +1,10 @@
+RESTAURACION_FALLIDA: El respaldo no tiene checksum; no se puede verificar su integridad.
+Modelo.ErrorAplicacionException: El respaldo no tiene checksum; no se puede verificar su integridad.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Servicio.ServicioRespaldoBaseDatos.validarChecksumSiExiste(ServicioRespaldoBaseDatos.java:431)
+	at Servicio.ServicioRespaldoBaseDatos.validarArchivoRespaldo(ServicioRespaldoBaseDatos.java:567)
+	at Servicio.ServicioRespaldoBaseDatos.restaurarRespaldo(ServicioRespaldoBaseDatos.java:897)
+	at restaurante.Restaurante.ejecutarComandoMantenimiento(Restaurante.java:71)
+	at restaurante.Restaurante.main(Restaurante.java:105)
+Caused by: java.lang.IllegalArgumentException: El respaldo no tiene checksum; no se puede verificar su integridad.
+	... 6 more

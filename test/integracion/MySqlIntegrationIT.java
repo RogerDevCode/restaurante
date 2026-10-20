@@ -45,6 +45,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -170,15 +172,15 @@ public class MySqlIntegrationIT {
 
             ServicioBootstrapInicial servicio = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
             assertFalse(servicio.esBootstrapCompletado());
-            servicio.completarBootstrap("Propietario Integración", "propietario-it", clave);
+            servicio.completarBootstrap("PropietarioIT", clave);
 
             assertTrue(servicio.esBootstrapCompletado());
             try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
                     "SELECT nombre, correo, pass, rol, activo FROM usuarios WHERE id=1");
                  ResultSet resultado = sentencia.executeQuery()) {
                 assertTrue(resultado.next());
-                assertEquals("Propietario Integración", resultado.getString("nombre"));
-                assertEquals("propietario-it", resultado.getString("correo"));
+                assertEquals("PropietarioIT", resultado.getString("nombre"));
+                assertEquals("PropietarioIT", resultado.getString("correo"));
                 assertEquals("Administrador", resultado.getString("rol"));
                 assertEquals(1, resultado.getInt("activo"));
                 assertTrue(new PasswordHasher().verificar(copiaParaVerificar, resultado.getString("pass")));
@@ -188,6 +190,259 @@ public class MySqlIntegrationIT {
             try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
                 sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', pass='pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM', rol='Administrador', activo=1 WHERE id=1");
                 sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='1' WHERE clave='bootstrap_inicial_completado'");
+            }
+        }
+    }
+
+    @Test
+    public void bootstrapConcurrenteSoloPermiteCrearUnaCuentaAdministradora() throws Exception {
+        char[] claveUna = "ClaveConcurrenteUna2026".toCharArray();
+        char[] claveDos = "ClaveConcurrenteDos2026".toCharArray();
+        char[] verificarUna = claveUna.clone();
+        char[] verificarDos = claveDos.clone();
+        ExecutorService ejecutores = Executors.newFixedThreadPool(2);
+        CountDownLatch inicio = new CountDownLatch(1);
+        try {
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET activo=0, pass='!BLOQUEADO_BOOTSTRAP_PENDIENTE!' WHERE id=1");
+                sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='0' WHERE clave='bootstrap_inicial_completado'");
+            }
+
+            ServicioBootstrapInicial unaTerminal = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
+            ServicioBootstrapInicial otraTerminal = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
+            Future<?> resultadoUna = ejecutores.submit(() -> {
+                inicio.await();
+                unaTerminal.completarBootstrap("bootstrapuna", claveUna);
+                return null;
+            });
+            Future<?> resultadoDos = ejecutores.submit(() -> {
+                inicio.await();
+                otraTerminal.completarBootstrap("bootstrapdos", claveDos);
+                return null;
+            });
+            inicio.countDown();
+            resultadoUna.get();
+            resultadoDos.get();
+
+            assertTrue(unaTerminal.esBootstrapCompletado());
+            try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                    "SELECT nombre, correo, pass, rol, activo FROM usuarios WHERE id=1");
+                 ResultSet resultado = sentencia.executeQuery()) {
+                assertTrue(resultado.next());
+                String correo = resultado.getString("correo");
+                assertTrue("Una sola terminal debe ganar el bootstrap",
+                        "bootstrapuna".equals(correo) || "bootstrapdos".equals(correo));
+                assertEquals("El nombre visible debe coincidir con el usuario elegido",
+                        correo, resultado.getString("nombre"));
+                assertEquals("Administrador", resultado.getString("rol"));
+                assertEquals(1, resultado.getInt("activo"));
+                String hash = resultado.getString("pass");
+                assertTrue("La credencial persistida debe corresponder a la terminal ganadora",
+                        new PasswordHasher().verificar(verificarUna, hash)
+                                || new PasswordHasher().verificar(verificarDos, hash));
+            }
+        } finally {
+            ejecutores.shutdownNow();
+            Arrays.fill(verificarUna, '\0');
+            Arrays.fill(verificarDos, '\0');
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', pass='pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM', rol='Administrador', activo=1 WHERE id=1");
+                sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='1' WHERE clave='bootstrap_inicial_completado'");
+            }
+        }
+    }
+
+    @Test
+    public void bootstrapConUsuarioAdminMapeaCredencialesPersistibles() throws Exception {
+        char[] clave = "ClaveBootstrapAdmin2026".toCharArray();
+        char[] copiaParaVerificar = clave.clone();
+        try {
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET activo=0, pass='!BLOQUEADO_BOOTSTRAP_PENDIENTE!' WHERE id=1");
+                sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='0' WHERE clave='bootstrap_inicial_completado'");
+            }
+
+            ServicioBootstrapInicial servicio = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
+            servicio.completarBootstrap("admin", clave);
+
+            try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                    "SELECT nombre, correo, pass, rol, activo FROM usuarios WHERE id=1");
+                 ResultSet resultado = sentencia.executeQuery()) {
+                assertTrue(resultado.next());
+                assertEquals("El nombre persistible de 'admin' no puede violar el CHECK de la BD",
+                        "Administrador", resultado.getString("nombre"));
+                assertEquals("admin", resultado.getString("correo"));
+                assertEquals("Administrador", resultado.getString("rol"));
+                assertEquals(1, resultado.getInt("activo"));
+                assertTrue(new PasswordHasher().verificar(copiaParaVerificar, resultado.getString("pass")));
+            }
+        } finally {
+            Arrays.fill(copiaParaVerificar, '\0');
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', pass='pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM', rol='Administrador', activo=1 WHERE id=1");
+                sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='1' WHERE clave='bootstrap_inicial_completado'");
+            }
+        }
+    }
+
+    @Test
+    public void administradorPrincipalAdminNoPuedeEliminarseNiDesactivarse() throws Exception {
+        String correo = "it-admin-secundario-" + UUID.randomUUID() + "@restaurante.test";
+        try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+            sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', rol='Administrador', activo=1 WHERE id=1");
+        }
+        try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                "INSERT INTO usuarios (nombre, correo, pass, rol, activo) VALUES (?, ?, ?, 'Administrador', 1)")) {
+            sentencia.setString(1, "Administrador Secundario Integración");
+            sentencia.setString(2, correo);
+            sentencia.setString(3, new PasswordHasher().hash("ClaveIntegracion2026".toCharArray()));
+            assertEquals(1, sentencia.executeUpdate());
+        }
+
+        try {
+            LoginDao dao = new LoginDao();
+            ErrorAplicacionException alEliminar = assertThrows(ErrorAplicacionException.class,
+                    () -> dao.eliminarUsuario(1));
+            assertTrue("El administrador principal debe rechazar su eliminación",
+                    alEliminar.getMessage().contains("administrador primario")
+                            && alEliminar.getMessage().contains("no puede ser eliminado"));
+            ErrorAplicacionException alDesactivar = assertThrows(ErrorAplicacionException.class,
+                    () -> dao.desactivarUsuario(1));
+            assertTrue("El administrador principal debe rechazar su desactivación",
+                    alDesactivar.getMessage().contains("administrador primario")
+                            && alDesactivar.getMessage().contains("no puede ser desactivado"));
+            assertTrue("El administrador principal debe continuar activo", dao.esUsuarioActivo(1));
+        } finally {
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("DELETE FROM usuarios WHERE correo='" + correo.replace("'", "''") + "'");
+                sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', pass='pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM', rol='Administrador', activo=1 WHERE id=1");
+            }
+        }
+    }
+
+    @Test
+    public void ultimoAdministradorActivoNoPuedeDesactivarseNiEliminarse() throws Exception {
+        String correo = "it-admin-unico-" + UUID.randomUUID() + "@restaurante.test";
+        Map<Integer, Object> estadosAdministradores = new LinkedHashMap<>();
+        try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT id, activo FROM usuarios WHERE LOWER(rol)='administrador'")) {
+            try (ResultSet resultado = sentencia.executeQuery()) {
+                while (resultado.next()) {
+                    estadosAdministradores.put(resultado.getInt("id"), resultado.getObject("activo"));
+                }
+            }
+        }
+        assertFalse("La fixture de integración debe proporcionar al menos un Administrador", estadosAdministradores.isEmpty());
+        int idAdminPrueba;
+        try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                "INSERT INTO usuarios (nombre, correo, pass, rol, activo) VALUES (?, ?, ?, 'Administrador', 1)",
+                Statement.RETURN_GENERATED_KEYS)) {
+            sentencia.setString(1, "Administrador Integración Único");
+            sentencia.setString(2, correo);
+            sentencia.setString(3, new PasswordHasher().hash("ClaveIntegracion2026".toCharArray()));
+            assertEquals(1, sentencia.executeUpdate());
+            try (ResultSet claves = sentencia.getGeneratedKeys()) {
+                assertTrue(claves.next());
+                idAdminPrueba = claves.getInt(1);
+            }
+        }
+
+        try {
+            try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                    "UPDATE usuarios SET activo=0 WHERE LOWER(rol)='administrador' AND id<>?")) {
+                sentencia.setInt(1, idAdminPrueba);
+                sentencia.executeUpdate();
+            }
+            LoginDao dao = new LoginDao();
+            ErrorAplicacionException alDesactivar = assertThrows(ErrorAplicacionException.class,
+                    () -> dao.desactivarUsuario(idAdminPrueba));
+            assertTrue(alDesactivar.getMessage().contains("único administrador activo"));
+            ErrorAplicacionException alEliminar = assertThrows(ErrorAplicacionException.class,
+                    () -> dao.eliminarUsuario(idAdminPrueba));
+            assertTrue(alEliminar.getMessage().contains("único administrador activo"));
+            assertTrue("El Administrador de prueba debe continuar activo",
+                    dao.esUsuarioActivo(idAdminPrueba));
+
+            try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                    "UPDATE usuarios SET activo=1 WHERE id=?")) {
+                sentencia.setInt(1, estadosAdministradores.keySet().iterator().next());
+                sentencia.executeUpdate();
+            }
+            assertTrue("Debe permitir eliminarlo cuando queda otro Administrador activo",
+                    dao.eliminarUsuario(idAdminPrueba));
+        } finally {
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("DELETE FROM usuarios WHERE correo='" + correo.replace("'", "''") + "'");
+            }
+            try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                    "UPDATE usuarios SET activo=? WHERE id=?")) {
+                for (Map.Entry<Integer, Object> estado : estadosAdministradores.entrySet()) {
+                    sentencia.setObject(1, estado.getValue());
+                    sentencia.setInt(2, estado.getKey());
+                    sentencia.addBatch();
+                }
+                sentencia.executeBatch();
+            }
+        }
+    }
+
+    @Test
+    public void mutacionAdministradorEsperaLockCompartidoDeOtraConexion() throws Exception {
+        String correo = "it-admin-lock-" + UUID.randomUUID() + "@restaurante.test";
+        String lock = "restaurante_admin_mutation_lock";
+        int idAdmin;
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<Boolean> mutacion = null;
+        try (Connection conexionLock = conexion()) {
+            try (Connection conexionInsert = conexion();
+                 PreparedStatement insertar = conexionInsert.prepareStatement(
+                         "INSERT INTO usuarios (nombre, correo, pass, rol, activo) VALUES (?, ?, ?, 'Administrador', 1)",
+                         Statement.RETURN_GENERATED_KEYS)) {
+                insertar.setString(1, "Administrador Lock Integración");
+                insertar.setString(2, correo);
+                insertar.setString(3, new PasswordHasher().hash("ClaveIntegracion2026".toCharArray()));
+                assertEquals(1, insertar.executeUpdate());
+                try (ResultSet claves = insertar.getGeneratedKeys()) {
+                    assertTrue(claves.next());
+                    idAdmin = claves.getInt(1);
+                }
+            }
+
+            try (PreparedStatement adquirir = conexionLock.prepareStatement("SELECT GET_LOCK(?, 0)")) {
+                adquirir.setString(1, lock);
+                try (ResultSet resultado = adquirir.executeQuery()) {
+                    assertTrue(resultado.next());
+                    assertEquals("La conexión de prueba debe adquirir el lock", 1, resultado.getInt(1));
+                }
+            }
+
+            final int idObjetivo = idAdmin;
+            mutacion = executor.submit(() -> new LoginDao().desactivarUsuario(idObjetivo));
+            Future<Boolean> resultadoMutacion = mutacion;
+            try {
+                assertThrows("La mutación debe esperar el lock sostenido por otra conexión",
+                        java.util.concurrent.TimeoutException.class,
+                        () -> resultadoMutacion.get(400, java.util.concurrent.TimeUnit.MILLISECONDS));
+            } finally {
+                try (PreparedStatement liberar = conexionLock.prepareStatement("SELECT RELEASE_LOCK(?)")) {
+                    liberar.setString(1, lock);
+                    try (ResultSet resultado = liberar.executeQuery()) {
+                        assertTrue(resultado.next());
+                    }
+                }
+            }
+
+            assertTrue("La mutación debe continuar al liberar el lock",
+                    mutacion.get(10, java.util.concurrent.TimeUnit.SECONDS));
+        } finally {
+            executor.shutdownNow();
+            if (mutacion != null && !mutacion.isDone()) {
+                mutacion.cancel(true);
+            }
+            try (Connection limpieza = conexion(); PreparedStatement borrar = limpieza.prepareStatement(
+                    "DELETE FROM usuarios WHERE correo=?")) {
+                borrar.setString(1, correo);
+                borrar.executeUpdate();
             }
         }
     }
@@ -793,11 +1048,34 @@ public class MySqlIntegrationIT {
             org.junit.Assert.assertThrows(DataAccessException.class, () -> dao.purgarPedidosFinalizados(1));
             assertEquals("FINALIZADO", estadoPedido(idPedido));
             assertEquals(2, contarFilas("SELECT COUNT(*) FROM detalle_pedidos WHERE id_pedido=" + idPedido));
+            assertEquals("La transacción también debe conservar la marcha y sus líneas",
+                    1, contarFilas("SELECT COUNT(*) FROM comandas_marchas WHERE id_pedido=" + idPedido));
+            assertEquals(2, contarFilas("SELECT COUNT(*) FROM comandas_marchas_detalle md JOIN comandas_marchas m "
+                    + "ON md.id_marcha=m.id WHERE m.id_pedido=" + idPedido));
         } finally {
             try (Connection con = conexion(); Statement st = con.createStatement()) {
                 st.execute("DROP TRIGGER IF EXISTS " + trigger);
             }
         }
+    }
+
+    @Test
+    public void purgarPedidoFinalizadoEliminaDiarioDeCocinaEnLaMismaOperacion() throws Exception {
+        int idSala = crearSalaPrueba();
+        PedidosDao dao = new PedidosDao();
+        int idPedido = dao.registrarPedidoCompleto(pedido(idSala, mesaPrueba()), detallesValidos());
+        assertTrue(dao.actualizarEstado(idPedido));
+        try (Connection con = conexion(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE pedidos SET fecha='2000-01-01 00:00:00' WHERE id=?")) {
+            ps.setInt(1, idPedido);
+            assertEquals(1, ps.executeUpdate());
+        }
+
+        assertTrue("La purga debe eliminar al menos el pedido vencido de la prueba",
+                dao.purgarPedidosFinalizados(1) >= 1);
+        assertEquals(0, contarFilas("SELECT COUNT(*) FROM pedidos WHERE id=" + idPedido));
+        assertEquals(0, contarFilas("SELECT COUNT(*) FROM comandas_marchas WHERE id_pedido=" + idPedido));
+        assertEquals(0, contarFilas("SELECT COUNT(*) FROM detalle_pedidos WHERE id_pedido=" + idPedido));
     }
 
     @Test
@@ -1207,6 +1485,70 @@ public class MySqlIntegrationIT {
         assertTrue("El cierre debe incluir ventas en Bs positivas", cierre.getTotalVentasBs().compareTo(BigDecimal.ZERO) > 0);
     }
 
+    @Test
+    public void resumenVentasCuadraDesgloseConCabeceraYExcluyeAnuladosYRangoVacio() throws Exception {
+        int idSala = crearSalaPrueba(6);
+        PedidosDao pedidosDao = new PedidosDao();
+        List<Integer> ids = new ArrayList<>();
+        String[] metodos = {"EFECTIVO_BS", "EFECTIVO_USD", "EFECTIVO_BS", "EFECTIVO_USD"};
+        for (int i = 0; i < metodos.length; i++) {
+            int id = pedidosDao.registrarPedidoCompleto(pedido(idSala, i + 1), detallesValidos());
+            assertTrue(id > 0);
+            assertTrue(pedidosDao.actualizarEstadoConCliente(id, "Cliente IT", "V-RV" + i, metodos[i]));
+            ids.add(id);
+        }
+
+        // Pedido anulado (fuga): NO debe contar en la cabecera ni en el desglose de métodos
+        int idFuga = pedidosDao.registrarPedidoCompleto(pedido(idSala, 5), detallesValidos());
+        assertTrue(idFuga > 0);
+        assertTrue(pedidosDao.anularPedido(idFuga));
+
+        // Fecha aislada: separa la prueba de otros pedidos del mismo día en el suite (montos exactos)
+        String fechaAislada = "2020-05-20";
+        StringBuilder listaIds = new StringBuilder();
+        for (int id : ids) {
+            if (listaIds.length() > 0) {
+                listaIds.append(',');
+            }
+            listaIds.append(id);
+        }
+        try (Connection con = conexion(); Statement st = con.createStatement()) {
+            st.executeUpdate("UPDATE pedidos SET fecha='" + fechaAislada + " 10:30:00', cerrada_en='" + fechaAislada + " 12:00:00' "
+                    + "WHERE id IN (" + listaIds + "," + idFuga + ")");
+            // Pedido legado: sin total_bs y tasa_cambio=0 (mismo tratamiento que el cierre)
+            st.executeUpdate("UPDATE pedidos SET total_bs=NULL, tasa_cambio=0 WHERE id=" + ids.get(0));
+        }
+
+        Config config = new Config();
+        config.setTasaDolar(new BigDecimal("36.5000"));
+        CierreCaja resumen = new CierreCajaDao().consultarResumenVentas(fechaAislada, fechaAislada, "Admin", config);
+
+        BigDecimal metUsd = BigDecimal.ZERO;
+        BigDecimal metBs = BigDecimal.ZERO;
+        for (CierreCaja.ResumenMetodoPago r : resumen.getDesgloseMetodos()) {
+            metUsd = metUsd.add(r.getMontoUsd());
+            metBs = metBs.add(r.getMontoBs());
+        }
+
+        assertEquals("El resumen debe excluir pedidos anulados (4 finalizados)", 4, resumen.getPedidosFinalizados());
+        assertEquals("Suma de metodos USD debe igualar la cabecera", 0, resumen.getTotalVentasUsd().compareTo(metUsd));
+        assertEquals("Suma de metodos Bs debe igualar la cabecera", 0, resumen.getTotalVentasBs().compareTo(metBs));
+        assertEquals("Ventas USD del rango aislado (4 x 35.50)", 0, new BigDecimal("142.00").compareTo(resumen.getTotalVentasUsd()));
+        assertEquals("Ticket promedio USD del rango aislado", 0, new BigDecimal("35.50").compareTo(resumen.getTicketPromedioUsd()));
+        assertTrue("El resumen debe incluir ventas en Bs positivas", resumen.getTotalVentasBs().compareTo(BigDecimal.ZERO) > 0);
+
+        // Rango vacío: ceros y desglose vacío, sin errores
+        CierreCaja vacio = new CierreCajaDao().consultarResumenVentas("2020-05-21", "2020-05-21", "Admin", config);
+        assertEquals(0, vacio.getPedidosFinalizados());
+        assertEquals(0, BigDecimal.ZERO.compareTo(vacio.getTotalVentasUsd()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(vacio.getTotalVentasBs()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(vacio.getTicketPromedioUsd()));
+        assertTrue(vacio.getDesgloseMetodos().isEmpty());
+
+        assertThrows("Rango invertido debe rechazarse", ErrorAplicacionException.class,
+                () -> new CierreCajaDao().consultarResumenVentas("2020-05-21", "2020-05-20", "Admin", config));
+    }
+
     private static Connection conexion() throws SQLException {
         return DriverManager.getConnection(System.getProperty("DB_URL"),
                 System.getProperty("DB_USER"), System.getProperty("DB_PASSWORD"));
@@ -1222,6 +1564,8 @@ public class MySqlIntegrationIT {
 
     private static void limpiar(Connection conexion) throws SQLException {
         try (Statement sentencia = conexion.createStatement()) {
+            sentencia.executeUpdate("DELETE md FROM comandas_marchas_detalle md INNER JOIN comandas_marchas m ON m.id=md.id_marcha INNER JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
+            sentencia.executeUpdate("DELETE m FROM comandas_marchas m INNER JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE d FROM detalle_pedidos d INNER JOIN pedidos p ON p.id=d.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE m FROM pedido_saldos_movimientos m INNER JOIN pedidos p ON p.id=m.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");
             sentencia.executeUpdate("DELETE pg FROM pedido_pagos pg INNER JOIN pedidos p ON p.id=pg.id_pedido WHERE p.usuario='" + USUARIO_PRUEBA + "'");

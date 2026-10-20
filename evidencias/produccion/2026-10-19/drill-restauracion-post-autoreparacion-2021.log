@@ -1,0 +1,30 @@
+== Compilando ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+
+BUILD SUCCESSFUL
+Total time: 0 seconds
+== Levantando MySQL efímero ==
+ Network restaurante-drill-771658-1792452112_default  Creating
+ Network restaurante-drill-771658-1792452112_default  Created
+ Volume restaurante-drill-771658-1792452112_restaurante_integration_mysql_data  Creating
+ Volume restaurante-drill-771658-1792452112_restaurante_integration_mysql_data  Created
+ Container restaurante-drill-771658-1792452112-db-1  Creating
+ Container restaurante-drill-771658-1792452112-db-1  Created
+ Container restaurante-drill-771658-1792452112-db-1  Starting
+ Container restaurante-drill-771658-1792452112-db-1  Started
+ Container restaurante-drill-771658-1792452112-db-1  Waiting
+ Container restaurante-drill-771658-1792452112-db-1  Healthy
+== Sembrando un pago consistente para poder conciliar ==
+== 1. Respaldo inicial ==
+RESPALDO_OK /tmp/restaurante-drill-3MvZ3k/respaldo_restaurante_20261019_232214_436_484a78d5-c8f4-4a98-a346-7051993fd234.sql
+== 2. Verificación aislada del respaldo (schema temporal) ==
+VERIFICACION_OK /tmp/restaurante-drill-3MvZ3k/respaldo_restaurante_20261019_232214_436_484a78d5-c8f4-4a98-a346-7051993fd234.sql
+== 3. Mutación destructiva de la BD viva ==
+== 4. Restauración desde el respaldo verificado ==
+RESTAURACION_OK respaldo_previo=/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/respaldos/pre_restauracion_seguridad_20261019_232220_633_a4c440e2-5e92-47d2-93d6-6e5cd40e5e39.sql
+== 5. Comprobando reversión de la mutación ==
+OK: nombre restaurado a 'Restaurante la Delicia' y sin residuo de la mutación
+== 6. Un respaldo financieramente inconsistente debe rechazarse ==
+RESPALDO_OK /tmp/restaurante-drill-3MvZ3k/respaldo_restaurante_20261019_232228_824_aec4db58-02d3-481e-9274-2b66c8bc925c.sql
+OK: el respaldo descuadrado fue rechazado por conciliación financiera
+DRILL_RESTAURACION_OK

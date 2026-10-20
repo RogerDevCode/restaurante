@@ -49,9 +49,12 @@ public class ServicioBootstrapInicial {
         }
     }
 
-    public void completarBootstrap(String nombre, String correo, char[] password) {
+    public void completarBootstrap(String usuario, char[] password) {
         try {
-            validarDatos(nombre, correo, password);
+            validarDatos(usuario, password);
+            String usuarioNormalizado = usuario.trim();
+            String nombre = nombreVisible(usuarioNormalizado);
+            String correo = usuarioNormalizado;
 
             try (Connection con = conexiones.getConnection()) {
                 adquirirBloqueo(con);
@@ -76,16 +79,16 @@ public class ServicioBootstrapInicial {
                     if (existeId1) {
                         try (PreparedStatement psUpd = con.prepareStatement(
                                 "UPDATE usuarios SET nombre = ?, correo = ?, pass = ?, rol = 'Administrador', activo = 1 WHERE id = 1")) {
-                            psUpd.setString(1, nombre.trim());
-                            psUpd.setString(2, correo.trim());
+                            psUpd.setString(1, nombre);
+                            psUpd.setString(2, correo);
                             psUpd.setString(3, passwordHash);
                             psUpd.executeUpdate();
                         }
                     } else {
                         try (PreparedStatement psIns = con.prepareStatement(
                                 "INSERT INTO usuarios (id, nombre, correo, pass, rol, activo) VALUES (1, ?, ?, ?, 'Administrador', 1)")) {
-                            psIns.setString(1, nombre.trim());
-                            psIns.setString(2, correo.trim());
+                            psIns.setString(1, nombre);
+                            psIns.setString(2, correo);
                             psIns.setString(3, passwordHash);
                             psIns.executeUpdate();
                         }
@@ -99,7 +102,7 @@ public class ServicioBootstrapInicial {
                     }
 
                     con.commit();
-                    LOGGER.info("Bootstrap inicial completado exitosamente para el administrador: " + correo.trim());
+                    LOGGER.info("Bootstrap inicial completado exitosamente para el administrador: " + usuarioNormalizado);
                 } catch (SQLException | RuntimeException ex) {
                     try { con.rollback(); } catch (SQLException rollback) { ex.addSuppressed(rollback); }
                     throw new DataAccessException("Falló la inicialización del Administrador durante el bootstrap: " + ex.getMessage(), ex);
@@ -109,6 +112,7 @@ public class ServicioBootstrapInicial {
             } finally {
                 liberarBloqueo(con);
             }
+            new ConfiguracionAccesosServicio().asegurarMatrizPredeterminada();
             } catch (SQLException ex) {
                 throw new DataAccessException("Error de conexión durante el bootstrap inicial: " + ex.getMessage(), ex);
             }
@@ -146,27 +150,20 @@ public class ServicioBootstrapInicial {
         }
     }
 
-    private void validarDatos(String nombre, String correo, char[] password) {
-        if (nombre == null || nombre.trim().isEmpty()) {
-            throw ErrorAplicacionException.validacion("El nombre del administrador es obligatorio.");
-        }
-        String nombreTrim = nombre.trim();
-        if (nombreTrim.length() < 3 || nombreTrim.length() > 60) {
-            throw ErrorAplicacionException.validacion("El nombre debe tener entre 3 y 60 caracteres.");
-        }
-        if ("admin".equalsIgnoreCase(nombreTrim)) {
-            throw ErrorAplicacionException.validacion("El nombre 'admin' está reservado por el sistema. Use su nombre real o un nombre descriptivo.");
-        }
-        if (!nombreTrim.matches("^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ][a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ._-]{1,58}[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]$")) {
-            throw ErrorAplicacionException.validacion("El nombre contiene caracteres inválidos.");
-        }
+    private String nombreVisible(String usuario) {
+        return "admin".equalsIgnoreCase(usuario) ? "Administrador" : usuario;
+    }
 
-        if (correo == null || correo.trim().isEmpty()) {
-            throw ErrorAplicacionException.validacion("El correo electrónico o nombre de usuario es obligatorio.");
+    private void validarDatos(String usuario, char[] password) {
+        if (usuario == null || usuario.trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("El usuario del administrador es obligatorio.");
         }
-        String correoTrim = correo.trim();
-        if (correoTrim.length() < 3 || correoTrim.length() > 100) {
-            throw ErrorAplicacionException.validacion("El correo debe tener entre 3 y 100 caracteres.");
+        String usuarioNormalizado = usuario.trim();
+        if (usuarioNormalizado.length() < 4 || usuarioNormalizado.length() > 60) {
+            throw ErrorAplicacionException.validacion("El usuario debe tener entre 4 y 60 caracteres.");
+        }
+        if (!usuarioNormalizado.matches("^[A-Za-z0-9]+$")) {
+            throw ErrorAplicacionException.validacion("El usuario solo puede contener letras y números, sin espacios ni símbolos.");
         }
 
         if (password == null || password.length < 8) {

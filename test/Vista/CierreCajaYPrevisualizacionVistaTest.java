@@ -122,6 +122,7 @@ public class CierreCajaYPrevisualizacionVistaTest {
             tableFacturas.setRowSelectionInterval(0, 0);
             sistema.reimprimirFacturaClienteSeleccionada();
         });
+        esperarHasta(() -> reimpresionesFactura.get() == 1, 3000);
         assertEquals("Debe haberse solicitado la reimpresión de la factura 501", 1, reimpresionesFactura.get());
     }
 
@@ -230,5 +231,12 @@ public class CierreCajaYPrevisualizacionVistaTest {
         Field f = obj.getClass().getDeclaredField(nombreCampo);
         f.setAccessible(true);
         return (T) f.get(obj);
+    }
+
+    private static void esperarHasta(java.util.function.BooleanSupplier condicion, long timeoutMs)
+            throws InterruptedException {
+        long limite = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+        while (!condicion.getAsBoolean() && System.nanoTime() < limite) Thread.sleep(10);
+        assertTrue("La reimpresión asíncrona debe completarse dentro del timeout", condicion.getAsBoolean());
     }
 }

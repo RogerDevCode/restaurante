@@ -31,6 +31,7 @@ public class PruebaRedTeamIvaIncluidoPlatosTest {
     private PlatosServicio platosServicio;
     private PedidosDao pedidosDao;
     private final List<Integer> platosCreados = new ArrayList<>();
+    private final List<String> platosCreadosNombres = new ArrayList<>();
     private final List<Integer> categoriasCreadas = new ArrayList<>();
     private final List<Integer> pedidosCreados = new ArrayList<>();
 
@@ -48,6 +49,17 @@ public class PruebaRedTeamIvaIncluidoPlatosTest {
     public void tearDown() {
         try (Connection con = proveedor.getConnection()) {
             for (Integer idPed : pedidosCreados) {
+                try (PreparedStatement ps = con.prepareStatement("""
+                        DELETE md FROM comandas_marchas_detalle md
+                        JOIN comandas_marchas m ON md.id_marcha=m.id WHERE m.id_pedido=?
+                        """)) {
+                    ps.setInt(1, idPed);
+                    ps.executeUpdate();
+                } catch (Exception ignored) {}
+                try (PreparedStatement ps = con.prepareStatement("DELETE FROM comandas_marchas WHERE id_pedido=?")) {
+                    ps.setInt(1, idPed);
+                    ps.executeUpdate();
+                } catch (Exception ignored) {}
                 try (PreparedStatement ps = con.prepareStatement("DELETE FROM detalle_pedidos WHERE id_pedido = ?")) {
                     ps.setInt(1, idPed);
                     ps.executeUpdate();
@@ -57,13 +69,14 @@ public class PruebaRedTeamIvaIncluidoPlatosTest {
                     ps.executeUpdate();
                 } catch (Exception ignored) {}
             }
-            for (Integer idPla : platosCreados) {
-                try (PreparedStatement ps = con.prepareStatement("DELETE FROM plato_categorias WHERE id_plato = ?")) {
-                    ps.setInt(1, idPla);
+            for (int i = 0; i < platosCreados.size(); i++) {
+                try (PreparedStatement ps = con.prepareStatement(
+                        "DELETE FROM plato_categoria WHERE nombre_clave = LOWER(TRIM(?))")) {
+                    ps.setString(1, platosCreadosNombres.get(i));
                     ps.executeUpdate();
                 } catch (Exception ignored) {}
                 try (PreparedStatement ps = con.prepareStatement("DELETE FROM platos WHERE id = ?")) {
-                    ps.setInt(1, idPla);
+                    ps.setInt(1, platosCreados.get(i));
                     ps.executeUpdate();
                 } catch (Exception ignored) {}
             }
@@ -116,6 +129,7 @@ public class PruebaRedTeamIvaIncluidoPlatosTest {
         assertTrue("Debe registrar plato 1", platosServicio.registrar(p1, TASA));
         Platos p1Db = platosDao.buscarActivoPorNombre(p1.getNombre()).orElseThrow();
         platosCreados.add(p1Db.getId());
+        platosCreadosNombres.add(p1Db.getNombre());
 
         // Plato 2: Fuertes - USD - $11.60 - Aplica IVA: SI - Incluye IVA: SI (IVA Incluido)
         // El precio al público final es $11.60. La base debe ser $10.00 y el IVA $1.60. ¡NO debe dar $13.46!
@@ -130,6 +144,7 @@ public class PruebaRedTeamIvaIncluidoPlatosTest {
         assertTrue("Debe registrar plato 2", platosServicio.registrar(p2, TASA));
         Platos p2Db = platosDao.buscarActivoPorNombre(p2.getNombre()).orElseThrow();
         platosCreados.add(p2Db.getId());
+        platosCreadosNombres.add(p2Db.getNombre());
 
         // Plato 3: Bebidas - USD - $5.00 - Exento (Aplica IVA: NO, Incluye IVA: NO)
         Platos p3 = new Platos();
@@ -143,6 +158,7 @@ public class PruebaRedTeamIvaIncluidoPlatosTest {
         assertTrue("Debe registrar plato 3", platosServicio.registrar(p3, TASA));
         Platos p3Db = platosDao.buscarActivoPorNombre(p3.getNombre()).orElseThrow();
         platosCreados.add(p3Db.getId());
+        platosCreadosNombres.add(p3Db.getNombre());
 
         // Plato 4: Entradas - VES - Bs. 519.68 - Aplica IVA: SI - Incluye IVA: SI (VES IVA Incluido)
         // A tasa 44.80: Bs. 519.68 equivale a $11.60 total. Base en Bs = Bs. 448.00 ($10.00). IVA Bs = Bs. 71.68 ($1.60).
@@ -157,6 +173,7 @@ public class PruebaRedTeamIvaIncluidoPlatosTest {
         assertTrue("Debe registrar plato 4", platosServicio.registrar(p4, TASA));
         Platos p4Db = platosDao.buscarActivoPorNombre(p4.getNombre()).orElseThrow();
         platosCreados.add(p4Db.getId());
+        platosCreadosNombres.add(p4Db.getNombre());
 
         // =====================================================================
         // AUDITORÍA 1: ¿CÓMO SE GUARDÓ EN LA TABLA PLATOS DE LA BD MYSQL?

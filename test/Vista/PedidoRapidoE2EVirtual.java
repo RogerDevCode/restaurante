@@ -56,8 +56,10 @@ public class PedidoRapidoE2EVirtual {
                 login.setLocationRelativeTo(null);
                 return null;
             });
-            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), "admin");
-            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), "admin");
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"),
+                    System.getenv().getOrDefault("E2E_LOGIN_USERNAME", "admin"));
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"),
+                    System.getenv().getOrDefault("E2E_LOGIN_PASSWORD", "admin"));
             robot.clic((Component) robot.campo(login, "btnIniciar"));
 
             System.out.println("== [Pedido Rápido E2E] Paso 2: Esperar ventana principal Sistema ==");

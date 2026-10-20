@@ -1,0 +1,49 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.FiltroRapidoPlatosTest (DISPLAY=:99) ==
+--- E2E FILTRO RAPIDO (AUTO-LIMPIAR) ---
+Oct 19, 2026 9:55:34 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+
+--- CASO 1: Catálogo Admin con Auto-limpiar activo ---
+OK   Campo txtBuscarAdminPlatos presente
+OK   Selector chkFiltroRapidoAdminPlatos presente
+OK   chkFiltroRapidoAdminPlatos marcado por defecto
+OK   Filtro 'Pollo' muestra 2 platos (actual: 2)
+OK   El filtro de búsqueda se limpió automáticamente a vacío
+OK   La tabla ahora muestra todos los platos (4 filas)
+OK   Hay una fila seleccionada tras la recarga (fila 3)
+OK   El plato seleccionado sigue siendo Pollo Frito (ID 102)
+
+--- CASO 2: Catálogo Admin con Auto-limpiar desactivado ---
+OK   Filtro 'Carne' muestra 1 plato
+OK   Con auto-limpiar desactivado, el texto del filtro se conserva
+OK   La tabla conserva el filtro (1 fila)
+
+--- CASO 3: Toma Split con Auto-limpiar activo ---
+OK   Panel Split disponible
+OK   Campo búsqueda de Split presente
+OK   Selector Auto-limpiar en Split presente
+OK   chkSplit sincronizado en true
+OK   Catálogo Split filtrado muestra 1 plato
+OK   En Split el filtro se limpió automáticamente
+OK   En Split el catálogo muestra todos los platos (4 filas)
+OK   Hay plato seleccionado en catálogo Split
+OK   El plato seleccionado en Split es Ensalada César (ID 104)
+
+--- CASO 4: Sincronización entre checkboxes ---
+OK   chkFiltroRapido en toma clásica presente
+OK   chkAdmin actualizado a false
+OK   chkToma actualizado a false
+OK   chkAdmin actualizado a true
+OK   chkToma actualizado a true
+
+=================================================
+E2E FILTRO RAPIDO: TODO OK

@@ -84,6 +84,21 @@ Tablas: `usuarios`, `salas`, `platos`, `pedidos`, `detalle_pedidos`, `clientes`,
 Constraint relevante: `uq_pedidos_mesa_pendiente` — una mesa no puede tener dos pedidos
 pendientes simultáneos.
 
+### Marchas parciales de cocina
+
+La migración v15 agrega `comandas_marchas` y `comandas_marchas_detalle` como diario
+inmutable de lo enviado a cocina. Al crear una cuenta, se guarda la marcha inicial si
+la salida está habilitada. Al agregar productos, la siguiente marcha contiene solo el
+incremento de cantidad de cada plato/comentario que aún no se ha enviado; precio e
+impuestos no disparan una preparación nueva. Reducir una cantidad o cambiar una nota
+de preparación produce movimientos `RETIRAR` y `PREPARAR` en un comprobante de ajuste.
+Si el operador desactiva la impresión, los cambios se guardan y se acumulan para la
+siguiente marcha emitida. Los pedidos pendientes existentes reciben una marcha
+`BASE_LEGADA` no imprimible, para impedir que se reenvíe su detalle completo tras
+actualizar la aplicación. Los dos flujos Swing imprimen el snapshot transaccional de
+la marcha devuelta por `PedidosDao`; no reconstruyen la comanda desde los detalles
+acumulados. La consulta por ID permite recuperar una marcha exacta; el historial permite seleccionarla y reimprimirla con auditoría.
+
 ---
 
 ## 5. Build y ejecución
@@ -193,3 +208,8 @@ Mejoras de layout en `Sistema.java`:
 - Cargas de datos desde la UI mediante `SwingWorker` para no bloquear el EDT.
 - El logging de la aplicación se escribe en un archivo diario (`ArchivoLogDiario` /
   `ConfiguracionLogs`).
+
+
+### Ciclo de vida de PDFs
+
+Los tickets/facturas y sus versiones de reimpresión se conservan en `facturas/<AAAA-MM>` para consulta y auditoría; no se consideran temporales y no deben purgarse de forma automática. Los E2E que generan datos o archivos operativos deben usar `e2e_dia_completo_virtual.sh`, que elimina su `E2E_WORKDIR`, contenedor y volumen desechables al terminar.

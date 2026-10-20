@@ -1,0 +1,308 @@
+============================================================
+  EMPAQUETANDO SISTEMA DE RESTAURANTE 2026 PARA PRODUCCIÓN  
+============================================================
+
+[1/3] Compilando y empaquetando dist/Restaurante.jar con Java 21...
+Buildfile: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build.xml
+
+-pre-init:
+
+-init-private:
+
+-init-user:
+
+-init-project:
+
+-init-macrodef-property:
+
+-init-modules-supported:
+
+-do-init:
+
+-post-init:
+
+-init-check:
+
+-init-ap-cmdline-properties:
+
+-init-macrodef-modulename:
+
+-init-source-module-properties:
+
+-init-macrodef-javac-with-module:
+
+-init-macrodef-javac-with-processors:
+
+-init-macrodef-javac-without-processors:
+
+-init-macrodef-javac:
+
+-init-macrodef-test-impl:
+
+-init-macrodef-junit-init:
+
+-init-test-properties:
+
+-init-macrodef-junit-prototype-with-module:
+
+-init-macrodef-junit-prototype-without-module:
+
+-init-macrodef-junit-single:
+
+-init-macrodef-junit-batch:
+
+-init-macrodef-junit:
+
+-init-macrodef-junit-impl:
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+
+-init-macrodef-testng:
+
+-init-macrodef-testng-impl:
+
+-init-macrodef-test:
+
+-init-macrodef-junit-debug-impl:
+
+-init-macrodef-test-debug-junit:
+
+-init-macrodef-testng-debug:
+
+-init-macrodef-testng-debug-impl:
+
+-init-macrodef-test-debug-testng:
+
+-init-macrodef-test-debug:
+
+-init-debug-args:
+
+-init-macrodef-nbjpda:
+
+-init-macrodef-debug:
+
+-init-macrodef-java-with-module:
+
+-init-macrodef-java-with-unnamed-module:
+
+-init-macrodef-java-without-module:
+
+-init-macrodef-java:
+
+-init-presetdef-jar:
+
+-init-ap-cmdline-supported:
+
+-init-ap-cmdline:
+
+init:
+
+-deps-clean-init:
+
+deps-clean:
+
+-warn-already-built-clean:
+[propertyfile] Updating property file: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/built-clean.properties
+
+-do-clean:
+   [delete] Deleting directory /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build
+
+-post-clean:
+
+clean:
+
+-pre-init:
+
+-init-private:
+
+-init-user:
+
+-init-project:
+
+-init-macrodef-property:
+
+-init-modules-supported:
+
+-do-init:
+
+-post-init:
+
+-init-check:
+
+-init-ap-cmdline-properties:
+
+-init-macrodef-modulename:
+
+-init-source-module-properties:
+
+-init-macrodef-javac-with-module:
+
+-init-macrodef-javac-with-processors:
+
+-init-macrodef-javac-without-processors:
+
+-init-macrodef-javac:
+
+-init-macrodef-test-impl:
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+
+-init-macrodef-junit-init:
+
+-init-test-properties:
+
+-init-macrodef-junit-prototype-with-module:
+
+-init-macrodef-junit-prototype-without-module:
+
+-init-macrodef-junit-single:
+
+-init-macrodef-junit-batch:
+
+-init-macrodef-junit:
+
+-init-macrodef-junit-impl:
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+
+-init-macrodef-testng:
+
+-init-macrodef-testng-impl:
+
+-init-macrodef-test:
+
+-init-macrodef-junit-debug-impl:
+
+-init-macrodef-test-debug-junit:
+
+-init-macrodef-testng-debug:
+
+-init-macrodef-testng-debug-impl:
+
+-init-macrodef-test-debug-testng:
+
+-init-macrodef-test-debug:
+
+-init-debug-args:
+
+-init-macrodef-nbjpda:
+
+-init-macrodef-debug:
+
+-init-macrodef-java-with-module:
+
+-init-macrodef-java-with-unnamed-module:
+
+-init-macrodef-java-without-module:
+
+-init-macrodef-java:
+
+-init-presetdef-jar:
+
+-init-ap-cmdline-supported:
+
+-init-ap-cmdline:
+
+init:
+
+-deps-jar-init:
+
+deps-jar:
+    [mkdir] Created dir: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build
+
+-warn-already-built-jar:
+[propertyfile] Updating property file: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/built-jar.properties
+
+-check-automatic-build:
+
+-clean-after-automatic-build:
+
+-verify-automatic-build:
+
+-pre-pre-compile:
+    [mkdir] Created dir: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/classes
+
+-pre-compile:
+
+-copy-persistence-xml:
+
+-compile-depend:
+
+-do-compile:
+    [mkdir] Created dir: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/empty
+    [mkdir] Created dir: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/generated-sources/ap-source-output
+    [javac] Compiling 114 source files to /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/classes
+    [javac] Note: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/src/Modelo/PlatosDao.java uses or overrides a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+    [javac] Note: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/src/Vista/Sistema.java uses unchecked or unsafe operations.
+    [javac] Note: Recompile with -Xlint:unchecked for details.
+     [copy] Copying 22 files to /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/classes
+
+-post-compile:
+
+compile:
+
+-pre-jar:
+
+-check-module-main-class:
+
+-set-module-main-class:
+
+-pre-pre-jar:
+    [mkdir] Created dir: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/dist
+
+-do-jar-create-manifest:
+
+-do-jar-copy-manifest:
+     [copy] Copying 1 file to /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build
+
+-do-jar-set-mainclass:
+
+-do-jar-set-profile:
+
+-do-jar-set-splashscreen:
+
+-check-do-mkdist:
+
+-do-jar-jar:
+[j2seproject1:jar] Building jar: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/dist/Restaurante.jar
+     [echo] To run this application from the command line without Ant, try:
+     [echo] /home/manager/.sdkman/candidates/java/21.0.12-amzn/bin/java -cp /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/librerias/AbsoluteLayout.jar:/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/librerias/itextpdf-5.5.1.jar:/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/librerias/mysql-connector-j-8.0.31.jar:/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/librerias/pdfbox-2.0.31.jar:/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/librerias/fontbox-2.0.31.jar:/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/librerias/commons-logging-1.2.jar:/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/dist/Restaurante.jar restaurante.Restaurante
+
+-init-macrodef-copylibs:
+
+-do-jar-copylibs:
+
+-do-jar-delete-manifest:
+
+-do-jar-without-libraries:
+
+-do-jar-with-libraries:
+
+-post-jar:
+    [mkdir] Created dir: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/dist/lib
+     [copy] Copying 6 files to /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/dist/lib
+
+-do-jar:
+
+-pre-deploy:
+
+-check-jlink:
+
+-do-deploy:
+
+-post-deploy:
+
+deploy:
+
+jar:
+
+BUILD SUCCESSFUL
+Total time: 7 seconds
+[2/3] Preparando staging desde archivos permitidos...
+[3/3] Comprimiendo staging limpio...
+
+============================================================
+  ✅ ARCHIVO ZIP GENERADO EXITOSAMENTE
+============================================================
+-rw-rw-r-- 1 manager manager 10M Oct 20 10:14 /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/../Restaurante_2026_Produccion.zip
+SHA-256: ce1548da4ee6b385e2ce6e072eea1c44b66202467e6fce25e6d095e52731c054
+Ubicación: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante_2026_Produccion.zip
+============================================================

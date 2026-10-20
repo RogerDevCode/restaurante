@@ -1,0 +1,20 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.Platos70IvaMonedaE2EVirtual (DISPLAY=:99) ==
+Oct 19, 2026 9:44:23 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+creados por UI: 10/70
+creados por UI: 20/70
+creados por UI: 30/70
+creados por UI: 40/70
+creados por UI: 50/70
+creados por UI: 60/70
+creados por UI: 70/70
+E2E70_OK: creación y verificación exclusivamente por UI

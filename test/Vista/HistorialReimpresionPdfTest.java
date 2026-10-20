@@ -69,12 +69,14 @@ public class HistorialReimpresionPdfTest {
     public void tooltipsYEstadoInicialDeBotonesReimpresionYCierre() throws Exception {
         JButton btnPdf = campo(sistema, "btnPdfPedido", JButton.class);
         JButton btnReimprimir = campo(sistema, "btnReimprimirHistorial", JButton.class);
+        JButton btnReimprimirComanda = sistema.getBtnReimprimirComandaHistorial();
         JButton btnPrevHist = campo(sistema, "btnPrevisualizarHistorial", JButton.class);
         JButton btnCierreX = campo(sistema, "btnCierreParcial", JButton.class);
         JButton btnCierreZ = campo(sistema, "btnCierreTotal", JButton.class);
 
         assertNotNull(btnPdf);
         assertNotNull(btnReimprimir);
+        assertNotNull(btnReimprimirComanda);
         assertNotNull(btnPrevHist);
         assertNotNull(btnCierreX);
         JButton btnAnular = campo(sistema, "btnAnularPedido", JButton.class);
@@ -82,6 +84,7 @@ public class HistorialReimpresionPdfTest {
         assertTrue("El botón anular debe estar habilitado para anulación directa por número de factura", btnAnular.isEnabled());
         assertEquals("Anular factura/pedido seleccionado o ingresar directamente su número", btnAnular.getToolTipText());
         assertFalse(btnReimprimir.isEnabled());
+        assertFalse(btnReimprimirComanda.isEnabled());
         assertFalse(btnPrevHist.isEnabled());
         assertTrue(btnCierreX.isEnabled());
         assertTrue(btnCierreZ.isEnabled());
@@ -92,6 +95,7 @@ public class HistorialReimpresionPdfTest {
         JTable tablePedidos = campo(sistema, "TablePedidos", JTable.class);
         JButton btnPdf = campo(sistema, "btnPdfPedido", JButton.class);
         JButton btnReimprimir = campo(sistema, "btnReimprimirHistorial", JButton.class);
+        JButton btnReimprimirComanda = sistema.getBtnReimprimirComandaHistorial();
         JButton btnPrevHist = campo(sistema, "btnPrevisualizarHistorial", JButton.class);
         JTextField txtIdHistorial = campo(sistema, "txtIdHistorialPedido", JTextField.class);
 
@@ -117,6 +121,7 @@ public class HistorialReimpresionPdfTest {
         assertEquals("102", txtIdHistorial.getText());
         assertTrue("Debe habilitarse botón PDF para pedido FINALIZADO", btnPdf.isEnabled());
         assertTrue("Debe habilitarse botón Reimprimir Historial para pedido FINALIZADO", btnReimprimir.isEnabled());
+        assertTrue("Debe permitir consultar las marchas del pedido seleccionado", btnReimprimirComanda.isEnabled());
         assertTrue("Debe habilitarse botón Previsualizar para pedido FINALIZADO", btnPrevHist.isEnabled());
     }
 
@@ -136,6 +141,7 @@ public class HistorialReimpresionPdfTest {
 
         SwingUtilities.invokeAndWait(btnReimprimir::doClick);
 
+        esperarHasta(() -> reimpresionesSolicitadas.get() == 1, 3000);
         assertEquals("Debe haberse solicitado la reimpresión exactamente una vez", 1, reimpresionesSolicitadas.get());
     }
 
@@ -241,5 +247,12 @@ public class HistorialReimpresionPdfTest {
         Field f = obj.getClass().getDeclaredField(nombreCampo);
         f.setAccessible(true);
         return (T) f.get(obj);
+    }
+
+    private static void esperarHasta(java.util.function.BooleanSupplier condicion, long timeoutMs)
+            throws InterruptedException {
+        long limite = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+        while (!condicion.getAsBoolean() && System.nanoTime() < limite) Thread.sleep(10);
+        assertTrue("La reimpresión asíncrona debe completarse dentro del timeout", condicion.getAsBoolean());
     }
 }

@@ -1,0 +1,30 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 10 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.UsuariosCrudE2E (DISPLAY=:99) ==
+== [Usuarios E2E] Paso 1: Login interactivo ==
+== [Usuarios E2E] Paso 2: Esperar ventana principal Sistema ==
+Oct 19, 2026 9:53:45 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+== [Usuarios E2E] Paso 3: Navegar a pestaña Usuarios ==
+== [Usuarios E2E] Paso 4: Validaciones de formulario vacío ==
+OK   Validación de campos vacíos verificada
+== [Usuarios E2E] Paso 5: Registrar nuevo usuario 'e2e_1792446817586@test.local' ==
+OK   Usuario registrado y visible en la tabla
+== [Usuarios E2E] Paso 6: Seleccionar usuario en la tabla ==
+OK   Botones de acción habilitados para el usuario
+== [Usuarios E2E] Paso 7: Cambiar contraseña con diálogo modal ==
+OK   Contraseña cambiada exitosamente
+== [Usuarios E2E] Paso 8: Desactivar usuario con confirmación ==
+OK   Usuario desactivado con éxito
+== [Usuarios E2E] Paso 9: Reactivar usuario con confirmación ==
+OK   Usuario reactivado con éxito
+== [Usuarios E2E] Paso 10: Eliminar usuario por UI con confirmación ==
+OK   Usuario eliminado por la interfaz limpiamente
+E2E_USUARIOS_OK

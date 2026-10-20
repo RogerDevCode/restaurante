@@ -1,0 +1,38 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.TotalesPlatosBolivaresTest (DISPLAY=:99) ==
+=== INICIO PRUEBA: TOTALES PLATOS BOLIVARES Y DUALIDAD MONETARIA ===
+
+--- CASO 1: TotalPagar con platos en VES y USD ---
+Oct 19, 2026 9:57:22 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Total mostrado para plato VES (500 Bs.): USD $ 0.49  |  Bs. 500.00
+OK   Plato en VES muestra ambos montos (USD y Bs.) y no inventa $500.00
+Formato de celda para plato VES en carrito: Bs. 500.00 ($ 13.70)
+OK   Celdas de items de mesa discriminan ambos montos (VES y USD)
+Total mostrado para pedido mixto (VES + USD): USD $ 10.49  |  Bs. 10640.00
+OK   Pedido mixto (VES + USD) calcula y muestra ambos totales correctamente
+
+--- CASO 2: tableFinalizar muestra dualidad en Sub-Total ---
+Sub-total celda en tableFinalizar: $ 13.70 (Bs. 500.00)
+totalFinalizar: USD $ 13.70  |  Bs. 500.00
+OK   tableFinalizar muestra montos en USD y Bs. tanto en líneas como en el total general
+
+--- CASO 3: Dashboard tableTopPlatos tiene 4 columnas con USD y Bs. ---
+Top Plato - Total ($): $ 136.99, Total (Bs.): Bs. 5000.00
+OK   Dashboard tableTopPlatos muestra ambas columnas y montos de USD y Bolívares
+
+--- CASO 4: PanelAtencionMesasSplit totales simétricos ---
+Split vacío: USD $ 0.00  |  Bs. 0.00
+OK   PanelAtencionMesasSplit muestra ambos totales simétricos y en negrita
+
+=================================================
+PRUEBA TOTALES PLATOS BOLIVARES: TODO OK
+=================================================

@@ -1,0 +1,78 @@
+ Network restaurante-dia-e2e-630254-1792447162_default  Creating
+ Network restaurante-dia-e2e-630254-1792447162_default  Created
+ Volume restaurante-dia-e2e-630254-1792447162_restaurante_integration_mysql_data  Creating
+ Volume restaurante-dia-e2e-630254-1792447162_restaurante_integration_mysql_data  Created
+ Container restaurante-dia-e2e-630254-1792447162-db-1  Creating
+ Container restaurante-dia-e2e-630254-1792447162-db-1  Created
+ Container restaurante-dia-e2e-630254-1792447162-db-1  Starting
+ Container restaurante-dia-e2e-630254-1792447162-db-1  Started
+ Container restaurante-dia-e2e-630254-1792447162-db-1  Waiting
+ Container restaurante-dia-e2e-630254-1792447162-db-1  Healthy
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 11 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.PreciosVisiblesComponenteTest (DISPLAY=:99) ==
+Oct 19, 2026 9:59:57 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+INFO: Respaldo de base de datos generado exitosamente: /tmp/restaurante-dia-e2e-4XC6cD/respaldos/pre_migracion_restaurante_20261019_215956_689_1e40add6-179f-425a-b787-50fa551dbd69.sql
+Oct 19, 2026 10:00:01 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Respaldo previo a migración confirmado: /tmp/restaurante-dia-e2e-4XC6cD/respaldos/pre_migracion_restaurante_20261019_215956_689_1e40add6-179f-425a-b787-50fa551dbd69.sql
+Oct 19, 2026 10:00:01 PM infraestructura.MigradorEsquemaJdbc asegurarTablaConfiguracionSistema
+INFO: Tabla configuracion_sistema verificada.
+Oct 19, 2026 10:00:01 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCierresCaja
+INFO: Tabla cierres_caja verificada.
+Oct 19, 2026 10:00:01 PM infraestructura.MigradorEsquemaJdbc asegurarTablaMesoneros
+INFO: Tabla mesoneros verificada.
+Oct 19, 2026 10:00:02 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCategorias
+INFO: Tabla categorias verificada (soft-delete activo soportado).
+Oct 19, 2026 10:00:02 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoCategoria
+INFO: Tabla plato_categoria verificada.
+Oct 19, 2026 10:00:02 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoFavorito
+INFO: Tabla plato_favorito verificada.
+Oct 19, 2026 10:00:02 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+
+--- Precios visibles y redimensionables ---
+OK   split-catalogo.Precio: columna de precio presente en la vista
+OK   split-catalogo.Precio: columna de precio redimensionable
+OK   split-catalogo.Precio: tiene filas para medir (2)
+OK   split-catalogo.Precio: ancho 276px cubre el precio más largo (151px)
+OK   split-carrito.Precio: columna de precio presente en la vista
+OK   split-carrito.Precio: columna de precio redimensionable
+OK   split-carrito.Precio: tiene filas para medir (2)
+OK   split-carrito.Precio: ancho 177px cubre el precio más largo (96px)
+OK   split-carrito.SubTotal: columna de precio presente en la vista
+OK   split-carrito.SubTotal: columna de precio redimensionable
+OK   split-carrito.SubTotal: tiene filas para medir (2)
+OK   split-carrito.SubTotal: ancho 178px cubre el precio más largo (103px)
+OK   tableMenu.Precio: columna de precio presente en la vista
+OK   tableMenu.Precio: columna de precio redimensionable
+OK   tableMenu.Precio: tiene filas para medir (2)
+OK   tableMenu.Precio: ancho 110px cubre el precio más largo (96px)
+OK   tableMenu.SubTotal: columna de precio presente en la vista
+OK   tableMenu.SubTotal: columna de precio redimensionable
+OK   tableMenu.SubTotal: tiene filas para medir (2)
+OK   tableMenu.SubTotal: ancho 104px cubre el precio más largo (103px)
+OK   tableFinalizar.Precio: columna de precio presente en la vista
+OK   tableFinalizar.Precio: columna de precio redimensionable
+OK   tableFinalizar.Precio: tiene filas para medir (2)
+OK   tableFinalizar.Precio: ancho 215px cubre el precio más largo (190px)
+OK   tableFinalizar.SubTotal: columna de precio presente en la vista
+OK   tableFinalizar.SubTotal: columna de precio redimensionable
+OK   tableFinalizar.SubTotal: tiene filas para medir (2)
+OK   tableFinalizar.SubTotal: ancho 164px cubre el precio más largo (86px)
+OK   TablePlatos.PRECIO: columna de precio presente en la vista
+OK   TablePlatos.PRECIO: columna de precio redimensionable
+OK   TablePlatos.PRECIO: tiene filas para medir (2)
+OK   TablePlatos.PRECIO: ancho 218px cubre el precio más largo (172px)
+OK   tblTemPlatos.Precio: columna de precio presente en la vista
+OK   tblTemPlatos.Precio: columna de precio redimensionable
+OK   tblTemPlatos.Precio: tiene filas para medir (2)
+FALLO tblTemPlatos.Precio: ancho 158px cubre el precio más largo (172px)
+=================================================
+E2E PRECIOS: 1 FALLOS

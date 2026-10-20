@@ -1,0 +1,69 @@
+== Compilando ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+
+BUILD SUCCESSFUL
+Total time: 0 seconds
+== Levantando 3 servidores MySQL efímeros (origen 3307 / secundaria 3308 con TZ America/Caracas / verificador 3309) ==
+ Network restaurante-secundaria-drill-1241685-1792491817_default  Creating
+ Network restaurante-secundaria-drill-1241685-1792491817_default  Created
+ Volume restaurante-secundaria-drill-1241685-1792491817_secundaria_drill_origen  Creating
+ Volume restaurante-secundaria-drill-1241685-1792491817_secundaria_drill_origen  Created
+ Volume restaurante-secundaria-drill-1241685-1792491817_secundaria_drill_secundaria  Creating
+ Volume restaurante-secundaria-drill-1241685-1792491817_secundaria_drill_secundaria  Created
+ Volume restaurante-secundaria-drill-1241685-1792491817_secundaria_drill_verificador  Creating
+ Volume restaurante-secundaria-drill-1241685-1792491817_secundaria_drill_verificador  Created
+ Container restaurante-secundaria-drill-1241685-1792491817-db_secundaria-1  Creating
+ Container restaurante-secundaria-drill-1241685-1792491817-db_origen-1  Creating
+ Container restaurante-secundaria-drill-1241685-1792491817-db_verificador-1  Creating
+ Container restaurante-secundaria-drill-1241685-1792491817-db_secundaria-1  Created
+ Container restaurante-secundaria-drill-1241685-1792491817-db_verificador-1  Created
+ Container restaurante-secundaria-drill-1241685-1792491817-db_origen-1  Created
+ Container restaurante-secundaria-drill-1241685-1792491817-db_verificador-1  Starting
+ Container restaurante-secundaria-drill-1241685-1792491817-db_origen-1  Starting
+ Container restaurante-secundaria-drill-1241685-1792491817-db_secundaria-1  Starting
+ Container restaurante-secundaria-drill-1241685-1792491817-db_verificador-1  Started
+ Container restaurante-secundaria-drill-1241685-1792491817-db_origen-1  Started
+ Container restaurante-secundaria-drill-1241685-1792491817-db_secundaria-1  Started
+ Container restaurante-secundaria-drill-1241685-1792491817-db_secundaria-1  Waiting
+ Container restaurante-secundaria-drill-1241685-1792491817-db_verificador-1  Waiting
+ Container restaurante-secundaria-drill-1241685-1792491817-db_origen-1  Waiting
+ Container restaurante-secundaria-drill-1241685-1792491817-db_origen-1  Healthy
+ Container restaurante-secundaria-drill-1241685-1792491817-db_verificador-1  Healthy
+ Container restaurante-secundaria-drill-1241685-1792491817-db_secundaria-1  Healthy
+== Evidencia de heterogeneidad de servidores ==
+  origen      host=cb60a713bfbe tz=UTC	SYSTEM @@port=3306
+  secundaria  host=ffa8f2ecbea2 tz=-04	SYSTEM @@port=3306
+OK: servidores MySQL distintos confirmados (diferentes hostnames y puertos)
+== 1. Arranque de esquemue en origen (--migrate-db) y siembra financiera REAL (solo lectura de producción) ==
+OK: siembra real: datos financieros de producción cargados en el origen con referencias consistentes (solo lectura)
+  SEMILLA_FINANCIERA=pedido13 (fila viva de producción)
+== 2. Respaldo en el servidor DE ORIGEN ==
+RESPALDO_OK /tmp/restaurante-secundaria-sPYSO8/respaldos/respaldo_restaurante_20261020_102404_234_52bb39d9-3745-4dcf-9a41-bf03141ea98d.sql
+OK: respaldo del origen: respaldo_restaurante_20261020_102404_234_52bb39d9-3745-4dcf-9a41-bf03141ea98d.sql (46413 bytes)
+== 3. Verificación aislada del respaldo en la BD SECUNDARIA (schema temporal del servidor 3308) ==
+VERIFICACION_OK /tmp/restaurante-secundaria-sPYSO8/respaldos/respaldo_restaurante_20261020_102404_234_52bb39d9-3745-4dcf-9a41-bf03141ea98d.sql
+OK: el respaldo del origen es restaurable en un servidor MySQL distinto (verificado en schema temporal de 3308)
+== 4. Restauración COMPLETA del CLI en la BD secundaria (3308) ==
+OK: restauración completada; respaldo previo de emergencia: pre_restauracion_seguridad_20261020_102411_607_d50e5f28-cf12-4607-a06b-bda2662a189c.sql
+== 5. Conciliación financiera identica entre origen y secundaria ==
+  origen      pedidos.total=132.24|pedidos.total_bs=5924.35 detalle=114.00 pagos.monto=5924.35|pagos.usd=132.24|pagos.bs=5924.35 saldos.origen=VACIO|saldos.ves=VACIO liquid.usd=0.00|liquid.ajuste_bs=0.00|liquid.dif=0.00 
+  secundaria  pedidos.total=132.24|pedidos.total_bs=5924.35 detalle=114.00 pagos.monto=5924.35|pagos.usd=132.24|pagos.bs=5924.35 saldos.origen=VACIO|saldos.ves=VACIO liquid.usd=0.00|liquid.ajuste_bs=0.00|liquid.dif=0.00 
+OK: conciliación idéntica entre servidor de origen y servidor secundaria
+== 6. Comparación exacta de contenido (todas las tablas base) ==
+OK: todas las tablas base conservan el mismo conteo en la secundaria
+== 7. Invariantes post-restauración en la secundaria ==
+OK: migración máx aplicada v15 idéntica en ambos servidores
+OK: restaurante_control=OPERATIVO en la secundaria
+== 8. CHECK TABLE EXTENDED en todas las tablas de la secundaria ==
+OK: CHECK TABLE EXTENDED limpio en toda la secundaria
+== 9. Verificación pura del respaldo en el TERCER servidor (3309) ==
+OK: VERIFICACION_OK en el tercer servidor MySQL independiente
+== 10. Fail-closed en la secundaria: respaldo corrupto y truncado NO se restauran ==
+OK: respaldo corrupto rechazado por la secundaria
+OK: respaldo truncado rechazado por la secundaria
+OK: la BD secundaria permaneció intacta y OPERATIVA tras ambos intentos fallidos
+== 11. Snapshot REAL de producción verificado en servidor distinto (solo lectura) ==
+  respaldo real existente: respaldo_restaurante_20261019_204017_923_a40afda9-9cb0-427a-8c93-a86db996425a.sql (69097 bytes) + manifest + sha256
+OK: el respaldo REAL de producción es validado, importado y conciliado en un servidor MySQL distinto (firma HMAC de producción)
+RESTAURACION_SECUNDARIA_OK
+Servidores MySQL efímeros eliminados. Evidencia en: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/evidencias/produccion/2026-10-20

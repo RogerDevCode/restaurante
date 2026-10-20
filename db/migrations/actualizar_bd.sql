@@ -803,6 +803,55 @@ BEGIN
         CONSTRAINT fk_pedido_saldos_liquidacion FOREIGN KEY(id_liquidacion) REFERENCES pedido_liquidaciones(id) ON DELETE RESTRICT
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
+    -- Marchas de cocina inmutables y diferencias de preparación por pedido.
+    CREATE TABLE IF NOT EXISTS comandas_marchas (
+        id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        id_pedido INT NOT NULL,
+        secuencia INT NOT NULL,
+        tipo VARCHAR(20) NOT NULL,
+        actor VARCHAR(100) NOT NULL,
+        creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_comandas_marchas_pedido_secuencia (id_pedido,secuencia),
+        KEY idx_comandas_marchas_pedido_fecha (id_pedido,creado_en),
+        CONSTRAINT chk_comandas_marchas_tipo CHECK (tipo IN ('INICIAL','INCREMENTO','AJUSTE','BASE_LEGADA')),
+        CONSTRAINT fk_comandas_marchas_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos(id) ON DELETE RESTRICT
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    CREATE TABLE IF NOT EXISTS comandas_marchas_detalle (
+        id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        id_marcha BIGINT NOT NULL,
+        accion VARCHAR(12) NOT NULL,
+        nombre VARCHAR(200) NOT NULL,
+        cantidad INT NOT NULL,
+        comentario TEXT NULL,
+        id_plato INT NULL,
+        moneda_base CHAR(3) NULL,
+        precio DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+        aplica_iva TINYINT(1) NULL,
+        precio_incluye_iva TINYINT(1) NULL,
+        iva_porcentaje DECIMAL(5,2) NULL,
+        KEY idx_comandas_marchas_detalle_marcha (id_marcha),
+        CONSTRAINT chk_comandas_marchas_accion CHECK (accion IN ('PREPARAR','RETIRAR')),
+        CONSTRAINT chk_comandas_marchas_cantidad CHECK (cantidad > 0),
+        CONSTRAINT fk_comandas_marchas_detalle_marcha FOREIGN KEY (id_marcha)
+            REFERENCES comandas_marchas(id) ON DELETE RESTRICT
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    INSERT INTO comandas_marchas (id_pedido, secuencia, tipo, actor)
+    SELECT p.id, 1, 'BASE_LEGADA', COALESCE(NULLIF(TRIM(p.usuario), ''), 'Sistema')
+    FROM pedidos p
+    WHERE p.estado='PENDIENTE' AND p.cerrada_en IS NULL
+      AND NOT EXISTS (SELECT 1 FROM comandas_marchas m WHERE m.id_pedido=p.id);
+
+    INSERT INTO comandas_marchas_detalle
+        (id_marcha,accion,nombre,cantidad,comentario,id_plato,moneda_base,precio,aplica_iva,precio_incluye_iva,iva_porcentaje)
+    SELECT m.id,'PREPARAR',d.nombre,d.cantidad,d.comentario,d.id_plato,d.moneda_base,d.precio,
+           d.aplica_iva,d.precio_incluye_iva,d.iva_porcentaje
+    FROM comandas_marchas m
+    JOIN detalle_pedidos d ON d.id_pedido=m.id_pedido
+    WHERE m.tipo='BASE_LEGADA'
+      AND NOT EXISTS (SELECT 1 FROM comandas_marchas_detalle md WHERE md.id_marcha=m.id);
+
     -- Eventos antiguos conservan sus columnas originales; los campos nuevos NULL no reinterpretan el efectivo histórico.
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pedido_pagos' AND column_name='monto_recibido') THEN
         ALTER TABLE pedido_pagos ADD COLUMN monto_recibido DECIMAL(14,2) NULL DEFAULT NULL;

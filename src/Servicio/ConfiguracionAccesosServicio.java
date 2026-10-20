@@ -72,6 +72,33 @@ public final class ConfiguracionAccesosServicio {
                 + " (" + valores.size() + " permisos).");
     }
 
+    /**
+     * Siembra la matriz predeterminada solo cuando la instalación no tiene
+     * ninguna clave de seguridad. Una matriz existente (aunque sea parcial)
+     * no se sobrescribe: la decisión del operador prevalece.
+     *
+     * @return {@code true} si se sembraron los valores predeterminados
+     */
+    public boolean asegurarMatrizPredeterminada() {
+        Map<String, String> actuales = configuracion.obtenerTodosEstrictamente();
+        boolean matrizExistente = actuales.keySet().stream().anyMatch(k -> k.startsWith(PREFIJO));
+        if (matrizExistente) {
+            return false;
+        }
+        Map<String, String> semilla = new java.util.LinkedHashMap<>();
+        for (String rol : RolesSistema.todos()) {
+            if (RolesSistema.ADMINISTRADOR.equals(rol)) continue;
+            Set<PoliticaAcceso.Accion> predeterminados = permisosPredeterminados(rol);
+            for (PoliticaAcceso.Accion accion : PoliticaAcceso.Accion.values()) {
+                semilla.put(clave(rol, accion), predeterminados.contains(accion) ? "1" : "0");
+            }
+        }
+        configuracion.guardarVarios(semilla);
+        LOGGER.info(() -> "Matriz de permisos inicial sembrada con valores predeterminados ("
+                + semilla.size() + " claves).");
+        return true;
+    }
+
     public static Set<PoliticaAcceso.Accion> permisosPredeterminados(String rol) {
         if (!RolesSistema.reconocido(rol)) return Set.of();
         if (RolesSistema.ADMINISTRADOR.equals(rol)) {

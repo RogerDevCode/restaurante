@@ -18,6 +18,19 @@ echo "  EMPAQUETANDO SISTEMA DE RESTAURANTE 2026 PARA PRODUCCIÓN  "
 echo "============================================================"
 echo ""
 
+# Guarda de árbol limpio: el paquete de producción debe nacer de un commit.
+if [ "${EMPAQUETAR_CON_ARBOL_SUCIO:-NO}" != "SI" ]; then
+    if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        CAMBIOS="$(git status --porcelain --untracked-files=no)"
+        if [ -n "$CAMBIOS" ]; then
+            echo "[ERROR] El árbol tiene cambios sin commitear; el paquete de producción debe nacer de un commit." >&2
+            echo "$CAMBIOS" >&2
+            echo "Commitee los cambios o exporte EMPAQUETAR_CON_ARBOL_SUCIO=SI (no recomendado)." >&2
+            exit 1
+        fi
+    fi
+fi
+
 # 1. Cargar Java 21 si se usa SDKMAN
 if [ -d "$HOME/.sdkman" ]; then
     export SDKMAN_DIR="$HOME/.sdkman"
@@ -97,10 +110,13 @@ if unzip -Z1 "$TEMP_ZIP" | rg -n '(^|/)\.env($|\.)|\.(key|pem|p12|jks)$|\.sql\.g
 fi
 mv -f "$TEMP_ZIP" "$ARCHIVO_ZIP"
 
+sha256sum "$ARCHIVO_ZIP" > "$ARCHIVO_ZIP.sha256"
+
 echo ""
 echo "============================================================"
 echo "  ✅ ARCHIVO ZIP GENERADO EXITOSAMENTE"
 echo "============================================================"
 ls -lh "$ARCHIVO_ZIP"
+echo "SHA-256: $(sha256sum "$ARCHIVO_ZIP" | cut -d' ' -f1)"
 echo "Ubicación: $(realpath "$ARCHIVO_ZIP")"
 echo "============================================================"

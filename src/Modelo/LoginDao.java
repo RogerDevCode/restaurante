@@ -494,6 +494,7 @@ public class LoginDao implements AutenticacionRepositorio {
     }
 
     private static final Object LOCK_MUTACION_ADMIN = new Object();
+    private static final String LOCK_MUTACION_ADMIN_BD = "restaurante_admin_mutation_lock";
 
     public static boolean esAdministradorPrimario(String correo, String nombre) {
         return (correo != null && "admin".equalsIgnoreCase(correo.trim()))
@@ -574,69 +575,99 @@ public class LoginDao implements AutenticacionRepositorio {
                     : "DELETE FROM usuarios WHERE id = ?";
 
             try (Connection con = conexiones.getConnection()) {
-                boolean autoCommitPrevio = con.getAutoCommit();
-                con.setAutoCommit(false);
+                adquirirBloqueoMutacionAdmin(con);
                 try {
-                    String rol = null;
-                    String correo = null;
-                    String nombre = null;
-                    try (PreparedStatement stUsuario = con.prepareStatement(sqlUsuario)) {
-                        stUsuario.setInt(1, idUsuario);
-                        try (ResultSet rs = stUsuario.executeQuery()) {
-                            if (!rs.next()) {
-                                con.rollback();
-                                return false;
-                            }
-                            rol = rs.getString("rol");
-                            correo = rs.getString("correo");
-                            nombre = rs.getString("nombre");
-                        }
-                    }
-
-                    if (esAdministradorPrimario(correo, nombre)) {
-                        con.rollback();
-                        throw ErrorAplicacionException.validacion(
-                                "El usuario 'admin' es el administrador primario y no puede ser "
-                                        + ("eliminar".equalsIgnoreCase(accion) ? "eliminado." : "desactivado."));
-                    }
-
-                    if ("administrador".equalsIgnoreCase(rol)) {
-                        try (PreparedStatement stOtros = con.prepareStatement(sqlOtros)) {
-                            stOtros.setInt(1, idUsuario);
-                            try (ResultSet rsOtros = stOtros.executeQuery()) {
-                                if (rsOtros.next() && rsOtros.getInt(1) == 0) {
+                    boolean autoCommitPrevio = con.getAutoCommit();
+                    con.setAutoCommit(false);
+                    try {
+                        String rol = null;
+                        String correo = null;
+                        String nombre = null;
+                        try (PreparedStatement stUsuario = con.prepareStatement(sqlUsuario)) {
+                            stUsuario.setInt(1, idUsuario);
+                            try (ResultSet rs = stUsuario.executeQuery()) {
+                                if (!rs.next()) {
                                     con.rollback();
-                                    throw ErrorAplicacionException.validacion(
-                                            "No se puede " + accion + " al único administrador activo del sistema.");
+                                    return false;
+                                }
+                                rol = rs.getString("rol");
+                                correo = rs.getString("correo");
+                                nombre = rs.getString("nombre");
+                            }
+                        }
+
+                        if (esAdministradorPrimario(correo, nombre)) {
+                            con.rollback();
+                            throw ErrorAplicacionException.validacion(
+                                    "El usuario 'admin' es el administrador primario y no puede ser "
+                                            + ("eliminar".equalsIgnoreCase(accion) ? "eliminado." : "desactivado."));
+                        }
+
+                        if ("administrador".equalsIgnoreCase(rol)) {
+                            try (PreparedStatement stOtros = con.prepareStatement(sqlOtros)) {
+                                stOtros.setInt(1, idUsuario);
+                                try (ResultSet rsOtros = stOtros.executeQuery()) {
+                                    if (rsOtros.next() && rsOtros.getInt(1) == 0) {
+                                        con.rollback();
+                                        throw ErrorAplicacionException.validacion(
+                                                "No se puede " + accion + " al único administrador activo del sistema.");
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    int filas;
-                    try (PreparedStatement stMutacion = con.prepareStatement(sqlMutacion)) {
-                        stMutacion.setInt(1, idUsuario);
-                        filas = stMutacion.executeUpdate();
-                    }
+                        int filas;
+                        try (PreparedStatement stMutacion = con.prepareStatement(sqlMutacion)) {
+                            stMutacion.setInt(1, idUsuario);
+                            filas = stMutacion.executeUpdate();
+                        }
 
-                    con.commit();
-                    return filas > 0;
-                } catch (SQLException | RuntimeException ex) {
-                    try {
-                        con.rollback();
-                    } catch (SQLException rb) {
-                        ex.addSuppressed(rb);
+                        con.commit();
+                        return filas > 0;
+                    } catch (SQLException | RuntimeException ex) {
+                        try {
+                            con.rollback();
+                        } catch (SQLException rb) {
+                            ex.addSuppressed(rb);
+                        }
+                        throw ex;
+                    } finally {
+                        try {
+                            con.setAutoCommit(autoCommitPrevio);
+                        } catch (SQLException ignored) {
+                        }
                     }
-                    throw ex;
                 } finally {
-                    try {
-                        con.setAutoCommit(autoCommitPrevio);
-                    } catch (SQLException ignored) {
-                    }
+                    liberarBloqueoMutacionAdmin(con);
                 }
             } catch (SQLException ex) {
                 throw new DataAccessException("No se pudo " + accion + " el usuario.", ex);
             }
+        }
+    }
+
+    private static void adquirirBloqueoMutacionAdmin(Connection con) throws SQLException {
+        try (PreparedStatement st = con.prepareStatement("SELECT GET_LOCK(?, 10)")) {
+            st.setString(1, LOCK_MUTACION_ADMIN_BD);
+            try (ResultSet rs = st.executeQuery()) {
+                if (!rs.next() || rs.getInt(1) != 1) {
+                    throw new SQLException("No se pudo adquirir el bloqueo exclusivo para mutar Administradores.");
+                }
+            }
+        }
+    }
+
+    private static void liberarBloqueoMutacionAdmin(Connection con) {
+        try (PreparedStatement st = con.prepareStatement("SELECT RELEASE_LOCK(?)")) {
+            st.setString(1, LOCK_MUTACION_ADMIN_BD);
+            try (ResultSet rs = st.executeQuery()) {
+                if (!rs.next() || rs.getObject(1) == null) {
+                    LOGGER.warning("No se confirmó la liberación explícita del bloqueo de mutación de Administradores.");
+                }
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(java.util.logging.Level.WARNING,
+                    "No se pudo liberar explícitamente el bloqueo de mutación de Administradores.", ex);
         }
     }
 

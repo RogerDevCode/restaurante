@@ -25,6 +25,9 @@ import javax.print.PrintServiceLookup;
 public final class ServicioImpresionTicket {
     private static final Logger LOGGER = Logger.getLogger(ServicioImpresionTicket.class.getName());
 
+    /** Tiempo máximo que se espera al spooler antes de cancelar el trabajo (ms). */
+    static final long TIMEOUT_IMPRESION_MS = Long.getLong("IMPRESION_TIMEOUT_MS", 20_000L);
+
     private ServicioImpresionTicket() {
     }
 
@@ -419,13 +422,53 @@ public final class ServicioImpresionTicket {
                 job.setPrintService(target);
                 job.setJobName("Ticket Restaurante 2026 - " + archivoPdf.getFileName());
                 job.setPageable(new org.apache.pdfbox.printing.PDFPageable(doc));
-                job.print();
-                LOGGER.info(() -> "Ticket enviado exitosamente al spooler vía PDFBox/PrinterJob: " + target.getName());
-                return true;
+                if (ejecutarImpresionConTimeout(job, TIMEOUT_IMPRESION_MS)) {
+                    LOGGER.info(() -> "Ticket enviado exitosamente al spooler vía PDFBox/PrinterJob: " + target.getName());
+                    return true;
+                }
+                return false;
             }
         } catch (Exception | LinkageError ex) {
             LOGGER.log(Level.WARNING, "Fallo al imprimir directamente vía PDFBox/PrinterJob: " + ex.getMessage(), ex);
             return false;
+        }
+    }
+
+    /**
+     * Ejecuta {@link java.awt.print.PrinterJob#print()} en un hilo acotado y espera como máximo
+     * {@code timeoutMs}. Un spooler colgado (impresora virtual pidiendo "Guardar como...", driver
+     * bloqueado) no debe congelar la UI: al vencer el plazo se cancela el trabajo y se retorna false.
+     */
+    static boolean ejecutarImpresionConTimeout(java.awt.print.PrinterJob job, long timeoutMs) {
+        if (job == null) {
+            return false;
+        }
+        java.util.concurrent.ExecutorService ejecutor = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+            Thread hilo = new Thread(r, "impresion-spooler");
+            hilo.setDaemon(true);
+            return hilo;
+        });
+        java.util.concurrent.Future<?> tarea = ejecutor.submit(() -> {
+            job.print();
+            return null;
+        });
+        try {
+            tarea.get(timeoutMs, TimeUnit.MILLISECONDS);
+            return true;
+        } catch (java.util.concurrent.TimeoutException ex) {
+            tarea.cancel(true);
+            try {
+                job.cancel();
+            } catch (Exception ignorado) {
+                LOGGER.log(Level.FINE, () -> "No se pudo cancelar el PrinterJob: " + ignorado.getMessage());
+            }
+            LOGGER.warning(() -> "La impresión excedió " + timeoutMs + " ms; se canceló el trabajo en el spooler.");
+            return false;
+        } catch (Exception ex) {
+            LOGGER.log(Level.WARNING, "Error al imprimir vía spooler: " + ex.getMessage(), ex);
+            return false;
+        } finally {
+            ejecutor.shutdownNow();
         }
     }
 

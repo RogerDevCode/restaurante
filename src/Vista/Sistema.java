@@ -110,6 +110,7 @@ public final class Sistema extends javax.swing.JFrame {
     private long versionPanelMesas;
     private long versionPedidoPantalla;
     private long versionDashboard;
+    private long versionResumenVentas;
     private long versionCargaUsuarios;
     private long versionCargaConfig;
     private long versionCargaCategorias;
@@ -129,6 +130,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnMasCantidad;
     private javax.swing.JButton btnMenosCantidad;
     private javax.swing.JButton btnReimprimirHistorial;
+    private javax.swing.JButton btnReimprimirComandaHistorial;
     private javax.swing.JButton btnPrevisualizarHistorial;
     private javax.swing.JButton btnPrevisualizarPedido;
     private javax.swing.JButton btnCierreParcial;
@@ -158,6 +160,9 @@ public final class Sistema extends javax.swing.JFrame {
     private String nombreSalaActualMesas;
     private int cantMesasActual;
     private javax.swing.Timer temporizadorRefrescoModos;
+    private javax.swing.Timer temporizadorVigenciaSesion;
+    private boolean revocacionEnCurso;
+    private long ultimaVerificacionVigenciaMs;
     private javax.swing.JLabel lblLogoPreview;
     private javax.swing.JTextField txtRutaLogo;
     private javax.swing.JButton btnCambiarLogo;
@@ -187,6 +192,8 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JTable tableClientes;
     private javax.swing.JTable tableFacturasCliente;
     private javax.swing.JTable tableTopPlatos;
+    private javax.swing.JTabbedPane tabLeftDashboard;
+    private javax.swing.JTabbedPane tabConfigDerecha;
     private javax.swing.JLabel lblVentasHoy;
     private javax.swing.JLabel lblVentasHistoricas;
     private javax.swing.JLabel lblTicketPromedio;
@@ -208,6 +215,17 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JCheckBox chkMesoneroActivo;
     private javax.swing.JTable tableMesonerosConfig;
     private javax.swing.JTable tableMesonerosDashboard;
+    private javax.swing.JComboBox<String> comboRangoResumen;
+    private javax.swing.JLabel lblDesdeResumen;
+    private javax.swing.JLabel lblHastaResumen;
+    private javax.swing.JSpinner spinnerDesdeResumen;
+    private javax.swing.JSpinner spinnerHastaResumen;
+    private javax.swing.JButton btnVerResumen;
+    private javax.swing.JButton btnPdfResumen;
+    private javax.swing.JLabel lblResumenUsd;
+    private javax.swing.JLabel lblResumenBs;
+    private javax.swing.JTable tableMetodosResumen;
+    private Modelo.CierreCaja resumenVentasEnPantalla;
     private javax.swing.JTextField txtMesoneroFinalizar;
     private final Map<Integer, Boolean> platoAplicaIvaMap = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<Integer, String> salaTipoMap = new java.util.concurrent.ConcurrentHashMap<>();
@@ -277,6 +295,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JComboBox<String> cbModoAtencionGlobal;
     private javax.swing.JPanel panelConmutadorModoGlobal;
     private boolean cambiandoModoProgramaticamente = false;
+    private boolean actualizandoFiltroProgramaticamente = false;
     private javax.swing.JButton btnAtencionDirecta;
     private String modoAtencionActual = "OPCION_B";
 
@@ -623,6 +642,14 @@ public final class Sistema extends javax.swing.JFrame {
         });
         jPanel6.add(btnPrevisualizarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(1057, 48, 130, 30));
 
+        btnReimprimirComandaHistorial = new javax.swing.JButton("Comanda");
+        btnReimprimirComandaHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnReimprimirComandaHistorial.setToolTipText("Elegir y reimprimir una marcha exacta de cocina del pedido seleccionado");
+        btnReimprimirComandaHistorial.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnReimprimirComandaHistorial.setEnabled(false);
+        btnReimprimirComandaHistorial.addActionListener(e -> reimprimirMarchaSeleccionada());
+        jPanel6.add(btnReimprimirComandaHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(1192, 48, 95, 30));
+
         btnPrevisualizarPedido = new javax.swing.JButton("Previsualizar");
         btnPrevisualizarPedido.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnPrevisualizarPedido.setToolTipText("Pre-visualizar ticket en pantalla (opcional - puede imprimir desde el visor)");
@@ -668,6 +695,10 @@ public final class Sistema extends javax.swing.JFrame {
                     if (btnPrevisualizarHistorial != null) {
                         btnPrevisualizarHistorial.setEnabled(finalizado);
                     }
+                    if (btnReimprimirComandaHistorial != null) {
+                        btnReimprimirComandaHistorial.setEnabled(
+                                politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL));
+                    }
                     if (btnPrevisualizarPedido != null) {
                         btnPrevisualizarPedido.setEnabled(finalizado);
                     }
@@ -684,6 +715,9 @@ public final class Sistema extends javax.swing.JFrame {
                     }
                     if (btnPrevisualizarHistorial != null) {
                         btnPrevisualizarHistorial.setEnabled(false);
+                    }
+                    if (btnReimprimirComandaHistorial != null) {
+                        btnReimprimirComandaHistorial.setEnabled(false);
                     }
                     if (btnAnularPedido != null) {
                         btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL));
@@ -824,7 +858,7 @@ public final class Sistema extends javax.swing.JFrame {
         txtInfoModos.setBounds(30, 255, 480, 120);
         panelImpresionConfig.add(txtInfoModos);
 
-        javax.swing.JTabbedPane tabConfigDerecha = new javax.swing.JTabbedPane();
+        tabConfigDerecha = new javax.swing.JTabbedPane();
         tabConfigDerecha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         tabConfigDerecha.addTab("Impresión y Tickets", panelImpresionConfig);
         tabConfigDerecha.addTab("Logo e Ícono", panelLogoConfig);
@@ -928,8 +962,8 @@ public final class Sistema extends javax.swing.JFrame {
                 new int[]{220, 50, 110, 100, 160, 60},
                 new int[]{-1, 50, -1, -1, -1, 60});
         configurarColumnasProporcionales(tblTemPlatos,
-                new int[]{150, 110},
-                new int[]{200, 110},
+                new int[]{150, 175},
+                new int[]{200, 175},
                 new int[]{-1, -1});
         configurarColumnasProporcionales(TablePlatos,
                 new int[]{150, 110, 70},
@@ -1115,19 +1149,19 @@ public final class Sistema extends javax.swing.JFrame {
         javax.swing.UIManager.put("TabbedPane.focus", new javax.swing.plaf.ColorUIResource(new java.awt.Color(0, 102, 102)));
     }
 
-    /** Tabla de salas proporcional: Mesas y Tipo fijas, la columna Nombre absorbe el 100 % del ancho libre. */
+    /** Tabla de salas proporcional: sin topes rígidos para permitir redimensionado manual persistido. */
     private void configurarTablaSalasProporcional() {
         if (tableSala == null || tableSala.getColumnModel().getColumnCount() < 2) {
             return;
         }
         tableSala.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
-        tableSala.getColumnModel().getColumn(0).setMinWidth(150);
+        tableSala.getColumnModel().getColumn(0).setMinWidth(100);
         tableSala.getColumnModel().getColumn(0).setPreferredWidth(200);
-        tableSala.getColumnModel().getColumn(1).setMinWidth(110);
-        tableSala.getColumnModel().getColumn(1).setMaxWidth(110);
+        tableSala.getColumnModel().getColumn(1).setMinWidth(60);
+        tableSala.getColumnModel().getColumn(1).setPreferredWidth(110);
         if (tableSala.getColumnModel().getColumnCount() > 2) {
-            tableSala.getColumnModel().getColumn(2).setMinWidth(110);
-            tableSala.getColumnModel().getColumn(2).setMaxWidth(110);
+            tableSala.getColumnModel().getColumn(2).setMinWidth(60);
+            tableSala.getColumnModel().getColumn(2).setPreferredWidth(110);
         }
     }
 
@@ -1842,6 +1876,37 @@ public final class Sistema extends javax.swing.JFrame {
             g.fillRect(0, 0, c.getWidth(), c.getHeight());
             super.paint(g, c);
         }
+
+        /**
+         * Texto siempre del color del boton (el LaF sustiuiria el fg por el gris
+         * "disabled" del tema, que sobre fondos de color deja la letra fantasma);
+         * en estado deshabilitado se atiranta con alpha en vez de cambiar de color.
+         */
+        @Override
+        protected void paintText(java.awt.Graphics g, javax.swing.JComponent c,
+                java.awt.Rectangle rectTexto, String texto) {
+            javax.swing.AbstractButton b = (javax.swing.AbstractButton) c;
+            String cadena = b.getText();
+            if (cadena == null) {
+                return;
+            }
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            if (!b.isEnabled()) {
+                g2.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.45f));
+            }
+            java.awt.FontMetrics fm = g2.getFontMetrics(c.getFont());
+            java.awt.Rectangle vistaIcono = new java.awt.Rectangle();
+            java.awt.Rectangle vistaTexto = new java.awt.Rectangle();
+            javax.swing.SwingUtilities.layoutCompoundLabel(b, fm, cadena, b.getIcon(),
+                    javax.swing.SwingConstants.CENTER, javax.swing.SwingConstants.CENTER,
+                    javax.swing.SwingConstants.CENTER, javax.swing.SwingConstants.CENTER,
+                    new java.awt.Rectangle(c.getWidth(), c.getHeight()),
+                    vistaIcono, vistaTexto, b.getDisplayedMnemonicIndex());
+            g2.setFont(c.getFont());
+            g2.setColor(b.getForeground());
+            g2.drawString(cadena, vistaTexto.x, vistaTexto.y + fm.getAscent());
+            g2.dispose();
+        }
     }
 
     /** Aplica botonSolido a todo boton con fondo personalizado (el nativo ignora el color en Windows). */
@@ -1875,6 +1940,12 @@ public final class Sistema extends javax.swing.JFrame {
         double lFondo = luminancia(fondo);
         double lTexto = luminancia(texto);
         return (Math.max(lFondo, lTexto) + 0.05) / (Math.min(lFondo, lTexto) + 0.05);
+    }
+
+    /** Texto normalizado a blanco o negro: elige el que rinde más contraste sobre el fondo (WCAG). */
+    public static java.awt.Color colorTextoContraste(java.awt.Color fondo) {
+        java.awt.Color negro = new java.awt.Color(0, 0, 0);
+        return contraste(fondo, negro) >= contraste(fondo, java.awt.Color.WHITE) ? negro : java.awt.Color.WHITE;
     }
 
     private static double luminancia(java.awt.Color color) {
@@ -2035,6 +2106,7 @@ public final class Sistema extends javax.swing.JFrame {
         RefrescoVistas.suscribir(RefrescoVistas.CONFIG, this::ListarConfig);
         RefrescoVistas.suscribir(RefrescoVistas.DASHBOARD, () -> { if (politicaAcceso.esAdministrador()) cargarDashboardYClientes(); });
         iniciarRefrescoPeriodicoModos();
+        iniciarVigilanciaSesion();
     }
 
     /** Vuelve a leer el menú/selector de platos (pestaña de toma de pedido). */
@@ -2061,6 +2133,61 @@ public final class Sistema extends javax.swing.JFrame {
         temporizadorRefrescoModos.setRepeats(true);
         temporizadorRefrescoModos.setCoalesce(true);
         temporizadorRefrescoModos.start();
+    }
+
+    /**
+     * Revoca la sesión en caliente cuando el usuario es desactivado o pierde su
+     * rol, aunque no intente ejecutar ninguna acción. Se comprueba al recuperar
+     * el foco de la ventana y cada minuto, con una ventana mínima de 5 s entre
+     * consultas para no saturar la BD.
+     */
+    private void iniciarVigilanciaSesion() {
+        if (temporizadorVigenciaSesion != null) {
+            return;
+        }
+        addWindowFocusListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowGainedFocus(java.awt.event.WindowEvent e) {
+                verificarVigenciaSesion();
+            }
+        });
+        temporizadorVigenciaSesion = new javax.swing.Timer(60000, e -> verificarVigenciaSesion());
+        temporizadorVigenciaSesion.setRepeats(true);
+        temporizadorVigenciaSesion.setCoalesce(true);
+        temporizadorVigenciaSesion.start();
+    }
+
+    private void verificarVigenciaSesion() {
+        if (revocacionEnCurso || usuarioActual == null || usuarioActual.getId() <= 0) {
+            return;
+        }
+        long ahora = System.currentTimeMillis();
+        if (ahora - ultimaVerificacionVigenciaMs < 5000L) {
+            return;
+        }
+        ultimaVerificacionVigenciaMs = ahora;
+        boolean activo;
+        try {
+            activo = lgDao.esUsuarioActivoConRol(usuarioActual.getId(), usuarioActual.getRol());
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(Sistema.class.getName())
+                    .log(java.util.logging.Level.FINE,
+                            "No se pudo verificar la vigencia de la sesión; se reintentará: " + ex.getMessage());
+            return;
+        }
+        if (activo) {
+            return;
+        }
+        revocacionEnCurso = true;
+        if (temporizadorVigenciaSesion != null) {
+            temporizadorVigenciaSesion.stop();
+        }
+        usuarioActual.setActivo(false);
+        JOptionPane.showMessageDialog(this,
+                "Tu cuenta fue desactivada o cambió de rol. La sesión ha sido revocada.",
+                "Acceso revocado", JOptionPane.ERROR_MESSAGE);
+        this.dispose();
+        restaurante.Restaurante.lanzarLogin();
     }
 
     private void refrescarVistaModoVisible() {
@@ -2158,7 +2285,7 @@ public final class Sistema extends javax.swing.JFrame {
         return favoritoControlador;
     }
 
-    private boolean autorizar(PoliticaAcceso.Accion accion) {
+    boolean autorizar(PoliticaAcceso.Accion accion) {
         if (usuarioActual != null && usuarioActual.getId() > 0) {
             boolean activo;
             try {
@@ -4914,10 +5041,12 @@ public final class Sistema extends javax.swing.JFrame {
             }
 
             try {
-                int idPedidoRegistrado = -1;
+                boolean emitirComanda = debeEmitirComandaCocina();
+                Modelo.ResultadoPedidoComanda resultado;
                 if (eraEdicion) {
-                    idPedidoRegistrado = idPedidoEdicion;
-                    actualizarPedidoEnEdicion();
+                    resultado = actualizarPedidoEnEdicion(emitirComanda);
+                    if (resultado == null) return;
+                    if (!resultado.guardado()) return;
                     idPedidoEdicion = -1;
                     idSalaEdicion = -1;
                     numMesaEdicion = -1;
@@ -4926,10 +5055,11 @@ public final class Sistema extends javax.swing.JFrame {
                     quitarMesoneroEdicion = false;
                     btnGenerarPedido.setText("Realizar Pedido");
                 } else {
-                    idPedidoRegistrado = registrarPedidoCompleto();
+                    resultado = registrarPedidoCompleto(emitirComanda);
                 }
+                int idPedidoRegistrado = resultado.idPedido();
                 if (idPedidoRegistrado > 0) {
-                    imprimirComandaCocinaSiHabilitada(idPedidoRegistrado, eraEdicion);
+                    imprimirComandaCocina(resultado.marcha());
                 }
                 LimpiarTableMenu();
                 RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
@@ -4943,7 +5073,9 @@ public final class Sistema extends javax.swing.JFrame {
                 } else if (esPedidoRapido && idPedidoRegistrado > 0) {
                     modoPedidoRapido = false;
                     jTabbedPane1.setSelectedIndex(0);
-                    mostrarAvisoEnBanda("Pedido rápido enviado a cocina");
+                    mostrarAvisoEnBanda(resultado.marcha() == null
+                            ? "Pedido rápido guardado; comanda no emitida"
+                            : "Pedido rápido enviado a cocina");
                 } else {
                     modoPedidoRapido = false;
                     if (idSalaActualMesas > 0 && cantMesasActual > 0) {
@@ -4954,9 +5086,10 @@ public final class Sistema extends javax.swing.JFrame {
                     } else {
                         jTabbedPane1.setSelectedIndex(0);
                     }
-                    mostrarAvisoEnBanda(numMesa.isEmpty()
-                            ? (eraEdicion ? "Pedido actualizado" : "Pedido enviado a cocina")
-                            : (eraEdicion ? "Pedido actualizado — Mesa " + numMesa : "Pedido enviado a cocina — Mesa " + numMesa));
+                    String estadoComanda = resultado.marcha() == null
+                            ? (eraEdicion ? "Pedido actualizado; sin salida nueva para cocina" : "Pedido guardado; comanda no emitida")
+                            : (eraEdicion ? "Comanda parcial enviada a cocina" : "Pedido enviado a cocina");
+                    mostrarAvisoEnBanda(numMesa.isEmpty() ? estadoComanda : estadoComanda + " — Mesa " + numMesa);
                 }
             } catch (Modelo.PedidoPendienteExistenteException ex) {
                 JOptionPane.showMessageDialog(this,
@@ -6185,6 +6318,81 @@ public final class Sistema extends javax.swing.JFrame {
         });
     }
 
+    private void reimprimirMarchaSeleccionada() {
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
+        if (txtIdHistorialPedido.getText().isBlank()) {
+            mostrarAvisoEnBanda("Seleccione un pedido del historial para consultar sus comandas");
+            return;
+        }
+        final int idPedido;
+        try {
+            idPedido = Integer.parseInt(txtIdHistorialPedido.getText().trim());
+        } catch (NumberFormatException ex) {
+            mostrarAvisoEnBanda("El pedido seleccionado no tiene un identificador válido");
+            return;
+        }
+
+        new javax.swing.SwingWorker<java.util.List<Modelo.ComandaMarcha>, Void>() {
+            @Override
+            protected java.util.List<Modelo.ComandaMarcha> doInBackground() {
+                return pedidosControlador.listarComandasMarchas(idPedido);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    java.util.List<Modelo.ComandaMarcha> marchas = get();
+                    if (marchas.isEmpty()) {
+                        mostrarAvisoEnBanda("Este pedido no tiene marchas de cocina imprimibles");
+                        return;
+                    }
+                    String[] opciones = marchas.stream()
+                            .map(m -> "Marcha #" + m.secuencia() + " — " + m.tipo()
+                                    + " — " + m.movimientos().size() + " línea(s)")
+                            .toArray(String[]::new);
+                    Object elegida = JOptionPane.showInputDialog(Sistema.this,
+                            "Seleccione la marcha exacta que desea reimprimir:",
+                            "Historial de comandas — Pedido #" + idPedido,
+                            JOptionPane.QUESTION_MESSAGE, null, opciones, opciones[opciones.length - 1]);
+                    if (elegida == null) return;
+                    int indice = java.util.Arrays.asList(opciones).indexOf(elegida.toString());
+                    if (indice < 0 || indice >= marchas.size()) return;
+                    Modelo.ComandaMarcha seleccionada = marchas.get(indice);
+                    String motivo = solicitarMotivoAccion("Reimpresión de Comanda",
+                            "Indique el motivo para reimprimir la marcha #" + seleccionada.secuencia()
+                                    + " del pedido #" + idPedido + ":", "Copia solicitada por cocina");
+                    if (motivo == null) return;
+                    String actor = LabelVendedor != null && !LabelVendedor.getText().isBlank()
+                            ? LabelVendedor.getText().trim() : "Sistema";
+                    Thread.startVirtualThread(() -> {
+                        try {
+                            Modelo.ComandaMarcha marcha = pedidosControlador.solicitarReimpresionComanda(
+                                    seleccionada.id(), motivo, actor);
+                            Modelo.Pedidos pedido = pedidosControlador.verPedidoDesdeHistorial(idPedido);
+                            if (pedido == null) throw Modelo.ErrorAplicacionException.validacion("No se encontró el pedido seleccionado.");
+                            String sala = pedido.getSala() == null || pedido.getSala().isBlank()
+                                    ? "Sala " + pedido.getId_sala() : pedido.getSala();
+                            String mesonero = pedido.getMesoneroNombre() == null || pedido.getMesoneroNombre().isBlank()
+                                    ? pedido.getUsuario() : pedido.getMesoneroNombre();
+                            Servicio.ServicioComandaCocina.imprimirAsync(marcha, sala,
+                                    pedido.getNum_mesa(), mesonero);
+                            javax.swing.SwingUtilities.invokeLater(() -> mostrarAvisoEnBanda(
+                                    "Reimpresión de marcha #" + marcha.secuencia() + " enviada al spooler"));
+                        } catch (Exception ex) {
+                            javax.swing.SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(Sistema.this,
+                                    "No se pudo reimprimir la comanda: " + mensajeError(ex),
+                                    "Error de impresión", JOptionPane.ERROR_MESSAGE));
+                        }
+                    });
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(Sistema.this,
+                            "No se pudo consultar el historial de comandas: " + mensajeError(ex),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
+    }
+
     private void abrirHistorialPedido(int idPedido) {
         filtroEstadoSeleccionado = null;
         filtroSoloHoyActivo = false;
@@ -6674,6 +6882,72 @@ public final class Sistema extends javax.swing.JFrame {
         pnlNorte.setOpaque(false);
         pnlNorte.add(pnlHeader, java.awt.BorderLayout.NORTH);
         pnlNorte.add(pnlKpis, java.awt.BorderLayout.CENTER);
+
+        // 2.1 Franja: Resumen de Ventas (USD / Bs / métodos de pago)
+        javax.swing.JPanel pnlResumen = new javax.swing.JPanel(new java.awt.BorderLayout(8, 4));
+        pnlResumen.setBackground(java.awt.Color.WHITE);
+        pnlResumen.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                "Resumen de Ventas",
+                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
+                javax.swing.border.TitledBorder.DEFAULT_POSITION,
+                new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13),
+                new java.awt.Color(40, 40, 40)));
+
+        javax.swing.JPanel pnlControlesResumen = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 2));
+        pnlControlesResumen.setOpaque(false);
+        pnlControlesResumen.add(new javax.swing.JLabel("Período:"));
+        comboRangoResumen = new javax.swing.JComboBox<>(new String[]{"Hoy", "Ayer", "Últimos 7 días", "Este mes", "Personalizado"});
+        comboRangoResumen.addActionListener(e -> actualizarVisibilidadFechasResumen());
+        pnlControlesResumen.add(comboRangoResumen);
+        lblDesdeResumen = new javax.swing.JLabel("Desde:");
+        pnlControlesResumen.add(lblDesdeResumen);
+        spinnerDesdeResumen = crearSpinnerFechaResumen(java.time.LocalDate.now());
+        pnlControlesResumen.add(spinnerDesdeResumen);
+        lblHastaResumen = new javax.swing.JLabel("Hasta:");
+        pnlControlesResumen.add(lblHastaResumen);
+        spinnerHastaResumen = crearSpinnerFechaResumen(java.time.LocalDate.now());
+        pnlControlesResumen.add(spinnerHastaResumen);
+        btnVerResumen = new javax.swing.JButton("Ver");
+        btnVerResumen.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnVerResumen.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnVerResumen.addActionListener(e -> cargarResumenVentas());
+        pnlControlesResumen.add(btnVerResumen);
+        btnPdfResumen = new javax.swing.JButton("PDF");
+        btnPdfResumen.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnPdfResumen.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnPdfResumen.setToolTipText("Genera el PDF informativo (no fiscal) del resumen");
+        btnPdfResumen.addActionListener(e -> exportarPdfResumenVentas());
+        pnlControlesResumen.add(btnPdfResumen);
+        pnlResumen.add(pnlControlesResumen, java.awt.BorderLayout.NORTH);
+
+        javax.swing.JPanel pnlTarjetasResumen = new javax.swing.JPanel(new java.awt.GridLayout(2, 1, 6, 6));
+        pnlTarjetasResumen.setOpaque(false);
+        pnlTarjetasResumen.setPreferredSize(new java.awt.Dimension(240, 118));
+        lblResumenUsd = new javax.swing.JLabel("Pulsa Ver para calcular", javax.swing.SwingConstants.CENTER);
+        lblResumenBs = new javax.swing.JLabel("Pulsa Ver para calcular", javax.swing.SwingConstants.CENTER);
+        pnlTarjetasResumen.add(crearCardKpi("VENTAS DEL PERÍODO (USD)", lblResumenUsd, new java.awt.Color(230, 248, 235), new java.awt.Color(40, 167, 69)));
+        pnlTarjetasResumen.add(crearCardKpi("VENTAS DEL PERÍODO (Bs.)", lblResumenBs, new java.awt.Color(225, 242, 244), new java.awt.Color(0, 123, 255)));
+
+        tableMetodosResumen = new javax.swing.JTable(new javax.swing.table.DefaultTableModel(
+                new Object[][]{}, new String[]{"Método", "Pagos", "USD ($)", "Bs.", "%"}
+        ) {
+            @Override
+            public boolean isCellEditable(int r, int c) { return false; }
+        });
+        tableMetodosResumen.setRowHeight(20);
+        configurarTablaIndividual(tableMetodosResumen);
+        javax.swing.JScrollPane scrollMetodosResumen = new javax.swing.JScrollPane(tableMetodosResumen);
+
+        javax.swing.JPanel pnlCuerpoResumen = new javax.swing.JPanel(new java.awt.BorderLayout(8, 4));
+        pnlCuerpoResumen.setOpaque(false);
+        pnlCuerpoResumen.add(scrollMetodosResumen, java.awt.BorderLayout.CENTER);
+        pnlCuerpoResumen.add(pnlTarjetasResumen, java.awt.BorderLayout.EAST);
+        pnlResumen.add(pnlCuerpoResumen, java.awt.BorderLayout.CENTER);
+        pnlResumen.setPreferredSize(new java.awt.Dimension(1000, 178));
+
+        pnlNorte.add(pnlResumen, java.awt.BorderLayout.SOUTH);
+        actualizarVisibilidadFechasResumen();
         panelDashboard.add(pnlNorte, java.awt.BorderLayout.NORTH);
 
         // 3. Área Central (Split Izquierda: Top Platos | Derecha: Clientes y Facturas)
@@ -6682,7 +6956,7 @@ public final class Sistema extends javax.swing.JFrame {
         splitPrincipal.setOpaque(false);
 
         // Panel Izquierdo: Tabbed con Top Platos y Rendimiento Mesoneros
-        javax.swing.JTabbedPane tabLeftDashboard = new javax.swing.JTabbedPane();
+        tabLeftDashboard = new javax.swing.JTabbedPane();
         tabLeftDashboard.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
 
         javax.swing.JPanel pnlTopPlatos = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
@@ -6866,6 +7140,203 @@ public final class Sistema extends javax.swing.JFrame {
         card.add(lblT, java.awt.BorderLayout.NORTH);
         card.add(lblValor, java.awt.BorderLayout.CENTER);
         return card;
+    }
+
+    private javax.swing.JSpinner crearSpinnerFechaResumen(java.time.LocalDate inicial) {
+        javax.swing.SpinnerDateModel modelo = new javax.swing.SpinnerDateModel(
+                java.util.Date.from(inicial.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()),
+                null, null, java.util.Calendar.DAY_OF_YEAR);
+        javax.swing.JSpinner spinner = new javax.swing.JSpinner(modelo);
+        spinner.setEditor(new javax.swing.JSpinner.DateEditor(spinner, "yyyy-MM-dd"));
+        return spinner;
+    }
+
+    private void actualizarVisibilidadFechasResumen() {
+        boolean personalizado = comboRangoResumen != null
+                && "Personalizado".equals(comboRangoResumen.getSelectedItem());
+        if (lblDesdeResumen != null) lblDesdeResumen.setVisible(personalizado);
+        if (spinnerDesdeResumen != null) spinnerDesdeResumen.setVisible(personalizado);
+        if (lblHastaResumen != null) lblHastaResumen.setVisible(personalizado);
+        if (spinnerHastaResumen != null) spinnerHastaResumen.setVisible(personalizado);
+    }
+
+    private java.time.LocalDate fechaDeSpinner(javax.swing.JSpinner spinner, java.time.LocalDate porDefecto) {
+        if (spinner == null || !(spinner.getValue() instanceof java.util.Date valor)) {
+            return porDefecto;
+        }
+        return valor.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+    }
+
+    /**
+     * Resuelve el rango [desde, hasta] del combo/spinners; null si el rango es inválido
+     * (ya avisa al usuario en pantalla).
+     */
+    private java.time.LocalDate[] rangoResumenActual() {
+        if (comboRangoResumen == null) return null;
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        String rango = String.valueOf(comboRangoResumen.getSelectedItem());
+        java.time.LocalDate desde;
+        java.time.LocalDate hasta = hoy;
+        switch (rango) {
+            case "Ayer" -> desde = hoy.minusDays(1);
+            case "Últimos 7 días" -> desde = hoy.minusDays(6);
+            case "Este mes" -> desde = hoy.withDayOfMonth(1);
+            case "Personalizado" -> {
+                desde = fechaDeSpinner(spinnerDesdeResumen, hoy);
+                hasta = fechaDeSpinner(spinnerHastaResumen, hoy);
+            }
+            default -> desde = hoy;
+        }
+        if (desde.isAfter(hasta)) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                    "La fecha inicial no puede ser posterior a la fecha final.",
+                    "Resumen de Ventas", javax.swing.JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+        return new java.time.LocalDate[]{desde, hasta};
+    }
+
+    private String usuarioEmisorResumen() {
+        return (LabelVendedor != null && !LabelVendedor.getText().isBlank())
+                ? LabelVendedor.getText().trim() : "Sistema";
+    }
+
+    private Servicio.CierreCajaServicio servicioResumenVentas() {
+        if (cierreCajaServicio == null) {
+            cierreCajaServicio = new Servicio.CierreCajaServicio(
+                    new Modelo.CierreCajaDao(),
+                    () -> conf != null ? conf : lgDao.datosEmpresa(),
+                    new Servicio.GeneradorPdfCierre());
+        }
+        return cierreCajaServicio;
+    }
+
+    public void cargarResumenVentas() {
+        java.time.LocalDate[] rango = rangoResumenActual();
+        if (rango == null) return;
+        java.time.LocalDate fDesde = rango[0];
+        java.time.LocalDate fHasta = rango[1];
+        long version = ++versionResumenVentas;
+        if (lblResumenUsd != null) lblResumenUsd.setText("<html><small>Calculando...</small></html>");
+        if (lblResumenBs != null) lblResumenBs.setText("<html><small>Calculando...</small></html>");
+        if (tableMetodosResumen != null) {
+            ((javax.swing.table.DefaultTableModel) tableMetodosResumen.getModel()).setRowCount(0);
+        }
+        resumenVentasEnPantalla = null;
+        String usuarioEmisor = usuarioEmisorResumen();
+        new ResumenVentasSwingWorker(
+                () -> servicioResumenVentas().obtenerResumenVentas(fDesde.toString(), fHasta.toString(), usuarioEmisor),
+                datos -> {
+                    if (version == versionResumenVentas) {
+                        mostrarResumenVentasEnPantalla(datos);
+                    }
+                },
+                error -> {
+                    if (version == versionResumenVentas) {
+                        mostrarErrorResumenVentas(error);
+                    }
+                }).execute();
+    }
+
+    private void mostrarResumenVentasEnPantalla(Modelo.CierreCaja resumen) {
+        if (resumen == null) return;
+        resumenVentasEnPantalla = resumen;
+        if (lblResumenUsd != null) {
+            lblResumenUsd.setText("<html><b style='font-size:13px;color:#007700;'>$ "
+                    + String.format(java.util.Locale.US, "%.2f", resumen.getTotalVentasUsd())
+                    + "</b><br><small style='color:#555555;'>" + resumen.getPedidosFinalizados()
+                    + " pedidos · $" + String.format(java.util.Locale.US, "%.2f", resumen.getTicketPromedioUsd())
+                    + " prom.</small></html>");
+        }
+        if (lblResumenBs != null) {
+            lblResumenBs.setText("<html><b style='font-size:13px;color:#003366;'>Bs. "
+                    + String.format(java.util.Locale.US, "%.2f", resumen.getTotalVentasBs())
+                    + "</b><br><small style='color:#555555;'>Tasa efectiva: "
+                    + String.format(java.util.Locale.US, "%.2f", resumen.getTasaCambioReferencia())
+                    + " Bs/USD</small></html>");
+        }
+        if (tableMetodosResumen != null) {
+            javax.swing.table.DefaultTableModel modelResumen =
+                    (javax.swing.table.DefaultTableModel) tableMetodosResumen.getModel();
+            modelResumen.setRowCount(0);
+            java.math.BigDecimal totalUsd = resumen.getTotalVentasUsd();
+            int totalPagos = 0;
+            java.math.BigDecimal sumUsd = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal sumBs = java.math.BigDecimal.ZERO;
+            for (Modelo.CierreCaja.ResumenMetodoPago rm : resumen.getDesgloseMetodos()) {
+                totalPagos += rm.getCantidadTransacciones();
+                sumUsd = sumUsd.add(rm.getMontoUsd());
+                sumBs = sumBs.add(rm.getMontoBs());
+                String pct = totalUsd != null && totalUsd.signum() > 0
+                        ? String.format(java.util.Locale.US, "%.1f%%",
+                                rm.getMontoUsd().multiply(new java.math.BigDecimal("100"))
+                                        .divide(totalUsd, 1, java.math.RoundingMode.HALF_UP).doubleValue())
+                        : "—";
+                modelResumen.addRow(new Object[]{
+                    rm.getMetodo(),
+                    rm.getCantidadTransacciones(),
+                    "$ " + String.format(java.util.Locale.US, "%.2f", rm.getMontoUsd()),
+                    "Bs. " + String.format(java.util.Locale.US, "%.2f", rm.getMontoBs()),
+                    pct
+                });
+            }
+            String pctTotal = totalUsd != null && totalUsd.signum() > 0 ? "100.0%" : "—";
+            modelResumen.addRow(new Object[]{
+                "TOTAL", totalPagos,
+                "$ " + String.format(java.util.Locale.US, "%.2f", sumUsd),
+                "Bs. " + String.format(java.util.Locale.US, "%.2f", sumBs),
+                pctTotal
+            });
+        }
+    }
+
+    private void mostrarErrorResumenVentas(Throwable error) {
+        java.util.logging.Logger.getLogger(Sistema.class.getName())
+                .log(java.util.logging.Level.WARNING, "Fallo al cargar el resumen de ventas", error);
+        String msg = mensajeError(error);
+        if (lblResumenUsd != null) lblResumenUsd.setText("<html><span style='color:red;'>Error al cargar</span></html>");
+        if (lblResumenBs != null) lblResumenBs.setText("<html><span style='color:red;'>Error al cargar</span></html>");
+        mostrarAvisoEnBanda("Resumen de Ventas: " + msg);
+    }
+
+    private void exportarPdfResumenVentas() {
+        if (resumenVentasEnPantalla == null) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                    "Genera primero el resumen con el botón Ver.",
+                    "Resumen de Ventas", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        java.time.LocalDate[] rango = rangoResumenActual();
+        if (rango == null) return;
+        java.time.LocalDate fDesde = rango[0];
+        java.time.LocalDate fHasta = rango[1];
+        String usuarioEmisor = usuarioEmisorResumen();
+        new javax.swing.SwingWorker<Servicio.CierreCajaServicio.ResultadoCierre, Void>() {
+            @Override
+            protected Servicio.CierreCajaServicio.ResultadoCierre doInBackground() throws Exception {
+                return servicioResumenVentas().generarResumenVentas(fDesde.toString(), fHasta.toString(), usuarioEmisor);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    Servicio.CierreCajaServicio.ResultadoCierre resultado = get();
+                    Servicio.ResultadoSalidaTicket salida = resultado.salidaTicket();
+                    String detalleDestino = salida == null ? "sin resultado de salida."
+                            : switch (salida.estado()) {
+                                case ENVIADO_A_SPOOLER -> "enviado al spooler (" + salida.canal() + ").";
+                                case ABIERTO_EN_VISOR -> "abierto en visor PDF.";
+                                case FALLO -> "falló la salida del ticket: " + salida.detalleError();
+                            };
+                    mostrarAvisoEnBanda("Resumen de Ventas generado (" + detalleDestino + ")");
+                } catch (Exception ex) {
+                    Throwable causa = ex.getCause() == null ? ex : ex.getCause();
+                    JOptionPane.showMessageDialog(Sistema.this,
+                            "No se pudo generar el PDF del resumen: " + mensajeError(causa),
+                            "Resumen de Ventas", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     public void cargarDashboardYClientes() {
@@ -7445,6 +7916,7 @@ public final class Sistema extends javax.swing.JFrame {
     public javax.swing.JTextField getTxtFiltroFechaHasta() { return txtFiltroFechaHasta; }
     public javax.swing.JButton getBtnLimpiarFiltrosHistorial() { return btnLimpiarFiltrosHistorial; }
     public javax.swing.JButton getBtnReimprimirHistorial() { return btnReimprimirHistorial; }
+    public javax.swing.JButton getBtnReimprimirComandaHistorial() { return btnReimprimirComandaHistorial; }
     public javax.swing.JButton getBtnPrevisualizarHistorial() { return btnPrevisualizarHistorial; }
     public javax.swing.JButton getBtnPrevisualizarPedido() { return btnPrevisualizarPedido; }
     public javax.swing.JButton getBtnPdfPedido() { return btnPdfPedido; }
@@ -7469,11 +7941,15 @@ public final class Sistema extends javax.swing.JFrame {
     public javax.swing.JTable getTablePedidos() { return TablePedidos; }
     public javax.swing.JTable getTablaPagosFac() { return tablaPagosFac; }
 
+    /** Compatibilidad con llamadas legadas: la impresión ahora requiere la marcha incremental exacta. */
+    @Deprecated
     public void imprimirComandaCocinaSiHabilitada(int idPedido, boolean esActualizacion) {
-        String confComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
-        if ("0".equals(confComanda) || "false".equalsIgnoreCase(confComanda)) {
-            return;
-        }
+        java.util.logging.Logger.getLogger(Sistema.class.getName()).fine(
+                "Se omite impresión heredada del pedido #" + idPedido + "; use una ComandaMarcha persistida.");
+    }
+
+    private boolean debeEmitirComandaCocina() {
+        if (chkImprimirComandaCocina == null || !chkImprimirComandaCocina.isSelected()) return false;
         if (!java.awt.GraphicsEnvironment.isHeadless() && isDisplayable()
                 && !Boolean.getBoolean("test.headless") && !Boolean.getBoolean("modo.automatizado")) {
             int opcion = JOptionPane.showConfirmDialog(this,
@@ -7483,15 +7959,18 @@ public final class Sistema extends javax.swing.JFrame {
                     JOptionPane.QUESTION_MESSAGE);
             if (opcion != JOptionPane.YES_OPTION) {
                 mostrarAvisoEnBanda("Impresión de comanda omitida por el operador");
-                return;
+                return false;
             }
         }
+        return true;
+    }
+
+    private void imprimirComandaCocina(Modelo.ComandaMarcha marcha) {
+        if (marcha == null) return;
         new Thread(() -> {
             try {
-                Modelo.Pedidos ped = pedidosControlador.verPedido(idPedido);
+                Modelo.Pedidos ped = pedidosControlador.verPedido(marcha.idPedido());
                 if (ped == null) return;
-                java.util.List<Modelo.DetallePedido> dets = pedidosControlador.verPedidoDetalle(idPedido);
-                if (dets == null || dets.isEmpty()) return;
                 String salaNom = "Sala " + ped.getId_sala();
                 for (Modelo.Salas s : salasControlador.listar()) {
                     if (s.getId() == ped.getId_sala()) {
@@ -7500,10 +7979,10 @@ public final class Sistema extends javax.swing.JFrame {
                     }
                 }
                 String mesoneroNom = ped.getMesoneroNombre() != null ? ped.getMesoneroNombre() : ped.getUsuario();
-                Servicio.ServicioComandaCocina.imprimirAsync(idPedido, salaNom, ped.getNum_mesa(), mesoneroNom, dets, esActualizacion);
+                Servicio.ServicioComandaCocina.imprimirAsync(marcha, salaNom, ped.getNum_mesa(), mesoneroNom);
             } catch (Exception ex) {
                 java.util.logging.Logger.getLogger(Sistema.class.getName())
-                        .log(java.util.logging.Level.WARNING, "Error al imprimir comanda de cocina para pedido #" + idPedido + ": " + ex.getMessage());
+                        .log(java.util.logging.Level.WARNING, "Error al imprimir comanda de cocina para pedido #" + marcha.idPedido() + ": " + ex.getMessage());
             }
         }, "Hilo-Verif-Comanda-Cocina").start();
     }
@@ -10495,6 +10974,10 @@ public final class Sistema extends javax.swing.JFrame {
 
     void cambiarModoAtencion(int nuevoIndice) {
         if (cambiandoModoProgramaticamente) return;
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_CONFIGURACION)) {
+            sincronizarCombosModo(modoAtencionActual);
+            return;
+        }
         cambiandoModoProgramaticamente = true;
         try {
             switch (nuevoIndice) {
@@ -10558,6 +11041,20 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     void guardarPreferenciaFiltroRapido(boolean sel) {
+        if (actualizandoFiltroProgramaticamente) {
+            return;
+        }
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_PLATOS)) {
+            actualizandoFiltroProgramaticamente = true;
+            try {
+                if (chkFiltroRapido != null) chkFiltroRapido.setSelected(!sel);
+                if (chkFiltroRapidoAdminPlatos != null) chkFiltroRapidoAdminPlatos.setSelected(!sel);
+                if (panelSplitScreen != null) panelSplitScreen.setFiltroRapido(!sel);
+            } finally {
+                actualizandoFiltroProgramaticamente = false;
+            }
+            return;
+        }
         if (chkFiltroRapido != null && chkFiltroRapido.isSelected() != sel) {
             chkFiltroRapido.setSelected(sel);
         }
@@ -10887,6 +11384,66 @@ public final class Sistema extends javax.swing.JFrame {
 
     public javax.swing.JButton getBtnConfig() {
         return btnConfig;
+    }
+
+    public javax.swing.JButton getBtnPlatos() {
+        return btnPlatos;
+    }
+
+    public javax.swing.JButton getBtnDashboard() {
+        return btnDashboard;
+    }
+
+    public javax.swing.JButton getBtnUsuarios() {
+        return btnUsuarios;
+    }
+
+    public javax.swing.JButton getBtnVentas() {
+        return btnVentas;
+    }
+
+    public javax.swing.JTabbedPane getTabConfigDerecha() {
+        return tabConfigDerecha;
+    }
+
+    public javax.swing.JTabbedPane getTabLeftDashboard() {
+        return tabLeftDashboard;
+    }
+
+    public javax.swing.JTable getTableUsuarios() {
+        return TableUsuarios;
+    }
+
+    public javax.swing.JTable getTableMesonerosConfig() {
+        return tableMesonerosConfig;
+    }
+
+    public javax.swing.JTable getTableTopPlatos() {
+        return tableTopPlatos;
+    }
+
+    public javax.swing.JTable getTableMesonerosDashboard() {
+        return tableMesonerosDashboard;
+    }
+
+    public javax.swing.JTable getTableClientes() {
+        return tableClientes;
+    }
+
+    public javax.swing.JTable getTableFacturasCliente() {
+        return tableFacturasCliente;
+    }
+
+    public javax.swing.JTable getTblTemPlatos() {
+        return tblTemPlatos;
+    }
+
+    public javax.swing.JTable getTableMenu() {
+        return tableMenu;
+    }
+
+    public javax.swing.JTable getTableFinalizar() {
+        return tableFinalizar;
     }
 
     public javax.swing.JPanel getPanelSalas() {
@@ -11664,7 +12221,12 @@ public final class Sistema extends javax.swing.JFrame {
 
 
     //registrar pedido
+    /** Compatibilidad con pruebas y llamadas legadas que guardan el pedido sin controlar la salida. */
     private int registrarPedidoCompleto() {
+        return registrarPedidoCompleto(false).idPedido();
+    }
+
+    private Modelo.ResultadoPedidoComanda registrarPedidoCompleto(boolean imprimirComanda) {
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
         BigDecimal tasa = getTasaActual();
@@ -11698,11 +12260,11 @@ public final class Sistema extends javax.swing.JFrame {
             pedido.setMesoneroNombre(m.getNombreCompleto());
         }
 
-        return pedidosControlador.registrarPedidoCompleto(pedido, detalles);
+        return pedidosControlador.registrarPedidoCompletoConMarcha(pedido, detalles, imprimirComanda);
     }
 
-    private void actualizarPedidoEnEdicion() {
-        if (!autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return;
+    private Modelo.ResultadoPedidoComanda actualizarPedidoEnEdicion(boolean imprimirComanda) {
+        if (!autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return null;
         int id_sala = Integer.parseInt(txtTempIdSala.getText());
         int num_mesa = Integer.parseInt(txtTempNumMesa.getText());
         BigDecimal tasa = getTasaActual();
@@ -11739,7 +12301,7 @@ public final class Sistema extends javax.swing.JFrame {
             pedido.setMesoneroNombre(nombreMesoneroEdicionOriginal);
         }
 
-        pedidosControlador.actualizarPedidoCompleto(idPedidoEdicion, pedido, detalles);
+        return pedidosControlador.actualizarPedidoCompletoConMarcha(idPedidoEdicion, pedido, detalles, imprimirComanda);
     }
 
     private List<DetallePedido> construirDetallesDesdeCarrito() {

@@ -1,6 +1,8 @@
 package Servicio;
 
 import Modelo.DetallePedido;
+import Modelo.ComandaMarcha;
+import Modelo.MovimientoComanda;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
@@ -46,20 +48,37 @@ public final class ServicioComandaCocina {
         if (detalles == null || detalles.isEmpty()) {
             throw new IllegalArgumentException("No hay detalles de pedido para generar la comanda de cocina.");
         }
+        List<MovimientoComanda> movimientos = detalles.stream()
+                .map(det -> MovimientoComanda.desde(MovimientoComanda.Accion.PREPARAR, det, det.getCantidad()))
+                .toList();
+        ComandaMarcha.Tipo tipo = esActualizacion ? ComandaMarcha.Tipo.INCREMENTO : ComandaMarcha.Tipo.INICIAL;
+        return generarDocumentoComanda(new ComandaMarcha(0, idPedido, esActualizacion ? 2 : 1, tipo, movimientos),
+                nombreSala, numMesa, nombreMesonero);
+    }
+
+    /** Genera un ticket fiel a una marcha persistida, incluyendo las acciones de ajuste. */
+    public static Path generarDocumentoComanda(
+            ComandaMarcha marcha, String nombreSala, int numMesa, String nombreMesonero) throws IOException {
+
+        if (marcha == null || marcha.movimientos().isEmpty() || marcha.tipo() == ComandaMarcha.Tipo.BASE_LEGADA) {
+            throw new IllegalArgumentException("No hay detalles de pedido para generar la comanda de cocina.");
+        }
 
         Path dirSalida = Paths.get("tickets", "comandas");
         Files.createDirectories(dirSalida);
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        Path archivoPdf = dirSalida.resolve("comanda-" + idPedido + "_" + timestamp + ".pdf");
+        Path archivoPdf = dirSalida.resolve("comanda-" + marcha.idPedido() + "_m" + marcha.secuencia() + "_" + timestamp + ".pdf");
 
         // Calcular altura estimada del ticket
-        int totalLineas = detalles.size();
+        int totalLineas = marcha.movimientos().size();
         int totalComentarios = 0;
-        int totalCantidad = 0;
-        for (DetallePedido d : detalles) {
-            totalCantidad += d.getCantidad();
-            if (d.getComentario() != null && !d.getComentario().trim().isEmpty()) {
+        int totalPreparar = 0;
+        int totalRetirar = 0;
+        for (MovimientoComanda d : marcha.movimientos()) {
+            if (d.accion() == MovimientoComanda.Accion.PREPARAR) totalPreparar += d.cantidad();
+            else totalRetirar += d.cantidad();
+            if (d.comentario() != null && !d.comentario().trim().isEmpty()) {
                 totalComentarios++;
             }
         }
@@ -79,12 +98,17 @@ public final class ServicioComandaCocina {
             Font fEncabezadoMesa = new Font(Font.FontFamily.HELVETICA, 13, Font.BOLD);
             Font fTexto = new Font(Font.FontFamily.HELVETICA, 8, Font.NORMAL);
             Font fTextoBold = new Font(Font.FontFamily.HELVETICA, 8, Font.BOLD);
-            Font fItemCant = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
+            Font fItemCant = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
             Font fItemDesc = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD);
             Font fNota = new Font(Font.FontFamily.HELVETICA, 8, Font.BOLD | Font.ITALIC);
 
             // 1. Título principal
-            String titulo = esActualizacion ? "=== COMANDA MODIFICADA ===" : "=== COMANDA DE COCINA ===";
+            String titulo = switch (marcha.tipo()) {
+                case INICIAL -> "=== COMANDA DE COCINA ===";
+                case INCREMENTO -> "=== COMANDA PARCIAL ===";
+                case AJUSTE -> "=== AJUSTE DE COMANDA ===";
+                case BASE_LEGADA -> throw new IllegalArgumentException("Una marcha de respaldo no se imprime.");
+            };
             Paragraph pTit = new Paragraph(titulo, fTitulo);
             pTit.setAlignment(Element.ALIGN_CENTER);
             doc.add(pTit);
@@ -103,7 +127,8 @@ public final class ServicioComandaCocina {
             doc.add(pMesa);
 
             // 3. Metadatos del pedido (ID, fecha/hora, mesonero)
-            doc.add(new Paragraph("Pedido: #" + idPedido + "    Hora: " + LocalDateTime.now().format(FORMATO_FECHA), fTexto));
+            doc.add(new Paragraph("Pedido: #" + marcha.idPedido() + "    Marcha: #" + marcha.secuencia()
+                    + "    Hora: " + LocalDateTime.now().format(FORMATO_FECHA), fTexto));
             String mesoneroTexto = (nombreMesonero != null && !nombreMesonero.isBlank()) ? nombreMesonero : "N/D";
             doc.add(new Paragraph("Mesonero/Atiende: " + mesoneroTexto, fTextoBold));
 
@@ -114,10 +139,11 @@ public final class ServicioComandaCocina {
             doc.add(sep);
 
             // 4. Cabecera de ítems
-            PdfPTable tablaItems = new PdfPTable(new float[]{40f, 170f});
+            // Reservar ancho suficiente para "PREPARAR [cantidad]" sin salir del papel de 80 mm.
+            PdfPTable tablaItems = new PdfPTable(new float[]{75f, 135f});
             tablaItems.setWidthPercentage(100);
 
-            PdfPCell cCantTit = new PdfPCell(new Phrase("CANT", fTextoBold));
+            PdfPCell cCantTit = new PdfPCell(new Phrase("ACCIÓN / CANT.", fTextoBold));
             cCantTit.setBorder(Rectangle.NO_BORDER);
             cCantTit.setHorizontalAlignment(Element.ALIGN_CENTER);
             tablaItems.addCell(cCantTit);
@@ -127,25 +153,26 @@ public final class ServicioComandaCocina {
             tablaItems.addCell(cDescTit);
 
             // 5. Filas de platos y notas
-            for (DetallePedido det : detalles) {
-                PdfPCell cCant = new PdfPCell(new Phrase("[" + det.getCantidad() + "]", fItemCant));
+            for (MovimientoComanda det : marcha.movimientos()) {
+                String accion = det.accion() == MovimientoComanda.Accion.PREPARAR ? "PREPARAR" : "RETIRAR";
+                PdfPCell cCant = new PdfPCell(new Phrase(accion + " [" + det.cantidad() + "]", fItemCant));
                 cCant.setBorder(Rectangle.NO_BORDER);
                 cCant.setHorizontalAlignment(Element.ALIGN_CENTER);
                 cCant.setPaddingTop(3f);
                 tablaItems.addCell(cCant);
 
-                PdfPCell cDesc = new PdfPCell(new Phrase(det.getNombre(), fItemDesc));
+                PdfPCell cDesc = new PdfPCell(new Phrase(det.nombre(), fItemDesc));
                 cDesc.setBorder(Rectangle.NO_BORDER);
                 cDesc.setPaddingTop(3f);
                 tablaItems.addCell(cDesc);
 
                 // Si tiene comentario de preparación, agregar fila con nota indentada
-                if (det.getComentario() != null && !det.getComentario().trim().isEmpty()) {
+                if (det.comentario() != null && !det.comentario().trim().isEmpty()) {
                     PdfPCell cEspacio = new PdfPCell(new Phrase(""));
                     cEspacio.setBorder(Rectangle.NO_BORDER);
                     tablaItems.addCell(cEspacio);
 
-                    PdfPCell cNota = new PdfPCell(new Phrase(">> NOTA: " + det.getComentario().trim(), fNota));
+                    PdfPCell cNota = new PdfPCell(new Phrase(">> NOTA: " + det.comentario().trim(), fNota));
                     cNota.setBorder(Rectangle.NO_BORDER);
                     cNota.setPaddingBottom(3f);
                     tablaItems.addCell(cNota);
@@ -158,7 +185,7 @@ public final class ServicioComandaCocina {
             doc.add(sep);
 
             // 6. Resumen de cantidades y pie
-            Paragraph pTotales = new Paragraph("Total de platos a preparar: " + totalCantidad, fSubtitulo);
+            Paragraph pTotales = new Paragraph("Preparar: " + totalPreparar + "   Retirar: " + totalRetirar, fSubtitulo);
             pTotales.setAlignment(Element.ALIGN_RIGHT);
             doc.add(pTotales);
 
@@ -187,17 +214,30 @@ public final class ServicioComandaCocina {
             List<DetallePedido> detalles,
             boolean esActualizacion) {
 
+        List<MovimientoComanda> movimientos = detalles == null ? List.of() : detalles.stream()
+                .map(det -> MovimientoComanda.desde(MovimientoComanda.Accion.PREPARAR, det, det.getCantidad()))
+                .toList();
+        ComandaMarcha.Tipo tipo = esActualizacion ? ComandaMarcha.Tipo.INCREMENTO : ComandaMarcha.Tipo.INICIAL;
+        imprimirAsync(new ComandaMarcha(0, idPedido, esActualizacion ? 2 : 1, tipo, movimientos),
+                nombreSala, numMesa, nombreMesonero);
+    }
+
+    public static void imprimirAsync(ComandaMarcha marcha, String nombreSala, int numMesa, String nombreMesonero) {
+        if (marcha == null || marcha.movimientos().isEmpty()) return;
         new Thread(() -> {
             try {
-                Path archivoComanda = generarDocumentoComanda(idPedido, nombreSala, numMesa, nombreMesonero, detalles, esActualizacion);
+                Path archivoComanda = generarDocumentoComanda(marcha, nombreSala, numMesa, nombreMesonero);
                 boolean exito = ServicioImpresionTicket.procesarSalida(archivoComanda);
                 if (exito) {
-                    LOGGER.info(() -> "Comanda de cocina para pedido #" + idPedido + " impresa exitosamente.");
+                    LOGGER.info(() -> "Comanda de cocina para pedido #" + marcha.idPedido()
+                            + ", marcha #" + marcha.secuencia() + " impresa exitosamente.");
                 } else {
-                    LOGGER.warning(() -> "Comanda de cocina para pedido #" + idPedido + " despachada a visor alternativo.");
+                    LOGGER.warning(() -> "Comanda de cocina para pedido #" + marcha.idPedido()
+                            + ", marcha #" + marcha.secuencia() + " despachada a visor alternativo.");
                 }
             } catch (Exception ex) {
-                LOGGER.log(Level.WARNING, "No se pudo imprimir la comanda de cocina del pedido #" + idPedido + ": " + ex.getMessage(), ex);
+                LOGGER.log(Level.WARNING, "No se pudo imprimir la comanda de cocina del pedido #"
+                        + marcha.idPedido() + ", marcha #" + marcha.secuencia() + ": " + ex.getMessage(), ex);
             }
         }, "Hilo-Impresion-Comanda-Cocina").start();
     }

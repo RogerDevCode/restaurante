@@ -50,6 +50,7 @@ public class SincronizacionPantallaBdCierreTest {
     public void setUp() throws Exception {
         pedidosDao = new PedidosDao(proveedor);
         cierreDao = new CierreCajaDao(proveedor);
+        limpiarPedidosPreviosDeEstaPrueba();
         tempDir = Files.createTempDirectory("test_sincronizacion_cuadruple_");
         fechaJornadaTest = LocalDate.now().toString();
 
@@ -67,6 +68,18 @@ public class SincronizacionPantallaBdCierreTest {
         // Limpiar registros de prueba en la BD
         try (Connection con = proveedor.getConnection()) {
             for (Integer idPed : pedidosCreados) {
+                try (PreparedStatement ps = con.prepareStatement("""
+                        DELETE md FROM comandas_marchas_detalle md
+                        JOIN comandas_marchas m ON md.id_marcha=m.id
+                        WHERE m.id_pedido=?
+                        """)) {
+                    ps.setInt(1, idPed);
+                    ps.executeUpdate();
+                } catch (Exception ignored) {}
+                try (PreparedStatement ps = con.prepareStatement("DELETE FROM comandas_marchas WHERE id_pedido=?")) {
+                    ps.setInt(1, idPed);
+                    ps.executeUpdate();
+                } catch (Exception ignored) {}
                 try (PreparedStatement ps = con.prepareStatement("DELETE FROM pedido_saldos_movimientos WHERE id_pedido = ?")) {
                     ps.setInt(1, idPed);
                     ps.executeUpdate();
@@ -94,6 +107,25 @@ public class SincronizacionPantallaBdCierreTest {
             try { Files.deleteIfExists(p); } catch (Exception ignored) {}
         }
         try { Files.deleteIfExists(tempDir); } catch (Exception ignored) {}
+    }
+
+    private void limpiarPedidosPreviosDeEstaPrueba() throws Exception {
+        try (Connection con = proveedor.getConnection()) {
+            con.setAutoCommit(false);
+            try (Statement st = con.createStatement()) {
+                st.executeUpdate("DELETE md FROM comandas_marchas_detalle md JOIN comandas_marchas m "
+                        + "ON md.id_marcha=m.id JOIN pedidos p ON m.id_pedido=p.id WHERE p.usuario='AuditorSincronia'");
+                st.executeUpdate("DELETE m FROM comandas_marchas m JOIN pedidos p ON m.id_pedido=p.id "
+                        + "WHERE p.usuario='AuditorSincronia'");
+                st.executeUpdate("DELETE d FROM detalle_pedidos d JOIN pedidos p ON d.id_pedido=p.id "
+                        + "WHERE p.usuario='AuditorSincronia'");
+                st.executeUpdate("DELETE FROM pedidos WHERE usuario='AuditorSincronia'");
+                con.commit();
+            } catch (Exception ex) {
+                con.rollback();
+                throw ex;
+            }
+        }
     }
 
     @Test

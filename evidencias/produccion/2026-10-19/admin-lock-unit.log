@@ -1,0 +1,5 @@
+
+BUILD FAILED
+/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build.xml:38: Tests unitarios abortados: DB_URL/DB_NAME apunta a la base restaurante. Use únicamente una BD desechable.
+
+Total time: 0 seconds

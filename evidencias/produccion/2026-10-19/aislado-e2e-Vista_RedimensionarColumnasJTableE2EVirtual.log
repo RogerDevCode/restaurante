@@ -1,0 +1,145 @@
+ Network restaurante-dia-e2e-628101-1792447072_default  Creating
+ Network restaurante-dia-e2e-628101-1792447072_default  Created
+ Volume restaurante-dia-e2e-628101-1792447072_restaurante_integration_mysql_data  Creating
+ Volume restaurante-dia-e2e-628101-1792447072_restaurante_integration_mysql_data  Created
+ Container restaurante-dia-e2e-628101-1792447072-db-1  Creating
+ Container restaurante-dia-e2e-628101-1792447072-db-1  Created
+ Container restaurante-dia-e2e-628101-1792447072-db-1  Starting
+ Container restaurante-dia-e2e-628101-1792447072-db-1  Started
+ Container restaurante-dia-e2e-628101-1792447072-db-1  Waiting
+ Container restaurante-dia-e2e-628101-1792447072-db-1  Healthy
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.RedimensionarColumnasJTableE2EVirtual (DISPLAY=:99) ==
+======================================================================
+  E2E VIRTUAL: REDIMENSIONAR Y RECUPERAR COLUMNAS EN JTABLES 
+======================================================================
+
+--- FASE 1: Redimensionar columnas con mouse ---
+Oct 19, 2026 9:58:30 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+INFO: Respaldo de base de datos generado exitosamente: /tmp/restaurante-dia-e2e-zA4ypY/respaldos/pre_migracion_restaurante_20261019_215830_447_a6de3597-97a2-4714-ae75-9f5034781b0d.sql
+Oct 19, 2026 9:58:34 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Respaldo previo a migración confirmado: /tmp/restaurante-dia-e2e-zA4ypY/respaldos/pre_migracion_restaurante_20261019_215830_447_a6de3597-97a2-4714-ae75-9f5034781b0d.sql
+Oct 19, 2026 9:58:34 PM infraestructura.MigradorEsquemaJdbc asegurarTablaConfiguracionSistema
+INFO: Tabla configuracion_sistema verificada.
+Oct 19, 2026 9:58:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCierresCaja
+INFO: Tabla cierres_caja verificada.
+Oct 19, 2026 9:58:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaMesoneros
+INFO: Tabla mesoneros verificada.
+Oct 19, 2026 9:58:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCategorias
+INFO: Tabla categorias verificada (soft-delete activo soportado).
+Oct 19, 2026 9:58:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoCategoria
+INFO: Tabla plato_categoria verificada.
+Oct 19, 2026 9:58:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoFavorito
+INFO: Tabla plato_favorito verificada.
+Oct 19, 2026 9:58:36 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+
+[Probando CRUD Usuarios (TableUsuarios) (usuarios)]
+  Ancho inicial de columna 0: 203 px (total=637)
+  Ancho tras arrastrar con mouse: 242 px (total=637)
+OK   usuarios: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando CRUD Salas (tableSala) (salas_crud)]
+  Ancho inicial de columna 0: 289 px (total=687)
+  Ancho tras arrastrar con mouse: 330 px (total=687)
+OK   salas_crud: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando CRUD Platos (TablePlatos) (platos_crud)]
+  Ancho inicial de columna 0: 274 px (total=657)
+  Ancho tras arrastrar con mouse: 314 px (total=657)
+OK   platos_crud: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Historial Pedidos (TablePedidos) (historial)]
+  Ancho inicial de columna 0: 162 px (total=992)
+  Ancho tras arrastrar con mouse: 205 px (total=992)
+OK   historial: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Personal Mesoneros (tableMesonerosConfig) (mesoneros_config)]
+  Ancho inicial de columna 0: 222 px (total=542)
+  Ancho tras arrastrar con mouse: 244 px (total=542)
+OK   mesoneros_config: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Dashboard Top Platos (tableTopPlatos) (dash_top)]
+  Ancho inicial de columna 0: 124 px (total=341)
+  Ancho tras arrastrar con mouse: 131 px (total=341)
+OK   dash_top: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Dashboard Mesoneros (tableMesonerosDashboard) (dash_mesoneros)]
+  Ancho inicial de columna 0: 105 px (total=341)
+  Ancho tras arrastrar con mouse: 111 px (total=341)
+OK   dash_mesoneros: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Dashboard Clientes (tableClientes) (dash_clientes)]
+  Ancho inicial de columna 0: 110 px (total=723)
+  Ancho tras arrastrar con mouse: 120 px (total=723)
+OK   dash_clientes: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Dashboard Facturas Cliente (tableFacturasCliente) (dash_facturas)]
+  Ancho inicial de columna 0: 109 px (total=723)
+  Ancho tras arrastrar con mouse: 110 px (total=723)
+OK   dash_facturas: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Toma Pedido Catálogo (tblTemPlatos) (toma_menu)]
+  Ancho inicial de columna 0: 240 px (total=420)
+  Ancho tras arrastrar con mouse: 265 px (total=420)
+OK   toma_menu: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Toma Pedido Carrito (tableMenu) (toma_carrito)]
+  Ancho inicial de columna 0: 125 px (total=567)
+  Ancho tras arrastrar con mouse: 132 px (total=567)
+OK   toma_carrito: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Caja / Finalizar Pedido (tableFinalizar) (caja)]
+  Ancho inicial de columna 0: 278 px (total=983)
+  Ancho tras arrastrar con mouse: 316 px (total=983)
+OK   caja: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Split POS Catálogo (tblCatalogoPlatos) (split_catalogo)]
+  Ancho inicial de columna 0: 339 px (total=568)
+  Ancho tras arrastrar con mouse: 371 px (total=568)
+OK   split_catalogo: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+[Probando Split POS Carrito (tblCarrito) (split_carrito)]
+  Ancho inicial de columna 0: 134 px (total=585)
+  Ancho tras arrastrar con mouse: 170 px (total=585)
+OK   split_carrito: el ancho de columna en la vista cambió tras arrastrar con el mouse
+
+--- FASE 2: Cerrar y reabrir sesión; verificar recuperación visual ---
+OK   usuarios: la JTable conserva sus 4 columnas
+OK   usuarios: JTable recuperó la proporción visible de ancho (esperado=0.3799, obtenido=0.3799, diff=0.0000)
+OK   salas_crud: la JTable conserva sus 3 columnas
+OK   salas_crud: JTable recuperó la proporción visible de ancho (esperado=0.4803, obtenido=0.4803, diff=0.0000)
+OK   platos_crud: la JTable conserva sus 4 columnas
+OK   platos_crud: JTable recuperó la proporción visible de ancho (esperado=0.4779, obtenido=0.4749, diff=0.0030)
+OK   historial: la JTable conserva sus 7 columnas
+OK   historial: JTable recuperó la proporción visible de ancho (esperado=0.2067, obtenido=0.2036, diff=0.0030)
+OK   mesoneros_config: la JTable conserva sus 4 columnas
+OK   mesoneros_config: JTable recuperó la proporción visible de ancho (esperado=0.4502, obtenido=0.4649, diff=0.0148)
+OK   dash_top: la JTable conserva sus 4 columnas
+OK   dash_top: JTable recuperó la proporción visible de ancho (esperado=0.3842, obtenido=0.3666, diff=0.0176)
+OK   dash_mesoneros: la JTable conserva sus 4 columnas
+OK   dash_mesoneros: JTable recuperó la proporción visible de ancho (esperado=0.3255, obtenido=0.3079, diff=0.0176)
+OK   dash_clientes: la JTable conserva sus 6 columnas
+OK   dash_clientes: JTable recuperó la proporción visible de ancho (esperado=0.1660, obtenido=0.1563, diff=0.0097)
+OK   dash_facturas: la JTable conserva sus 7 columnas
+OK   dash_facturas: JTable recuperó la proporción visible de ancho (esperado=0.1521, obtenido=0.1508, diff=0.0014)
+OK   toma_menu: la JTable conserva sus 3 columnas
+OK   toma_menu: JTable recuperó la proporción visible de ancho (esperado=0.6310, obtenido=0.6238, diff=0.0071)
+OK   toma_carrito: la JTable conserva sus 7 columnas
+OK   toma_carrito: JTable recuperó la proporción visible de ancho (esperado=0.2328, obtenido=0.2328, diff=0.0000)
+OK   caja: la JTable conserva sus 6 columnas
+OK   caja: JTable recuperó la proporción visible de ancho (esperado=0.3215, obtenido=0.3225, diff=0.0010)
+OK   split_catalogo: la JTable conserva sus 3 columnas
+OK   split_catalogo: JTable recuperó la proporción visible de ancho (esperado=0.6532, obtenido=0.6320, diff=0.0211)
+OK   split_carrito: la JTable conserva sus 5 columnas
+OK   split_carrito: JTable recuperó la proporción visible de ancho (esperado=0.2906, obtenido=0.2752, diff=0.0154)
+======================================================================
+E2E_OK
