@@ -1,5 +1,16 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 20/10/2026 13:05
+
+## Contraste de texto normalizado en los botones inferiores de Atn. directa (Modo C)
+
+| # | Cambio | Razón | Verificación |
+|---|---|---|---|
+| 1 | `Sistema.colorTextoContraste(Color fondo)`: devuelve blanco o negro según cuál rinde más contraste (luminancia WCAG, umbral por comparación directa, no 50 % fijo) | Reutilizable; el LaF nativo ignoraba el `setBackground` de los JButton directos | `ant compile` exit 0 |
+| 2 | `PanelAtencionMesasSplit`: los 5 botones inferiores (Enviar a Cocina, Pre-Factura, Cortesía, No Pagó, Cobrar) ahora usan `Sistema.botonSolido(boton, fondo, colorTextoContraste(fondo))` | Pre-Factura (verde 39,174,96) tenía **2.9:1** con texto blanco (fallos WCAG AA, el texto era incomprensible); el patrón sólido garantiza fondo pintado + hover ≥4.5:1 | E2E de tablas del split → `evidencias/produccion/2026-10-20/contraste-modoc-regresion-tablas.log` (`E2E TABLAS ID: TODO OK`, exit 0) |
+
+Resultado por botón: Enviar a Cocina/Cortesía/No Pagó/Cobrar conservan blanco (contraste 5.0–5.9; No Pagó 5.5); **Pre-Factura pasa a texto negro** (7.3:1 sobre su verde). La app del 49200 se reinició con el jar `e522d5e9d5034fef…` (unidad `restaurante-app` activa, pid 1360691; MySQL 3306 healthy); el log del día no registra SEVERE nuevos tras el arranque. Artefacto regenerado sobre `8a57384`: SHA-256 zip `ce1548da4ee6b385e2ce6e072eea1c44b66202467e6fce25e6d095e52731c054` (`evidencias/produccion/2026-10-20/paquete-produccion-contraste-modoc.log`).
+
 snapshot 20/10/2026 12:58
 
 ## Hallazgos H1 y H2 cerrados con re-ejecución aislada
