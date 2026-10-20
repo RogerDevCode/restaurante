@@ -1,5 +1,19 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 20/10/2026 13:35
+
+## Contraste Modo C v2: texto negro pedido por el operador + estado deshabilitado legible (causa raíz hallada)
+
+**Causa raíz confirmada en pantalla**: los botones inferiores del split aparecían con "letra fantasma" porque los tres (Pre-Factura, Cortesía, No Pagó) quedan **deshabilitados** cuando no hay mesa con pedido seleccionada, y el LaF pinta el texto deshabilitado con el gris claro del tema sobre el fondo de color (aún con `setForeground` fijado). El v1 (blanco/negro por luminancia) solo afectaba el texto habilitado, por eso el operador "no veía los cambios".
+
+| Cambio | Detalle | Verificación |
+|---|---|---|
+| `BotonSolidoUI.paintText` propio | Pinta SIEMPRE con `b.getForeground()` (nunca el gris del tema); en deshabilitado atenuante con `AlphaComposite` 0.45 en vez de cambiar de color. Aplica a toda la app (todos los botones sólidos) | Tira de pantalla en vivo `evidencias/produccion/2026-10-20/contraste-modoc-negro-strip.png` |
+| Texto negro a petición del operador | `btnPreFactura` (verde 39,174,96), `btnCortesia` (morado 142,68,173) y `btnFuga`/No Pagó (rojo 192,57,43) usan `new Color(0,0,0)` de forma determinista | Mismo recorte: los 3 legibles en negro |
+| Artefacto regenerado | `./empaquetar_produccion.sh` sobre `878b59f` | `evidencias/produccion/2026-10-20/paquete-produccion-contraste-negro.log`; SHA-256 zip `ef4be2b0538b9161aa02d7a9c82866ad423177b05b4cdbbb46355be4cccd1765` |
+
+App del 49200 reiniciada con jar `276c8137…` (unidad `restaurante-app` activa, pid 1374544); verificación visual hecha en el display real del operador tras iniciar sesión `admin`.
+
 snapshot 20/10/2026 13:05
 
 ## Contraste de texto normalizado en los botones inferiores de Atn. directa (Modo C)
