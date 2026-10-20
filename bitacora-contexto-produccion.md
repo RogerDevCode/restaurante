@@ -1,5 +1,16 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 20/10/2026 12:58
+
+## Hallazgos H1 y H2 cerrados con re-ejecución aislada
+
+| # | Defecto | Corrección | Verificación |
+|---|---|---|---|
+| H1 | `tblTemPlatos` (toma de pedido): la columna Precio (min/pref 110px) quedaba en 158px y no cubría el precio más largo (172px) | `Sistema.java` (`configurarColumnasProporcionales(tblTemPlatos…)`): min y preferred de la columna Precio a **175px** | `./e2e_dia_completo_virtual.sh Vista.PreciosVisiblesComponenteTest` → `evidencias/produccion/2026-10-20/h1-aislado-PreciosVisibles.log`: `ancho 190px cubre el precio más largo (172px)`, `E2E PRECIOS: TODO OK`, exit 0 |
+| H2 | El E2E esperaba `txtIdHistorialPedido=id` tras hacer clic en un pedido **PENDIENTE** del historial; el app deja ese campo **vacío por diseño** (para FINALIZADO, que es cuando se usa para reimpresión/PDF; el id del pendiente vive en `txtIdPedido`) y `cargarPedidoEnPantalla` salta a la pestaña de caja, lo que dejaba la tabla fuera de pantalla para el clic siguiente | El test ahora valida la semántica real: (a) PENDIENTE → carga en caja con `txtIdPedido` y `txtIdHistorialPedido` vacío; (b) subcaso nuevo con pedido **FINALIZADO** → `txtIdHistorialPedido` fija el id y `btnPdfPedido` se habilita; (c) tras la carga que cambia de pestaña, el test vuelve a seleccionar la pestaña de historial y re-aplica el sorter antes del segundo clic | `./e2e_dia_completo_virtual.sh Vista.TablasIdOcultoComponenteTest` → `evidencias/produccion/2026-10-20/h2-aislado-TablasIdOculto.log`: los tres subcasos en OK, `E2E TABLAS ID: TODO OK`, exit 0 |
+
+Quedan sin hallazgos abiertos locales: H3 (resuelto antes), H4 y H5 siguen como notas de proceso (no defectos de producto). El jar desplegado en `Restaurante_Ejecutable/` (sha256 `0430a3de…`) incluye H1; la instancia 49200 activa tomará el cambio al próximo arranque. Artefacto de distribución regenerado sobre `642669f`: sha256 zip `3b79ab8e5e7498b4c6de7002e5f7f383997bf2292e0ec47f7bd8ea9078caa496` (`evidencias/produccion/2026-10-20/paquete-produccion-post-h1h2.log`).
+
 snapshot 20/10/2026 10:57
 
 ## Hallazgo H3 reparado (catálogo de platos) + incidente de compose registrado
