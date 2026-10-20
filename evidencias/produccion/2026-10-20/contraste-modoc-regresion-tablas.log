@@ -1,0 +1,170 @@
+ Network restaurante-dia-e2e-1352798-1792501143_default  Creating
+ Network restaurante-dia-e2e-1352798-1792501143_default  Created
+ Volume restaurante-dia-e2e-1352798-1792501143_restaurante_integration_mysql_data  Creating
+ Volume restaurante-dia-e2e-1352798-1792501143_restaurante_integration_mysql_data  Created
+ Container restaurante-dia-e2e-1352798-1792501143-db-1  Creating
+ Container restaurante-dia-e2e-1352798-1792501143-db-1  Created
+ Container restaurante-dia-e2e-1352798-1792501143-db-1  Starting
+ Container restaurante-dia-e2e-1352798-1792501143-db-1  Started
+ Container restaurante-dia-e2e-1352798-1792501143-db-1  Waiting
+ Container restaurante-dia-e2e-1352798-1792501143-db-1  Healthy
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 11 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.TablasIdOcultoComponenteTest (DISPLAY=:99) ==
+Oct 20, 2026 12:59:32 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+INFO: Respaldo de base de datos generado exitosamente: /tmp/restaurante-dia-e2e-mK6aDu/respaldos/pre_migracion_restaurante_20261020_125931_774_0426344c-2ffe-47ba-8cae-bed4d4ed1bd9.sql
+Oct 20, 2026 12:59:34 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Respaldo previo a migración confirmado: /tmp/restaurante-dia-e2e-mK6aDu/respaldos/pre_migracion_restaurante_20261020_125931_774_0426344c-2ffe-47ba-8cae-bed4d4ed1bd9.sql
+Oct 20, 2026 12:59:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaConfiguracionSistema
+INFO: Tabla configuracion_sistema verificada.
+Oct 20, 2026 12:59:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCierresCaja
+INFO: Tabla cierres_caja verificada.
+Oct 20, 2026 12:59:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaMesoneros
+INFO: Tabla mesoneros verificada.
+Oct 20, 2026 12:59:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCategorias
+INFO: Tabla categorias verificada (soft-delete activo soportado).
+Oct 20, 2026 12:59:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoCategoria
+INFO: Tabla plato_categoria verificada.
+Oct 20, 2026 12:59:35 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoFavorito
+INFO: Tabla plato_favorito verificada.
+Oct 20, 2026 12:59:36 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+
+--- CASO 1: columna ID oculta, modelo intacto ---
+OK   tableSala: columna ID fuera de la vista
+OK   tableSala: modelo conserva ID ('ID')
+OK   TablePedidos: columna ID fuera de la vista
+OK   TablePedidos: modelo conserva ID ('Id')
+OK   TableUsuarios: columna ID fuera de la vista
+OK   TableUsuarios: modelo conserva ID ('Id')
+OK   tblTemPlatos: columna ID fuera de la vista
+OK   tblTemPlatos: modelo conserva ID ('')
+OK   TablePlatos: columna ID fuera de la vista
+OK   TablePlatos: modelo conserva ID ('ID')
+OK   tableMenu: columna ID fuera de la vista
+OK   tableMenu: modelo conserva ID ('')
+OK   tableFinalizar: columna ID fuera de la vista
+OK   tableFinalizar: modelo conserva ID ('')
+OK   tableMesonerosConfig: columna ID fuera de la vista
+OK   tableMesonerosConfig: modelo conserva ID ('ID')
+OK   tableFacturasCliente: columna ID fuera de la vista
+OK   tableClientes conserva Cédula/RIF visible (clave de negocio, no ID interno)
+
+--- CASO 2: clic selecciona el ID correcto ---
+OK   tableSala con 2 filas de prueba
+OK   clic en fila 1 carga sala 902 en el formulario (txtIdSala=902)
+OK   clic en fila 1 carga plato 912 (txtIdPlato=912)
+OK   valorModelo lee ID 922 de la fila 1 de usuarios
+
+--- CASO 3: historial con sorter por ID desc ---
+OK   historial con 2 pedidos de prueba
+OK   tras ordenar desc, la fila visible 0 es el pedido 9602
+OK   clic en fila ordenada (PENDIENTE) cargó el pedido 9602 en caja (sel=0, txtIdPedido=9602)
+OK   PENDIENTE: txtIdHistorialPedido queda vacío por semántica (txtHist='')
+OK   el pedido cargado en caja trae su línea E2E-SplitPollo (nombre=E2E-SplitPollo)
+OK   historial con 3 pedidos de prueba
+OK   tras ordenar desc, la fila visible 0 es el pedido FINALIZADO 9603
+Oct 20, 2026 12:59:52 PM Modelo.ErrorAplicacionException <init>
+WARNING: El medio de pago no es válido para el desglose.
+java.lang.IllegalArgumentException: El medio de pago no es válido para el desglose.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:28)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5381)
+	at Vista.Sistema.lambda$crearCamposFacturacionRapida$48(Sistema.java:1822)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableChanged(AbstractTableModel.java:302)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableRowsInserted(AbstractTableModel.java:237)
+	at java.desktop/javax.swing.table.DefaultTableModel.insertRow(DefaultTableModel.java:383)
+	at java.desktop/javax.swing.table.DefaultTableModel.addRow(DefaultTableModel.java:357)
+	at java.desktop/javax.swing.table.DefaultTableModel.addRow(DefaultTableModel.java:368)
+	at Vista.Sistema.mostrarPedidoEnPantalla(Sistema.java:12313)
+	at Vista.Sistema.lambda$cargarPedidoEnPantalla$185(Sistema.java:12158)
+	at Vista.PedidoEnPantallaSwingWorker.done(PedidoEnPantallaSwingWorker.java:41)
+	at java.desktop/javax.swing.SwingWorker$4.run(SwingWorker.java:749)
+	at java.desktop/javax.swing.SwingWorker$DoSubmitAccumulativeRunnable.run(SwingWorker.java:847)
+	at java.desktop/sun.swing.AccumulativeRunnable.run(AccumulativeRunnable.java:112)
+	at java.desktop/javax.swing.SwingWorker$DoSubmitAccumulativeRunnable.actionPerformed(SwingWorker.java:857)
+	at java.desktop/javax.swing.Timer.fireActionPerformed(Timer.java:311)
+	at java.desktop/javax.swing.Timer$DoPostEvent.run(Timer.java:243)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:318)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+Oct 20, 2026 12:59:52 PM Modelo.ErrorAplicacionException <init>
+WARNING: El medio de pago no es válido para el desglose.
+java.lang.IllegalArgumentException: El medio de pago no es válido para el desglose.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:28)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5381)
+	at Vista.Sistema.mostrarPedidoEnPantalla(Sistema.java:12342)
+	at Vista.Sistema.lambda$cargarPedidoEnPantalla$185(Sistema.java:12158)
+	at Vista.PedidoEnPantallaSwingWorker.done(PedidoEnPantallaSwingWorker.java:41)
+	at java.desktop/javax.swing.SwingWorker$4.run(SwingWorker.java:749)
+	at java.desktop/javax.swing.SwingWorker$DoSubmitAccumulativeRunnable.run(SwingWorker.java:847)
+	at java.desktop/sun.swing.AccumulativeRunnable.run(AccumulativeRunnable.java:112)
+	at java.desktop/javax.swing.SwingWorker$DoSubmitAccumulativeRunnable.actionPerformed(SwingWorker.java:857)
+	at java.desktop/javax.swing.Timer.fireActionPerformed(Timer.java:311)
+	at java.desktop/javax.swing.Timer$DoPostEvent.run(Timer.java:243)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:318)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+OK   clic en fila FINALIZADA fijó txtIdHistorialPedido=9603 y habilitó PDF (sel=0, pdf=true)
+
+--- CASO 4: split 1 clic agrega con ID correcto ---
+OK   panel split accesible
+OK   split-catalogo: columna ID fuera de la vista
+OK   split-catalogo: modelo conserva ID ('ID')
+OK   split-carrito: columna ID fuera de la vista
+OK   split-carrito: modelo conserva ID ('ID')
+OK   split-carrito: columna Comentario fuera de la vista
+OK   catálogo split con platos de memoria
+OK   grilla split con mesas (4)
+OK   plato E2E-SplitPollo visible en catálogo
+OK   carrito recibió 1 línea tras 1 clic
+OK   línea del carrito conserva ID 951 en el modelo
+
+--- CASO 5: carrito clásico ---
+OK   tableMenu con 1 línea
+OK   clic en carrito refleja cantidad 1 (txtCantidadManual=1)
+
+--- CASO 6: resize guarda en BD y se restaura ---
+OK   split_carrito: pesos guardados en preferencias_tabla
+OK   split_carrito: pesos para las 5 columnas visibles
+OK   split_carrito: tabla nueva restaura proporciones guardadas [0.34535367545076284, 0.17753120665742025, 0.21914008321775313, 0.04160887656033287, 0.21636615811373092] vs [0.345, 0.1775, 0.21875, 0.04125, 0.21625]
+OK   toma_carrito: pesos guardados en preferencias_tabla
+OK   toma_carrito: pesos para las 7 columnas visibles
+OK   toma_carrito: tabla nueva restaura proporciones guardadas [0.2328042328042328, 0.08818342151675485, 0.19400352733686066, 0.1763668430335097, 0.1763668430335097, 0.10582010582010581, 0.026455026455026454] vs [0.2325, 0.08875, 0.19375, 0.055, 0.17625, 0.10625, 0.02625]
+OK   historial: pesos guardados en preferencias_tabla
+OK   historial: pesos para las 7 columnas visibles
+OK   historial: tabla nueva restaura proporciones guardadas [0.24032403240324035, 0.15481548154815483, 0.06750675067506752, 0.15121512151215125, 0.12691269126912694, 0.12061206120612063, 0.13861386138613865] vs [0.24, 0.155, 0.0675, 0.15125, 0.1275, 0.12, 0.13875]
+=================================================
+E2E TABLAS ID: TODO OK

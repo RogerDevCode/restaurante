@@ -1899,6 +1899,12 @@ public final class Sistema extends javax.swing.JFrame {
         return (Math.max(lFondo, lTexto) + 0.05) / (Math.min(lFondo, lTexto) + 0.05);
     }
 
+    /** Texto normalizado a blanco o negro: elige el que rinde más contraste sobre el fondo (WCAG). */
+    public static java.awt.Color colorTextoContraste(java.awt.Color fondo) {
+        java.awt.Color negro = new java.awt.Color(0, 0, 0);
+        return contraste(fondo, negro) >= contraste(fondo, java.awt.Color.WHITE) ? negro : java.awt.Color.WHITE;
+    }
+
     private static double luminancia(java.awt.Color color) {
         double r = canalLineal(color.getRed());
         double g = canalLineal(color.getGreen());

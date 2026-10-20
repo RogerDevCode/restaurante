@@ -568,8 +568,8 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnEnviarCocina = new JButton("Enviar a Cocina");
         btnEnviarCocina.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnEnviarCocina.setBackground(new Color(0, 102, 102));
-        btnEnviarCocina.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnEnviarCocina, new Color(0, 102, 102),
+                Sistema.colorTextoContraste(new Color(0, 102, 102)));
         btnEnviarCocina.setPreferredSize(new Dimension(130, 28));
         btnEnviarCocina.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnEnviarCocina.setToolTipText("Guardar la comanda y enviarla a cocina");
@@ -578,8 +578,8 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnPreFactura = new JButton("Pre-Factura");
         btnPreFactura.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnPreFactura.setBackground(new Color(39, 174, 96));
-        btnPreFactura.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnPreFactura, new Color(39, 174, 96),
+                Sistema.colorTextoContraste(new Color(39, 174, 96)));
         btnPreFactura.setPreferredSize(new Dimension(95, 28));
         btnPreFactura.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnPreFactura.setToolTipText("Emitir la cuenta / pre-factura para el cliente sin cerrar la mesa");
@@ -588,8 +588,8 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnCortesia = new JButton("Cortesía");
         btnCortesia.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnCortesia.setBackground(new Color(142, 68, 173));
-        btnCortesia.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnCortesia, new Color(142, 68, 173),
+                Sistema.colorTextoContraste(new Color(142, 68, 173)));
         btnCortesia.setPreferredSize(new Dimension(80, 28));
         btnCortesia.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCortesia.setToolTipText("Registrar como consumo de la casa / cortesía autorizada");
@@ -598,8 +598,8 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnFuga = new JButton("No Pagó");
         btnFuga.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnFuga.setBackground(new Color(192, 57, 43));
-        btnFuga.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnFuga, new Color(192, 57, 43),
+                Sistema.colorTextoContraste(new Color(192, 57, 43)));
         btnFuga.setPreferredSize(new Dimension(80, 28));
         btnFuga.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnFuga.setToolTipText("Liberar la mesa anulando el pedido por retiro sin pago (Fuga / Incobrable)");
@@ -608,8 +608,8 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         btnCobrar = new JButton("Cobrar");
         btnCobrar.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnCobrar.setBackground(new Color(40, 116, 166));
-        btnCobrar.setForeground(Color.WHITE);
+        Sistema.botonSolido(btnCobrar, new Color(40, 116, 166),
+                Sistema.colorTextoContraste(new Color(40, 116, 166)));
         btnCobrar.setPreferredSize(new Dimension(80, 28));
         btnCobrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCobrar.setToolTipText("Cobrar y facturar la comanda de la mesa");
