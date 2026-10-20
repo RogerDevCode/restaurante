@@ -172,15 +172,15 @@ public class MySqlIntegrationIT {
 
             ServicioBootstrapInicial servicio = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
             assertFalse(servicio.esBootstrapCompletado());
-            servicio.completarBootstrap("Propietario Integración", "propietario-it", clave);
+            servicio.completarBootstrap("PropietarioIT", clave);
 
             assertTrue(servicio.esBootstrapCompletado());
             try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
                     "SELECT nombre, correo, pass, rol, activo FROM usuarios WHERE id=1");
                  ResultSet resultado = sentencia.executeQuery()) {
                 assertTrue(resultado.next());
-                assertEquals("Propietario Integración", resultado.getString("nombre"));
-                assertEquals("propietario-it", resultado.getString("correo"));
+                assertEquals("PropietarioIT", resultado.getString("nombre"));
+                assertEquals("PropietarioIT", resultado.getString("correo"));
                 assertEquals("Administrador", resultado.getString("rol"));
                 assertEquals(1, resultado.getInt("activo"));
                 assertTrue(new PasswordHasher().verificar(copiaParaVerificar, resultado.getString("pass")));
@@ -212,12 +212,12 @@ public class MySqlIntegrationIT {
             ServicioBootstrapInicial otraTerminal = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
             Future<?> resultadoUna = ejecutores.submit(() -> {
                 inicio.await();
-                unaTerminal.completarBootstrap("Propietaria Una", "bootstrap-una", claveUna);
+                unaTerminal.completarBootstrap("bootstrapuna", claveUna);
                 return null;
             });
             Future<?> resultadoDos = ejecutores.submit(() -> {
                 inicio.await();
-                otraTerminal.completarBootstrap("Propietario Dos", "bootstrap-dos", claveDos);
+                otraTerminal.completarBootstrap("bootstrapdos", claveDos);
                 return null;
             });
             inicio.countDown();
@@ -231,7 +231,9 @@ public class MySqlIntegrationIT {
                 assertTrue(resultado.next());
                 String correo = resultado.getString("correo");
                 assertTrue("Una sola terminal debe ganar el bootstrap",
-                        "bootstrap-una".equals(correo) || "bootstrap-dos".equals(correo));
+                        "bootstrapuna".equals(correo) || "bootstrapdos".equals(correo));
+                assertEquals("El nombre visible debe coincidir con el usuario elegido",
+                        correo, resultado.getString("nombre"));
                 assertEquals("Administrador", resultado.getString("rol"));
                 assertEquals(1, resultado.getInt("activo"));
                 String hash = resultado.getString("pass");
@@ -246,6 +248,74 @@ public class MySqlIntegrationIT {
             try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
                 sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', pass='pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM', rol='Administrador', activo=1 WHERE id=1");
                 sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='1' WHERE clave='bootstrap_inicial_completado'");
+            }
+        }
+    }
+
+    @Test
+    public void bootstrapConUsuarioAdminMapeaCredencialesPersistibles() throws Exception {
+        char[] clave = "ClaveBootstrapAdmin2026".toCharArray();
+        char[] copiaParaVerificar = clave.clone();
+        try {
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET activo=0, pass='!BLOQUEADO_BOOTSTRAP_PENDIENTE!' WHERE id=1");
+                sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='0' WHERE clave='bootstrap_inicial_completado'");
+            }
+
+            ServicioBootstrapInicial servicio = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
+            servicio.completarBootstrap("admin", clave);
+
+            try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                    "SELECT nombre, correo, pass, rol, activo FROM usuarios WHERE id=1");
+                 ResultSet resultado = sentencia.executeQuery()) {
+                assertTrue(resultado.next());
+                assertEquals("El nombre persistible de 'admin' no puede violar el CHECK de la BD",
+                        "Administrador", resultado.getString("nombre"));
+                assertEquals("admin", resultado.getString("correo"));
+                assertEquals("Administrador", resultado.getString("rol"));
+                assertEquals(1, resultado.getInt("activo"));
+                assertTrue(new PasswordHasher().verificar(copiaParaVerificar, resultado.getString("pass")));
+            }
+        } finally {
+            Arrays.fill(copiaParaVerificar, '\0');
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', pass='pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM', rol='Administrador', activo=1 WHERE id=1");
+                sentencia.executeUpdate("UPDATE configuracion_sistema SET valor='1' WHERE clave='bootstrap_inicial_completado'");
+            }
+        }
+    }
+
+    @Test
+    public void administradorPrincipalAdminNoPuedeEliminarseNiDesactivarse() throws Exception {
+        String correo = "it-admin-secundario-" + UUID.randomUUID() + "@restaurante.test";
+        try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+            sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', rol='Administrador', activo=1 WHERE id=1");
+        }
+        try (Connection conexion = conexion(); PreparedStatement sentencia = conexion.prepareStatement(
+                "INSERT INTO usuarios (nombre, correo, pass, rol, activo) VALUES (?, ?, ?, 'Administrador', 1)")) {
+            sentencia.setString(1, "Administrador Secundario Integración");
+            sentencia.setString(2, correo);
+            sentencia.setString(3, new PasswordHasher().hash("ClaveIntegracion2026".toCharArray()));
+            assertEquals(1, sentencia.executeUpdate());
+        }
+
+        try {
+            LoginDao dao = new LoginDao();
+            ErrorAplicacionException alEliminar = assertThrows(ErrorAplicacionException.class,
+                    () -> dao.eliminarUsuario(1));
+            assertTrue("El administrador principal debe rechazar su eliminación",
+                    alEliminar.getMessage().contains("administrador primario")
+                            && alEliminar.getMessage().contains("no puede ser eliminado"));
+            ErrorAplicacionException alDesactivar = assertThrows(ErrorAplicacionException.class,
+                    () -> dao.desactivarUsuario(1));
+            assertTrue("El administrador principal debe rechazar su desactivación",
+                    alDesactivar.getMessage().contains("administrador primario")
+                            && alDesactivar.getMessage().contains("no puede ser desactivado"));
+            assertTrue("El administrador principal debe continuar activo", dao.esUsuarioActivo(1));
+        } finally {
+            try (Connection conexion = conexion(); Statement sentencia = conexion.createStatement()) {
+                sentencia.executeUpdate("DELETE FROM usuarios WHERE correo='" + correo.replace("'", "''") + "'");
+                sentencia.executeUpdate("UPDATE usuarios SET nombre='Administrador', correo='admin', pass='pbkdf2-sha256$600000$4rRaMK7S7lSdpTKgN6YRiA$O4BlX32Y2+lu3IjnBmn08WaE3waaVtdvv7xiuszXxNM', rol='Administrador', activo=1 WHERE id=1");
             }
         }
     }

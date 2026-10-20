@@ -31,8 +31,7 @@ import javax.swing.JTextField;
 public class FrmBootstrapInicial extends JDialog {
 
     private final ServicioBootstrapInicial servicio;
-    private final JTextField txtNombre;
-    private final JTextField txtCorreo;
+    private final JTextField txtUsuario;
     private final JPasswordField txtPass;
     private final JPasswordField txtPassConfirm;
     private boolean completado = false;
@@ -81,46 +80,35 @@ public class FrmBootstrapInicial extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
 
-        // Fila 0: Nombre
+        // Fila 0: Usuario
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.3;
-        JLabel lblNom = new JLabel("Nombre Completo:");
-        lblNom.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        panelForm.add(lblNom, gbc);
+        JLabel lblUsr = new JLabel("Usuario (mín. 4 alfanuméricos):");
+        lblUsr.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        panelForm.add(lblUsr, gbc);
 
         gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 0.7;
-        txtNombre = new JTextField();
-        txtNombre.setPreferredSize(new Dimension(240, 28));
-        panelForm.add(txtNombre, gbc);
+        txtUsuario = new JTextField();
+        txtUsuario.setPreferredSize(new Dimension(240, 28));
+        panelForm.add(txtUsuario, gbc);
 
-        // Fila 1: Correo / Usuario
+        // Fila 1: Contraseña
         gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.3;
-        JLabel lblCor = new JLabel("Correo o Usuario:");
-        lblCor.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        panelForm.add(lblCor, gbc);
-
-        gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 0.7;
-        txtCorreo = new JTextField();
-        txtCorreo.setPreferredSize(new Dimension(240, 28));
-        panelForm.add(txtCorreo, gbc);
-
-        // Fila 2: Contraseña
-        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.3;
         JLabel lblPass = new JLabel("Contraseña (mín. 8 car.):");
         lblPass.setFont(new Font("Segoe UI", Font.BOLD, 12));
         panelForm.add(lblPass, gbc);
 
-        gbc.gridx = 1; gbc.gridy = 2; gbc.weightx = 0.7;
+        gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 0.7;
         txtPass = new JPasswordField();
         txtPass.setPreferredSize(new Dimension(240, 28));
         panelForm.add(txtPass, gbc);
 
-        // Fila 3: Confirmación
-        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.3;
+        // Fila 2: Confirmación
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.3;
         JLabel lblConf = new JLabel("Confirmar Contraseña:");
         lblConf.setFont(new Font("Segoe UI", Font.BOLD, 12));
         panelForm.add(lblConf, gbc);
 
-        gbc.gridx = 1; gbc.gridy = 3; gbc.weightx = 0.7;
+        gbc.gridx = 1; gbc.gridy = 2; gbc.weightx = 0.7;
         txtPassConfirm = new JPasswordField();
         txtPassConfirm.setPreferredSize(new Dimension(240, 28));
         txtPassConfirm.addActionListener(e -> guardar());
@@ -153,15 +141,21 @@ public class FrmBootstrapInicial extends JDialog {
     }
 
     private void guardar() {
-        String nombre = txtNombre.getText() != null ? txtNombre.getText().trim() : "";
-        String correo = txtCorreo.getText() != null ? txtCorreo.getText().trim() : "";
+        String usuario = txtUsuario.getText() != null ? txtUsuario.getText().trim() : "";
         char[] pass = txtPass.getPassword();
         char[] passConf = txtPassConfirm.getPassword();
 
-        if (nombre.isEmpty() || correo.isEmpty() || pass == null || pass.length == 0) {
+        if (usuario.isEmpty() || pass == null || pass.length == 0) {
             JOptionPane.showMessageDialog(this,
                     "Todos los campos son obligatorios para inicializar el Administrador.",
                     "Datos incompletos", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (usuario.length() < 4 || usuario.length() > 60 || !usuario.matches("^[A-Za-z0-9]+$")) {
+            JOptionPane.showMessageDialog(this,
+                    "El usuario debe tener entre 4 y 60 caracteres y contener solo letras y números (sin espacios ni símbolos).",
+                    "Usuario inválido", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -182,9 +176,9 @@ public class FrmBootstrapInicial extends JDialog {
         Arrays.fill(passConf, '\0');
 
         try {
-            servicio.completarBootstrap(nombre, correo, pass);
+            servicio.completarBootstrap(usuario, pass);
             JOptionPane.showMessageDialog(this,
-                    "¡Cuenta de Administrador configurada exitosamente!\nAhora puede iniciar sesión con sus nuevas credenciales.",
+                    "¡Cuenta de Administrador configurada exitosamente!\nAhora puede iniciar sesión con su usuario y contraseña.",
                     "Configuración Completada", JOptionPane.INFORMATION_MESSAGE);
             completado = true;
             dispose();

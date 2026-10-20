@@ -19,28 +19,23 @@ import static org.junit.Assert.*;
 public class ServicioBootstrapInicialTest {
 
     @Test
-    public void rechazaNombreVacioOInvalido() {
+    public void rechazaUsuarioVacioOInvalido() {
         ServicioBootstrapInicial servicio = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
         assertThrows(ErrorAplicacionException.class, () ->
-                servicio.completarBootstrap("", "admin@restaurante.com", "claveSegura123".toCharArray()));
+                servicio.completarBootstrap("", "claveSegura123".toCharArray()));
         assertThrows(ErrorAplicacionException.class, () ->
-                servicio.completarBootstrap("admin", "admin@restaurante.com", "claveSegura123".toCharArray()));
+                servicio.completarBootstrap("abc", "claveSegura123".toCharArray()));
         assertThrows(ErrorAplicacionException.class, () ->
-                servicio.completarBootstrap("Al", "admin@restaurante.com", "claveSegura123".toCharArray()));
-    }
-
-    @Test
-    public void rechazaCorreoVacio() {
-        ServicioBootstrapInicial servicio = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
+                servicio.completarBootstrap("admin@restaurante.com", "claveSegura123".toCharArray()));
         assertThrows(ErrorAplicacionException.class, () ->
-                servicio.completarBootstrap("Propietario", "", "claveSegura123".toCharArray()));
+                servicio.completarBootstrap("ad min", "claveSegura123".toCharArray()));
     }
 
     @Test
     public void rechazaContrasenaCorta() {
         ServicioBootstrapInicial servicio = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
         assertThrows(ErrorAplicacionException.class, () ->
-                servicio.completarBootstrap("Propietario", "propietario@local.com", "corta".toCharArray()));
+                servicio.completarBootstrap("propietario", "corta".toCharArray()));
     }
 
     @Test
@@ -48,7 +43,7 @@ public class ServicioBootstrapInicialTest {
         ServicioBootstrapInicial servicio = new ServicioBootstrapInicial(new ProveedorConexionJdbc());
         char[] pass = "12345678".toCharArray();
         try {
-            servicio.completarBootstrap("", "correo", pass);
+            servicio.completarBootstrap("", pass);
         } catch (ErrorAplicacionException ignored) {
         }
         for (char c : pass) {

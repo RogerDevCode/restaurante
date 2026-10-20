@@ -92,7 +92,7 @@ export ACCION_IMPRESION='IMPRIMIR'
 
 "${COMPOSE[@]}" up -d --wait
 ./e2e_virtual.sh Vista.BootstrapInicialE2EVirtual
-export E2E_LOGIN_USERNAME='bootstrap-e2e@example.test'
+export E2E_LOGIN_USERNAME='admin'
 export E2E_LOGIN_PASSWORD='E2EBootstrap2026X'
 if [[ "${E2E_BOOTSTRAP_FULL_DAY:-NO}" == "SI" ]]; then
     ./e2e_virtual.sh Vista.DiaCompletoFiscalE2EVirtual

@@ -13,7 +13,7 @@ import javax.swing.UIManager;
 /** Arranque de instalación limpia y bootstrap inicial, recorrido solo mediante UI. */
 public final class BootstrapInicialE2EVirtual {
     private static final String PASSWORD = "E2EBootstrap2026X";
-    private static final String EMAIL = "bootstrap-e2e@example.test";
+    private static final String USERNAME = "admin";
 
     private BootstrapInicialE2EVirtual() {}
 
@@ -33,8 +33,7 @@ public final class BootstrapInicialE2EVirtual {
                     () -> restaurante.Restaurante.main(new String[0]));
             FrmBootstrapInicial bootstrap = robot.esperarVentana(FrmBootstrapInicial.class);
 
-            JTextField nombre = (JTextField) robot.campo(bootstrap, "txtNombre");
-            JTextField correo = (JTextField) robot.campo(bootstrap, "txtCorreo");
+            JTextField usuario = (JTextField) robot.campo(bootstrap, "txtUsuario");
             var password = (javax.swing.JPasswordField) robot.campo(bootstrap, "txtPass");
             var confirmar = (javax.swing.JPasswordField) robot.campo(bootstrap, "txtPassConfirm");
             JButton crear = robot.edt(() -> buscarBoton(bootstrap, "Crear Administrador e Iniciar"));
@@ -44,10 +43,13 @@ public final class BootstrapInicialE2EVirtual {
             robot.clic(crear);
             robot.confirmarDialogo("Datos incompletos");
 
-            String nuevoCorreo = EMAIL;
-            robot.reemplazarTexto(nombre, "Administrador E2E");
-            robot.reemplazarTexto(correo, nuevoCorreo);
+            robot.reemplazarTexto(usuario, "abc");
+            robot.reemplazarTexto(password, PASSWORD);
+            robot.reemplazarTexto(confirmar, PASSWORD);
+            robot.clic(crear);
+            robot.confirmarDialogo("Usuario inválido");
 
+            robot.reemplazarTexto(usuario, USERNAME);
             robot.reemplazarTexto(password, "corta7");
             robot.reemplazarTexto(confirmar, "corta7");
             robot.clic(crear);
@@ -68,7 +70,7 @@ public final class BootstrapInicialE2EVirtual {
             robot.clic((Component) robot.campo(login, "btnIniciar"));
             robot.confirmarDialogo("Acceso denegado");
 
-            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), nuevoCorreo);
+            robot.reemplazarTexto((JTextField) robot.campo(login, "txtIdentificador"), USERNAME);
             robot.reemplazarTexto((JTextField) robot.campo(login, "txtPass"), PASSWORD);
             robot.clic((Component) robot.campo(login, "btnIniciar"));
             Sistema sistema = robot.esperarVentana(Sistema.class);
@@ -80,7 +82,7 @@ public final class BootstrapInicialE2EVirtual {
             });
             Object etiquetaAdmin = robot.campo(sistema, "LabelVendedor");
             robot.esperar(() -> sistema.isShowing()
-                            && "Administrador E2E".equals(texto(robot, etiquetaAdmin)),
+                            && "Administrador".equals(texto(robot, etiquetaAdmin)),
                     "la cuenta creada inicia sesión como Administrador en el sistema");
             System.out.println("BOOTSTRAP_E2E_OK: instalación limpia, validaciones, demo bloqueada y login nuevo por UI");
         } catch (Throwable error) {
