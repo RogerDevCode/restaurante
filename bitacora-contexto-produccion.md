@@ -1,5 +1,22 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 20/10/2026 13:50
+
+## Resumen de Ventas en el Dashboard (diseño aprobado por el operador, implementado)
+
+Sección nueva "Resumen de Ventas" en el panel Dashboard del 49200 (franja bajo las tarjetas KPI): combo de período `Hoy · Ayer · Últimos 7 días · Este mes · Personalizado` (2 spinners de fecha solo en Personalizado) + `Ver` + `PDF`; dos tarjetas (VENTAS DEL PERÍODO USD en verde / Bs en azul con "Tasa efectiva: N") y tabla `Método | Pagos | USD | Bs | %` con fila TOTAL fija.
+
+| Pieza | Detalle | Verificación |
+|---|---|---|
+| `CierreCajaDao.consultarResumenVentas(desde,hasta,usuario,config)` | Solo lectura; reutiliza fórmulas monetarias §1/§3 de `consultarCierre` con `DATE(COALESCE(cerrada_en,fecha)) BETWEEN ? AND ?` (REPEATABLE_READ, union de pedidos legados, tasa efectiva del período = ΣBs/ΣUSD escala 4); no toca `cierres_caja` ni correlativos | IT en BD scratch (`evidencias/produccion/2026-10-20/resumen-ventas-it-test.log`): Σ desglose == cabecera USD y Bs, anulados excluidos, 4×35.50 exacto, ticket 35.50, rango vacío → ceros, rango invertido rechazado — BUILD SUCCESSFUL |
+| Enum `TipoCierre.RESUMEN("RESUMEN DE VENTAS")` | switches del PDF explícitos (case TOTAL / RESUMEN / default); Pedido resources no afectados | `ant compile` exit 0; 5 suites targeted de PDF/Servicio en verde (`CierreCajaTest`, `CierreCajaExhaustivoTest`, `ConciliacionEfectivoCierreTest`, `AdversarialFallbacksFiscalesTest`, `CierreCajaYPrevisualizacionVistaTest`) |
+| `GeneradorPdfCierre` modo RESUMEN | prefijo `resumen_…pdf`, "Período:", fila Pendientes oculta, tabla fiscal recortada a TOTAL GENERAL, "Tasa Efectiva del Período", pie `*** RESUMEN INFORMATIVO - NO FISCAL ***`; X/Z inalterados | misma batería targeted |
+| `CierreCajaServicio.obtenerResumenVentas` / `generarResumenVentas` | datos para la tarjeta + PDF con canal de salida estándar (`procesadorSalida.procesar`), sin `guardarCierre` | targeted suite |
+| UI en `Sistema.initDashboardYClientes` + `ResumenVentasSwingWorker` | guard `versionResumenVentas` (patrón dashboard), spinners `yyyy-MM-dd`, `cargarResumenVentas()` público, PDF exige resumen en pantalla | compile exit 0 |
+| Artefacto regenerado | `./generar_restaurante_ejecutable.sh` sobre `97cf685` (el script exige árbol limpio) | log `/tmp/opencode/regen_resumen.log`; SHA-256 JAR `78cac8ad35f82923adda1082e311ecb647db3af58d34295d90ba9bc67325baef`; ZIP `22baf3dc18861500bb8184d8843c41ea2067e0fd80eefecfd9fa14e029e60edb` |
+
+Spec reutilizable: `docs/superpowers/specs/2026-10-20-resumen-ventas-dashboard.md` (`dea4dba`). Flags aprendidos: el guard `-unit-db-safety` exige neutralizar `.env` con `-DDB_URL/-DDB_NAME/-DMYSQL_DATABASE` en CLI y las sysprops del JVM entran como `-Dtest-sys-prop.*`; clase entera → `test-single`, un método → `test-single-method` con `-Dtest.class` + `-Djavac.includes`.
+
 snapshot 20/10/2026 13:35
 
 ## Contraste Modo C v2: texto negro pedido por el operador + estado deshabilitado legible (causa raíz hallada)
