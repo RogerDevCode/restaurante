@@ -489,6 +489,171 @@ public class CierreCajaDao {
     }
 
     /**
+     * Consulta de SOLO LECTURA: resumen de ventas de un rango de fechas (inclusive), con totales
+     * USD/Bs y desglose por método de pago. No persiste en cierres_caja y no avanza correlativos.
+     * Reutiliza las fórmulas monetarias de {@link #consultarCierre} con filtro de rango.
+     */
+    public CierreCaja consultarResumenVentas(String desde, String hasta, String usuarioEmisor, Config config) {
+        final LocalDate dInicio;
+        final LocalDate dFin;
+        try {
+            dInicio = LocalDate.parse(desde, DateTimeFormatter.ISO_LOCAL_DATE);
+            dFin = LocalDate.parse(hasta, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (Exception exParse) {
+            throw ErrorAplicacionException.validacion("El formato de fecha del resumen de ventas debe ser AAAA-MM-DD (ej: 2026-10-20).");
+        }
+        if (dInicio.isAfter(dFin)) {
+            throw ErrorAplicacionException.validacion("La fecha inicial del resumen de ventas no puede ser posterior a la fecha final.");
+        }
+
+        BigDecimal tasaConfig = (config != null && config.getTasaDolar() != null && config.getTasaDolar().compareTo(BigDecimal.ZERO) > 0)
+                ? config.getTasaDolar()
+                : null;
+        if (tasaConfig == null) {
+            throw ErrorAplicacionException.validacion("No se puede consultar el resumen de ventas: la tasa de cambio del sistema no ha sido configurada o es inválida.");
+        }
+
+        String desdeFiltro = dInicio.toString();
+        String hastaFiltro = dFin.toString();
+
+        CierreCaja cierre = new CierreCaja();
+        cierre.setTipo(CierreCaja.TipoCierre.RESUMEN);
+        cierre.setFecha(dInicio.equals(dFin) ? desdeFiltro : desdeFiltro + " a " + hastaFiltro);
+        cierre.setFechaHoraEmision(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        cierre.setUsuarioEmisor(usuarioEmisor != null && !usuarioEmisor.isBlank() ? usuarioEmisor.trim() : "Sistema");
+        cierre.setTasaCambioReferencia(tasaConfig);
+
+        try (Connection con = conexiones.getConnection()) {
+            infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(conexiones);
+
+            boolean autoCommitPrevio = con.getAutoCommit();
+            int aislamientoPrevio = con.getTransactionIsolation();
+
+            try {
+                con.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+                con.setAutoCommit(false);
+
+                // 1. Totales de pedidos finalizados del rango (fórmulas §1 de consultarCierre)
+                String sqlTotales = """
+                    SELECT COUNT(*) AS cant,
+                           COALESCE(SUM(total), 0) AS total_usd,
+                           COALESCE(SUM(tot_bs), 0) AS total_bs
+                    FROM (
+                        SELECT total,
+                               COALESCE(NULLIF(total_bs, 0), CASE WHEN tasa_cambio IS NOT NULL AND tasa_cambio > 0 THEN ROUND(total * tasa_cambio, 2) ELSE 0.00 END) AS tot_bs
+                        FROM pedidos
+                        WHERE estado = 'FINALIZADO'
+                          AND DATE(COALESCE(cerrada_en, fecha)) BETWEEN ? AND ?
+                    ) calc_pedidos
+                    """;
+                try (PreparedStatement ps = con.prepareStatement(sqlTotales)) {
+                    ps.setString(1, desdeFiltro);
+                    ps.setString(2, hastaFiltro);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            int finalizados = rs.getInt("cant");
+                            BigDecimal totalUsd = rs.getBigDecimal("total_usd");
+                            BigDecimal totalBs = rs.getBigDecimal("total_bs");
+
+                            cierre.setPedidosFinalizados(finalizados);
+                            cierre.setTotalVentasUsd(totalUsd);
+                            cierre.setTotalVentasBs(totalBs);
+
+                            if (finalizados > 0) {
+                                cierre.setTicketPromedioUsd(totalUsd.divide(BigDecimal.valueOf(finalizados), 2, RoundingMode.HALF_UP));
+                                cierre.setTicketPromedioBs(totalBs.divide(BigDecimal.valueOf(finalizados), 2, RoundingMode.HALF_UP));
+                            }
+                        }
+                    }
+                }
+
+                // 1.1 Total de artículos del rango (para la tarjeta de actividad)
+                String sqlTotalArticulos = """
+                    SELECT COALESCE(SUM(d.cantidad), 0) AS cant
+                    FROM detalle_pedidos d
+                    INNER JOIN pedidos p ON d.id_pedido = p.id
+                    WHERE p.estado = 'FINALIZADO'
+                      AND DATE(COALESCE(p.cerrada_en, p.fecha)) BETWEEN ? AND ?
+                    """;
+                try (PreparedStatement ps = con.prepareStatement(sqlTotalArticulos)) {
+                    ps.setString(1, desdeFiltro);
+                    ps.setString(2, hastaFiltro);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            cierre.setTotalArticulos(rs.getInt("cant"));
+                        }
+                    }
+                }
+
+                // 2. Desglose por método de pago del rango (fórmulas §3 de consultarCierre)
+                List<CierreCaja.ResumenMetodoPago> metodos = new ArrayList<>();
+                String sqlMetodos = """
+                    SELECT metodo,
+                           COUNT(*) AS cant,
+                           COALESCE(SUM(monto_usd), 0) AS total_usd,
+                           COALESCE(SUM(monto_bs), 0) AS total_bs
+                    FROM (
+                        SELECT pp.id_pedido,
+                               COALESCE(NULLIF(TRIM(pp.metodo_pago), ''), 'EFECTIVO') AS metodo,
+                               COALESCE(pp.monto_usd, CASE WHEN pp.moneda = 'USD' THEN pp.monto_aplicado ELSE ROUND(pp.monto_bs / NULLIF(pp.tasa_cambio, 0), 2) END, 0) AS monto_usd,
+                               COALESCE(pp.monto_bs, CASE WHEN pp.moneda = 'VES' THEN pp.monto_aplicado WHEN pp.tasa_cambio IS NOT NULL AND pp.tasa_cambio > 0 THEN ROUND(pp.monto_usd * pp.tasa_cambio, 2) ELSE 0.00 END) AS monto_bs
+                        FROM pedido_pagos pp
+                        INNER JOIN pedidos p ON p.id = pp.id_pedido
+                        WHERE p.estado = 'FINALIZADO' AND DATE(COALESCE(p.cerrada_en, p.fecha)) BETWEEN ? AND ?
+                        UNION ALL
+                        SELECT p.id AS id_pedido,
+                               COALESCE(NULLIF(TRIM(p.metodo_pago), ''), 'EFECTIVO') AS metodo,
+                               COALESCE(p.total, 0) AS monto_usd,
+                               COALESCE(NULLIF(p.total_bs, 0), CASE WHEN p.tasa_cambio IS NOT NULL AND p.tasa_cambio > 0 THEN ROUND(p.total * p.tasa_cambio, 2) ELSE 0.00 END) AS monto_bs
+                        FROM pedidos p
+                        WHERE p.estado = 'FINALIZADO' AND DATE(COALESCE(p.cerrada_en, p.fecha)) BETWEEN ? AND ?
+                          AND NOT EXISTS (SELECT 1 FROM pedido_pagos pp WHERE pp.id_pedido = p.id)
+                    ) pagos_desglose
+                    GROUP BY metodo
+                    ORDER BY total_usd DESC
+                    """;
+                try (PreparedStatement ps = con.prepareStatement(sqlMetodos)) {
+                    ps.setString(1, desdeFiltro);
+                    ps.setString(2, hastaFiltro);
+                    ps.setString(3, desdeFiltro);
+                    ps.setString(4, hastaFiltro);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            metodos.add(new CierreCaja.ResumenMetodoPago(
+                                    rs.getString("metodo"),
+                                    rs.getInt("cant"),
+                                    rs.getBigDecimal("total_usd"),
+                                    rs.getBigDecimal("total_bs")
+                            ));
+                        }
+                    }
+                }
+                cierre.setDesgloseMetodos(metodos);
+
+                BigDecimal totalUsdResumen = cierre.getTotalVentasUsd();
+                BigDecimal totalBsResumen = cierre.getTotalVentasBs();
+                if (totalUsdResumen != null && totalUsdResumen.compareTo(BigDecimal.ZERO) > 0
+                        && totalBsResumen != null && totalBsResumen.compareTo(BigDecimal.ZERO) > 0) {
+                    cierre.setTasaCambioReferencia(totalBsResumen.divide(totalUsdResumen, 4, RoundingMode.HALF_UP));
+                }
+
+                con.commit();
+            } finally {
+                try {
+                    con.setTransactionIsolation(aislamientoPrevio);
+                    con.setAutoCommit(autoCommitPrevio);
+                } catch (SQLException ignored) {
+                }
+            }
+
+        } catch (SQLException exCon) {
+            throw new DataAccessException("No se pudo compilar el resumen de ventas debido a un error de base de datos: " + exCon.getMessage(), exCon);
+        }
+
+        return cierre;
+    }
+
+    /**
      * Construye un CierreCaja puro a partir de objetos en memoria (ideal para pruebas unitarias sin BD).
      */
     public static CierreCaja calcularDesdeMemoria(

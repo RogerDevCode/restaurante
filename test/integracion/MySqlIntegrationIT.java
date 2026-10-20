@@ -1485,6 +1485,70 @@ public class MySqlIntegrationIT {
         assertTrue("El cierre debe incluir ventas en Bs positivas", cierre.getTotalVentasBs().compareTo(BigDecimal.ZERO) > 0);
     }
 
+    @Test
+    public void resumenVentasCuadraDesgloseConCabeceraYExcluyeAnuladosYRangoVacio() throws Exception {
+        int idSala = crearSalaPrueba(6);
+        PedidosDao pedidosDao = new PedidosDao();
+        List<Integer> ids = new ArrayList<>();
+        String[] metodos = {"EFECTIVO_BS", "EFECTIVO_USD", "EFECTIVO_BS", "EFECTIVO_USD"};
+        for (int i = 0; i < metodos.length; i++) {
+            int id = pedidosDao.registrarPedidoCompleto(pedido(idSala, i + 1), detallesValidos());
+            assertTrue(id > 0);
+            assertTrue(pedidosDao.actualizarEstadoConCliente(id, "Cliente IT", "V-RV" + i, metodos[i]));
+            ids.add(id);
+        }
+
+        // Pedido anulado (fuga): NO debe contar en la cabecera ni en el desglose de métodos
+        int idFuga = pedidosDao.registrarPedidoCompleto(pedido(idSala, 5), detallesValidos());
+        assertTrue(idFuga > 0);
+        assertTrue(pedidosDao.anularPedido(idFuga));
+
+        // Fecha aislada: separa la prueba de otros pedidos del mismo día en el suite (montos exactos)
+        String fechaAislada = "2020-05-20";
+        StringBuilder listaIds = new StringBuilder();
+        for (int id : ids) {
+            if (listaIds.length() > 0) {
+                listaIds.append(',');
+            }
+            listaIds.append(id);
+        }
+        try (Connection con = conexion(); Statement st = con.createStatement()) {
+            st.executeUpdate("UPDATE pedidos SET fecha='" + fechaAislada + " 10:30:00', cerrada_en='" + fechaAislada + " 12:00:00' "
+                    + "WHERE id IN (" + listaIds + "," + idFuga + ")");
+            // Pedido legado: sin total_bs y tasa_cambio=0 (mismo tratamiento que el cierre)
+            st.executeUpdate("UPDATE pedidos SET total_bs=NULL, tasa_cambio=0 WHERE id=" + ids.get(0));
+        }
+
+        Config config = new Config();
+        config.setTasaDolar(new BigDecimal("36.5000"));
+        CierreCaja resumen = new CierreCajaDao().consultarResumenVentas(fechaAislada, fechaAislada, "Admin", config);
+
+        BigDecimal metUsd = BigDecimal.ZERO;
+        BigDecimal metBs = BigDecimal.ZERO;
+        for (CierreCaja.ResumenMetodoPago r : resumen.getDesgloseMetodos()) {
+            metUsd = metUsd.add(r.getMontoUsd());
+            metBs = metBs.add(r.getMontoBs());
+        }
+
+        assertEquals("El resumen debe excluir pedidos anulados (4 finalizados)", 4, resumen.getPedidosFinalizados());
+        assertEquals("Suma de metodos USD debe igualar la cabecera", 0, resumen.getTotalVentasUsd().compareTo(metUsd));
+        assertEquals("Suma de metodos Bs debe igualar la cabecera", 0, resumen.getTotalVentasBs().compareTo(metBs));
+        assertEquals("Ventas USD del rango aislado (4 x 35.50)", 0, new BigDecimal("142.00").compareTo(resumen.getTotalVentasUsd()));
+        assertEquals("Ticket promedio USD del rango aislado", 0, new BigDecimal("35.50").compareTo(resumen.getTicketPromedioUsd()));
+        assertTrue("El resumen debe incluir ventas en Bs positivas", resumen.getTotalVentasBs().compareTo(BigDecimal.ZERO) > 0);
+
+        // Rango vacío: ceros y desglose vacío, sin errores
+        CierreCaja vacio = new CierreCajaDao().consultarResumenVentas("2020-05-21", "2020-05-21", "Admin", config);
+        assertEquals(0, vacio.getPedidosFinalizados());
+        assertEquals(0, BigDecimal.ZERO.compareTo(vacio.getTotalVentasUsd()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(vacio.getTotalVentasBs()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(vacio.getTicketPromedioUsd()));
+        assertTrue(vacio.getDesgloseMetodos().isEmpty());
+
+        assertThrows("Rango invertido debe rechazarse", ErrorAplicacionException.class,
+                () -> new CierreCajaDao().consultarResumenVentas("2020-05-21", "2020-05-20", "Admin", config));
+    }
+
     private static Connection conexion() throws SQLException {
         return DriverManager.getConnection(System.getProperty("DB_URL"),
                 System.getProperty("DB_USER"), System.getProperty("DB_PASSWORD"));

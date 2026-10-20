@@ -84,10 +84,15 @@ public final class GeneradorPdfCierre {
             throw new ErrorAplicacionException("No se pudo crear el directorio de salida para el cierre.", ex);
         }
 
-        String prefijo = cierre.getTipo() == CierreCaja.TipoCierre.TOTAL ? "cierre-Z" : "cierre-X";
+        boolean esResumen = cierre.getTipo() == CierreCaja.TipoCierre.RESUMEN;
+        String prefijo = switch (cierre.getTipo()) {
+            case TOTAL -> "cierre-Z";
+            case RESUMEN -> "resumen";
+            default -> "cierre-X";
+        };
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         String nombreArchivo = String.format("%s_%s_%s_%s.pdf", prefijo,
-                cierre.getFecha().replace("-", ""), timestamp, UUID.randomUUID());
+                cierre.getFecha().replaceAll("[^0-9]", ""), timestamp, UUID.randomUUID());
         Path archivoSalida = directorioSalida.resolve(nombreArchivo);
 
         float altoEstimado = calcularAltoDinamico(cierre, config);
@@ -109,7 +114,7 @@ public final class GeneradorPdfCierre {
             agregarSeparadorDoble(documento);
 
             PdfPTable tblMeta = crearTabla(2, new float[]{45f, 55f});
-            celda(tblMeta, "Fecha Cierre:", FONT_REGULAR_BOLD, Element.ALIGN_LEFT);
+            celda(tblMeta, esResumen ? "Período:" : "Fecha Cierre:", FONT_REGULAR_BOLD, Element.ALIGN_LEFT);
             celda(tblMeta, cierre.getFecha(), FONT_REGULAR, Element.ALIGN_RIGHT);
             celda(tblMeta, "Emisión:", FONT_REGULAR_BOLD, Element.ALIGN_LEFT);
             celda(tblMeta, cierre.getFechaHoraEmision(), FONT_REGULAR, Element.ALIGN_RIGHT);
@@ -123,11 +128,13 @@ public final class GeneradorPdfCierre {
             PdfPTable tblOp = crearTabla(2, new float[]{60f, 40f});
             celda(tblOp, "Pedidos Cobrados:", FONT_REGULAR, Element.ALIGN_LEFT);
             celda(tblOp, String.valueOf(cierre.getPedidosFinalizados()), FONT_REGULAR_BOLD, Element.ALIGN_RIGHT);
-            celda(tblOp, "Pedidos Pendientes:", FONT_REGULAR, Element.ALIGN_LEFT);
-            String txtPend = cierre.getPedidosPendientes() > 0
-                    ? cierre.getPedidosPendientes() + " (EN MESA)"
-                    : "0";
-            celda(tblOp, txtPend, FONT_REGULAR_BOLD, Element.ALIGN_RIGHT);
+            if (!esResumen) {
+                celda(tblOp, "Pedidos Pendientes:", FONT_REGULAR, Element.ALIGN_LEFT);
+                String txtPend = cierre.getPedidosPendientes() > 0
+                        ? cierre.getPedidosPendientes() + " (EN MESA)"
+                        : "0";
+                celda(tblOp, txtPend, FONT_REGULAR_BOLD, Element.ALIGN_RIGHT);
+            }
             celda(tblOp, "Platos/Arts Vendidos:", FONT_REGULAR, Element.ALIGN_LEFT);
             celda(tblOp, String.valueOf(cierre.getTotalArticulos()), FONT_REGULAR_BOLD, Element.ALIGN_RIGHT);
             celda(tblOp, "Ticket Promedio ($):", FONT_REGULAR, Element.ALIGN_LEFT);
@@ -144,30 +151,33 @@ public final class GeneradorPdfCierre {
             celda(tblFin, "USD ($)", FONT_REGULAR_BOLD, Element.ALIGN_RIGHT);
             celda(tblFin, "Bs.", FONT_REGULAR_BOLD, Element.ALIGN_RIGHT);
 
-            celda(tblFin, "Subtotal Ventas:", FONT_REGULAR, Element.ALIGN_LEFT);
-            celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getSubtotalUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
-            celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getSubtotalBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
+            if (!esResumen) {
+                celda(tblFin, "Subtotal Ventas:", FONT_REGULAR, Element.ALIGN_LEFT);
+                celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getSubtotalUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
+                celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getSubtotalBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
 
-            celda(tblFin, "Base Imponible:", FONT_REGULAR, Element.ALIGN_LEFT);
-            celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getBaseImponibleUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
-            celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getBaseImponibleBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
+                celda(tblFin, "Base Imponible:", FONT_REGULAR, Element.ALIGN_LEFT);
+                celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getBaseImponibleUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
+                celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getBaseImponibleBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
 
-            if (cierre.getExentoUsd().compareTo(BigDecimal.ZERO) > 0 || cierre.getExentoBs().compareTo(BigDecimal.ZERO) > 0) {
-                celda(tblFin, "Monto Exento:", FONT_REGULAR, Element.ALIGN_LEFT);
-                celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getExentoUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
-                celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getExentoBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
+                if (cierre.getExentoUsd().compareTo(BigDecimal.ZERO) > 0 || cierre.getExentoBs().compareTo(BigDecimal.ZERO) > 0) {
+                    celda(tblFin, "Monto Exento:", FONT_REGULAR, Element.ALIGN_LEFT);
+                    celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getExentoUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
+                    celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getExentoBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
+                }
+
+                celda(tblFin, "I.V.A.:", FONT_REGULAR, Element.ALIGN_LEFT);
+                celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getIvaUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
+                celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getIvaBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
             }
-
-            celda(tblFin, "I.V.A.:", FONT_REGULAR, Element.ALIGN_LEFT);
-            celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getIvaUsd()), FONT_REGULAR, Element.ALIGN_RIGHT);
-            celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getIvaBs()), FONT_REGULAR, Element.ALIGN_RIGHT);
 
             celda(tblFin, "TOTAL GENERAL:", FONT_TOTAL_GRANDE, Element.ALIGN_LEFT);
             celda(tblFin, "$ " + String.format(java.util.Locale.US, "%.2f", cierre.getTotalVentasUsd()), FONT_TOTAL_GRANDE, Element.ALIGN_RIGHT);
             celda(tblFin, "Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getTotalVentasBs()), FONT_TOTAL_GRANDE, Element.ALIGN_RIGHT);
             documento.add(tblFin);
 
-            Paragraph pTasa = new Paragraph("Tasa Ref: Bs. " + String.format(java.util.Locale.US, "%.2f", cierre.getTasaCambioReferencia()) + " / USD", FONT_REGULAR);
+            Paragraph pTasa = new Paragraph((esResumen ? "Tasa Efectiva del Período: " : "Tasa Ref: ") + "Bs. "
+                    + String.format(java.util.Locale.US, "%.2f", cierre.getTasaCambioReferencia()) + " / USD", FONT_REGULAR);
             pTasa.setAlignment(Element.ALIGN_RIGHT);
             documento.add(pTasa);
 
@@ -280,9 +290,11 @@ public final class GeneradorPdfCierre {
 
             // 9. Pie y Firma
             agregarSeparadorDoble(documento);
-            String pieMsg = cierre.getTipo() == CierreCaja.TipoCierre.TOTAL
-                    ? "*** CIERRE DEFINITIVO DE JORNADA ***"
-                    : "*** CORTE PARCIAL - TURNO EN CURSO ***";
+            String pieMsg = switch (cierre.getTipo()) {
+                case TOTAL -> "*** CIERRE DEFINITIVO DE JORNADA ***";
+                case RESUMEN -> "*** RESUMEN INFORMATIVO DE VENTAS - NO FISCAL ***";
+                default -> "*** CORTE PARCIAL - TURNO EN CURSO ***";
+            };
             Paragraph pPie = new Paragraph(pieMsg, FONT_REGULAR_BOLD);
             pPie.setAlignment(Element.ALIGN_CENTER);
             documento.add(pPie);
@@ -395,6 +407,11 @@ public final class GeneradorPdfCierre {
         boolean conLogo = config != null && config.isImprimirLogoTicket()
                 && config.getLogoPath() != null && !config.getLogoPath().trim().isEmpty();
         float alto = conLogo ? 335.0f : 290.0f; // Base: Encabezados, datos, resumen operativo y pie
+        if (cierre.getTipo() == CierreCaja.TipoCierre.RESUMEN) {
+            alto += 22.0f + (cierre.getDesgloseMetodos().size() * 12.0f);
+            alto += 60.0f;       // TOTAL GENERAL + tasa + márgenes
+            return Math.max(450.0f, alto);
+        }
         alto += 85.0f;       // Resumen financiero y fiscal
         alto += 22.0f + (cierre.getDesgloseMetodos().size() * 12.0f);
         alto += 22.0f + (cierre.getDesgloseSalas().size() * 12.0f);

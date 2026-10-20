@@ -110,6 +110,7 @@ public final class Sistema extends javax.swing.JFrame {
     private long versionPanelMesas;
     private long versionPedidoPantalla;
     private long versionDashboard;
+    private long versionResumenVentas;
     private long versionCargaUsuarios;
     private long versionCargaConfig;
     private long versionCargaCategorias;
@@ -214,6 +215,17 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JCheckBox chkMesoneroActivo;
     private javax.swing.JTable tableMesonerosConfig;
     private javax.swing.JTable tableMesonerosDashboard;
+    private javax.swing.JComboBox<String> comboRangoResumen;
+    private javax.swing.JLabel lblDesdeResumen;
+    private javax.swing.JLabel lblHastaResumen;
+    private javax.swing.JSpinner spinnerDesdeResumen;
+    private javax.swing.JSpinner spinnerHastaResumen;
+    private javax.swing.JButton btnVerResumen;
+    private javax.swing.JButton btnPdfResumen;
+    private javax.swing.JLabel lblResumenUsd;
+    private javax.swing.JLabel lblResumenBs;
+    private javax.swing.JTable tableMetodosResumen;
+    private Modelo.CierreCaja resumenVentasEnPantalla;
     private javax.swing.JTextField txtMesoneroFinalizar;
     private final Map<Integer, Boolean> platoAplicaIvaMap = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<Integer, String> salaTipoMap = new java.util.concurrent.ConcurrentHashMap<>();
@@ -6870,6 +6882,72 @@ public final class Sistema extends javax.swing.JFrame {
         pnlNorte.setOpaque(false);
         pnlNorte.add(pnlHeader, java.awt.BorderLayout.NORTH);
         pnlNorte.add(pnlKpis, java.awt.BorderLayout.CENTER);
+
+        // 2.1 Franja: Resumen de Ventas (USD / Bs / métodos de pago)
+        javax.swing.JPanel pnlResumen = new javax.swing.JPanel(new java.awt.BorderLayout(8, 4));
+        pnlResumen.setBackground(java.awt.Color.WHITE);
+        pnlResumen.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                "Resumen de Ventas",
+                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
+                javax.swing.border.TitledBorder.DEFAULT_POSITION,
+                new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13),
+                new java.awt.Color(40, 40, 40)));
+
+        javax.swing.JPanel pnlControlesResumen = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 2));
+        pnlControlesResumen.setOpaque(false);
+        pnlControlesResumen.add(new javax.swing.JLabel("Período:"));
+        comboRangoResumen = new javax.swing.JComboBox<>(new String[]{"Hoy", "Ayer", "Últimos 7 días", "Este mes", "Personalizado"});
+        comboRangoResumen.addActionListener(e -> actualizarVisibilidadFechasResumen());
+        pnlControlesResumen.add(comboRangoResumen);
+        lblDesdeResumen = new javax.swing.JLabel("Desde:");
+        pnlControlesResumen.add(lblDesdeResumen);
+        spinnerDesdeResumen = crearSpinnerFechaResumen(java.time.LocalDate.now());
+        pnlControlesResumen.add(spinnerDesdeResumen);
+        lblHastaResumen = new javax.swing.JLabel("Hasta:");
+        pnlControlesResumen.add(lblHastaResumen);
+        spinnerHastaResumen = crearSpinnerFechaResumen(java.time.LocalDate.now());
+        pnlControlesResumen.add(spinnerHastaResumen);
+        btnVerResumen = new javax.swing.JButton("Ver");
+        btnVerResumen.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnVerResumen.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnVerResumen.addActionListener(e -> cargarResumenVentas());
+        pnlControlesResumen.add(btnVerResumen);
+        btnPdfResumen = new javax.swing.JButton("PDF");
+        btnPdfResumen.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnPdfResumen.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnPdfResumen.setToolTipText("Genera el PDF informativo (no fiscal) del resumen");
+        btnPdfResumen.addActionListener(e -> exportarPdfResumenVentas());
+        pnlControlesResumen.add(btnPdfResumen);
+        pnlResumen.add(pnlControlesResumen, java.awt.BorderLayout.NORTH);
+
+        javax.swing.JPanel pnlTarjetasResumen = new javax.swing.JPanel(new java.awt.GridLayout(2, 1, 6, 6));
+        pnlTarjetasResumen.setOpaque(false);
+        pnlTarjetasResumen.setPreferredSize(new java.awt.Dimension(240, 118));
+        lblResumenUsd = new javax.swing.JLabel("Pulsa Ver para calcular", javax.swing.SwingConstants.CENTER);
+        lblResumenBs = new javax.swing.JLabel("Pulsa Ver para calcular", javax.swing.SwingConstants.CENTER);
+        pnlTarjetasResumen.add(crearCardKpi("VENTAS DEL PERÍODO (USD)", lblResumenUsd, new java.awt.Color(230, 248, 235), new java.awt.Color(40, 167, 69)));
+        pnlTarjetasResumen.add(crearCardKpi("VENTAS DEL PERÍODO (Bs.)", lblResumenBs, new java.awt.Color(225, 242, 244), new java.awt.Color(0, 123, 255)));
+
+        tableMetodosResumen = new javax.swing.JTable(new javax.swing.table.DefaultTableModel(
+                new Object[][]{}, new String[]{"Método", "Pagos", "USD ($)", "Bs.", "%"}
+        ) {
+            @Override
+            public boolean isCellEditable(int r, int c) { return false; }
+        });
+        tableMetodosResumen.setRowHeight(20);
+        configurarTablaIndividual(tableMetodosResumen);
+        javax.swing.JScrollPane scrollMetodosResumen = new javax.swing.JScrollPane(tableMetodosResumen);
+
+        javax.swing.JPanel pnlCuerpoResumen = new javax.swing.JPanel(new java.awt.BorderLayout(8, 4));
+        pnlCuerpoResumen.setOpaque(false);
+        pnlCuerpoResumen.add(scrollMetodosResumen, java.awt.BorderLayout.CENTER);
+        pnlCuerpoResumen.add(pnlTarjetasResumen, java.awt.BorderLayout.EAST);
+        pnlResumen.add(pnlCuerpoResumen, java.awt.BorderLayout.CENTER);
+        pnlResumen.setPreferredSize(new java.awt.Dimension(1000, 178));
+
+        pnlNorte.add(pnlResumen, java.awt.BorderLayout.SOUTH);
+        actualizarVisibilidadFechasResumen();
         panelDashboard.add(pnlNorte, java.awt.BorderLayout.NORTH);
 
         // 3. Área Central (Split Izquierda: Top Platos | Derecha: Clientes y Facturas)
@@ -7062,6 +7140,203 @@ public final class Sistema extends javax.swing.JFrame {
         card.add(lblT, java.awt.BorderLayout.NORTH);
         card.add(lblValor, java.awt.BorderLayout.CENTER);
         return card;
+    }
+
+    private javax.swing.JSpinner crearSpinnerFechaResumen(java.time.LocalDate inicial) {
+        javax.swing.SpinnerDateModel modelo = new javax.swing.SpinnerDateModel(
+                java.util.Date.from(inicial.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()),
+                null, null, java.util.Calendar.DAY_OF_YEAR);
+        javax.swing.JSpinner spinner = new javax.swing.JSpinner(modelo);
+        spinner.setEditor(new javax.swing.JSpinner.DateEditor(spinner, "yyyy-MM-dd"));
+        return spinner;
+    }
+
+    private void actualizarVisibilidadFechasResumen() {
+        boolean personalizado = comboRangoResumen != null
+                && "Personalizado".equals(comboRangoResumen.getSelectedItem());
+        if (lblDesdeResumen != null) lblDesdeResumen.setVisible(personalizado);
+        if (spinnerDesdeResumen != null) spinnerDesdeResumen.setVisible(personalizado);
+        if (lblHastaResumen != null) lblHastaResumen.setVisible(personalizado);
+        if (spinnerHastaResumen != null) spinnerHastaResumen.setVisible(personalizado);
+    }
+
+    private java.time.LocalDate fechaDeSpinner(javax.swing.JSpinner spinner, java.time.LocalDate porDefecto) {
+        if (spinner == null || !(spinner.getValue() instanceof java.util.Date valor)) {
+            return porDefecto;
+        }
+        return valor.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+    }
+
+    /**
+     * Resuelve el rango [desde, hasta] del combo/spinners; null si el rango es inválido
+     * (ya avisa al usuario en pantalla).
+     */
+    private java.time.LocalDate[] rangoResumenActual() {
+        if (comboRangoResumen == null) return null;
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        String rango = String.valueOf(comboRangoResumen.getSelectedItem());
+        java.time.LocalDate desde;
+        java.time.LocalDate hasta = hoy;
+        switch (rango) {
+            case "Ayer" -> desde = hoy.minusDays(1);
+            case "Últimos 7 días" -> desde = hoy.minusDays(6);
+            case "Este mes" -> desde = hoy.withDayOfMonth(1);
+            case "Personalizado" -> {
+                desde = fechaDeSpinner(spinnerDesdeResumen, hoy);
+                hasta = fechaDeSpinner(spinnerHastaResumen, hoy);
+            }
+            default -> desde = hoy;
+        }
+        if (desde.isAfter(hasta)) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                    "La fecha inicial no puede ser posterior a la fecha final.",
+                    "Resumen de Ventas", javax.swing.JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+        return new java.time.LocalDate[]{desde, hasta};
+    }
+
+    private String usuarioEmisorResumen() {
+        return (LabelVendedor != null && !LabelVendedor.getText().isBlank())
+                ? LabelVendedor.getText().trim() : "Sistema";
+    }
+
+    private Servicio.CierreCajaServicio servicioResumenVentas() {
+        if (cierreCajaServicio == null) {
+            cierreCajaServicio = new Servicio.CierreCajaServicio(
+                    new Modelo.CierreCajaDao(),
+                    () -> conf != null ? conf : lgDao.datosEmpresa(),
+                    new Servicio.GeneradorPdfCierre());
+        }
+        return cierreCajaServicio;
+    }
+
+    public void cargarResumenVentas() {
+        java.time.LocalDate[] rango = rangoResumenActual();
+        if (rango == null) return;
+        java.time.LocalDate fDesde = rango[0];
+        java.time.LocalDate fHasta = rango[1];
+        long version = ++versionResumenVentas;
+        if (lblResumenUsd != null) lblResumenUsd.setText("<html><small>Calculando...</small></html>");
+        if (lblResumenBs != null) lblResumenBs.setText("<html><small>Calculando...</small></html>");
+        if (tableMetodosResumen != null) {
+            ((javax.swing.table.DefaultTableModel) tableMetodosResumen.getModel()).setRowCount(0);
+        }
+        resumenVentasEnPantalla = null;
+        String usuarioEmisor = usuarioEmisorResumen();
+        new ResumenVentasSwingWorker(
+                () -> servicioResumenVentas().obtenerResumenVentas(fDesde.toString(), fHasta.toString(), usuarioEmisor),
+                datos -> {
+                    if (version == versionResumenVentas) {
+                        mostrarResumenVentasEnPantalla(datos);
+                    }
+                },
+                error -> {
+                    if (version == versionResumenVentas) {
+                        mostrarErrorResumenVentas(error);
+                    }
+                }).execute();
+    }
+
+    private void mostrarResumenVentasEnPantalla(Modelo.CierreCaja resumen) {
+        if (resumen == null) return;
+        resumenVentasEnPantalla = resumen;
+        if (lblResumenUsd != null) {
+            lblResumenUsd.setText("<html><b style='font-size:13px;color:#007700;'>$ "
+                    + String.format(java.util.Locale.US, "%.2f", resumen.getTotalVentasUsd())
+                    + "</b><br><small style='color:#555555;'>" + resumen.getPedidosFinalizados()
+                    + " pedidos · $" + String.format(java.util.Locale.US, "%.2f", resumen.getTicketPromedioUsd())
+                    + " prom.</small></html>");
+        }
+        if (lblResumenBs != null) {
+            lblResumenBs.setText("<html><b style='font-size:13px;color:#003366;'>Bs. "
+                    + String.format(java.util.Locale.US, "%.2f", resumen.getTotalVentasBs())
+                    + "</b><br><small style='color:#555555;'>Tasa efectiva: "
+                    + String.format(java.util.Locale.US, "%.2f", resumen.getTasaCambioReferencia())
+                    + " Bs/USD</small></html>");
+        }
+        if (tableMetodosResumen != null) {
+            javax.swing.table.DefaultTableModel modelResumen =
+                    (javax.swing.table.DefaultTableModel) tableMetodosResumen.getModel();
+            modelResumen.setRowCount(0);
+            java.math.BigDecimal totalUsd = resumen.getTotalVentasUsd();
+            int totalPagos = 0;
+            java.math.BigDecimal sumUsd = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal sumBs = java.math.BigDecimal.ZERO;
+            for (Modelo.CierreCaja.ResumenMetodoPago rm : resumen.getDesgloseMetodos()) {
+                totalPagos += rm.getCantidadTransacciones();
+                sumUsd = sumUsd.add(rm.getMontoUsd());
+                sumBs = sumBs.add(rm.getMontoBs());
+                String pct = totalUsd != null && totalUsd.signum() > 0
+                        ? String.format(java.util.Locale.US, "%.1f%%",
+                                rm.getMontoUsd().multiply(new java.math.BigDecimal("100"))
+                                        .divide(totalUsd, 1, java.math.RoundingMode.HALF_UP).doubleValue())
+                        : "—";
+                modelResumen.addRow(new Object[]{
+                    rm.getMetodo(),
+                    rm.getCantidadTransacciones(),
+                    "$ " + String.format(java.util.Locale.US, "%.2f", rm.getMontoUsd()),
+                    "Bs. " + String.format(java.util.Locale.US, "%.2f", rm.getMontoBs()),
+                    pct
+                });
+            }
+            String pctTotal = totalUsd != null && totalUsd.signum() > 0 ? "100.0%" : "—";
+            modelResumen.addRow(new Object[]{
+                "TOTAL", totalPagos,
+                "$ " + String.format(java.util.Locale.US, "%.2f", sumUsd),
+                "Bs. " + String.format(java.util.Locale.US, "%.2f", sumBs),
+                pctTotal
+            });
+        }
+    }
+
+    private void mostrarErrorResumenVentas(Throwable error) {
+        java.util.logging.Logger.getLogger(Sistema.class.getName())
+                .log(java.util.logging.Level.WARNING, "Fallo al cargar el resumen de ventas", error);
+        String msg = mensajeError(error);
+        if (lblResumenUsd != null) lblResumenUsd.setText("<html><span style='color:red;'>Error al cargar</span></html>");
+        if (lblResumenBs != null) lblResumenBs.setText("<html><span style='color:red;'>Error al cargar</span></html>");
+        mostrarAvisoEnBanda("Resumen de Ventas: " + msg);
+    }
+
+    private void exportarPdfResumenVentas() {
+        if (resumenVentasEnPantalla == null) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                    "Genera primero el resumen con el botón Ver.",
+                    "Resumen de Ventas", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        java.time.LocalDate[] rango = rangoResumenActual();
+        if (rango == null) return;
+        java.time.LocalDate fDesde = rango[0];
+        java.time.LocalDate fHasta = rango[1];
+        String usuarioEmisor = usuarioEmisorResumen();
+        new javax.swing.SwingWorker<Servicio.CierreCajaServicio.ResultadoCierre, Void>() {
+            @Override
+            protected Servicio.CierreCajaServicio.ResultadoCierre doInBackground() throws Exception {
+                return servicioResumenVentas().generarResumenVentas(fDesde.toString(), fHasta.toString(), usuarioEmisor);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    Servicio.CierreCajaServicio.ResultadoCierre resultado = get();
+                    Servicio.ResultadoSalidaTicket salida = resultado.salidaTicket();
+                    String detalleDestino = salida == null ? "sin resultado de salida."
+                            : switch (salida.estado()) {
+                                case ENVIADO_A_SPOOLER -> "enviado al spooler (" + salida.canal() + ").";
+                                case ABIERTO_EN_VISOR -> "abierto en visor PDF.";
+                                case FALLO -> "falló la salida del ticket: " + salida.detalleError();
+                            };
+                    mostrarAvisoEnBanda("Resumen de Ventas generado (" + detalleDestino + ")");
+                } catch (Exception ex) {
+                    Throwable causa = ex.getCause() == null ? ex : ex.getCause();
+                    JOptionPane.showMessageDialog(Sistema.this,
+                            "No se pudo generar el PDF del resumen: " + mensajeError(causa),
+                            "Resumen de Ventas", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     public void cargarDashboardYClientes() {
