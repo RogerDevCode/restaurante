@@ -2,6 +2,19 @@
 
 snapshot 20/10/2026 10:57
 
+## Hallazgo H3 reparado (catálogo de platos) + incidente de compose registrado
+
+| Ítem | Verificación | Estado |
+|---|---|---|
+| **H3** — `test/aceptacion/PruebaRedTeamIvaIncluidoPlatosTest` borraba de `plato_categorias` (tabla inexistente, columna `id_plato` inexistente; SQLSTATE 42S02/1146) | La limpieza ahora borra la matriz real `plato_categoria` por `nombre_clave = LOWER(TRIM(nombre))` (join genuino `PlatosDao`), probado en BD desechable 3307 | **RESUELTO** — `evidencias/produccion/2026-10-20/h3-test-single-iva-incluido.log` + `build/test/results/TEST-aceptacion.PruebaRedTeamIvaIncluidoPlatosTest.xml` (`tests=1 failures=0 errors=0`, timestamp 09:35:46). Cero residuos '%RT %' en producción ni en scratch. Convención documentada: para un test unitario aislado vía `test-single` hay que pasar `-Dtest.includes` y `-Djavac.includes`, además de `-DDB_NAME/-DMYSQL_*/-DDB_URL/-Dtest-sys-prop.*` (precedencia Ant: el primer valor asignado gana)). |
+| **H1** (`PreciosVisiblesComponenteTest`, preexistente) y **H2** (`TablasIdOcultoComponenteTest`, preexistente), **H4** (stack compartido de E2E), **H5** (convención documentada) | Documentados el 19/10 | Pendientes; H3 era la única higiene de catálogo | 
+
+### Incidente registrado (20/10 09:31): reconfiguración accidental del contenedor de producción por colisión de proyecto Compose
+
+Al lanzar la BD de integración con `docker compose -f docker-compose.integration.yml up -d` SIN `-p`, el proyecto por defecto (`Restaurante`) coincidió con el proyecto de producción: Compose reconfiguró el contenedor `restaurante-db-1` con el config de integración (port 3307, volumen de integración recién sembrado) durante ~1 min (09:30:52–09:31:18), interrumpió conexiones de la app del 49200 (CommunicationsException, "No se pudo revalidar el rol de la sesión" hasta 09:31:50) y ambos servicios fueron restablecidos manualmente. Los datos de producción NUNCA se tocaron (el volumen real `restaurante_restaurante_mysql_data` siguió íntegro; estado verificado después del restablecimiento: 24 tablas, pedido 13, usuarios Roger+Administrador, v15, restaurante_control=OPERATIVO). El pool de `ProveedorConexionJdbc` valida y descarta conexiones muertas al pedir depósito (`isValid` línea ~287), así que la app se reestableció sola sin reinicio.
+
+**Regla derivada para agentes (prohibición):** los atajos `docker compose` sin `-p <proyecto>` están PROHIBIDOS SIEMPRE en este repo (producción usa `-p restaurante` por defecto del directorio). Toda BD temporizador debe levantarse con proyecto distinto: `docker compose -f docker-compose.integration.yml -p restaurante-integra up -d` (y bajarse con `-p restaurante-integra down --volumes`). El volumen accidental `restaurante_restaurante_integration_mysql_data` fue eliminado a mano tras el restablecimiento; la producción quedó `restaurante_restaurante_mysql_data` única.
+
 ## Artefacto de producción regenerado sobre el commit 6e239fd
 
 | Comando | Archivo de salida | Estado y alcance |
