@@ -69,6 +69,7 @@ Para evitar confusiones entre el lenguaje coloquial ("el cliente hizo un pedido"
 3. **Anulación de Factura (Venta Cobrada):** Venta que ya fue pagada e ingresada en caja. Su anulación requiere contra-asiento formal (`pedido_saldos_movimientos`), reversión en caja y ajuste contable para que el Cierre Z y la auditoría cuadren al centavo.
 
 ## Notas para agentes
+- **Rama de trabajo: `main`**: desde 20/10/2026 el operador pidió commitear y pushear directamente a `main` (sin ramas feature ni PR; la PR #1 ya consolidó la rama anterior). Antes de cambios: `git checkout main && git pull --ff-only origin main`.
 - DB prod: `docker exec restaurante-db-1 mysql -uadmin -padmin restaurante -e "..."`. No hay `mysql` CLI en el host.
 - **Compose — proyecto SIEMPRE explícito** (producción usa `-p restaurante` por defecto del directorio): toda BD efímera debe levantarse/bajarse con `-p <proyecto>` distinto — `docker compose -f docker-compose.integration.yml -p restaurante-integra up -d` / `down --volumes`. PROHIBIDO el atajo sin `-p`: el 20/10 09:31 reconfiguró el contenedor de producción con datos de prueba (volumen real intacto; restablecimiento manual ~1 min).
 - **Tests E2E**: SIEMPRE deben ejecutarse en una ventana virtual aislada (mediante `./e2e_virtual.sh [clase]` sobre Xvfb `:99`), con teclado y mouse virtuales propios, sin interferir jamás con el escritorio ni el cursor del operador. El wrapper solo acepta la BD local desechable `restaurante_test` en `127.0.0.1:3307`; no se ejecutan E2E contra producción.
