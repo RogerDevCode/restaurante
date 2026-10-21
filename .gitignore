@@ -39,3 +39,8 @@ respaldo_*.sql
 
 # Checksums de artefactos de release
 *.zip.sha256
+
+# Suite de pruebas solo local (operador): no se envia al repo
+/test/
+/testunit/
+/testqa/
