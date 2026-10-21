@@ -25,5 +25,17 @@ tablet.txt
 tickets/
 respaldo_*.sql
 
+# Respaldos y claves fuera de git (regla AGENTS.md: info sensible aunque sea de test)
+**/respaldo_*.sql
+**/Respaldo_*.sql
+**/respaldo_*/
+**/Respaldo_*/
+**/pre_migracion_*.sql
+**/restaurante_*.sql
+*.pem
+*.p12
+*.key
+*.hmac
+
 # Checksums de artefactos de release
 *.zip.sha256
