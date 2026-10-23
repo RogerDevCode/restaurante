@@ -1,5 +1,16 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 23/10/2026 19:30
+
+## Drill corte eléctrico: durabilidad + auto-recuperación de la BD (gate cerrado)
+
+| Comando | Evidencia | Resultado |
+|---|---|---|
+| `./drill_corte_electrico.sh` (nuevo, raíz del repo; BD desechable 3307 `-p drillcorte` + `inicializar_bd_test.sh --datos`) | `evidencias/produccion/2026-10-23/drill-corte-electrico/corridaoficial.log`: `docker compose kill --signal=KILL db` en plena escritura con 13 COMMIT acuseados en host y una transacción `BEGIN…SLEEP…COMMIT` a mitad; `docker start` (mismo volumen) → `XA crash recovery finished`; conciliación 13/13 filas del escritor y 0 residuos; corte #2 repetido que respeta los datos del #1; `CHECK TABLE` OK ×4; `DRILL_CORTE_ELECTRICO_OK` EXIT=0 | PASS |
+| Config de durabilidad revisada (MySQL 8.4 por defecto, sin overrides en `docker-compose.yml`) | `…drill-corte-electrico.md`: `innodb_flush_log_at_trx_commit=1` (fsync por COMMIT), `sync_binlog=1`, `innodb_doublewrite=ON`, volumen nombrado + `restart: unless-stopped` | PASS |
+
+Semántica operativa confirmada: un COMMIT confirmado en pantalla nunca se pierde ante corte de luz; el borrador del carrito que nunca se envió muere con la app (correcto); la transacción en curso al cortar hace rollback limpio; MySQL se auto-recupera al reiniciar el contenedor.
+
 snapshot 23/10/2026 16:01
 
 ## E2E cierre de sesión + salida del programa (BD = SSOT) (gate cerrado)

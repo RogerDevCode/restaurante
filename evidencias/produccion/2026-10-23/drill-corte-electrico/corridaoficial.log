@@ -1,0 +1,60 @@
+== Levantando MySQL efímero (proyecto drillcorte, puerto 3307) ==
+ Network drillcorte_default  Creating
+ Network drillcorte_default  Created
+ Volume drillcorte_restaurante_e2e_mysql_data  Creating
+ Volume drillcorte_restaurante_e2e_mysql_data  Created
+ Container drillcorte-db-1  Creating
+ Container drillcorte-db-1  Created
+ Container drillcorte-db-1  Starting
+ Container drillcorte-db-1  Started
+ Container drillcorte-db-1  Waiting
+ Container drillcorte-db-1  Healthy
+== Cargando esquema del restaurant + datos base ==
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+BD_INICIALIZADA_OK
+== Tabla de zona de pruebas ==
+== Configuración de durabilidad (MySQL 8.4, valores por defecto) ==
+innodb_doublewrite	ON
+innodb_flush_log_at_trx_commit	1
+innodb_flush_method	O_DIRECT
+innodb_log_file_size	50331648
+sync_binlog	1
+== Corte eléctrico #1: SIGKILL con escritor en curso y transacción sin COMMIT ==
+acuses al momento del corte 12
+ Container drillcorte-db-1  Killing
+ Container drillcorte-db-1  Killed
+== 1: reinicio del mismo contenedor (mismo volumen) ==
+== recuperación InnoDB en los logs del contenedor ==
+2026-10-23T19:23:51.699459Z 0 [System] [MY-010229] [Server] Starting XA crash recovery...
+2026-10-23T19:23:51.713580Z 0 [System] [MY-010232] [Server] XA crash recovery finished.
+último acuse en el recibo: 12
+acuses de COMMIT recibidos por el escritor: 12
+acuses de COMMIT del escritor 1: 12; filas suyas en BD: 12 (filas de otros cortes: 0); borradores sin COMMIT rezagados: 0
+CORTE_1_OK durabilidad (0 perdidas) + atomicidad (0 residuos)
+== Corte eléctrico #2 (repetido, mismo volumen) ==
+acuses al momento del corte 12
+ Container drillcorte-db-1  Killing
+OCI runtime exec failed: exec failed: cannot exec in a stopped container
+ Container drillcorte-db-1  Killed
+== 2: reinicio del mismo contenedor (mismo volumen) ==
+== recuperación InnoDB en los logs del contenedor ==
+2026-10-23T19:23:51.699459Z 0 [System] [MY-010229] [Server] Starting XA crash recovery...
+2026-10-23T19:23:51.713580Z 0 [System] [MY-010232] [Server] XA crash recovery finished.
+2026-10-23T19:23:58.817651Z 0 [System] [MY-010229] [Server] Starting XA crash recovery...
+2026-10-23T19:23:58.827896Z 0 [System] [MY-010232] [Server] XA crash recovery finished.
+último acuse en el recibo: 13
+acuses de COMMIT recibidos por el escritor: 13
+acuses de COMMIT del escritor 2: 13; filas suyas en BD: 13 (filas de otros cortes: 12); borradores sin COMMIT rezagados: 0
+CORTE_2_OK durabilidad (0 perdidas) + atomicidad (0 residuos)
+== Integridad del esquema tras 2 cortes ==
+restaurante_test.pedidos check	status	OK
+restaurante_test.detalle_pedidos check	status	OK
+restaurante_test.usuarios check	status	OK
+restaurante_test.configuracion_sistema check	status	OK
+0	0
+DRILL_CORTE_ELECTRICO_OK
