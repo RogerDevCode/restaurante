@@ -1,5 +1,19 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 23/10/2026 07:40
+
+## Auditoría de permisos / sesión en caliente (gate cerrado)
+
+| Comando | Evidencia | Resultado |
+|---|---|---|
+| Mapa estático de los 19 `PoliticaAcceso.Accion` (exigir en servicios/controladores + `autorizar`/`permite` en UI) vía `grep` dirigido | `evidencias/produccion/2026-10-23/auditoria-acceso-sesion-caliente.md` (§1): sin acciones huérfanas; solo-UI anotadas (`CANCELAR_CUENTA_PENDIENTE`, `APLICAR_CORTESIA`, `EDITAR_CONFIGURACION`) | PASS |
+| `JUnitCore Servicio.PoliticaAccesoRevocacionVigorTest` (nuevo, 2 casos, BD desechable `db-audit` 3307 + `inicializar_bd_test.sh --datos`) con el ensamblaje exacto de `Restaurante.lanzarLogin` (`esUsuarioActivoConRol` en cada `permite`, fail-closed) | mismo archivo §3: desactivar usuario en BD → la misma política deniega las 19 acciones en caliente (incluye admin fantasma) y reactivar rehabilita | PASS |
+| Revisión del mecanismo de vigencia: `iniciarVigilanciaSesion` (foco + temporizador 60s coalesce; los días con revocación muestran 'Acceso revocado') + `autorizar` re-verifica BD por acción (Sistema.java:2141/2290) | §2 + §4: fail-closed en acciones, reintento en vigilancia pasiva; cambio de rol también revoca vía `esUsuarioActivoConRol(id, rol)` | PASS |
+
+La clase del test entra en el patrón `**/Servicio/*Test` de `ant test` (2 casos más en la próxima corrida del suite). `test/` sigue desrastreado; se commitea sólo la evidencia y la documentación.
+
+snapshot 22/10/2026 21:23
+
 snapshot 22/10/2026 21:23
 
 ## Ciclo BD-test.sql + arneses E2E por UI (todo por la interfaz, Xvfb :99)
