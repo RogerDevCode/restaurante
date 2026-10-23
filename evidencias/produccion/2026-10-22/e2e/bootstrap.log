@@ -1,0 +1,212 @@
+ Network restaurante-bootstrap-e2e-3570835-1792698333_default  Creating
+ Network restaurante-bootstrap-e2e-3570835-1792698333_default  Created
+ Volume restaurante-bootstrap-e2e-3570835-1792698333_bootstrap_mysql_data  Creating
+ Volume restaurante-bootstrap-e2e-3570835-1792698333_bootstrap_mysql_data  Created
+ Container restaurante-bootstrap-e2e-3570835-1792698333-db-1  Creating
+ Container restaurante-bootstrap-e2e-3570835-1792698333-db-1  Created
+ Container restaurante-bootstrap-e2e-3570835-1792698333-db-1  Starting
+ Container restaurante-bootstrap-e2e-3570835-1792698333-db-1  Started
+ Container restaurante-bootstrap-e2e-3570835-1792698333-db-1  Waiting
+ Container restaurante-bootstrap-e2e-3570835-1792698333-db-1  Healthy
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 11 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.BootstrapInicialE2EVirtual (DISPLAY=:99) ==
+BOOTSTRAP_E2E_OK: instalación limpia, validaciones, demo bloqueada y login nuevo por UI
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.SeedBaseE2EVirtual (DISPLAY=:99) ==
+Oct 22, 2026 7:47:00 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 22, 2026 7:47:01 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 7:47:01 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 22, 2026 7:47:01 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 7:47:01 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 7:47:01 PM Modelo.SalasDao listar
+INFO: [CARGA_DATOS] Carga de salas retornó 0 items.
+Oct 22, 2026 7:47:01 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 7:47:01 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+Oct 22, 2026 7:47:01 PM Modelo.ErrorAplicacionException <init>
+SEVERE: No existe la configuración de la empresa.
+java.lang.IllegalStateException: La tabla config no contiene un registro.
+	at Modelo.LoginDao.datosEmpresa(LoginDao.java:963)
+	at Vista.Sistema.cargarConfigEnFondo(Sistema.java:6646)
+	at Servicio.ConcurrenciaServicio.lambda$ejecutarAsync$2(ConcurrenciaServicio.java:41)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+Oct 22, 2026 7:47:02 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 7:47:02 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 7:47:02 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+Oct 22, 2026 7:47:02 PM Vista.Sistema nuevoConfigPorDefecto
+WARNING: nuevoConfigPorDefecto: Instanciando configuración referencial por defecto para arranque UI.
+Oct 22, 2026 7:47:03 PM Modelo.ErrorAplicacionException <init>
+SEVERE: No existe la configuración de la empresa.
+java.lang.IllegalStateException: La tabla config no contiene un registro.
+	at Modelo.LoginDao.datosEmpresa(LoginDao.java:963)
+	at Vista.Sistema.cargarConfigEnFondo(Sistema.java:6646)
+	at Servicio.ConcurrenciaServicio.lambda$ejecutarAsync$2(ConcurrenciaServicio.java:41)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+Oct 22, 2026 7:47:03 PM Modelo.ErrorAplicacionException <init>
+SEVERE: No existe la configuración de la empresa.
+java.lang.IllegalStateException: La tabla config no contiene un registro.
+	at Modelo.LoginDao.datosEmpresa(LoginDao.java:963)
+	at Vista.Sistema.cargarConfigEnFondo(Sistema.java:6646)
+	at Servicio.ConcurrenciaServicio.lambda$ejecutarAsync$2(ConcurrenciaServicio.java:41)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+Oct 22, 2026 7:47:03 PM Vista.Sistema nuevoConfigPorDefecto
+WARNING: nuevoConfigPorDefecto: Instanciando configuración referencial por defecto para arranque UI.
+Oct 22, 2026 7:47:16 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 7:47:16 PM Modelo.PedidosDao listarPedidos
+INFO: [CARGA_DATOS] Carga general de pedidos retornó 0 items.
+Oct 22, 2026 7:47:16 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+SEED_BASE_OK  configuracion visible: tasa 40.0000 IVA 16.00
+Oct 22, 2026 7:47:16 PM Modelo.SalasDao listar
+INFO: [CARGA_DATOS] Carga de salas retornó 0 items.
+Oct 22, 2026 7:47:16 PM Modelo.SalasDao listar
+INFO: [CARGA_DATOS] Carga de salas retornó 0 items.
+SEED_BASE_OK  sala Sala Principal con 2 mesas
+Oct 22, 2026 7:47:20 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+Oct 22, 2026 7:47:23 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 7:47:23 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+Oct 22, 2026 7:47:23 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+SEED_BASE_OK: sala, mesas, categoria y plato base creados por UI
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 10 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.E2EVirtual (DISPLAY=:99) ==
+== [E2E] Paso 1: Lanzamiento de la aplicación y Login interactivo ==
+== [E2E] Paso 2: Espera de la ventana principal de Sistema ==
+Oct 22, 2026 7:47:52 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 22, 2026 7:47:52 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 7:47:53 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 22, 2026 7:47:53 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 7:47:53 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 7:47:53 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+== [E2E] Paso 3: Navegación al mapa de mesas (Atención Directa) ==
+OK   Mesa 1 libre y lista
+== [E2E] Paso 4: Abrir Mesa 1 y tomar comanda (Ronda 1: 1 Pollo) ==
+Oct 22, 2026 7:47:56 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 7:47:56 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   Carrito con 1 pollo en ronda 1
+== [E2E] Paso 5: Enviar a cocina -> Mesa pasa a OCUPADA ==
+Oct 22, 2026 7:47:58 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 7:47:58 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   Mesa 1 marcada como OCUPADA
+== [E2E] Paso 6: Reabrir Mesa 1 -> Cuenta en Caja muestra 1 pollo ==
+OK   Cuenta en pantalla confirma 1 pollo
+== [E2E] Paso 7: Ronda 2 -> Modificar pedido y agregar 2 pollos más ==
+OK   Carrito suma 3 pollos (1 inicial + 2 nueva ronda)
+== [E2E] Paso 8: Actualizar comanda en cocina ==
+Oct 22, 2026 7:48:02 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 7:48:02 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+== [E2E] Paso 9: Reabrir Mesa 1 -> Verificar 3 pollos en la cuenta ==
+OK   Cuenta en pantalla confirma 3 pollos actualizados
+== [E2E] Paso 10: Liberar mesa por UI (Anular Cuenta / Fuga) ==
+Oct 22, 2026 7:48:07 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 7:48:07 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   Mesa 1 liberada limpiamente a través de la interfaz
+E2E_OK
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.PedidoRapidoE2EVirtual (DISPLAY=:99) ==
+== [Pedido Rápido E2E] Paso 1: Login interactivo ==
+== [Pedido Rápido E2E] Paso 2: Esperar ventana principal Sistema ==
+Oct 22, 2026 7:48:26 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 22, 2026 7:48:26 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 7:48:26 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 22, 2026 7:48:27 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 7:48:27 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 7:48:27 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+== [Pedido Rápido E2E] Paso 3: Clic en 'Pedido rápido' ==
+Oct 22, 2026 7:48:28 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 7:48:28 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+== [Pedido Rápido E2E] Paso 4: Carrito vacío no avanza ==
+== [Pedido Rápido E2E] Paso 5: Buscar plato y agregar al carrito ==
+OK   Plato agregado al carrito (1 unidad)
+== [Pedido Rápido E2E] Paso 6: Incrementar cantidad con btnMasCantidad ==
+OK   Cantidad incrementada a 2
+== [Pedido Rápido E2E] Paso 7: Cobrar y finalizar -> Pasa a Caja ==
+Oct 22, 2026 7:48:30 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 7:48:30 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+== [Pedido Rápido E2E] Paso 8: Probar tabla de pagos en Caja ==
+OK   Tabla de pagos interactiva probada
+== [Pedido Rápido E2E] Paso 9: Cancelar / anular cuenta rápida por UI ==
+Oct 22, 2026 7:48:33 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 7:48:33 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   Pedido rápido cancelado limpiamente por UI
+E2E_PEDIDO_RAPIDO_OK

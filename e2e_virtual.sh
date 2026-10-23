@@ -93,4 +93,4 @@ mkdir -p "$DIRECTORIO_EJECUCION"
 cd "$DIRECTORIO_EJECUCION"
 
 # shellcheck disable=SC2086
-DISPLAY="$DISP" java -De2e.permitir=SI ${JAVA_DB_ARGS[@]+"${JAVA_DB_ARGS[@]}"} -cp "$CLASSPATH" "$CLASE" "$@"
+DISPLAY="$DISP" java -De2e.permitir=SI -Drestaurante.instancia.puerto=0 ${JAVA_DB_ARGS[@]+"${JAVA_DB_ARGS[@]}"} -cp "$CLASSPATH" "$CLASE" "$@"

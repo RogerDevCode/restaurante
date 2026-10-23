@@ -1,0 +1,33 @@
+# docker-compose.e2e.yml — MySQL efimero EXCLUSIVO del arnes E2E (Xvfb :99).
+#
+# Esquema oficial SIN datos: solo db/e2e/001-esquema.sql (derivado byte a byte
+# de BD.sql por db/e2e/generar_esquema.py). Toda la siembra ocurre por la
+# interfaz (mouse/teclado con Robot); jamas montar BD.sql ni seeds SQL aqui.
+#
+# Uso siempre con proyecto Compose explicito:
+#   docker compose -p <proyecto> -f docker-compose.e2e.yml up -d --wait
+#   docker compose -p <proyecto> -f docker-compose.e2e.yml down --volumes
+services:
+  db:
+    image: mysql:8.4.11
+    environment:
+      MYSQL_DATABASE: restaurante_test
+      MYSQL_ROOT_PASSWORD: test_root_pass
+    command: --log-bin-trust-function-creators=1
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - restaurante_e2e_mysql_data:/var/lib/mysql
+      - ./db/e2e/001-esquema.sql:/docker-entrypoint-initdb.d/001-esquema.sql:ro
+      - ./db/e2e/002-privilegios.sql:/docker-entrypoint-initdb.d/002-privilegios.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping --host=127.0.0.1 --user=root --password="$$MYSQL_ROOT_PASSWORD" --silent
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
+
+volumes:
+  restaurante_e2e_mysql_data:

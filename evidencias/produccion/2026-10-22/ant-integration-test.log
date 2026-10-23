@@ -1,0 +1,1205 @@
+Buildfile: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build.xml
+
+-pre-init:
+
+-init-private:
+
+-init-user:
+
+-init-project:
+
+-init-macrodef-property:
+
+-init-modules-supported:
+
+-do-init:
+
+-post-init:
+
+-init-check:
+
+-init-ap-cmdline-properties:
+
+-init-macrodef-modulename:
+
+-init-source-module-properties:
+
+-init-macrodef-javac-with-module:
+
+-init-macrodef-javac-with-processors:
+
+-init-macrodef-javac-without-processors:
+
+-init-macrodef-javac:
+
+-init-macrodef-test-impl:
+
+-init-macrodef-junit-init:
+
+-init-test-properties:
+
+-init-macrodef-junit-prototype-with-module:
+
+-init-macrodef-junit-prototype-without-module:
+
+-init-macrodef-junit-single:
+
+-init-macrodef-junit-batch:
+
+-init-macrodef-junit:
+
+-init-macrodef-junit-impl:
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+
+-init-macrodef-testng:
+
+-init-macrodef-testng-impl:
+
+-init-macrodef-test:
+
+-init-macrodef-junit-debug-impl:
+
+-init-macrodef-test-debug-junit:
+
+-init-macrodef-testng-debug:
+
+-init-macrodef-testng-debug-impl:
+
+-init-macrodef-test-debug-testng:
+
+-init-macrodef-test-debug:
+
+-init-debug-args:
+
+-init-macrodef-nbjpda:
+
+-init-macrodef-debug:
+
+-init-macrodef-java-with-module:
+
+-init-macrodef-java-with-unnamed-module:
+
+-init-macrodef-java-without-module:
+
+-init-macrodef-java:
+
+-init-presetdef-jar:
+
+-init-ap-cmdline-supported:
+
+-init-ap-cmdline:
+
+init:
+
+-deps-jar-init:
+   [delete] Deleting: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/built-jar.properties
+
+deps-jar:
+
+-warn-already-built-jar:
+[propertyfile] Updating property file: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/built-jar.properties
+
+-check-automatic-build:
+
+-clean-after-automatic-build:
+
+-verify-automatic-build:
+
+-pre-pre-compile:
+
+-pre-compile:
+
+-copy-persistence-xml:
+
+-compile-depend:
+
+-do-compile:
+
+-post-compile:
+
+compile:
+
+-pre-pre-compile-test:
+
+-pre-compile-test:
+   [delete] Deleting directory /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/test/classes
+
+-init-test-javac-module-properties-with-module:
+
+-init-test-module-properties-without-module:
+
+-init-test-module-properties:
+
+-compile-test-depend:
+
+-do-compile-test:
+    [mkdir] Created dir: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/test/classes
+    [javac] Compiling 155 source files to /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/test/classes
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+     [copy] Copying 2 files to /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/build/test/classes
+
+-post-compile-test:
+
+compile-test:
+
+-integration-url-safety:
+
+-integration-compose-up:
+     [exec]  Network restaurante-integration_default  Creating
+     [exec]  Network restaurante-integration_default  Created
+     [exec]  Volume restaurante-integration_restaurante_integration_mysql_data  Creating
+     [exec]  Volume restaurante-integration_restaurante_integration_mysql_data  Created
+     [exec]  Container restaurante-integration-db-1  Creating
+     [exec]  Container restaurante-integration-db-1  Created
+     [exec]  Container restaurante-integration-db-1  Starting
+     [exec]  Container restaurante-integration-db-1  Started
+     [exec]  Container restaurante-integration-db-1  Waiting
+     [exec]  Container restaurante-integration-db-1  Healthy
+
+-integration-compose-check:
+
+-integration-run-tests:
+    [junit] Running integracion.ActualizacionCatalogoPedidosAbiertosIT
+    [junit] Testsuite: integracion.ActualizacionCatalogoPedidosAbiertosIT
+    [junit] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.212 sec
+    [junit] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.212 sec
+    [junit] ------------- Standard Error -----------------
+    [junit] Oct 22, 2026 9:13:32 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: No se puede actualizar el catálogo: el pedido #106 contiene productos heredados sin clasificar (detalle #107: 'IT-PROP-PLATO2'). Clasifíquelos en el catálogo o márquelos como congelados antes de continuar.
+    [junit] java.lang.IllegalArgumentException: No se puede actualizar el catálogo: el pedido #106 contiene productos heredados sin clasificar (detalle #107: 'IT-PROP-PLATO2'). Clasifíquelos en el catálogo o márquelos como congelados antes de continuar.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Modelo.PreciosPedidosDao.ejecutarTransaccion(PreciosPedidosDao.java:323)
+    [junit] 	at Modelo.PreciosPedidosDao.modificarProductoYRecalcularPendientes(PreciosPedidosDao.java:79)
+    [junit] 	at Modelo.PreciosPedidosDao.modificarProductoYRecalcularPendientes(PreciosPedidosDao.java:67)
+    [junit] 	at integracion.ActualizacionCatalogoPedidosAbiertosIT.lambda$testActualizarCatalogoFallaYRevierteSiMesaAbiertaTieneLineaSinClasificar$4(ActualizacionCatalogoPedidosAbiertosIT.java:415)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at integracion.ActualizacionCatalogoPedidosAbiertosIT.testActualizarCatalogoFallaYRevierteSiMesaAbiertaTieneLineaSinClasificar(ActualizacionCatalogoPedidosAbiertosIT.java:414)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:32 PM Modelo.ErrorAplicacionException <init>
+    [junit] SEVERE: No se pudo actualizar el pedido completo.
+    [junit] java.sql.SQLException: El pedido ya no existe, no está PENDIENTE o ya fue cerrado.
+    [junit] 	at Modelo.PedidosDao.bloquearPedidoPendiente(PedidosDao.java:773)
+    [junit] 	at Modelo.PedidosDao.actualizarPedidoCompletoConMarcha(PedidosDao.java:242)
+    [junit] 	at Modelo.PedidosDao.actualizarPedidoCompleto(PedidosDao.java:210)
+    [junit] 	at integracion.ActualizacionCatalogoPedidosAbiertosIT.lambda$actualizacionDirectaRechazaMesaCerradaSinModificarCotizacion$2(ActualizacionCatalogoPedidosAbiertosIT.java:351)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at integracion.ActualizacionCatalogoPedidosAbiertosIT.actualizacionDirectaRechazaMesaCerradaSinModificarCotizacion(ActualizacionCatalogoPedidosAbiertosIT.java:350)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: lineasNoEnlazadasMismoNombreNoSePropaganYSeReportanOmitidas took 0.592 sec
+    [junit] Testcase: dosMesasAbiertasSeRecalculanMesaCerradaYPedidoFinalizadoPermanecenIntactos took 0.256 sec
+    [junit] Testcase: testActualizarCatalogoFallaYRevierteSiMesaAbiertaTieneLineaSinClasificar took 0.166 sec
+    [junit] Testcase: actualizacionDirectaRechazaMesaCerradaSinModificarCotizacion took 0.127 sec
+    [junit] Running integracion.ActualizacionTasaPedidosPendientesIT
+    [junit] Testsuite: integracion.ActualizacionTasaPedidosPendientesIT
+    [junit] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.125 sec
+    [junit] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.125 sec
+    [junit] ------------- Standard Error -----------------
+    [junit] Oct 22, 2026 9:13:33 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: No se puede actualizar la tasa: el pedido #108 contiene productos heredados sin clasificar (detalle #109: 'USD-TEST-ABORT'). Clasifíquelos en el catálogo o congélelos antes de continuar.
+    [junit] java.lang.IllegalArgumentException: No se puede actualizar la tasa: el pedido #108 contiene productos heredados sin clasificar (detalle #109: 'USD-TEST-ABORT'). Clasifíquelos en el catálogo o congélelos antes de continuar.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Modelo.ActualizacionTasaDao.ejecutarTransaccion(ActualizacionTasaDao.java:294)
+    [junit] 	at Modelo.ActualizacionTasaDao.ejecutarActualizacion(ActualizacionTasaDao.java:116)
+    [junit] 	at Modelo.ActualizacionTasaDao.actualizarTasaYRecalcularPendientesParaTest(ActualizacionTasaDao.java:102)
+    [junit] 	at integracion.ActualizacionTasaPedidosPendientesIT.lambda$testActualizarTasaFallaYRevierteSiMesaAbiertaTieneLineaSinClasificar$2(ActualizacionTasaPedidosPendientesIT.java:341)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at integracion.ActualizacionTasaPedidosPendientesIT.testActualizarTasaFallaYRevierteSiMesaAbiertaTieneLineaSinClasificar(ActualizacionTasaPedidosPendientesIT.java:340)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: testActualizarTasaFallaYRevierteSiMesaAbiertaTieneLineaSinClasificar took 0.719 sec
+    [junit] Testcase: cambioDeTasaRecalculaSoloMesasAbiertasYConservaCerradasYFinalizadas took 0.309 sec
+    [junit] Running integracion.AdversarialIntegrationIT
+    [junit] Testsuite: integracion.AdversarialIntegrationIT
+    [junit] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.934 sec
+    [junit] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.934 sec
+    [junit] ------------- Standard Error -----------------
+    [junit] Oct 22, 2026 9:13:34 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El nombre de usuario debe tener entre 3 y 60 caracteres; usa letras, números, espacios, punto, guion o guion bajo y no dejes espacios en los extremos.
+    [junit] java.lang.IllegalArgumentException: El nombre de usuario debe tener entre 3 y 60 caracteres; usa letras, números, espacios, punto, guion o guion bajo y no dejes espacios en los extremos.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Modelo.NombreUsuario.normalizar(NombreUsuario.java:21)
+    [junit] 	at Modelo.LoginDao.validarRegistro(LoginDao.java:381)
+    [junit] 	at Modelo.LoginDao.Registrar(LoginDao.java:219)
+    [junit] 	at integracion.AdversarialIntegrationIT.stringExtremadamenteLargo(AdversarialIntegrationIT.java:109)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:34 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: Ingresa un correo electrónico válido.
+    [junit] java.lang.IllegalArgumentException: Ingresa un correo electrónico válido.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Modelo.LoginDao.normalizarCorreoRegistro(LoginDao.java:393)
+    [junit] 	at Modelo.LoginDao.validarRegistro(LoginDao.java:382)
+    [junit] 	at Modelo.LoginDao.Registrar(LoginDao.java:219)
+    [junit] 	at integracion.AdversarialIntegrationIT.sqlInjectionUserRegistration(AdversarialIntegrationIT.java:88)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:35 PM Modelo.ErrorAplicacionException registrarAdvertencia
+    [junit] WARNING: Intento de inicio de sesión rechazado.
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: stringExtremadamenteLargo took 0.298 sec
+    [junit] Testcase: sqlInjectionUserRegistration took 0.102 sec
+    [junit] Testcase: sqlInjectionLogin took 0.461 sec
+    [junit] Running integracion.AuditoriaTransaccionalPreciosIT
+    [junit] Testsuite: integracion.AuditoriaTransaccionalPreciosIT
+    [junit] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.91 sec
+    [junit] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.91 sec
+    [junit] 
+    [junit] Testcase: cambioTasaIdempotenteYRollbackSinAuditoriaHuerfana took 0.551 sec
+    [junit] Testcase: cambioCatalogoEscribeAuditoriaYReintentoIdempotenteNoDuplica took 0.106 sec
+    [junit] Testcase: congelarLineaEscribeAuditoriaYEsIdempotente took 0.174 sec
+    [junit] Running integracion.CenaLifecycleIT
+    [junit] Testsuite: integracion.CenaLifecycleIT
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 0.087 sec
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 0.087 sec
+    [junit] 
+    [junit] Testcase: ejecutarCicloCena took 0.01 sec
+    [junit] 	SKIPPED: Exige DB_URL a restaurante_cena (scratch). Se omite en restaurante_test estándar.
+    [junit] Testcase: ejecutarCicloCena took 0.011 sec
+    [junit] Running integracion.CierreMesaYPagosCongeladosIT
+    [junit] Testsuite: integracion.CierreMesaYPagosCongeladosIT
+    [junit] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.144 sec
+    [junit] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.144 sec
+    [junit] ------------- Standard Error -----------------
+    [junit] Oct 22, 2026 9:13:37 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: La mesa ya fue cerrada con una cotización distinta (versión 3).
+    [junit] java.lang.IllegalArgumentException: La mesa ya fue cerrada con una cotización distinta (versión 3).
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Modelo.PedidosDao.cerrarMesa(PedidosDao.java:1837)
+    [junit] 	at integracion.CierreMesaYPagosCongeladosIT.lambda$testSecuenciaCierreCongelaImportesYDespuesCambioTasaNoAfecta$2(CierreMesaYPagosCongeladosIT.java:193)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at integracion.CierreMesaYPagosCongeladosIT.testSecuenciaCierreCongelaImportesYDespuesCambioTasaNoAfecta(CierreMesaYPagosCongeladosIT.java:193)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:38 PM Modelo.PedidosDao resumenConciliacion
+    [junit] WARNING: resumenConciliacion: El pedido #115 contiene 1 pagos legados con monto_aplicado nulo; se utilizó monto_bs como fallback.
+    [junit] Oct 22, 2026 9:13:38 PM Modelo.PedidosDao resumenConciliacion
+    [junit] WARNING: resumenConciliacion: El pedido #115 contiene 1 pagos legados con monto_aplicado nulo; se utilizó monto_bs como fallback.
+    [junit] Oct 22, 2026 9:13:38 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: El pedido #118 tiene pagos registrados por $10.00 y solo se ha compensado/devuelto $0.00; se requiere contra-asiento o devolución equivalente antes de anular.
+    [junit] java.lang.IllegalArgumentException: El pedido #118 tiene pagos registrados por $10.00 y solo se ha compensado/devuelto $0.00; se requiere contra-asiento o devolución equivalente antes de anular.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Modelo.PedidosDao.anularPedidoConAuditoria(PedidosDao.java:1610)
+    [junit] 	at integracion.CierreMesaYPagosCongeladosIT.lambda$testAnulacionBloqueadaSiHayPagosSinMovimientoDeCompensacion$3(CierreMesaYPagosCongeladosIT.java:455)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at integracion.CierreMesaYPagosCongeladosIT.testAnulacionBloqueadaSiHayPagosSinMovimientoDeCompensacion(CierreMesaYPagosCongeladosIT.java:454)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:38 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: La comanda #120 contiene productos heredados sin clasificar; asígneles moneda base antes de cerrar.
+    [junit] java.lang.IllegalArgumentException: La comanda #120 contiene productos heredados sin clasificar; asígneles moneda base antes de cerrar.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Modelo.PedidosDao.cerrarMesa(PedidosDao.java:1882)
+    [junit] 	at integracion.CierreMesaYPagosCongeladosIT.lambda$testCerrarMesaFallaSiTienePlatoSinClasificar$4(CierreMesaYPagosCongeladosIT.java:569)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at integracion.CierreMesaYPagosCongeladosIT.testCerrarMesaFallaSiTienePlatoSinClasificar(CierreMesaYPagosCongeladosIT.java:568)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: testSecuenciaCierreCongelaImportesYDespuesCambioTasaNoAfecta took 0.795 sec
+    [junit] Testcase: testResumenConciliacionReglaP2D took 0.259 sec
+    [junit] Testcase: testPagoMixtoConAjusteCambiarioFxExacto took 0.207 sec
+    [junit] Testcase: testEfectivoExcedenteRegistraCambioDevuelto took 0.154 sec
+    [junit] Testcase: testAnulacionBloqueadaSiHayPagosSinMovimientoDeCompensacion took 0.176 sec
+    [junit] Testcase: testReintentoPagoConOrdenInvertidoEsIdempotenteYNoDuplica took 0.18 sec
+    [junit] Testcase: testCerrarMesaFallaSiTienePlatoSinClasificar took 0.099 sec
+    [junit] Testcase: testReintentoPagoNoDuplicaCobroNiRegistros took 0.178 sec
+    [junit] Running integracion.ComandasIncrementalesIT
+    [junit] Testsuite: integracion.ComandasIncrementalesIT
+    [junit] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.249 sec
+    [junit] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.249 sec
+    [junit] ------------- Standard Error -----------------
+    [junit] Oct 22, 2026 9:13:40 PM Servicio.ServicioRespaldoBaseDatos crearRespaldo
+    [junit] INFO: Respaldo de base de datos generado exitosamente: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/respaldos/pre_migracion_restaurante_20261022_211340_313_c294b3de-85e4-4c5a-aeff-318b57d763f1.sql
+    [junit] Oct 22, 2026 9:13:42 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+    [junit] INFO: Respaldo previo a migración confirmado: /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/respaldos/pre_migracion_restaurante_20261022_211340_313_c294b3de-85e4-4c5a-aeff-318b57d763f1.sql
+    [junit] Oct 22, 2026 9:13:42 PM infraestructura.MigradorEsquemaJdbc asegurarTablaConfiguracionSistema
+    [junit] INFO: Tabla configuracion_sistema verificada.
+    [junit] Oct 22, 2026 9:13:42 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCierresCaja
+    [junit] INFO: Tabla cierres_caja verificada.
+    [junit] Oct 22, 2026 9:13:42 PM infraestructura.MigradorEsquemaJdbc asegurarTablaMesoneros
+    [junit] INFO: Tabla mesoneros verificada.
+    [junit] Oct 22, 2026 9:13:43 PM infraestructura.MigradorEsquemaJdbc asegurarTablaCategorias
+    [junit] INFO: Tabla categorias verificada (soft-delete activo soportado).
+    [junit] Oct 22, 2026 9:13:43 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoCategoria
+    [junit] INFO: Tabla plato_categoria verificada.
+    [junit] Oct 22, 2026 9:13:43 PM infraestructura.MigradorEsquemaJdbc asegurarTablaPlatoFavorito
+    [junit] INFO: Tabla plato_favorito verificada.
+    [junit] Oct 22, 2026 9:13:43 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+    [junit] INFO: Esquema de base de datos verificado y sincronizado correctamente.
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: guardarSinCambiosNoCreaMarchaNiReimpresion took 0.447 sec
+    [junit] Testcase: cambiosSinImpresionSeAcumulanHastaLaSiguienteComandaEmitida took 0.073 sec
+    [junit] Testcase: creaComandaInicialYEnLaRondaSiguienteSoloPersisteElIncremento took 0.077 sec
+    [junit] Testcase: actualizacionesConcurrentesNoDuplicanElIncrementoEnviado took 0.081 sec
+    [junit] Testcase: migracionRepetidaCreaUnSoloBaselineParaPedidoPendienteExistente took 3.394 sec
+    [junit] Testcase: reduccionYCambioDeNotaSeGuardanComoAjusteSinReemitirElPedidoCompleto took 0.104 sec
+    [junit] Running integracion.CombinatoriaEndToEndTotalIT
+    [junit] Testsuite: integracion.CombinatoriaEndToEndTotalIT
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.886 sec
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.886 sec
+    [junit] ------------- Standard Error -----------------
+    [junit] Oct 22, 2026 9:13:45 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: Tu rol no permite realizar esta acción.
+    [junit] java.lang.IllegalArgumentException: Tu rol no permite realizar esta acción.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.SalasServicio.exigir(SalasServicio.java:55)
+    [junit] 	at Servicio.SalasServicio.registrar(SalasServicio.java:31)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.lambda$combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia$0(CombinatoriaEndToEndTotalIT.java:189)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia(CombinatoriaEndToEndTotalIT.java:189)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:45 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: Tu rol no permite realizar esta acción.
+    [junit] java.lang.IllegalArgumentException: Tu rol no permite realizar esta acción.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.PlatosServicio.exigir(PlatosServicio.java:142)
+    [junit] 	at Servicio.PlatosServicio.registrar(PlatosServicio.java:74)
+    [junit] 	at Servicio.PlatosServicio.registrar(PlatosServicio.java:70)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.lambda$combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia$1(CombinatoriaEndToEndTotalIT.java:190)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia(CombinatoriaEndToEndTotalIT.java:190)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:45 PM infraestructura.ControlMantenimientoBD lambda$envolverStatement$4
+    [junit] WARNING: [SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código 1062, SQLState '23000'): Duplicate entry '21-1' for key 'pedidos.uq_pedidos_mesa_pendiente' | SQL: INSERT INTO pedidos (id_sala, num_mesa, tipo_pedido, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre, version_precio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    [junit] Oct 22, 2026 9:13:45 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: La mesa 1 ya tiene un pedido pendiente.
+    [junit] java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '21-1' for key 'pedidos.uq_pedidos_mesa_pendiente'
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:117)
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1009)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1320)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:994)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ProveedorConexionJdbc.lambda$envolverSentencia$3(ProveedorConexionJdbc.java:390)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ControlMantenimientoBD.invocar(ControlMantenimientoBD.java:364)
+    [junit] 	at infraestructura.ControlMantenimientoBD.lambda$envolverStatement$4(ControlMantenimientoBD.java:316)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompletoConMarcha(PedidosDao.java:121)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompleto(PedidosDao.java:67)
+    [junit] 	at Servicio.PedidoServicio.registrarPedidoCompleto(PedidoServicio.java:31)
+    [junit] 	at Controlador.PedidosControlador.registrarPedidoCompleto(PedidosControlador.java:50)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.lambda$combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia$4(CombinatoriaEndToEndTotalIT.java:325)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia(CombinatoriaEndToEndTotalIT.java:323)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:46 PM infraestructura.ControlMantenimientoBD lambda$envolverStatement$4
+    [junit] WARNING: [SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código 1062, SQLState '23000'): Duplicate entry '21-2' for key 'pedidos.uq_pedidos_mesa_pendiente' | SQL: INSERT INTO pedidos (id_sala, num_mesa, tipo_pedido, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre, version_precio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    [junit] Oct 22, 2026 9:13:46 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: La mesa 2 ya tiene un pedido pendiente.
+    [junit] java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '21-2' for key 'pedidos.uq_pedidos_mesa_pendiente'
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:117)
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1009)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1320)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:994)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ProveedorConexionJdbc.lambda$envolverSentencia$3(ProveedorConexionJdbc.java:390)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ControlMantenimientoBD.invocar(ControlMantenimientoBD.java:364)
+    [junit] 	at infraestructura.ControlMantenimientoBD.lambda$envolverStatement$4(ControlMantenimientoBD.java:316)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompletoConMarcha(PedidosDao.java:121)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompleto(PedidosDao.java:67)
+    [junit] 	at Servicio.PedidoServicio.registrarPedidoCompleto(PedidoServicio.java:31)
+    [junit] 	at Controlador.PedidosControlador.registrarPedidoCompleto(PedidosControlador.java:50)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.lambda$combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia$4(CombinatoriaEndToEndTotalIT.java:325)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia(CombinatoriaEndToEndTotalIT.java:323)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:46 PM infraestructura.ControlMantenimientoBD lambda$envolverStatement$4
+    [junit] WARNING: [SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código 1062, SQLState '23000'): Duplicate entry '21-3' for key 'pedidos.uq_pedidos_mesa_pendiente' | SQL: INSERT INTO pedidos (id_sala, num_mesa, tipo_pedido, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre, version_precio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    [junit] Oct 22, 2026 9:13:46 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: La mesa 3 ya tiene un pedido pendiente.
+    [junit] java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '21-3' for key 'pedidos.uq_pedidos_mesa_pendiente'
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:117)
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1009)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1320)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:994)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ProveedorConexionJdbc.lambda$envolverSentencia$3(ProveedorConexionJdbc.java:390)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ControlMantenimientoBD.invocar(ControlMantenimientoBD.java:364)
+    [junit] 	at infraestructura.ControlMantenimientoBD.lambda$envolverStatement$4(ControlMantenimientoBD.java:316)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompletoConMarcha(PedidosDao.java:121)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompleto(PedidosDao.java:67)
+    [junit] 	at Servicio.PedidoServicio.registrarPedidoCompleto(PedidoServicio.java:31)
+    [junit] 	at Controlador.PedidosControlador.registrarPedidoCompleto(PedidosControlador.java:50)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.lambda$combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia$4(CombinatoriaEndToEndTotalIT.java:325)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia(CombinatoriaEndToEndTotalIT.java:323)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:46 PM infraestructura.ControlMantenimientoBD lambda$envolverStatement$4
+    [junit] WARNING: [SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código 1062, SQLState '23000'): Duplicate entry '21-4' for key 'pedidos.uq_pedidos_mesa_pendiente' | SQL: INSERT INTO pedidos (id_sala, num_mesa, tipo_pedido, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre, version_precio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    [junit] Oct 22, 2026 9:13:46 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: La mesa 4 ya tiene un pedido pendiente.
+    [junit] java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '21-4' for key 'pedidos.uq_pedidos_mesa_pendiente'
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:117)
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1009)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1320)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:994)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ProveedorConexionJdbc.lambda$envolverSentencia$3(ProveedorConexionJdbc.java:390)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ControlMantenimientoBD.invocar(ControlMantenimientoBD.java:364)
+    [junit] 	at infraestructura.ControlMantenimientoBD.lambda$envolverStatement$4(ControlMantenimientoBD.java:316)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompletoConMarcha(PedidosDao.java:121)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompleto(PedidosDao.java:67)
+    [junit] 	at Servicio.PedidoServicio.registrarPedidoCompleto(PedidoServicio.java:31)
+    [junit] 	at Controlador.PedidosControlador.registrarPedidoCompleto(PedidosControlador.java:50)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.lambda$combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia$4(CombinatoriaEndToEndTotalIT.java:325)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia(CombinatoriaEndToEndTotalIT.java:323)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:46 PM infraestructura.ControlMantenimientoBD lambda$envolverStatement$4
+    [junit] WARNING: [SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código 1451, SQLState '23000'): Cannot delete or update a parent row: a foreign key constraint fails (`restaurante_test`.`pedidos`, CONSTRAINT `pedidos_ibfk_1` FOREIGN KEY (`id_sala`) REFERENCES `salas` (`id`)) | SQL: DELETE FROM salas WHERE id = ?
+    [junit] Oct 22, 2026 9:13:46 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: No se puede eliminar la sala porque tiene pedidos asociados.
+    [junit] java.sql.SQLIntegrityConstraintViolationException: Cannot delete or update a parent row: a foreign key constraint fails (`restaurante_test`.`pedidos`, CONSTRAINT `pedidos_ibfk_1` FOREIGN KEY (`id_sala`) REFERENCES `salas` (`id`))
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:117)
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1009)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1320)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:994)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ProveedorConexionJdbc.lambda$envolverSentencia$3(ProveedorConexionJdbc.java:390)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ControlMantenimientoBD.invocar(ControlMantenimientoBD.java:364)
+    [junit] 	at infraestructura.ControlMantenimientoBD.lambda$envolverStatement$4(ControlMantenimientoBD.java:316)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at Modelo.SalasDao.eliminar(SalasDao.java:130)
+    [junit] 	at Servicio.SalasServicio.eliminar(SalasServicio.java:50)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.lambda$combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia$5(CombinatoriaEndToEndTotalIT.java:410)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at integracion.CombinatoriaEndToEndTotalIT.combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia(CombinatoriaEndToEndTotalIT.java:408)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: combinatoriaTotalEndToEndRolesTasasIvaYConcurrencia took 2.812 sec
+    [junit] Running integracion.CombinatoriaUsuarioIT
+    [junit] Testsuite: integracion.CombinatoriaUsuarioIT
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.31 sec
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.31 sec
+    [junit] ------------- Standard Error -----------------
+    [junit] Oct 22, 2026 9:13:48 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: Tu rol no permite realizar esta acción.
+    [junit] java.lang.IllegalArgumentException: Tu rol no permite realizar esta acción.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.SalasServicio.exigir(SalasServicio.java:55)
+    [junit] 	at Servicio.SalasServicio.registrar(SalasServicio.java:31)
+    [junit] 	at integracion.CombinatoriaUsuarioIT.lambda$combinatoriaCompletaUsuarioCicloBimonetarioYConcurrencia$0(CombinatoriaUsuarioIT.java:176)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at integracion.CombinatoriaUsuarioIT.combinatoriaCompletaUsuarioCicloBimonetarioYConcurrencia(CombinatoriaUsuarioIT.java:175)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:48 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: Tu rol no permite realizar esta acción.
+    [junit] java.lang.IllegalArgumentException: Tu rol no permite realizar esta acción.
+    [junit] 	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+    [junit] 	at Servicio.PlatosServicio.exigir(PlatosServicio.java:142)
+    [junit] 	at Servicio.PlatosServicio.registrar(PlatosServicio.java:74)
+    [junit] 	at Servicio.PlatosServicio.registrar(PlatosServicio.java:70)
+    [junit] 	at integracion.CombinatoriaUsuarioIT.lambda$combinatoriaCompletaUsuarioCicloBimonetarioYConcurrencia$1(CombinatoriaUsuarioIT.java:178)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at integracion.CombinatoriaUsuarioIT.combinatoriaCompletaUsuarioCicloBimonetarioYConcurrencia(CombinatoriaUsuarioIT.java:177)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:49 PM infraestructura.ControlMantenimientoBD lambda$envolverStatement$4
+    [junit] WARNING: [SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código 1062, SQLState '23000'): Duplicate entry '22-3' for key 'pedidos.uq_pedidos_mesa_pendiente' | SQL: INSERT INTO pedidos (id_sala, num_mesa, tipo_pedido, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre, version_precio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    [junit] Oct 22, 2026 9:13:49 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: La mesa 3 ya tiene un pedido pendiente.
+    [junit] java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '22-3' for key 'pedidos.uq_pedidos_mesa_pendiente'
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:117)
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1009)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1320)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:994)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ProveedorConexionJdbc.lambda$envolverSentencia$3(ProveedorConexionJdbc.java:390)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ControlMantenimientoBD.invocar(ControlMantenimientoBD.java:364)
+    [junit] 	at infraestructura.ControlMantenimientoBD.lambda$envolverStatement$4(ControlMantenimientoBD.java:316)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompletoConMarcha(PedidosDao.java:121)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompleto(PedidosDao.java:67)
+    [junit] 	at Servicio.PedidoServicio.registrarPedidoCompleto(PedidoServicio.java:31)
+    [junit] 	at Controlador.PedidosControlador.registrarPedidoCompleto(PedidosControlador.java:50)
+    [junit] 	at integracion.CombinatoriaUsuarioIT.lambda$combinatoriaCompletaUsuarioCicloBimonetarioYConcurrencia$6(CombinatoriaUsuarioIT.java:254)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at integracion.CombinatoriaUsuarioIT.combinatoriaCompletaUsuarioCicloBimonetarioYConcurrencia(CombinatoriaUsuarioIT.java:252)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] Oct 22, 2026 9:13:49 PM infraestructura.ControlMantenimientoBD lambda$envolverStatement$4
+    [junit] WARNING: [SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código 1451, SQLState '23000'): Cannot delete or update a parent row: a foreign key constraint fails (`restaurante_test`.`pedidos`, CONSTRAINT `pedidos_ibfk_1` FOREIGN KEY (`id_sala`) REFERENCES `salas` (`id`)) | SQL: DELETE FROM salas WHERE id = ?
+    [junit] Oct 22, 2026 9:13:49 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: No se puede eliminar la sala porque tiene pedidos asociados.
+    [junit] java.sql.SQLIntegrityConstraintViolationException: Cannot delete or update a parent row: a foreign key constraint fails (`restaurante_test`.`pedidos`, CONSTRAINT `pedidos_ibfk_1` FOREIGN KEY (`id_sala`) REFERENCES `salas` (`id`))
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:117)
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1009)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1320)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:994)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ProveedorConexionJdbc.lambda$envolverSentencia$3(ProveedorConexionJdbc.java:390)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ControlMantenimientoBD.invocar(ControlMantenimientoBD.java:364)
+    [junit] 	at infraestructura.ControlMantenimientoBD.lambda$envolverStatement$4(ControlMantenimientoBD.java:316)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy10.executeUpdate(Unknown Source)
+    [junit] 	at Modelo.SalasDao.eliminar(SalasDao.java:130)
+    [junit] 	at Servicio.SalasServicio.eliminar(SalasServicio.java:50)
+    [junit] 	at integracion.CombinatoriaUsuarioIT.lambda$combinatoriaCompletaUsuarioCicloBimonetarioYConcurrencia$7(CombinatoriaUsuarioIT.java:299)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at integracion.CombinatoriaUsuarioIT.combinatoriaCompletaUsuarioCicloBimonetarioYConcurrencia(CombinatoriaUsuarioIT.java:297)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: combinatoriaCompletaUsuarioCicloBimonetarioYConcurrencia took 2.228 sec
+    [junit] Running integracion.MySqlIntegrationIT
+    [junit] Testsuite: integracion.MySqlIntegrationIT
+    [junit] Tests run: 38, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 23.84 sec
+    [junit] Tests run: 38, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 23.84 sec
+    [junit] 
+    [junit] Testcase: verificaVersionCatalogoYEsquemaMysqlReal took 0.034 sec
+    [junit] Testcase: pagoInlineRegistraBsUsdYVariosMediosConLaTasaDelPedido took 0.246 sec
+    [junit] Testcase: correoDuplicadoEsConflictoWarningConCausaYLogUnico took 0.378 sec
+    [junit] Testcase: testIntegracionClientesYDashboard took 0.209 sec
+    [junit] Testcase: falloAlEliminarDetallesRevierteLaPurgaCompleta took 0.188 sec
+    [junit] Testcase: transaccionRegistraPedidoDetallesYFinalizacion took 0.127 sec
+    [junit] Testcase: mutacionAdministradorEsperaLockCompartidoDeOtraConexion took 0.793 sec
+    [junit] Testcase: ultimoAdministradorActivoNoPuedeDesactivarseNiEliminarse took 0.276 sec
+    [junit] Testcase: cierreCuadraDesgloseConCabeceraYUsaTasaDeBdParaPedidoLegado took 0.311 sec
+    [junit] Testcase: metodosDeEfectivoSeGuardanSeVuelvenALeerYConciliacionSumaPagoMixto took 0.253 sec
+    [junit] Testcase: barreraEsperaEscrituraActivaYRechazaEscriturasDuranteMantenimiento took 0.309 sec
+    [junit] Testcase: esquemaSinMetodoPagoNoDebeFinalizarPedidoParcialmente took 0.183 sec
+    [junit] Testcase: migracionNoReiniciaBootstrapDeAdministradorExistenteConClavePersonalizada took 2.058 sec
+    [junit] Testcase: generaPdfDesdeDatosMySqlSinAbrirAplicacionExterna took 0.257 sec
+    [junit] Testcase: autenticaUsuarioSemillaRechazaCredencialesYConsultaMenu took 0.541 sec
+    [junit] Testcase: falloForzadoEnDetalleHaceRollbackYDejaUnaEntradaDeLog took 0.067 sec
+    [junit] Testcase: falloAlAbrirPdfPreservaCausaYQuedaRegistradoUnaSolaVez took 0.034 sec
+    [junit] Testcase: purgarPedidoFinalizadoEliminaDiarioDeCocinaEnLaMismaOperacion took 0.133 sec
+    [junit] Testcase: preciosDualCurrencyEnforcedAndClosedPendingOrdersReleaseTable took 0.086 sec
+    [junit] Testcase: pedidoConMesoneroAsignadoSeRegistraYConsultaMesasPendientes took 0.153 sec
+    [junit] Testcase: rechazaUnRolNoReconocidoAntesDeCrearLaSesion took 0.249 sec
+    [junit] Testcase: errorDeAuditoriaRevierteAnulacionDelPedido took 0.134 sec
+    [junit] Testcase: resumenVentasCuadraDesgloseConCabeceraYExcluyeAnuladosYRangoVacio took 0.359 sec
+    [junit] Testcase: altaGuardaHashYAutenticacionVerificaLaClaveSinTextoPlano took 0.739 sec
+    [junit] Testcase: ejecutaCrudRealDeSalasYPlatos took 0.094 sec
+    [junit] Testcase: bootstrapCreaAdministradorConHashYConfirmaEstadoTransaccionalmente took 0.583 sec
+    [junit] Testcase: erroresDeConexionYCredencialesSePropaganYQuedanEnLog took 0.036 sec
+    [junit] Testcase: respaldoRestauradoConservaControlYRecuperaDatosExactos took 6.295 sec
+    [junit] Testcase: pagoIncompletoOConTasaAusenteNoFinalizaNiGuardaPagos took 0.121 sec
+    [junit] Testcase: noPermiteBorrarSalaConHistorialYRegistraConflictoComoWarning took 0.109 sec
+    [junit] Testcase: mesoneroCrudYVacacionesYSoftDelete took 0.087 sec
+    [junit] Testcase: asegurarEsquemaPreservaTotalesYEventosDePagoExistentes took 0.694 sec
+    [junit] Testcase: falloEnClaveValorRevierteActualizacionDeConfiguracionEmpresarial took 0.127 sec
+    [junit] Testcase: inicioRecuperaUnaRestauracionInterrumpidaEnFaseAplicando took 2.352 sec
+    [junit] Testcase: bootstrapConUsuarioAdminMapeaCredencialesPersistibles took 0.509 sec
+    [junit] Testcase: bootstrapConcurrenteSoloPermiteCrearUnaCuentaAdministradora took 0.534 sec
+    [junit] Testcase: dosSesionesConcurrentesSoloDejanUnPedidoPendiente took 0.1 sec
+    [junit] Testcase: administradorPrincipalAdminNoPuedeEliminarseNiDesactivarse took 0.295 sec
+    [junit] Running integracion.PreferenciasTablaIT
+    [junit] Testsuite: integracion.PreferenciasTablaIT
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.973 sec
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.973 sec
+    [junit] ------------- Standard Error -----------------
+    [junit] Oct 22, 2026 9:14:14 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+    [junit] INFO: Esquema de base de datos verificado y sincronizado correctamente.
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: testGuardarYCargar took 0.881 sec
+    [junit] Running integracion.SimulacionUsuarioIT
+    [junit] Testsuite: integracion.SimulacionUsuarioIT
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.192 sec
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.192 sec
+    [junit] ------------- Standard Error -----------------
+    [junit] Oct 22, 2026 9:14:16 PM infraestructura.ControlMantenimientoBD lambda$envolverStatement$4
+    [junit] WARNING: [SQL_ERROR] Fallo al ejecutar consulta/sentencia SQL (código 1062, SQLState '23000'): Duplicate entry '39-4' for key 'pedidos.uq_pedidos_mesa_pendiente' | SQL: INSERT INTO pedidos (id_sala, num_mesa, tipo_pedido, subtotal, iva_porcentaje, iva_monto, total, usuario, tasa_cambio, subtotal_bs, iva_bs, total_bs, id_mesonero, mesonero_nombre, version_precio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    [junit] Oct 22, 2026 9:14:16 PM Modelo.ErrorAplicacionException <init>
+    [junit] WARNING: La mesa 4 ya tiene un pedido pendiente.
+    [junit] java.sql.SQLIntegrityConstraintViolationException: Duplicate entry '39-4' for key 'pedidos.uq_pedidos_mesa_pendiente'
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:117)
+    [junit] 	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeInternal(ClientPreparedStatement.java:916)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1061)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdateInternal(ClientPreparedStatement.java:1009)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeLargeUpdate(ClientPreparedStatement.java:1320)
+    [junit] 	at com.mysql.cj.jdbc.ClientPreparedStatement.executeUpdate(ClientPreparedStatement.java:994)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ProveedorConexionJdbc.lambda$envolverSentencia$3(ProveedorConexionJdbc.java:390)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy7.executeUpdate(Unknown Source)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at infraestructura.ControlMantenimientoBD.invocar(ControlMantenimientoBD.java:364)
+    [junit] 	at infraestructura.ControlMantenimientoBD.lambda$envolverStatement$4(ControlMantenimientoBD.java:316)
+    [junit] 	at jdk.proxy2/jdk.proxy2.$Proxy7.executeUpdate(Unknown Source)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompletoConMarcha(PedidosDao.java:121)
+    [junit] 	at Modelo.PedidosDao.registrarPedidoCompleto(PedidosDao.java:67)
+    [junit] 	at Servicio.PedidoServicio.registrarPedidoCompleto(PedidoServicio.java:31)
+    [junit] 	at Controlador.PedidosControlador.registrarPedidoCompleto(PedidosControlador.java:50)
+    [junit] 	at integracion.SimulacionUsuarioIT.lambda$simulaRecorridoCompletoDeUsuarioE2E$3(SimulacionUsuarioIT.java:152)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:1001)
+    [junit] 	at org.junit.Assert.assertThrows(Assert.java:981)
+    [junit] 	at integracion.SimulacionUsuarioIT.simulaRecorridoCompletoDeUsuarioE2E(SimulacionUsuarioIT.java:151)
+    [junit] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+    [junit] 	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+    [junit] 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+    [junit] 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+    [junit] 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+    [junit] 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    [junit] 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    [junit] 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    [junit] 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    [junit] 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    [junit] 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    [junit] 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    [junit] 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    [junit] 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    [junit] 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    [junit] 	at junit.framework.JUnit4TestAdapter.run(JUnit4TestAdapter.java:50)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.run(JUnitTestRunner.java:535)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.launch(JUnitTestRunner.java:1197)
+    [junit] 	at org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner.main(JUnitTestRunner.java:1042)
+    [junit] 
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: simulaRecorridoCompletoDeUsuarioE2E took 2.094 sec
+
+-integration-compose-down:
+     [exec]  Container restaurante-integration-db-1  Stopping
+     [exec]  Container restaurante-integration-db-1  Stopped
+     [exec]  Container restaurante-integration-db-1  Removing
+     [exec]  Container restaurante-integration-db-1  Removed
+     [exec]  Volume restaurante-integration_restaurante_integration_mysql_data  Removing
+     [exec]  Network restaurante-integration_default  Removing
+     [exec]  Volume restaurante-integration_restaurante_integration_mysql_data  Removed
+     [exec]  Network restaurante-integration_default  Removed
+
+integration-test:
+
+BUILD SUCCESSFUL
+Total time: 1 minute 13 seconds

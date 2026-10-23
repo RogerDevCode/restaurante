@@ -11,9 +11,10 @@
 | `ant -q compile jar && cp -f dist/Restaurante.jar Restaurante_Ejecutable/Restaurante.jar` | Flujo estándar de compilación + despliegue |
 | `./generar_restaurante_ejecutable.sh` | Regenera `Restaurante_Ejecutable/` (jar + librerías + zip reproducible). Exige árbol git limpio |
 | `./empaquetar_produccion.sh` | Genera `../Restaurante_2026_Produccion.zip` |
-| `ant test` | Suite unitaria (~398 tests, requiere display) |
-| `ant integration-test` | Suite integra contra MySQL efímero (`restaurante_test` 3307); levanta/baja compose solo |
-| `./e2e_virtual.sh [clase]` · `./e2e_dia_completo_virtual.sh [clase]` | E2E en Xvfb `:99` sobre BD desechable `restaurante_test` (jornada aislada) |
+| `ant test` | Suite unitaria (679 tests; usa BD del `.env` — con `.env` operativo aborta por guardia). Para BD desechable 3307: `ant test -DDB_URL="jdbc:mysql://127.0.0.1:3307/restaurante_test" -DDB_NAME=restaurante_test -DMYSQL_DATABASE=restaurante_test -DDB_USER=restaurante_test_app -DDB_PASSWORD=test_only_app_password` (+ mismas `-Dtest-sys-prop.*` con URL completa `?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC`), previo `docker compose -p <proyecto> -f docker-compose.e2e.yml up -d` + `./inicializar_bd_test.sh --datos` |
+| `ant integration-test` | Suite integra contra MySQL efímero (`restaurante_test` 3307); levanta/baja compose solo (liberar 3307 antes) |
+| `./e2e_virtual.sh [clase]` · `./e2e_bootstrap_virtual.sh` · `./e2e_dia_completo_virtual.sh [clase]` | E2E en Xvfb `:99` por UI real sobre BD desechable `restaurante_test` (bootstrap/seed por interfaz; `E2E_SEED_PLATOS=108` siembra combinatoria) |
+| `./generar_bd_test.sh` · `./cargar_bd_test.sh` · `./inicializar_bd_test.sh [--datos]` · `./verificar_bd_test.sh` | Ciclo del fixture `BD-test.sql` (esquema completo con salas id=1 ×4 mesas, 109 platos, config 40/16) en BD desechable 3307 |
 | `./drill_restauracion_bd.sh` / `..._secundaria.sh` / `./redteam_autoreparacion_bd.sh` | Drills efímeros: respaldo/restauración, restauración heterogénea (`RESTAURACION_SECUNDARIA_OK`) y autoreparación de esquema (`REDTEAM_AUTOREPARACION_OK`) |
 
 ## Arranque (producción)

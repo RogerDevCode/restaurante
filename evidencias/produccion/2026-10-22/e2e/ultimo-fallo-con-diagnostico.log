@@ -1,0 +1,416 @@
+ Network restaurante-dia-e2e-3686650-1792707129_default  Creating
+ Network restaurante-dia-e2e-3686650-1792707129_default  Created
+ Volume restaurante-dia-e2e-3686650-1792707129_restaurante_e2e_mysql_data  Creating
+ Volume restaurante-dia-e2e-3686650-1792707129_restaurante_e2e_mysql_data  Created
+ Container restaurante-dia-e2e-3686650-1792707129-db-1  Creating
+ Container restaurante-dia-e2e-3686650-1792707129-db-1  Created
+ Container restaurante-dia-e2e-3686650-1792707129-db-1  Starting
+ Container restaurante-dia-e2e-3686650-1792707129-db-1  Started
+ Container restaurante-dia-e2e-3686650-1792707129-db-1  Waiting
+ Container restaurante-dia-e2e-3686650-1792707129-db-1  Healthy
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 8 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.BootstrapInicialE2EVirtual (DISPLAY=:99) ==
+BOOTSTRAP_E2E_OK: instalación limpia, validaciones, demo bloqueada y login nuevo por UI
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 8 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.SeedBaseE2EVirtual (DISPLAY=:99) ==
+Oct 22, 2026 10:13:24 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 22, 2026 10:13:25 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:13:25 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 22, 2026 10:13:25 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:13:25 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:13:25 PM Modelo.SalasDao listar
+INFO: [CARGA_DATOS] Carga de salas retornó 0 items.
+Oct 22, 2026 10:13:25 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:13:25 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+Oct 22, 2026 10:13:25 PM Modelo.ErrorAplicacionException <init>
+SEVERE: No existe la configuración de la empresa.
+java.lang.IllegalStateException: La tabla config no contiene un registro.
+	at Modelo.LoginDao.datosEmpresa(LoginDao.java:963)
+	at Vista.Sistema.cargarConfigEnFondo(Sistema.java:6646)
+	at Servicio.ConcurrenciaServicio.lambda$ejecutarAsync$2(ConcurrenciaServicio.java:41)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+Oct 22, 2026 10:13:25 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:13:25 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:13:25 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+Oct 22, 2026 10:13:25 PM Vista.Sistema nuevoConfigPorDefecto
+WARNING: nuevoConfigPorDefecto: Instanciando configuración referencial por defecto para arranque UI.
+Oct 22, 2026 10:13:26 PM Modelo.ErrorAplicacionException <init>
+SEVERE: No existe la configuración de la empresa.
+java.lang.IllegalStateException: La tabla config no contiene un registro.
+	at Modelo.LoginDao.datosEmpresa(LoginDao.java:963)
+	at Vista.Sistema.cargarConfigEnFondo(Sistema.java:6646)
+	at Servicio.ConcurrenciaServicio.lambda$ejecutarAsync$2(ConcurrenciaServicio.java:41)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+Oct 22, 2026 10:13:26 PM Modelo.ErrorAplicacionException <init>
+SEVERE: No existe la configuración de la empresa.
+java.lang.IllegalStateException: La tabla config no contiene un registro.
+	at Modelo.LoginDao.datosEmpresa(LoginDao.java:963)
+	at Vista.Sistema.cargarConfigEnFondo(Sistema.java:6646)
+	at Servicio.ConcurrenciaServicio.lambda$ejecutarAsync$2(ConcurrenciaServicio.java:41)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+Oct 22, 2026 10:13:26 PM Vista.Sistema nuevoConfigPorDefecto
+WARNING: nuevoConfigPorDefecto: Instanciando configuración referencial por defecto para arranque UI.
+Oct 22, 2026 10:13:39 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:13:39 PM Modelo.PedidosDao listarPedidos
+INFO: [CARGA_DATOS] Carga general de pedidos retornó 0 items.
+Oct 22, 2026 10:13:39 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+SEED_BASE_OK  configuracion visible: tasa 40.0000 IVA 16.00
+Oct 22, 2026 10:13:39 PM Modelo.SalasDao listar
+INFO: [CARGA_DATOS] Carga de salas retornó 0 items.
+Oct 22, 2026 10:13:39 PM Modelo.SalasDao listar
+INFO: [CARGA_DATOS] Carga de salas retornó 0 items.
+SEED_BASE_OK  sala Sala Principal con 2 mesas
+Oct 22, 2026 10:13:42 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+Oct 22, 2026 10:13:45 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:13:45 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+Oct 22, 2026 10:13:45 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+SEED_BASE_OK: sala, mesas, categoria y plato base creados por UI
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 8 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.DiaCompletoFiscalE2EVirtual (DISPLAY=:99) ==
+Oct 22, 2026 10:14:10 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 22, 2026 10:14:10 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:14:11 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 22, 2026 10:14:11 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:14:11 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:14:11 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   campos de tasa e IVA reciben los valores por teclado
+[DIALOGO] Confirmar cambio de tasa global no apareció (estado ya correcto): No apareció el diálogo: Confirmar cambio de tasa global. Ventanas visibles: [Sistema[title=Panel de Administración - Administrador [Restaurante E2E]]]
+OK   la UI muestra tasa 40.0000 e IVA 16.00
+OK   la sala de la jornada muestra ocho mesas en la tabla de salas
+OK   EX_USD se presenta como exento en la ficha
+OK   EX_USD muestra su precio exento sin recargo
+[PLATO_CLICK] intento=0 filaVista=0 filasVisibles=2 vista0->id=4,nombre=E2ESEED-POLLO; vista1->id=5,nombre=DIAE2EEX_USD2W7WW0JXGY; nombreEsperado=DIAE2EEX_USD2W7WW0JXGY testa (=nombre)=E2ESEED-POLLO tcId=4
+OK   EX_USD conserva su moneda principal en la ficha visible (vista=USD)
+OK   EX_USD conserva el precio principal en la ficha visible (esperado=3.00 vista=3.00)
+OK   EX_USD conserva la bandera Aplica IVA
+OK   EX_USD conserva la bandera Incluye IVA
+OK   EX_VES se presenta como exento en la ficha
+OK   EX_VES muestra su precio exento sin recargo
+[PLATO_CLICK] intento=0 filaVista=0 filasVisibles=3 vista0->id=4,nombre=E2ESEED-POLLO; vista1->id=5,nombre=DIAE2EEX_USD2W7WW0JXGY; vista2->id=6,nombre=DIAE2EEX_VES2W7WW0JXGY; nombreEsperado=DIAE2EEX_VES2W7WW0JXGY testa (=nombre)=DIAE2EEX_USD2W7WW0JXGY tcId=5
+OK   EX_VES conserva su moneda principal en la ficha visible (vista=VES)
+OK   EX_VES conserva el precio principal en la ficha visible (esperado=120.00 vista=120.00)
+OK   EX_VES conserva la bandera Aplica IVA
+OK   EX_VES conserva la bandera Incluye IVA
+OK   MAS_USD muestra la base antes de IVA
+OK   MAS_USD muestra el IVA añadido a la base
+OK   MAS_USD muestra precio final con IVA añadido una sola vez
+OK   MAS_USD conserva su moneda principal en la ficha visible (vista=USD)
+OK   MAS_USD conserva el precio principal en la ficha visible (esperado=10.00 vista=10.00)
+OK   MAS_USD conserva la bandera Aplica IVA
+OK   MAS_USD conserva la bandera Incluye IVA
+OK   MAS_VES muestra la base antes de IVA
+OK   MAS_VES muestra el IVA añadido a la base
+OK   MAS_VES muestra precio final con IVA añadido una sola vez
+OK   MAS_VES conserva su moneda principal en la ficha visible (vista=VES)
+OK   MAS_VES conserva el precio principal en la ficha visible (esperado=400.00 vista=400.00)
+OK   MAS_VES conserva la bandera Aplica IVA
+OK   MAS_VES conserva la bandera Incluye IVA
+OK   INC_USD muestra la base neta del precio con IVA incluido
+OK   INC_USD muestra el IVA extraído del precio incluido
+OK   INC_USD no suma IVA dos veces al precio incluido
+OK   INC_USD conserva su moneda principal en la ficha visible (vista=USD)
+OK   INC_USD conserva el precio principal en la ficha visible (esperado=11.60 vista=11.60)
+OK   INC_USD conserva la bandera Aplica IVA
+OK   INC_USD conserva la bandera Incluye IVA
+OK   INC_VES muestra la base neta del precio con IVA incluido
+OK   INC_VES muestra el IVA extraído del precio incluido
+OK   INC_VES no suma IVA dos veces al precio incluido
+OK   INC_VES conserva su moneda principal en la ficha visible (vista=VES)
+OK   INC_VES conserva el precio principal en la ficha visible (esperado=464.00 vista=464.00)
+OK   INC_VES conserva la bandera Aplica IVA
+OK   INC_VES conserva la bandera Incluye IVA
+Oct 22, 2026 10:15:39 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:15:39 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   INC_USD aparece en el carrito
+OK   INC_USD tiene cantidad 1 en carrito
+OK   INC_USD conserva moneda y precio base visibles en el carrito
+OK   INC_USD muestra la condición fiscal actual en el carrito
+OK   EX_VES aparece en el carrito
+OK   EX_VES tiene cantidad 1 en carrito
+OK   EX_VES conserva moneda y precio base visibles en el carrito
+OK   EX_VES muestra la condición fiscal actual en el carrito
+OK   EX_USD aparece en el carrito
+OK   EX_USD tiene cantidad 1 en carrito
+OK   EX_USD conserva moneda y precio base visibles en el carrito
+OK   EX_USD muestra la condición fiscal actual en el carrito
+OK   MAS_VES aparece en el carrito
+OK   MAS_VES tiene cantidad 1 en carrito
+OK   MAS_VES conserva moneda y precio base visibles en el carrito
+OK   MAS_VES muestra la condición fiscal actual en el carrito
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:16:01 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:16:01 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   el historial mantiene la sala fixture
+OK   la cuenta aparece PENDIENTE en el historial
+OK   el historial muestra $ 52.40 y Bs. 2096.00
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   desglose fiscal de la cuenta conserva el exento
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 1 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 1 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_USD aparece en el carrito
+OK   INC_USD tiene cantidad 1 en carrito
+OK   INC_USD conserva moneda y precio base visibles en el carrito
+OK   INC_USD muestra la condición fiscal actual en el carrito
+OK   EX_VES aparece en el carrito
+OK   EX_VES tiene cantidad 1 en carrito
+OK   EX_VES conserva moneda y precio base visibles en el carrito
+OK   EX_VES muestra la condición fiscal actual en el carrito
+OK   EX_USD aparece en el carrito
+OK   EX_USD tiene cantidad 2 en carrito
+OK   EX_USD conserva moneda y precio base visibles en el carrito
+OK   EX_USD muestra la condición fiscal actual en el carrito
+OK   MAS_VES aparece en el carrito
+OK   MAS_VES tiene cantidad 2 en carrito
+OK   MAS_VES conserva moneda y precio base visibles en el carrito
+OK   MAS_VES muestra la condición fiscal actual en el carrito
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:16:11 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:16:11 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   la segunda ronda conserva el mismo folio de cuenta
+OK   segunda ronda incrementa la cuenta en vez de abrir una nueva
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   desglose fiscal de la cuenta conserva el exento
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 2 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 2 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:16:13 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:16:13 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   EX_USD aparece en el carrito
+OK   EX_USD tiene cantidad 1 en carrito
+OK   EX_USD conserva moneda y precio base visibles en el carrito
+OK   EX_USD muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:16:17 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:16:17 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   EX_USD da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta conserva el exento
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 1 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:16:19 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:16:19 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   EX_VES aparece en el carrito
+OK   EX_VES tiene cantidad 1 en carrito
+OK   EX_VES conserva moneda y precio base visibles en el carrito
+OK   EX_VES muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:16:23 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:16:23 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   EX_VES da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta conserva el exento
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:16:25 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:16:25 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:16:29 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:16:29 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   MAS_USD da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:16:32 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:16:32 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   MAS_VES aparece en el carrito
+OK   MAS_VES tiene cantidad 1 en carrito
+OK   MAS_VES conserva moneda y precio base visibles en el carrito
+OK   MAS_VES muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:16:36 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:16:36 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   MAS_VES da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 1 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:16:38 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:16:38 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   INC_USD aparece en el carrito
+OK   INC_USD tiene cantidad 1 en carrito
+OK   INC_USD conserva moneda y precio base visibles en el carrito
+OK   INC_USD muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:16:42 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:16:42 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   INC_USD da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:16:44 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:16:44 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:16:48 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:16:48 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   INC_VES da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:16:52 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 7 figura FINALIZADO en el historial
+OK   la factura #7 muestra los medios/importes [EFECTIVO_BS|VES|120.00]
+E2E_FALLO(4) Timeout: Medio de pago 'EFECTIVO_USD' elegido con teclado real
+java.lang.AssertionError: Timeout: Medio de pago 'EFECTIVO_USD' elegido con teclado real
+	at Vista.DiaE2ERobot.esperar(DiaE2ERobot.java:346)
+	at Vista.DiaE2ERobot.esperar(DiaE2ERobot.java:337)
+	at Vista.DiaE2ERobot.seleccionarMedioPago(DiaE2ERobot.java:196)
+	at Vista.DiaCompletoFiscalE2EVirtual.prepararPagos(DiaCompletoFiscalE2EVirtual.java:463)
+	at Vista.DiaCompletoFiscalE2EVirtual.finalizarCobro(DiaCompletoFiscalE2EVirtual.java:441)
+	at Vista.DiaCompletoFiscalE2EVirtual.cobrarSoloVesYSoloUsd(DiaCompletoFiscalE2EVirtual.java:406)
+	at Vista.DiaCompletoFiscalE2EVirtual.jornada(DiaCompletoFiscalE2EVirtual.java:102)
+	at Vista.DiaCompletoFiscalE2EVirtual.main(DiaCompletoFiscalE2EVirtual.java:61)
+Exception in thread "main" java.lang.AssertionError: Falló la fase E2E 4
+	at Vista.DiaCompletoFiscalE2EVirtual.main(DiaCompletoFiscalE2EVirtual.java:78)
+Caused by: java.lang.AssertionError: Timeout: Medio de pago 'EFECTIVO_USD' elegido con teclado real
+	at Vista.DiaE2ERobot.esperar(DiaE2ERobot.java:346)
+	at Vista.DiaE2ERobot.esperar(DiaE2ERobot.java:337)
+	at Vista.DiaE2ERobot.seleccionarMedioPago(DiaE2ERobot.java:196)
+	at Vista.DiaCompletoFiscalE2EVirtual.prepararPagos(DiaCompletoFiscalE2EVirtual.java:463)
+	at Vista.DiaCompletoFiscalE2EVirtual.finalizarCobro(DiaCompletoFiscalE2EVirtual.java:441)
+	at Vista.DiaCompletoFiscalE2EVirtual.cobrarSoloVesYSoloUsd(DiaCompletoFiscalE2EVirtual.java:406)
+	at Vista.DiaCompletoFiscalE2EVirtual.jornada(DiaCompletoFiscalE2EVirtual.java:102)
+	at Vista.DiaCompletoFiscalE2EVirtual.main(DiaCompletoFiscalE2EVirtual.java:61)

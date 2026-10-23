@@ -1,0 +1,725 @@
+ Network restaurante-dia-e2e-3697917-1792707981_default  Creating
+ Network restaurante-dia-e2e-3697917-1792707981_default  Created
+ Volume restaurante-dia-e2e-3697917-1792707981_restaurante_e2e_mysql_data  Creating
+ Volume restaurante-dia-e2e-3697917-1792707981_restaurante_e2e_mysql_data  Created
+ Container restaurante-dia-e2e-3697917-1792707981-db-1  Creating
+ Container restaurante-dia-e2e-3697917-1792707981-db-1  Created
+ Container restaurante-dia-e2e-3697917-1792707981-db-1  Starting
+ Container restaurante-dia-e2e-3697917-1792707981-db-1  Started
+ Container restaurante-dia-e2e-3697917-1792707981-db-1  Waiting
+ Container restaurante-dia-e2e-3697917-1792707981-db-1  Healthy
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 8 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.BootstrapInicialE2EVirtual (DISPLAY=:99) ==
+BOOTSTRAP_E2E_OK: instalación limpia, validaciones, demo bloqueada y login nuevo por UI
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 8 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.SeedBaseE2EVirtual (DISPLAY=:99) ==
+Oct 22, 2026 10:27:37 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 22, 2026 10:27:37 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:27:37 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 22, 2026 10:27:37 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:27:37 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:27:38 PM Modelo.SalasDao listar
+INFO: [CARGA_DATOS] Carga de salas retornó 0 items.
+Oct 22, 2026 10:27:38 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:27:38 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+Oct 22, 2026 10:27:38 PM Modelo.ErrorAplicacionException <init>
+SEVERE: No existe la configuración de la empresa.
+java.lang.IllegalStateException: La tabla config no contiene un registro.
+	at Modelo.LoginDao.datosEmpresa(LoginDao.java:963)
+	at Vista.Sistema.cargarConfigEnFondo(Sistema.java:6646)
+	at Servicio.ConcurrenciaServicio.lambda$ejecutarAsync$2(ConcurrenciaServicio.java:41)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+Oct 22, 2026 10:27:38 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:27:38 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+Oct 22, 2026 10:27:38 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:27:38 PM Vista.Sistema nuevoConfigPorDefecto
+WARNING: nuevoConfigPorDefecto: Instanciando configuración referencial por defecto para arranque UI.
+Oct 22, 2026 10:27:38 PM Modelo.ErrorAplicacionException <init>
+SEVERE: No existe la configuración de la empresa.
+java.lang.IllegalStateException: La tabla config no contiene un registro.
+	at Modelo.LoginDao.datosEmpresa(LoginDao.java:963)
+	at Vista.Sistema.cargarConfigEnFondo(Sistema.java:6646)
+	at Servicio.ConcurrenciaServicio.lambda$ejecutarAsync$2(ConcurrenciaServicio.java:41)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+Oct 22, 2026 10:27:38 PM Modelo.ErrorAplicacionException <init>
+SEVERE: No existe la configuración de la empresa.
+java.lang.IllegalStateException: La tabla config no contiene un registro.
+	at Modelo.LoginDao.datosEmpresa(LoginDao.java:963)
+	at Vista.Sistema.cargarConfigEnFondo(Sistema.java:6646)
+	at Servicio.ConcurrenciaServicio.lambda$ejecutarAsync$2(ConcurrenciaServicio.java:41)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+Oct 22, 2026 10:27:38 PM Vista.Sistema nuevoConfigPorDefecto
+WARNING: nuevoConfigPorDefecto: Instanciando configuración referencial por defecto para arranque UI.
+Oct 22, 2026 10:27:51 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:27:51 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:27:51 PM Modelo.PedidosDao listarPedidos
+INFO: [CARGA_DATOS] Carga general de pedidos retornó 0 items.
+SEED_BASE_OK  configuracion visible: tasa 40.0000 IVA 16.00
+Oct 22, 2026 10:27:51 PM Modelo.SalasDao listar
+INFO: [CARGA_DATOS] Carga de salas retornó 0 items.
+Oct 22, 2026 10:27:51 PM Modelo.SalasDao listar
+INFO: [CARGA_DATOS] Carga de salas retornó 0 items.
+SEED_BASE_OK  sala Sala Principal con 2 mesas
+Oct 22, 2026 10:27:55 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+Oct 22, 2026 10:27:58 PM Modelo.PlatosDao listarPlatosParaVenta
+INFO: [CARGA_DATOS] Carga de platos para venta retornó 0 items (filtro: '').
+Oct 22, 2026 10:27:58 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+Oct 22, 2026 10:27:58 PM Modelo.PlatosDao listarPorFecha
+INFO: [CARGA_DATOS] Carga de platos para fecha '2026-10-22' retornó 0 items.
+SEED_BASE_OK: sala, mesas, categoria y plato base creados por UI
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.DiaCompletoFiscalE2EVirtual (DISPLAY=:99) ==
+Oct 22, 2026 10:28:24 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 22, 2026 10:28:25 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:28:25 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 22, 2026 10:28:25 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:28:25 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:28:25 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   campos de tasa e IVA reciben los valores por teclado
+[DIALOGO] Confirmar cambio de tasa global no apareció (estado ya correcto): No apareció el diálogo: Confirmar cambio de tasa global. Ventanas visibles: [Sistema[title=Panel de Administración - Administrador [Restaurante E2E]]]
+OK   la UI muestra tasa 40.0000 e IVA 16.00
+OK   la sala de la jornada muestra ocho mesas en la tabla de salas
+OK   EX_USD se presenta como exento en la ficha
+OK   EX_USD muestra su precio exento sin recargo
+[PLATO_CLICK] intento=0 filaVista=0 filasVisibles=2 vista0->id=4,nombre=E2ESEED-POLLO; vista1->id=5,nombre=DIAE2EEX_USD2WIT3DDRKB; nombreEsperado=DIAE2EEX_USD2WIT3DDRKB testa (=nombre)=E2ESEED-POLLO tcId=4
+OK   EX_USD conserva su moneda principal en la ficha visible (vista=USD)
+OK   EX_USD conserva el precio principal en la ficha visible (esperado=3.00 vista=3.00)
+OK   EX_USD conserva la bandera Aplica IVA
+OK   EX_USD conserva la bandera Incluye IVA
+OK   EX_VES se presenta como exento en la ficha
+OK   EX_VES muestra su precio exento sin recargo
+[PLATO_CLICK] intento=0 filaVista=0 filasVisibles=3 vista0->id=4,nombre=E2ESEED-POLLO; vista1->id=5,nombre=DIAE2EEX_USD2WIT3DDRKB; vista2->id=6,nombre=DIAE2EEX_VES2WIT3DDRKB; nombreEsperado=DIAE2EEX_VES2WIT3DDRKB testa (=nombre)=DIAE2EEX_USD2WIT3DDRKB tcId=5
+OK   EX_VES conserva su moneda principal en la ficha visible (vista=VES)
+OK   EX_VES conserva el precio principal en la ficha visible (esperado=120.00 vista=120.00)
+OK   EX_VES conserva la bandera Aplica IVA
+OK   EX_VES conserva la bandera Incluye IVA
+OK   MAS_USD muestra la base antes de IVA
+OK   MAS_USD muestra el IVA añadido a la base
+OK   MAS_USD muestra precio final con IVA añadido una sola vez
+OK   MAS_USD conserva su moneda principal en la ficha visible (vista=USD)
+OK   MAS_USD conserva el precio principal en la ficha visible (esperado=10.00 vista=10.00)
+OK   MAS_USD conserva la bandera Aplica IVA
+OK   MAS_USD conserva la bandera Incluye IVA
+OK   MAS_VES muestra la base antes de IVA
+OK   MAS_VES muestra el IVA añadido a la base
+OK   MAS_VES muestra precio final con IVA añadido una sola vez
+OK   MAS_VES conserva su moneda principal en la ficha visible (vista=VES)
+OK   MAS_VES conserva el precio principal en la ficha visible (esperado=400.00 vista=400.00)
+OK   MAS_VES conserva la bandera Aplica IVA
+OK   MAS_VES conserva la bandera Incluye IVA
+OK   INC_USD muestra la base neta del precio con IVA incluido
+OK   INC_USD muestra el IVA extraído del precio incluido
+OK   INC_USD no suma IVA dos veces al precio incluido
+OK   INC_USD conserva su moneda principal en la ficha visible (vista=USD)
+OK   INC_USD conserva el precio principal en la ficha visible (esperado=11.60 vista=11.60)
+OK   INC_USD conserva la bandera Aplica IVA
+OK   INC_USD conserva la bandera Incluye IVA
+OK   INC_VES muestra la base neta del precio con IVA incluido
+OK   INC_VES muestra el IVA extraído del precio incluido
+OK   INC_VES no suma IVA dos veces al precio incluido
+OK   INC_VES conserva su moneda principal en la ficha visible (vista=VES)
+OK   INC_VES conserva el precio principal en la ficha visible (esperado=464.00 vista=464.00)
+OK   INC_VES conserva la bandera Aplica IVA
+OK   INC_VES conserva la bandera Incluye IVA
+Oct 22, 2026 10:29:55 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:29:55 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+OK   INC_USD aparece en el carrito
+OK   INC_USD tiene cantidad 1 en carrito
+OK   INC_USD conserva moneda y precio base visibles en el carrito
+OK   INC_USD muestra la condición fiscal actual en el carrito
+OK   EX_VES aparece en el carrito
+OK   EX_VES tiene cantidad 1 en carrito
+OK   EX_VES conserva moneda y precio base visibles en el carrito
+OK   EX_VES muestra la condición fiscal actual en el carrito
+OK   EX_USD aparece en el carrito
+OK   EX_USD tiene cantidad 1 en carrito
+OK   EX_USD conserva moneda y precio base visibles en el carrito
+OK   EX_USD muestra la condición fiscal actual en el carrito
+OK   MAS_VES aparece en el carrito
+OK   MAS_VES tiene cantidad 1 en carrito
+OK   MAS_VES conserva moneda y precio base visibles en el carrito
+OK   MAS_VES muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:30:18 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:30:18 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   el historial mantiene la sala fixture
+OK   la cuenta aparece PENDIENTE en el historial
+OK   el historial muestra $ 52.40 y Bs. 2096.00
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   desglose fiscal de la cuenta conserva el exento
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 1 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 1 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+OK   INC_USD aparece en el carrito
+OK   INC_USD tiene cantidad 1 en carrito
+OK   INC_USD conserva moneda y precio base visibles en el carrito
+OK   INC_USD muestra la condición fiscal actual en el carrito
+OK   EX_VES aparece en el carrito
+OK   EX_VES tiene cantidad 1 en carrito
+OK   EX_VES conserva moneda y precio base visibles en el carrito
+OK   EX_VES muestra la condición fiscal actual en el carrito
+OK   EX_USD aparece en el carrito
+OK   EX_USD tiene cantidad 2 en carrito
+OK   EX_USD conserva moneda y precio base visibles en el carrito
+OK   EX_USD muestra la condición fiscal actual en el carrito
+OK   MAS_VES aparece en el carrito
+OK   MAS_VES tiene cantidad 2 en carrito
+OK   MAS_VES conserva moneda y precio base visibles en el carrito
+OK   MAS_VES muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:30:28 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:30:28 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   la segunda ronda conserva el mismo folio de cuenta
+OK   segunda ronda incrementa la cuenta en vez de abrir una nueva
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   desglose fiscal de la cuenta conserva el exento
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 2 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 2 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:30:30 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:30:30 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   EX_USD aparece en el carrito
+OK   EX_USD tiene cantidad 1 en carrito
+OK   EX_USD conserva moneda y precio base visibles en el carrito
+OK   EX_USD muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:30:34 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:30:34 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   EX_USD da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta conserva el exento
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 1 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:30:36 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:30:36 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   EX_VES aparece en el carrito
+OK   EX_VES tiene cantidad 1 en carrito
+OK   EX_VES conserva moneda y precio base visibles en el carrito
+OK   EX_VES muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:30:40 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:30:40 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   EX_VES da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta conserva el exento
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:30:42 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:30:42 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:30:46 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:30:46 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   MAS_USD da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:30:49 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:30:49 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   MAS_VES aparece en el carrito
+OK   MAS_VES tiene cantidad 1 en carrito
+OK   MAS_VES conserva moneda y precio base visibles en el carrito
+OK   MAS_VES muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:30:53 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:30:53 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   MAS_VES da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 1 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:30:56 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:30:56 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   INC_USD aparece en el carrito
+OK   INC_USD tiene cantidad 1 en carrito
+OK   INC_USD conserva moneda y precio base visibles en el carrito
+OK   INC_USD muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:30:59 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:30:59 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   INC_USD da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:31:02 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:31:02 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+Oct 22, 2026 10:31:06 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 22, 2026 10:31:06 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   INC_VES da el total esperado en su moneda equivalente
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:31:09 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 7 figura FINALIZADO en el historial
+OK   la factura #7 muestra los medios/importes [EFECTIVO_BS|VES|120.00]
+Oct 22, 2026 10:31:12 PM Modelo.ErrorAplicacionException <init>
+WARNING: La moneda no corresponde al medio de efectivo seleccionado.
+java.lang.IllegalArgumentException: La moneda no corresponde al medio de efectivo seleccionado.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:39)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5424)
+	at Vista.Sistema.lambda$crearCamposFacturacionRapida$48(Sistema.java:1834)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableChanged(AbstractTableModel.java:302)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableCellUpdated(AbstractTableModel.java:281)
+	at java.desktop/javax.swing.table.DefaultTableModel.setValueAt(DefaultTableModel.java:679)
+	at Vista.Sistema$10.setValueAt(Sistema.java:1741)
+	at java.desktop/javax.swing.JTable.setValueAt(JTable.java:2793)
+	at java.desktop/javax.swing.JTable.editingStopped(JTable.java:4791)
+	at java.desktop/javax.swing.AbstractCellEditor.fireEditingStopped(AbstractCellEditor.java:152)
+	at java.desktop/javax.swing.DefaultCellEditor$EditorDelegate.stopCellEditing(DefaultCellEditor.java:375)
+	at java.desktop/javax.swing.DefaultCellEditor$3.stopCellEditing(DefaultCellEditor.java:159)
+	at java.desktop/javax.swing.DefaultCellEditor.stopCellEditing(DefaultCellEditor.java:234)
+	at java.desktop/javax.swing.DefaultCellEditor$EditorDelegate.actionPerformed(DefaultCellEditor.java:392)
+	at java.desktop/javax.swing.JComboBox.fireActionEvent(JComboBox.java:1294)
+	at java.desktop/javax.swing.JComboBox.setSelectedItem(JComboBox.java:619)
+	at java.desktop/javax.swing.JComboBox.setSelectedIndex(JComboBox.java:654)
+	at java.desktop/javax.swing.plaf.basic.BasicComboPopup$Handler.mouseReleased(BasicComboPopup.java:946)
+	at java.desktop/java.awt.AWTEventMulticaster.mouseReleased(AWTEventMulticaster.java:300)
+	at java.desktop/java.awt.Component.processMouseEvent(Component.java:6621)
+	at java.desktop/javax.swing.JComponent.processMouseEvent(JComponent.java:3398)
+	at java.desktop/javax.swing.plaf.basic.BasicComboPopup$1.processMouseEvent(BasicComboPopup.java:551)
+	at java.desktop/java.awt.Component.processEvent(Component.java:6386)
+	at java.desktop/java.awt.Container.processEvent(Container.java:2266)
+	at java.desktop/java.awt.Component.dispatchEventImpl(Component.java:4996)
+	at java.desktop/java.awt.Container.dispatchEventImpl(Container.java:2324)
+	at java.desktop/java.awt.Component.dispatchEvent(Component.java:4828)
+	at java.desktop/java.awt.LightweightDispatcher.retargetMouseEvent(Container.java:4948)
+	at java.desktop/java.awt.LightweightDispatcher.processMouseEvent(Container.java:4575)
+	at java.desktop/java.awt.LightweightDispatcher.dispatchEvent(Container.java:4516)
+	at java.desktop/java.awt.Container.dispatchEventImpl(Container.java:2310)
+	at java.desktop/java.awt.Window.dispatchEventImpl(Window.java:2780)
+	at java.desktop/java.awt.Component.dispatchEvent(Component.java:4828)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:775)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:98)
+	at java.desktop/java.awt.EventQueue$5.run(EventQueue.java:747)
+	at java.desktop/java.awt.EventQueue$5.run(EventQueue.java:745)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:744)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+Oct 22, 2026 10:31:14 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 6 figura FINALIZADO en el historial
+OK   la factura #6 muestra los medios/importes [EFECTIVO_USD|USD|3.00]
+OK   la factura #7 muestra los medios/importes [EFECTIVO_BS|VES|120.00]
+OK   la factura #6 muestra los medios/importes [EFECTIVO_USD|USD|3.00]
+Oct 22, 2026 10:31:20 PM Modelo.ErrorAplicacionException <init>
+WARNING: La moneda no corresponde al medio de efectivo seleccionado.
+java.lang.IllegalArgumentException: La moneda no corresponde al medio de efectivo seleccionado.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:39)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5424)
+	at Vista.Sistema.lambda$crearCamposFacturacionRapida$48(Sistema.java:1834)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableChanged(AbstractTableModel.java:302)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableCellUpdated(AbstractTableModel.java:281)
+	at java.desktop/javax.swing.table.DefaultTableModel.setValueAt(DefaultTableModel.java:679)
+	at Vista.Sistema$10.setValueAt(Sistema.java:1741)
+	at java.desktop/javax.swing.JTable.setValueAt(JTable.java:2793)
+	at java.desktop/javax.swing.JTable.editingStopped(JTable.java:4791)
+	at java.desktop/javax.swing.AbstractCellEditor.fireEditingStopped(AbstractCellEditor.java:152)
+	at java.desktop/javax.swing.DefaultCellEditor$EditorDelegate.stopCellEditing(DefaultCellEditor.java:375)
+	at java.desktop/javax.swing.DefaultCellEditor$3.stopCellEditing(DefaultCellEditor.java:159)
+	at java.desktop/javax.swing.DefaultCellEditor.stopCellEditing(DefaultCellEditor.java:234)
+	at java.desktop/javax.swing.DefaultCellEditor$EditorDelegate.actionPerformed(DefaultCellEditor.java:392)
+	at java.desktop/javax.swing.JComboBox.fireActionEvent(JComboBox.java:1294)
+	at java.desktop/javax.swing.JComboBox.setSelectedItem(JComboBox.java:619)
+	at java.desktop/javax.swing.JComboBox.setSelectedIndex(JComboBox.java:654)
+	at java.desktop/javax.swing.plaf.basic.BasicComboPopup$Handler.mouseReleased(BasicComboPopup.java:946)
+	at java.desktop/java.awt.AWTEventMulticaster.mouseReleased(AWTEventMulticaster.java:300)
+	at java.desktop/java.awt.Component.processMouseEvent(Component.java:6621)
+	at java.desktop/javax.swing.JComponent.processMouseEvent(JComponent.java:3398)
+	at java.desktop/javax.swing.plaf.basic.BasicComboPopup$1.processMouseEvent(BasicComboPopup.java:551)
+	at java.desktop/java.awt.Component.processEvent(Component.java:6386)
+	at java.desktop/java.awt.Container.processEvent(Container.java:2266)
+	at java.desktop/java.awt.Component.dispatchEventImpl(Component.java:4996)
+	at java.desktop/java.awt.Container.dispatchEventImpl(Container.java:2324)
+	at java.desktop/java.awt.Component.dispatchEvent(Component.java:4828)
+	at java.desktop/java.awt.LightweightDispatcher.retargetMouseEvent(Container.java:4948)
+	at java.desktop/java.awt.LightweightDispatcher.processMouseEvent(Container.java:4575)
+	at java.desktop/java.awt.LightweightDispatcher.dispatchEvent(Container.java:4516)
+	at java.desktop/java.awt.Container.dispatchEventImpl(Container.java:2310)
+	at java.desktop/java.awt.Window.dispatchEventImpl(Window.java:2780)
+	at java.desktop/java.awt.Component.dispatchEvent(Component.java:4828)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:775)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:98)
+	at java.desktop/java.awt.EventQueue$5.run(EventQueue.java:747)
+	at java.desktop/java.awt.EventQueue$5.run(EventQueue.java:745)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:744)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+OK   el pago corto deja la cuenta abierta para corregirla
+OK   el pago excedido deja la cuenta abierta para corregirla
+OK   validación visible de pago corto y pago excedido antes del monto exacto
+Oct 22, 2026 10:31:26 PM Modelo.ErrorAplicacionException <init>
+WARNING: La moneda no corresponde al medio de efectivo seleccionado.
+java.lang.IllegalArgumentException: La moneda no corresponde al medio de efectivo seleccionado.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:39)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5424)
+	at Vista.Sistema.lambda$crearCamposFacturacionRapida$48(Sistema.java:1834)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableChanged(AbstractTableModel.java:302)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableCellUpdated(AbstractTableModel.java:281)
+	at java.desktop/javax.swing.table.DefaultTableModel.setValueAt(DefaultTableModel.java:679)
+	at Vista.Sistema$10.setValueAt(Sistema.java:1741)
+	at java.desktop/javax.swing.JTable.setValueAt(JTable.java:2793)
+	at java.desktop/javax.swing.JTable.editingStopped(JTable.java:4791)
+	at java.desktop/javax.swing.AbstractCellEditor.fireEditingStopped(AbstractCellEditor.java:152)
+	at java.desktop/javax.swing.DefaultCellEditor$EditorDelegate.stopCellEditing(DefaultCellEditor.java:375)
+	at java.desktop/javax.swing.DefaultCellEditor$3.stopCellEditing(DefaultCellEditor.java:159)
+	at java.desktop/javax.swing.DefaultCellEditor.stopCellEditing(DefaultCellEditor.java:234)
+	at java.desktop/javax.swing.DefaultCellEditor$EditorDelegate.actionPerformed(DefaultCellEditor.java:392)
+	at java.desktop/javax.swing.JComboBox.fireActionEvent(JComboBox.java:1294)
+	at java.desktop/javax.swing.JComboBox.setSelectedItem(JComboBox.java:619)
+	at java.desktop/javax.swing.JComboBox.setSelectedIndex(JComboBox.java:654)
+	at java.desktop/javax.swing.plaf.basic.BasicComboPopup$Handler.mouseReleased(BasicComboPopup.java:946)
+	at java.desktop/java.awt.AWTEventMulticaster.mouseReleased(AWTEventMulticaster.java:300)
+	at java.desktop/java.awt.Component.processMouseEvent(Component.java:6621)
+	at java.desktop/javax.swing.JComponent.processMouseEvent(JComponent.java:3398)
+	at java.desktop/javax.swing.plaf.basic.BasicComboPopup$1.processMouseEvent(BasicComboPopup.java:551)
+	at java.desktop/java.awt.Component.processEvent(Component.java:6386)
+	at java.desktop/java.awt.Container.processEvent(Container.java:2266)
+	at java.desktop/java.awt.Component.dispatchEventImpl(Component.java:4996)
+	at java.desktop/java.awt.Container.dispatchEventImpl(Container.java:2324)
+	at java.desktop/java.awt.Component.dispatchEvent(Component.java:4828)
+	at java.desktop/java.awt.LightweightDispatcher.retargetMouseEvent(Container.java:4948)
+	at java.desktop/java.awt.LightweightDispatcher.processMouseEvent(Container.java:4575)
+	at java.desktop/java.awt.LightweightDispatcher.dispatchEvent(Container.java:4516)
+	at java.desktop/java.awt.Container.dispatchEventImpl(Container.java:2310)
+	at java.desktop/java.awt.Window.dispatchEventImpl(Window.java:2780)
+	at java.desktop/java.awt.Component.dispatchEvent(Component.java:4828)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:775)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:98)
+	at java.desktop/java.awt.EventQueue$5.run(EventQueue.java:747)
+	at java.desktop/java.awt.EventQueue$5.run(EventQueue.java:745)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:744)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+Oct 22, 2026 10:31:28 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 8 figura FINALIZADO en el historial
+OK   la factura #8 muestra los medios/importes [EFECTIVO_USD|USD|11.60]
+OK   campos de tasa e IVA reciben los valores por teclado
+OK   la UI muestra tasa 42.0000 e IVA 10.00
+OK   factura pagada #7 mantiene total, estado y método tras cambio de tasa
+OK   factura pagada #6 mantiene total, estado y método tras cambio de tasa
+OK   factura pagada #8 mantiene total, estado y método tras cambio de tasa
+OK   el historial muestra la cuenta abierta recalculada a tasa 42.0000
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 16.00%
+OK   desglose fiscal de la cuenta conserva el exento
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   INC_USD aparece en el detalle de la cuenta
+OK   INC_USD muestra cantidad 1 en pantalla
+OK   INC_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_VES aparece en el detalle de la cuenta
+OK   EX_VES muestra cantidad 1 en pantalla
+OK   EX_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   EX_USD aparece en el detalle de la cuenta
+OK   EX_USD muestra cantidad 2 en pantalla
+OK   EX_USD muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_VES aparece en el detalle de la cuenta
+OK   MAS_VES muestra cantidad 2 en pantalla
+OK   MAS_VES muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:31:48 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 9 figura FINALIZADO en el historial
+OK   la factura #9 muestra los medios/importes [EFECTIVO_BS|VES|464.00]
+Oct 22, 2026 10:31:51 PM Modelo.ErrorAplicacionException <init>
+WARNING: La moneda no corresponde al medio de efectivo seleccionado.
+java.lang.IllegalArgumentException: La moneda no corresponde al medio de efectivo seleccionado.
+	at Modelo.ErrorAplicacionException.validacion(ErrorAplicacionException.java:19)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:39)
+	at Modelo.PagoPedido.<init>(PagoPedido.java:18)
+	at Vista.Sistema.actualizarResumenPagosFac(Sistema.java:5424)
+	at Vista.Sistema.lambda$crearCamposFacturacionRapida$48(Sistema.java:1834)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableChanged(AbstractTableModel.java:302)
+	at java.desktop/javax.swing.table.AbstractTableModel.fireTableCellUpdated(AbstractTableModel.java:281)
+	at java.desktop/javax.swing.table.DefaultTableModel.setValueAt(DefaultTableModel.java:679)
+	at Vista.Sistema$10.setValueAt(Sistema.java:1741)
+	at java.desktop/javax.swing.JTable.setValueAt(JTable.java:2793)
+	at java.desktop/javax.swing.JTable.editingStopped(JTable.java:4791)
+	at java.desktop/javax.swing.AbstractCellEditor.fireEditingStopped(AbstractCellEditor.java:152)
+	at java.desktop/javax.swing.DefaultCellEditor$EditorDelegate.stopCellEditing(DefaultCellEditor.java:375)
+	at java.desktop/javax.swing.DefaultCellEditor$3.stopCellEditing(DefaultCellEditor.java:159)
+	at java.desktop/javax.swing.DefaultCellEditor.stopCellEditing(DefaultCellEditor.java:234)
+	at java.desktop/javax.swing.DefaultCellEditor$EditorDelegate.actionPerformed(DefaultCellEditor.java:392)
+	at java.desktop/javax.swing.JComboBox.fireActionEvent(JComboBox.java:1294)
+	at java.desktop/javax.swing.JComboBox.setSelectedItem(JComboBox.java:619)
+	at java.desktop/javax.swing.JComboBox.setSelectedIndex(JComboBox.java:654)
+	at java.desktop/javax.swing.plaf.basic.BasicComboPopup$Handler.mouseReleased(BasicComboPopup.java:946)
+	at java.desktop/java.awt.AWTEventMulticaster.mouseReleased(AWTEventMulticaster.java:300)
+	at java.desktop/java.awt.Component.processMouseEvent(Component.java:6621)
+	at java.desktop/javax.swing.JComponent.processMouseEvent(JComponent.java:3398)
+	at java.desktop/javax.swing.plaf.basic.BasicComboPopup$1.processMouseEvent(BasicComboPopup.java:551)
+	at java.desktop/java.awt.Component.processEvent(Component.java:6386)
+	at java.desktop/java.awt.Container.processEvent(Container.java:2266)
+	at java.desktop/java.awt.Component.dispatchEventImpl(Component.java:4996)
+	at java.desktop/java.awt.Container.dispatchEventImpl(Container.java:2324)
+	at java.desktop/java.awt.Component.dispatchEvent(Component.java:4828)
+	at java.desktop/java.awt.LightweightDispatcher.retargetMouseEvent(Container.java:4948)
+	at java.desktop/java.awt.LightweightDispatcher.processMouseEvent(Container.java:4575)
+	at java.desktop/java.awt.LightweightDispatcher.dispatchEvent(Container.java:4516)
+	at java.desktop/java.awt.Container.dispatchEventImpl(Container.java:2310)
+	at java.desktop/java.awt.Window.dispatchEventImpl(Window.java:2780)
+	at java.desktop/java.awt.Component.dispatchEvent(Component.java:4828)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:775)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:98)
+	at java.desktop/java.awt.EventQueue$5.run(EventQueue.java:747)
+	at java.desktop/java.awt.EventQueue$5.run(EventQueue.java:745)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:744)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+
+Oct 22, 2026 10:31:52 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 10 figura FINALIZADO en el historial
+OK   la factura #10 muestra los medios/importes [EFECTIVO_USD|USD|11.60]
+Oct 22, 2026 10:31:56 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 11 figura FINALIZADO en el historial
+OK   la factura #11 muestra los medios/importes [EFECTIVO_BS|VES|464.00]
+Oct 22, 2026 10:32:02 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 5 figura FINALIZADO en el historial
+OK   la factura #5 muestra los medios/importes [EFECTIVO_BS|VES|1369.20, EFECTIVO_USD|USD|32.60]
+Oct 22, 2026 10:32:04 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:32:04 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   INC_VES aparece en el carrito
+OK   INC_VES tiene cantidad 1 en carrito
+OK   INC_VES conserva moneda y precio base visibles en el carrito
+OK   INC_VES muestra la condición fiscal actual en el carrito
+OK   MAS_USD aparece en el carrito
+OK   MAS_USD tiene cantidad 1 en carrito
+OK   MAS_USD conserva moneda y precio base visibles en el carrito
+OK   MAS_USD muestra la condición fiscal actual en el carrito
+OK   el historial muestra el pedido nuevo calculado con IVA 10% y tasa 42
+OK   pantalla de cuenta muestra los totales esperados con la matriz fiscal y tasa activa
+OK   desglose fiscal de la cuenta muestra IVA 10.00%
+OK   INC_VES aparece en el detalle de la cuenta
+OK   INC_VES muestra cantidad 1 en pantalla
+OK   INC_VES muestra subtotal fiscal esperado en USD y bolívares
+OK   MAS_USD aparece en el detalle de la cuenta
+OK   MAS_USD muestra cantidad 1 en pantalla
+OK   MAS_USD muestra subtotal fiscal esperado en USD y bolívares
+Oct 22, 2026 10:32:15 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   pedido 12 figura FINALIZADO en el historial
+OK   la factura #12 muestra los medios/importes [EFECTIVO_BS|VES|926.00]
+Oct 22, 2026 10:32:17 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 22, 2026 10:32:17 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+OK   la cuenta para cancelar aparece pendiente en el historial
+OK   la UI registra la anulación por fuga
+OK   el historial de fuga no muestra un método de cobro
+OK   mesa 8 aparece libre en el mapa después de la fuga
+OK   la única cuenta anulada corresponde a la mesa de fuga
+OK   el historial de hoy muestra ocho facturas finalizadas
+OK   el historial de hoy muestra una cuenta anulada
+OK   el historial de hoy no deja cuentas pendientes
+OK   suma visible de facturas finalizadas esperado=5783.60 real=5783.60
+OK   la UI concilia los importes de la jornada en bolívares
+Oct 22, 2026 10:32:29 PM Servicio.ServicioImpresionTicket procesarSalidaResultado
+INFO: Ticket enviado al spooler de: DEFAULT
+OK   la salida del cierre confirma el envío al spooler simulado del entorno virtual
+OK   cierre Z solicitado desde la interfaz de caja
+OK   la única cuenta anulada corresponde a la mesa de fuga
+OK   el historial de hoy muestra ocho facturas finalizadas
+OK   el historial de hoy muestra una cuenta anulada
+OK   el historial de hoy no deja cuentas pendientes
+OK   suma visible de facturas finalizadas esperado=5783.60 real=5783.60
+OK   la UI concilia los importes de la jornada en bolívares
+E2E_OK

@@ -1,0 +1,49 @@
+Inicializando BD de pruebas (DATOS) en contenedor: dbg-manual-db-1
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+BD_INICIALIZADA_OK: esquema + BD-test.sql cargado (platos=109, mapeos=109).
+Sugerencia inmediata: ./verificar_bd_test.sh
+OK   platos_total = 109
+OK   platos_base = 1
+OK   combo_usd_exe = 18
+OK   combo_usd_iva = 18
+OK   combo_usd_inc = 18
+OK   combo_ves_exe = 18
+OK   combo_ves_iva = 18
+OK   combo_ves_inc = 18
+OK   mapeos = 109
+OK   mapeos_huerfano_plato = 0
+OK   mapeos_huerfano_categoria = 0
+OK   mapeos_categoria_mal = 0
+OK   precio_incoherente = 0
+OK   clasif_incoherente = 0
+OK   config_rows = 1
+OK   config_params = 1
+OK   bootstrap_done = 1
+OK   usuarios_total = 1
+OK   admin_ok = 1
+OK   consumidor_final = 1
+OK   clientes_total = 1
+OK   salas_total = 1
+OK   salas_principal = 1
+OK   op_pedidos = 0
+OK   op_detalle = 0
+OK   op_pagos = 0
+OK   op_movs = 0
+OK   op_liqui = 0
+OK   op_marchas = 0
+OK   op_marchas_det = 0
+OK   op_aud_ped = 0
+OK   op_aud_precio = 0
+OK   op_cierres = 0
+OK   op_logint = 0
+OK   op_favoritos = 0
+OK   op_mesoneros = 0
+OK   op_preferencias = 0
+OK   rest_control = 1
+BD_TEST_OK
+BD_TEST_CARGADA_OK: BD-test.sql cargado y verificado en 3307.

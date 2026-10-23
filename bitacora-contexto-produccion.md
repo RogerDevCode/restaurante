@@ -1,5 +1,24 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 22/10/2026 21:23
+
+## Ciclo BD-test.sql + arneses E2E por UI (todo por la interfaz, Xvfb :99)
+
+Se consolidó el ciclo del fixture `BD-test.sql` (generación, carga, verificación) y el arnés E2E completo por UI real. Cambios: `DiaE2ERobot` (selección de combos por mouse en popups GTK bajo Xvfb sin WM, pegado con Ctrl+V para acentos, reintento de texto y de celdas, y re-deducción de fila por intento tras refrescos), `BootstrapInicialE2EVirtual` (reintento del primer clic con aviso tolerado) y fase-1 de tasa que admite la ausencia del diálogo cuando la tasa sembrada ya coincide; fase de pagos que ahora entra al combo del editor de celda.
+
+| Comando | Evidencia | Resultado |
+|---|---|---|
+| `./generar_bd_test.sh` (run 4) | `evidencias/produccion/2026-10-22/generar-bd-test.log` | **PASS** — `GENERACION_BD_TEST_OK`, `SEED_PLATOS_OK: 108 (18x6)`, 349 INSERTs, `368 líneas` en `BD-test.sql`, cierre vacío `BD_INICIALIZADA_OK`. Normalización aplicada: salas `(1,'Sala Principal',4,'SALON')` + GRANT DROP en `db/e2e/002-privilegios.sql` (requeridos por arneses test/integration). |
+| `./cargar_bd_test.sh` | `evidencias/produccion/2026-10-22/cargar-bd-test.log` | **PASS** — `BD_TEST_OK` + `BD_TEST_CARGADA_OK` (109 platos, config 40/16, salas id=1, mapeos sin huérfanos); luego `./inicializar_bd_test.sh` dejó `BD_INICIALIZADA_OK` (24 tablas, 0 filas). |
+| `./e2e_bootstrap_virtual.sh` (E2E_BOOTSTRAP_FULL_DAY=NO) | `evidencias/produccion/2026-10-22/e2e/bootstrap.log` | **PASS** — `BOOTSTRAP_E2E_OK`, `SEED_BASE_OK`, `E2E_OK`, `E2E_PEDIDO_RAPIDO_OK`. |
+| `./e2e_dia_completo_virtual.sh` | `evidencias/produccion/2026-10-22/e2e/dia-fiscal-default.log` | **PASS** — `E2E_OK` día fiscal completo por UI: 8 facturas, 1 anulación, 0 pendientes, Bs 5783.60 conciliado en la UI. |
+| `E2E_SEED_PLATOS=108 ./e2e_dia_completo_virtual.sh` | `evidencias/produccion/2026-10-22/e2e/dia-fiscal-seed108.log` | **PASS** — `SEED_PLATOS_OK: 108 (18x6)` + `E2E_OK` del día fiscal. |
+| `E2E_SEED_PLATOS=108 ./e2e_dia_completo_virtual.sh Vista.Platos70IvaMonedaE2EVirtual` | `evidencias/produccion/2026-10-22/e2e/platos70.log` | **PASS** — `SEED_PLATOS_OK: 108` + `E2E70_OK` (70/70 creados y verificados por UI). |
+| `ant test` (overrides 3307 + fixture cargada) | `evidencias/produccion/2026-10-22/ant-test.log` | **PASS** — 125 suites, **679 tests, 0 fallos, 0 errores, 31 omitidos**. |
+| `ant integration-test` | `evidencias/produccion/2026-10-22/ant-integration-test.log` | **PASS** — BUILD SUCCESSFUL (compose propio levantado y bajado). |
+| JUnitCore: BDTestSqlGateTest + E2ESinSiembraTest + EsquemaE2ETest | (consola; código en `test/infraestructura/`) | **PASS** — 8 tests OK (gates: FK sin desactivar, E2E sin siembra por BD, esquema issues válido). |
+| `ultimo-fallo-con-diagnostico.log` | `evidencias/produccion/2026-10-22/e2e/ultimo-fallo-con-diagnostico.log` | **INFO** — último intento rojo previo al fix (fila vista↔modelo tras el refresco); sirve de rastreo del defecto de selección con filtros. |
+
 snapshot 20/10/2026 13:50
 
 ## Resumen de Ventas en el Dashboard (diseño aprobado por el operador, implementado)
