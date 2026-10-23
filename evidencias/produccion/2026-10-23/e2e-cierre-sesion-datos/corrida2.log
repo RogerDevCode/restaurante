@@ -1,0 +1,57 @@
+== Compilando tests ==
+Trying to override old definition of task http://www.netbeans.org/ns/j2se-project/3:test-impl
+    [javac] Note: Some input files use or override a deprecated API.
+    [javac] Note: Recompile with -Xlint:deprecation for details.
+
+BUILD SUCCESSFUL
+Total time: 9 seconds
+== Xvfb :99 (1366x711x24) ==
+1366 711
+== E2E: Vista.CierreSesionDatosE2EVirtual (DISPLAY=:99) ==
+Oct 23, 2026 3:59:38 PM infraestructura.MigradorEsquemaJdbc migrarSiEsNecesario
+INFO: Esquema de base de datos verificado y sincronizado correctamente.
+Oct 23, 2026 3:59:38 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 23, 2026 3:59:38 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 23, 2026 3:59:38 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 23, 2026 3:59:38 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 23, 2026 3:59:38 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+[SESION A] admin autenticado
+OK   usuario Mesonero creado por la interfaz (admin, GESTIONAR_USUARIOS)
+OK   sala de prueba creada por UI: Sala 1792781969283 (mesas citadas libres)
+Oct 23, 2026 4:00:00 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 23, 2026 4:00:00 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 23, 2026 4:00:00 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+[SESION B] mesonero autenticado (dos ventanas de Sistema en la misma JVM)
+OK   límites por rol visibles en pantalla (pestañas habilitadas/deshabilitadas)
+Oct 23, 2026 4:00:02 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 23, 2026 4:00:02 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+[SESION B] ronda 1 enviada (cuenta 11) y borrador de una linea extra SIN enviar
+[SESION A] cuenta del mesonero desactivada desde la interfaz
+OK   la revocación reabre el login en caliente sin reiniciar la JVM
+Oct 23, 2026 4:01:04 PM Modelo.ErrorAplicacionException registrarAdvertencia
+WARNING: Intento de inicio de sesión rechazado.
+OK   la cuenta revocada no puede volver a iniciar sesión
+Oct 23, 2026 4:01:11 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 23, 2026 4:01:11 PM Modelo.MesoneroDao listarTodos
+INFO: [CARGA_DATOS] Carga de todos los mesoneros retornó 0 items.
+Oct 23, 2026 4:01:11 PM Modelo.MesoneroDao listarActivos
+INFO: [CARGA_DATOS] Carga de mesoneros activos retornó 0 items.
+Oct 23, 2026 4:01:11 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de Top Platos en Dashboard retornó 0 items.
+Oct 23, 2026 4:01:11 PM Modelo.ClienteDao obtenerEstadisticasDashboard
+INFO: [CARGA_DATOS] Carga de estadísticas de Mesoneros en Dashboard retornó 0 items.
+OK   la cuenta abierta conserva su folio y su linea exacta
+OK   el borrador no enviado murio con la sesion y nunca toco la BD
+E2E_OK
+SHUTDOWN_HOOKS_SLICE

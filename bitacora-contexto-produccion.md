@@ -1,5 +1,17 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 23/10/2026 16:01
+
+## E2E cierre de sesión + salida del programa (BD = SSOT) (gate cerrado)
+
+| Comando | Evidencia | Resultado |
+|---|---|---|
+| `timeout 700 ./e2e_virtual.sh Vista.CierreSesionDatosE2EVirtual` ×2 corridas (pipeline manual: compose `-p e2ecierre` + `inicializar_bd_test.sh` + bootstrap + seed) | `evidencias/produccion/2026-10-23/e2e-cierre-sesion-datos/corrida{1,2}.log`: fases 1-6 `OK` (alta mesonero, sala fresca, doble sesión en-JVM, ronda enviada + borrador NO enviado, desactivación por UI, revocación al vuelo, re-login denegado, re-login admin con cuenta íntegra) + `E2E_OK` + `SHUTDOWN_HOOKS_SLICE`, `EXIT=0` ambas | PASS |
+| SQL post-mortem (proceso muerto) ambas corridas | cuenta `PENDIENTE` (`id=10` y `id=11`, total `5.00`, 1 línea exacta; borrrador nunca en BD; mesonero `activo=0` persistido) en `…e2e-cierre-sesion-datos/e2e-cierre-sesion-datos.md` | PASS |
+| Arreglo de flake por acumulación de salas de prueba: clic de tira de salas desbordada caía fuera de la ventana (`bajoElPunto=null`); `seleccionarMesa` reescrita a la ruta por código de la app (`txtCodigoMesaDirecto` + Enter), siempre por interfaz | mismo archivo §"Notas de diseño"; 2 corridas verdes consecutivas tras el cambio | PASS |
+
+Nota: clase de test local (`test/` desrastreado); no requiere `src/`. El guard de cookies del arnés (`e2e_dia_completo_virtual.sh`) destruye la BD — para el pool SSOT se usó pipeline manual replicando sus pasos.
+
 snapshot 23/10/2026 07:40
 
 ## Auditoría de permisos / sesión en caliente (gate cerrado)
