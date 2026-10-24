@@ -6920,19 +6920,22 @@ public final class Sistema extends javax.swing.JFrame {
         pnlHeader.add(pnlAccionesDash, java.awt.BorderLayout.EAST);
         panelDashboard.add(pnlHeader, java.awt.BorderLayout.NORTH);
 
-        // 2. Tarjetas KPI
-        javax.swing.JPanel pnlKpis = new javax.swing.JPanel(new java.awt.GridLayout(1, 4, 12, 10));
+        // 2. Tarjetas KPI en Grid 2x2
+        javax.swing.JPanel pnlKpis = new javax.swing.JPanel(new java.awt.GridLayout(2, 2, 14, 10));
         pnlKpis.setOpaque(false);
-        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 155));
-        pnlKpis.setMinimumSize(new java.awt.Dimension(800, 130));
+        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 270));
+        pnlKpis.setMinimumSize(new java.awt.Dimension(800, 240));
 
         lblVentasHoy = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
         lblTicketPromedio = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
         lblVentasHistoricas = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
         lblClientesYMesas = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
 
+        // Fila 1: Ventas Hoy y Ticket Promedio
         pnlKpis.add(crearCardKpi("VENTAS HOY", lblVentasHoy, new java.awt.Color(230, 248, 235), new java.awt.Color(40, 167, 69)));
         pnlKpis.add(crearCardKpi("TICKET PROMEDIO", lblTicketPromedio, new java.awt.Color(235, 245, 255), new java.awt.Color(0, 123, 255)));
+
+        // Fila 2: Ventas Totales y Clientes y Actividad (debajo de Fila 1)
         pnlKpis.add(crearCardKpi("VENTAS TOTALES", lblVentasHistoricas, new java.awt.Color(255, 245, 230), new java.awt.Color(253, 126, 20)));
         pnlKpis.add(crearCardKpi("CLIENTES Y ACTIVIDAD", lblClientesYMesas, new java.awt.Color(245, 235, 255), new java.awt.Color(111, 66, 193)));
 
@@ -7571,53 +7574,92 @@ public final class Sistema extends javax.swing.JFrame {
         if (stats != null) {
             if (lblVentasHoy != null) {
                 StringBuilder htmlVentas = new StringBuilder();
-                htmlVentas.append("<html><div style='text-align:center;'><b style='font-size:14px;color:#007700;'>$ ")
+                htmlVentas.append("<html><table width='100%' cellpadding='0' cellspacing='0'><tr>");
+                htmlVentas.append("<td width='46%' align='center' valign='middle' style='border-right:1px solid #c3e6cb;padding-right:6px;'>")
+                        .append("<b style='font-size:16px;color:#007700;'>$ ")
                         .append(String.format(java.util.Locale.US, "%.2f", stats.getVentasHoyDolares()))
-                        .append("</b> &nbsp;|&nbsp; <span style='font-size:13px;color:#003366;'>Bs. ")
+                        .append("</b><br><span style='font-size:12px;font-weight:bold;color:#003366;'>Bs. ")
                         .append(String.format(java.util.Locale.US, "%.2f", stats.getVentasHoyBs()))
                         .append("</span><br><span style='color:#555555;font-size:11px;'>")
-                        .append(stats.getPedidosHoy()).append(" pedidos cerrados hoy</span>");
+                        .append(stats.getPedidosHoy()).append(" pedidos cerrados hoy</span>")
+                        .append("</td>");
+
+                htmlVentas.append("<td width='54%' align='center' valign='middle' style='padding-left:8px;'>")
+                        .append("<span style='color:#555555;font-size:10px;font-weight:bold;'>POR MÉTODO DE PAGO:</span><br>");
 
                 if (stats.getPagosPorMetodoHoy() != null && !stats.getPagosPorMetodoHoy().isEmpty()) {
-                    htmlVentas.append("<br><span style='color:#005A9E;font-size:10px;'>");
+                    htmlVentas.append("<span style='color:#005A9E;font-size:10px;'>");
                     boolean primero = true;
+                    int cont = 0;
                     for (Modelo.EstadisticasDashboard.ItemEstadistica pMet : stats.getPagosPorMetodoHoy()) {
-                        if (!primero) htmlVentas.append(" | ");
+                        if (!primero) {
+                            if (cont % 2 == 0) {
+                                htmlVentas.append("<br>");
+                            } else {
+                                htmlVentas.append(" &nbsp;|&nbsp; ");
+                            }
+                        }
                         String nom = normalizarNombreMetodoPago(pMet.getNombre());
                         htmlVentas.append("<b>").append(nom).append(":</b> $")
                                 .append(String.format(java.util.Locale.US, "%.2f", pMet.getTotalDolares()));
                         primero = false;
+                        cont++;
                     }
                     htmlVentas.append("</span>");
+                } else {
+                    htmlVentas.append("<span style='color:#888888;font-size:10px;'>Sin cobros registrados hoy</span>");
                 }
-                htmlVentas.append("</div></html>");
+                htmlVentas.append("</td></tr></table></html>");
                 lblVentasHoy.setText(htmlVentas.toString());
             }
             if (lblTicketPromedio != null) {
-                lblTicketPromedio.setText("<html><div style='text-align:center;'><b style='font-size:14px;color:#004488;'>$ "
+                lblTicketPromedio.setText("<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
+                        + "<td width='50%' align='center' valign='middle' style='border-right:1px solid #b8daff;padding-right:6px;'>"
+                        + "<span style='color:#555555;font-size:10px;font-weight:bold;'>PROMEDIO HOY</span><br>"
+                        + "<b style='font-size:16px;color:#004488;'>$ "
                         + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHoyDolares())
-                        + "</b> &nbsp;|&nbsp; <span style='font-size:13px;color:#003366;'>Bs. "
+                        + "</b><br><span style='font-size:12px;font-weight:bold;color:#003366;'>Bs. "
                         + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHoyBs())
-                        + "</span><br><span style='color:#555555;font-size:11px;'>Ticket promedio hoy</span>"
-                        + "<br><span style='color:#777777;font-size:10px;'>Promedio histórico: $"
+                        + "</span><br><span style='color:#666666;font-size:10px;'>Por pedido hoy</span>"
+                        + "</td>"
+                        + "<td width='50%' align='center' valign='middle' style='padding-left:8px;'>"
+                        + "<span style='color:#555555;font-size:10px;font-weight:bold;'>PROMEDIO HISTÓRICO</span><br>"
+                        + "<b style='font-size:15px;color:#333333;'>$ "
                         + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHistoricoDolares())
-                        + "</span></div></html>");
+                        + "</b><br><span style='color:#005A9E;font-size:10px;font-weight:bold;'>Referencia acumulada</span>"
+                        + "</td></tr></table></html>");
             }
             if (lblVentasHistoricas != null) {
-                lblVentasHistoricas.setText("<html><div style='text-align:center;'><b style='font-size:14px;color:#772200;'>$ "
+                lblVentasHistoricas.setText("<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
+                        + "<td width='50%' align='center' valign='middle' style='border-right:1px solid #ffe8cc;padding-right:6px;'>"
+                        + "<span style='color:#555555;font-size:10px;font-weight:bold;'>ACUMULADO GLOBAL</span><br>"
+                        + "<b style='font-size:16px;color:#a04000;'>$ "
                         + String.format(java.util.Locale.US, "%.2f", stats.getVentasHistoricasDolares())
-                        + "</b> &nbsp;|&nbsp; <span style='font-size:13px;color:#003366;'>Bs. "
+                        + "</b><br><span style='font-size:12px;font-weight:bold;color:#003366;'>Bs. "
                         + String.format(java.util.Locale.US, "%.2f", stats.getVentasHistoricasBs())
-                        + "</span><br><span style='color:#555555;font-size:11px;'>"
-                        + stats.getPedidosHistoricos() + " pedidos finalizados</span>"
-                        + "<br><span style='color:#777777;font-size:10px;'>Histórico total acumulado</span></div></html>");
+                        + "</span><br><span style='color:#666666;font-size:10px;'>Facturación total</span>"
+                        + "</td>"
+                        + "<td width='50%' align='center' valign='middle' style='padding-left:8px;'>"
+                        + "<span style='color:#555555;font-size:10px;font-weight:bold;'>VOLUMEN OPERATIVO</span><br>"
+                        + "<b style='font-size:16px;color:#333333;'>"
+                        + stats.getPedidosHistoricos() + "</b> <span style='font-size:11px;color:#555555;'>pedidos</span><br>"
+                        + "<span style='color:#a04000;font-size:10px;font-weight:bold;'>Histórico finalizado</span>"
+                        + "</td></tr></table></html>");
             }
             if (lblClientesYMesas != null) {
-                lblClientesYMesas.setText("<html><div style='text-align:center;'><b style='font-size:14px;color:#440077;'>"
-                        + stats.getTotalClientes() + " Clientes Registrados</b>"
-                        + "<br><span style='color:#28a745;font-size:11px;font-weight:bold;'>"
-                        + stats.getMesasOcupadasActuales() + " mesas ocupadas en vivo</span>"
-                        + "<br><span style='color:#777777;font-size:10px;'>Monitoreo en tiempo real</span></div></html>");
+                lblClientesYMesas.setText("<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
+                        + "<td width='50%' align='center' valign='middle' style='border-right:1px solid #e2d9f3;padding-right:6px;'>"
+                        + "<span style='color:#555555;font-size:10px;font-weight:bold;'>DIRECTORIO CRM</span><br>"
+                        + "<b style='font-size:16px;color:#4a148c;'>"
+                        + stats.getTotalClientes() + "</b> <span style='font-size:11px;color:#333333;'>Clientes</span><br>"
+                        + "<span style='color:#666666;font-size:10px;'>Registrados en sistema</span>"
+                        + "</td>"
+                        + "<td width='50%' align='center' valign='middle' style='padding-left:8px;'>"
+                        + "<span style='color:#555555;font-size:10px;font-weight:bold;'>ESTADO EN SALA</span><br>"
+                        + "<b style='font-size:16px;color:#28a745;'>"
+                        + stats.getMesasOcupadasActuales() + "</b> <span style='font-size:11px;color:#155724;'>mesas ocupadas</span><br>"
+                        + "<span style='color:#28a745;font-size:10px;font-weight:bold;'>● Monitoreo en vivo</span>"
+                        + "</td></tr></table></html>");
             }
 
             if (tableTopPlatos != null) {
