@@ -73,6 +73,8 @@ import javax.swing.table.JTableHeader;
 
 public final class Sistema extends javax.swing.JFrame {
 
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(Sistema.class.getName());
+
     /** Rojo de peligro con contraste suficiente para texto blanco, incluso en hover. */
     private static final java.awt.Color COLOR_PELIGRO = new java.awt.Color(168, 70, 60);
     /** Pizarra: cabeceras y navegacion lateral (unifica la paleta). */
@@ -199,11 +201,19 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JLabel lblVentasHistoricas;
     private javax.swing.JLabel lblTicketPromedio;
     private javax.swing.JLabel lblClientesYMesas;
+    private javax.swing.JLabel lblTopPlatoEstrella;
+    private javax.swing.JLabel lblTopPlatosTotalUsd;
+    private javax.swing.JLabel lblTopPlatosUnidades;
+    private javax.swing.JLabel lblTopMesoneroDestacado;
+    private javax.swing.JLabel lblMesonerosTotalUsd;
+    private javax.swing.JLabel lblMesonerosTotalPedidos;
     private javax.swing.JTextField txtClienteDefaultNombre;
     private javax.swing.JTextField txtClienteDefaultDoc;
     private final Servicio.ServicioRespaldoBaseDatos servicioRespaldo = new Servicio.ServicioRespaldoBaseDatos();
     private final Servicio.ConfiguracionServicio configServicio = new Servicio.ConfiguracionServicio();
     private javax.swing.JButton btnAnularPedido;
+    private javax.swing.JButton btnCobrarHistorialModal;
+    private javax.swing.JButton btnCobrarModalTab4;
     private javax.swing.JButton btnAuditoriaPedido;
     private javax.swing.JLabel lblBannerTasa;
     private javax.swing.JLabel lblFechaTasaConfig;
@@ -485,6 +495,24 @@ public final class Sistema extends javax.swing.JFrame {
         btnAuditoriaPedido.addActionListener(e -> mostrarAuditoriaPedidoSeleccionado());
         jPanel6.add(btnAuditoriaPedido, new org.netbeans.lib.awtextra.AbsoluteConstraints(355, 10, 120, 32));
 
+        btnCobrarHistorialModal = new javax.swing.JButton("⚡ Cobrar");
+        btnCobrarHistorialModal.setName("btnCobroHistorialModal");
+        btnCobrarHistorialModal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        Sistema.botonSolido(btnCobrarHistorialModal, new java.awt.Color(39, 174, 96), java.awt.Color.WHITE);
+        btnCobrarHistorialModal.setToolTipText("Cobrar el pedido pendiente seleccionado usando el modal interactivo");
+        btnCobrarHistorialModal.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnCobrarHistorialModal.setEnabled(false);
+        btnCobrarHistorialModal.addActionListener(e -> {
+            String txtId = txtIdHistorialPedido.getText().trim();
+            if (!txtId.isEmpty()) {
+                try {
+                    int id = Integer.parseInt(txtId);
+                    abrirModalCobroPedido(id, this::ListarPedidos);
+                } catch (NumberFormatException ignored) {}
+            }
+        });
+        jPanel6.add(btnCobrarHistorialModal, new org.netbeans.lib.awtextra.AbsoluteConstraints(935, 10, 110, 32));
+
         javax.swing.JLabel lblModoHistorial = new javax.swing.JLabel("Salida:");
         lblModoHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         jPanel6.add(lblModoHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(485, 12, 45, 28));
@@ -689,6 +717,10 @@ public final class Sistema extends javax.swing.JFrame {
                     Object estadoObj = TablePedidos.getModel().getValueAt(modelRow, colEstado);
                     boolean finalizado = "FINALIZADO".equals(estadoObj);
                     boolean esAnulado = "ANULADO".equals(estadoObj);
+                    boolean esPendiente = "PENDIENTE".equals(estadoObj);
+                    if (btnCobrarHistorialModal != null) {
+                        btnCobrarHistorialModal.setEnabled(esPendiente && politicaAcceso.permite(PoliticaAcceso.Accion.COBRAR_PEDIDOS));
+                    }
                     btnPdfPedido.setEnabled(finalizado);
                     if (btnReimprimirHistorial != null) {
                         btnReimprimirHistorial.setEnabled(finalizado);
@@ -722,6 +754,9 @@ public final class Sistema extends javax.swing.JFrame {
                     }
                     if (btnAnularPedido != null) {
                         btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL));
+                    }
+                    if (btnCobrarHistorialModal != null) {
+                        btnCobrarHistorialModal.setEnabled(false);
                     }
                     if (btnAuditoriaPedido != null) {
                         btnAuditoriaPedido.setEnabled(false);
@@ -1400,12 +1435,13 @@ public final class Sistema extends javax.swing.JFrame {
 
         // 6. Fila inferior de botones de acción
         int yBotones = Math.max(yResumen + 40, Math.min(h - 45, yPagos + 115));
-        btnModificarPedido.setBounds(30, yBotones, 150, 36);
-        if (btnPreFacturaPedido != null) btnPreFacturaPedido.setBounds(188, yBotones, 105, 36);
-        if (btnCortesiaPedido != null) btnCortesiaPedido.setBounds(300, yBotones, 105, 36);
-        if (btnAnularFuga != null) btnAnularFuga.setBounds(412, yBotones, 135, 36);
-        btnPdfPedido.setBounds(Math.max(555, w - 240), yBotones, 110, 36);
-        btnFinalizar.setBounds(Math.max(675, w - 120), yBotones, 110, 36);
+        btnModificarPedido.setBounds(30, yBotones, 140, 36);
+        if (btnPreFacturaPedido != null) btnPreFacturaPedido.setBounds(175, yBotones, 100, 36);
+        if (btnCortesiaPedido != null) btnCortesiaPedido.setBounds(280, yBotones, 95, 36);
+        if (btnAnularFuga != null) btnAnularFuga.setBounds(380, yBotones, 125, 36);
+        if (btnCobrarModalTab4 != null) btnCobrarModalTab4.setBounds(Math.max(510, w - 370), yBotones, 125, 36);
+        btnPdfPedido.setBounds(Math.max(640, w - 240), yBotones, 110, 36);
+        btnFinalizar.setBounds(Math.max(755, w - 120), yBotones, 110, 36);
 
         jScrollPane13.validate();
     }
@@ -1825,6 +1861,24 @@ public final class Sistema extends javax.swing.JFrame {
         btnAnularFuga.setToolTipText("Liberar la mesa anulando el pedido por retiro sin pago (Fuga / Incobrable)");
         btnAnularFuga.addActionListener(e -> anularPorFugaActual());
         jPanel25.add(btnAnularFuga);
+
+        btnCobrarModalTab4 = new javax.swing.JButton("⚡ Cobro Modal");
+        btnCobrarModalTab4.setName("btnCobroModalTab4");
+        btnCobrarModalTab4.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        btnCobrarModalTab4.setBackground(new java.awt.Color(40, 116, 166));
+        btnCobrarModalTab4.setForeground(java.awt.Color.WHITE);
+        btnCobrarModalTab4.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnCobrarModalTab4.setToolTipText("Abrir el diálogo modal interactivo de cobro rápido");
+        btnCobrarModalTab4.addActionListener(e -> {
+            String txtId = txtIdPedido.getText().trim();
+            if (!txtId.isEmpty()) {
+                try {
+                    int id = Integer.parseInt(txtId);
+                    abrirModalCobroPedido(id, this::volverAInicioSeleccionSala);
+                } catch (NumberFormatException ignored) {}
+            }
+        });
+        jPanel25.add(btnCobrarModalTab4);
 
         lblDesgloseFiscalFinalizar = new javax.swing.JLabel(" ");
         lblDesgloseFiscalFinalizar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
@@ -6869,7 +6923,8 @@ public final class Sistema extends javax.swing.JFrame {
         // 2. Tarjetas KPI
         javax.swing.JPanel pnlKpis = new javax.swing.JPanel(new java.awt.GridLayout(1, 4, 12, 10));
         pnlKpis.setOpaque(false);
-        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 90));
+        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 130));
+        pnlKpis.setMinimumSize(new java.awt.Dimension(800, 115));
 
         lblVentasHoy = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
         lblTicketPromedio = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
@@ -6921,7 +6976,7 @@ public final class Sistema extends javax.swing.JFrame {
 
         javax.swing.JPanel pnlTarjetasResumen = new javax.swing.JPanel(new java.awt.GridLayout(2, 1, 6, 8));
         pnlTarjetasResumen.setOpaque(false);
-        pnlTarjetasResumen.setPreferredSize(new java.awt.Dimension(280, 140));
+        pnlTarjetasResumen.setPreferredSize(new java.awt.Dimension(340, 160));
         lblResumenUsd = new javax.swing.JLabel("Pulsa Ver para calcular", javax.swing.SwingConstants.CENTER);
         lblResumenBs = new javax.swing.JLabel("Pulsa Ver para calcular", javax.swing.SwingConstants.CENTER);
         pnlTarjetasResumen.add(crearCardKpi("VENTAS DEL PERÍODO (USD)", lblResumenUsd, new java.awt.Color(230, 248, 235), new java.awt.Color(40, 167, 69)));
@@ -6933,8 +6988,12 @@ public final class Sistema extends javax.swing.JFrame {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
         });
-        tableMetodosResumen.setRowHeight(22);
+        tableMetodosResumen.setRowHeight(25);
         configurarTablaIndividual(tableMetodosResumen);
+        configurarColumnasProporcionales(tableMetodosResumen,
+                new int[]{120, 60, 90, 110, 60},
+                new int[]{180, 90, 120, 140, 80},
+                new int[]{-1, 110, 150, 180, 100});
         javax.swing.JScrollPane scrollMetodosResumen = new javax.swing.JScrollPane(tableMetodosResumen);
 
         javax.swing.JPanel pnlCuerpoResumen = new javax.swing.JPanel(new java.awt.BorderLayout(10, 4));
@@ -6970,7 +7029,7 @@ public final class Sistema extends javax.swing.JFrame {
         javax.swing.JPanel pnlBarraBuscar = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 4));
         pnlBarraBuscar.setOpaque(false);
         pnlBarraBuscar.add(new javax.swing.JLabel("Buscar por Nombre o Cédula/RIF:"));
-        txtBuscarCliente = new javax.swing.JTextField(18);
+        txtBuscarCliente = new javax.swing.JTextField(22);
         txtBuscarCliente.addActionListener(e -> buscarYListarClientes(txtBuscarCliente.getText().trim()));
         pnlBarraBuscar.add(txtBuscarCliente);
 
@@ -6997,7 +7056,7 @@ public final class Sistema extends javax.swing.JFrame {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
         });
-        tableClientes.setRowHeight(22);
+        tableClientes.setRowHeight(25);
         tableClientes.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 cargarFacturasClienteSeleccionado();
@@ -7005,6 +7064,10 @@ public final class Sistema extends javax.swing.JFrame {
         });
         pnlClientes.add(new javax.swing.JScrollPane(tableClientes), java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableClientes);
+        configurarColumnasProporcionales(tableClientes,
+                new int[]{100, 140, 100, 70, 90, 90},
+                new int[]{120, 260, 120, 80, 110, 130},
+                new int[]{160, -1, 160, 100, 150, 180});
 
         // Subpanel Facturas del Cliente (Sur de Split)
         javax.swing.JPanel pnlFacturas = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
@@ -7055,13 +7118,17 @@ public final class Sistema extends javax.swing.JFrame {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
         });
-        tableFacturasCliente.setRowHeight(22);
+        tableFacturasCliente.setRowHeight(25);
         pnlFacturas.add(new javax.swing.JScrollPane(tableFacturasCliente), java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableFacturasCliente);
+        configurarColumnasProporcionales(tableFacturasCliente,
+                new int[]{80, 120, 90, 60, 90, 110, 120, 85},
+                new int[]{90, 150, 120, 70, 110, 130, 160, 100},
+                new int[]{120, 180, 160, 90, 140, 160, -1, 130});
 
         javax.swing.JSplitPane splitClientes = new javax.swing.JSplitPane(javax.swing.JSplitPane.VERTICAL_SPLIT, pnlClientes, pnlFacturas);
-        splitClientes.setDividerLocation(260);
-        splitClientes.setResizeWeight(0.45);
+        splitClientes.setDividerLocation(280);
+        splitClientes.setResizeWeight(0.5);
         splitClientes.setContinuousLayout(true);
         splitClientes.setOpaque(false);
         pnlTabClientes.add(splitClientes, java.awt.BorderLayout.CENTER);
@@ -7074,7 +7141,7 @@ public final class Sistema extends javax.swing.JFrame {
         tabLeftDashboard = new javax.swing.JTabbedPane();
         tabLeftDashboard.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
 
-        javax.swing.JPanel pnlTopPlatos = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
+        javax.swing.JPanel pnlTopPlatos = new javax.swing.JPanel(new java.awt.BorderLayout(10, 8));
         pnlTopPlatos.setBackground(java.awt.Color.WHITE);
         pnlTopPlatos.setBorder(javax.swing.BorderFactory.createTitledBorder(
                 javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
@@ -7090,12 +7157,27 @@ public final class Sistema extends javax.swing.JFrame {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
         });
-        tableTopPlatos.setRowHeight(22);
+        tableTopPlatos.setRowHeight(25);
         pnlTopPlatos.add(new javax.swing.JScrollPane(tableTopPlatos), java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableTopPlatos);
+        configurarColumnasProporcionales(tableTopPlatos,
+                new int[]{120, 50, 80, 80},
+                new int[]{320, 95, 125, 145},
+                new int[]{-1, 130, 160, 180});
+
+        javax.swing.JPanel pnlKpisTopPlatos = new javax.swing.JPanel(new java.awt.GridLayout(3, 1, 8, 8));
+        pnlKpisTopPlatos.setOpaque(false);
+        pnlKpisTopPlatos.setPreferredSize(new java.awt.Dimension(320, 0));
+        lblTopPlatoEstrella = new javax.swing.JLabel("Calculando...", javax.swing.SwingConstants.CENTER);
+        lblTopPlatosTotalUsd = new javax.swing.JLabel("Calculando...", javax.swing.SwingConstants.CENTER);
+        lblTopPlatosUnidades = new javax.swing.JLabel("Calculando...", javax.swing.SwingConstants.CENTER);
+        pnlKpisTopPlatos.add(crearCardKpi("PLATO ESTRELLA", lblTopPlatoEstrella, new java.awt.Color(255, 248, 235), new java.awt.Color(230, 126, 34)));
+        pnlKpisTopPlatos.add(crearCardKpi("INGRESOS TOP PLATOS", lblTopPlatosTotalUsd, new java.awt.Color(235, 248, 240), new java.awt.Color(40, 167, 69)));
+        pnlKpisTopPlatos.add(crearCardKpi("UNIDADES DESPACHADAS", lblTopPlatosUnidades, new java.awt.Color(238, 245, 255), new java.awt.Color(0, 123, 255)));
+        pnlTopPlatos.add(pnlKpisTopPlatos, java.awt.BorderLayout.EAST);
         tabLeftDashboard.addTab("Top Platos", pnlTopPlatos);
 
-        javax.swing.JPanel pnlMesonerosDashboard = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
+        javax.swing.JPanel pnlMesonerosDashboard = new javax.swing.JPanel(new java.awt.BorderLayout(10, 8));
         pnlMesonerosDashboard.setBackground(java.awt.Color.WHITE);
         pnlMesonerosDashboard.setBorder(javax.swing.BorderFactory.createTitledBorder(
                 javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
@@ -7111,12 +7193,44 @@ public final class Sistema extends javax.swing.JFrame {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
         });
-        tableMesonerosDashboard.setRowHeight(22);
+        tableMesonerosDashboard.setRowHeight(25);
         pnlMesonerosDashboard.add(new javax.swing.JScrollPane(tableMesonerosDashboard), java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableMesonerosDashboard);
+        configurarColumnasProporcionales(tableMesonerosDashboard,
+                new int[]{120, 70, 80, 80},
+                new int[]{320, 95, 125, 145},
+                new int[]{-1, 130, 160, 180});
+
+        javax.swing.JPanel pnlKpisMesoneros = new javax.swing.JPanel(new java.awt.GridLayout(3, 1, 8, 8));
+        pnlKpisMesoneros.setOpaque(false);
+        pnlKpisMesoneros.setPreferredSize(new java.awt.Dimension(320, 0));
+        lblTopMesoneroDestacado = new javax.swing.JLabel("Calculando...", javax.swing.SwingConstants.CENTER);
+        lblMesonerosTotalUsd = new javax.swing.JLabel("Calculando...", javax.swing.SwingConstants.CENTER);
+        lblMesonerosTotalPedidos = new javax.swing.JLabel("Calculando...", javax.swing.SwingConstants.CENTER);
+        pnlKpisMesoneros.add(crearCardKpi("MESONERO DESTACADO", lblTopMesoneroDestacado, new java.awt.Color(248, 238, 255), new java.awt.Color(111, 66, 193)));
+        pnlKpisMesoneros.add(crearCardKpi("TOTAL VENTAS POR EQUIPO", lblMesonerosTotalUsd, new java.awt.Color(235, 248, 240), new java.awt.Color(40, 167, 69)));
+        pnlKpisMesoneros.add(crearCardKpi("TOTAL PEDIDOS ATENDIDOS", lblMesonerosTotalPedidos, new java.awt.Color(238, 245, 255), new java.awt.Color(0, 123, 255)));
+        pnlMesonerosDashboard.add(pnlKpisMesoneros, java.awt.BorderLayout.EAST);
         tabLeftDashboard.addTab("Mesoneros", pnlMesonerosDashboard);
 
         pnlTabRendimiento.add(tabLeftDashboard, java.awt.BorderLayout.CENTER);
+
+        // Registro de persistencia para tablas de Dashboard
+        Modelo.PreferenciasTablaDao daoDashTemp = null;
+        try {
+            daoDashTemp = new Modelo.PreferenciasTablaDao();
+        } catch (RuntimeException ex) {
+            daoDashTemp = null;
+        }
+        final Modelo.PreferenciasTablaDao daoDash = daoDashTemp;
+        int uid = (usuarioActual != null) ? usuarioActual.getId() : 0;
+        if (daoDash != null && uid > 0) {
+            registrarAnchos(daoDash, uid, tableTopPlatos, "dash_top");
+            registrarAnchos(daoDash, uid, tableMesonerosDashboard, "dash_mesoneros");
+            registrarAnchos(daoDash, uid, tableClientes, "dash_clientes");
+            registrarAnchos(daoDash, uid, tableFacturasCliente, "dash_facturas");
+            registrarAnchos(daoDash, uid, tableMetodosResumen, "dash_metodos");
+        }
 
         // Ensamble de Sub-Pestañas en tabDashboardInterno
         tabDashboardInterno = new javax.swing.JTabbedPane();
@@ -7145,7 +7259,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private javax.swing.JPanel crearCardKpi(String titulo, javax.swing.JLabel lblValor, java.awt.Color fondo, java.awt.Color borde) {
-        javax.swing.JPanel card = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
+        javax.swing.JPanel card = new javax.swing.JPanel(new java.awt.BorderLayout(4, 4));
         card.setBackground(fondo);
         card.setBorder(javax.swing.BorderFactory.createCompoundBorder(
                 javax.swing.BorderFactory.createLineBorder(borde, 2, true),
@@ -7154,7 +7268,10 @@ public final class Sistema extends javax.swing.JFrame {
         lblT.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         lblT.setForeground(borde.darker());
         card.add(lblT, java.awt.BorderLayout.NORTH);
-        card.add(lblValor, java.awt.BorderLayout.CENTER);
+        if (lblValor != null) {
+            lblValor.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
+            card.add(lblValor, java.awt.BorderLayout.CENTER);
+        }
         return card;
     }
 
@@ -7258,18 +7375,18 @@ public final class Sistema extends javax.swing.JFrame {
         if (resumen == null) return;
         resumenVentasEnPantalla = resumen;
         if (lblResumenUsd != null) {
-            lblResumenUsd.setText("<html><b style='font-size:13px;color:#007700;'>$ "
+            lblResumenUsd.setText("<html><div style='text-align:center;'><b style='font-size:15px;color:#007700;'>$ "
                     + String.format(java.util.Locale.US, "%.2f", resumen.getTotalVentasUsd())
-                    + "</b><br><small style='color:#555555;'>" + resumen.getPedidosFinalizados()
+                    + "</b><br><span style='color:#444444;font-size:11px;'>" + resumen.getPedidosFinalizados()
                     + " pedidos · $" + String.format(java.util.Locale.US, "%.2f", resumen.getTicketPromedioUsd())
-                    + " prom.</small></html>");
+                    + " prom.</span></div></html>");
         }
         if (lblResumenBs != null) {
-            lblResumenBs.setText("<html><b style='font-size:13px;color:#003366;'>Bs. "
+            lblResumenBs.setText("<html><div style='text-align:center;'><b style='font-size:15px;color:#003366;'>Bs. "
                     + String.format(java.util.Locale.US, "%.2f", resumen.getTotalVentasBs())
-                    + "</b><br><small style='color:#555555;'>Tasa efectiva: "
+                    + "</b><br><span style='color:#555555;font-size:11px;'>Tasa ref: "
                     + String.format(java.util.Locale.US, "%.2f", resumen.getTasaCambioReferencia())
-                    + " Bs/USD</small></html>");
+                    + " Bs/USD</span></div></html>");
         }
         if (tableMetodosResumen != null) {
             javax.swing.table.DefaultTableModel modelResumen =
@@ -7361,6 +7478,12 @@ public final class Sistema extends javax.swing.JFrame {
         if (lblTicketPromedio != null) lblTicketPromedio.setText("<html><small>Cargando métricas...</small></html>");
         if (lblVentasHistoricas != null) lblVentasHistoricas.setText("<html><small>Cargando métricas...</small></html>");
         if (lblClientesYMesas != null) lblClientesYMesas.setText("<html><small>Cargando métricas...</small></html>");
+        if (lblTopPlatoEstrella != null) lblTopPlatoEstrella.setText("<html><small>Cargando...</small></html>");
+        if (lblTopPlatosTotalUsd != null) lblTopPlatosTotalUsd.setText("<html><small>Cargando...</small></html>");
+        if (lblTopPlatosUnidades != null) lblTopPlatosUnidades.setText("<html><small>Cargando...</small></html>");
+        if (lblTopMesoneroDestacado != null) lblTopMesoneroDestacado.setText("<html><small>Cargando...</small></html>");
+        if (lblMesonerosTotalUsd != null) lblMesonerosTotalUsd.setText("<html><small>Cargando...</small></html>");
+        if (lblMesonerosTotalPedidos != null) lblMesonerosTotalPedidos.setText("<html><small>Cargando...</small></html>");
 
         String criterio = (txtBuscarCliente != null) ? txtBuscarCliente.getText().trim() : "";
         new DashboardSwingWorker(clienteDao, criterio,
@@ -7383,66 +7506,135 @@ public final class Sistema extends javax.swing.JFrame {
         if (stats != null) {
             if (lblVentasHoy != null) {
                 StringBuilder htmlVentas = new StringBuilder();
-                htmlVentas.append("<html><b style='font-size:13px;color:#007700;'>$ ")
+                htmlVentas.append("<html><div style='text-align:center;'><b style='font-size:14px;color:#007700;'>$ ")
                         .append(String.format(java.util.Locale.US, "%.2f", stats.getVentasHoyDolares()))
-                        .append("</b> &nbsp;|&nbsp; <span style='color:#003366;'>Bs. ")
+                        .append("</b> &nbsp;|&nbsp; <span style='font-size:13px;color:#003366;'>Bs. ")
                         .append(String.format(java.util.Locale.US, "%.2f", stats.getVentasHoyBs()))
-                        .append("</span><br><small style='color:#555555;'>")
-                        .append(stats.getPedidosHoy()).append(" pedidos cerrados hoy");
+                        .append("</span><br><span style='color:#555555;font-size:11px;'>")
+                        .append(stats.getPedidosHoy()).append(" pedidos cerrados hoy</span>");
 
                 if (stats.getPagosPorMetodoHoy() != null && !stats.getPagosPorMetodoHoy().isEmpty()) {
                     htmlVentas.append("<br><span style='color:#005A9E;font-size:10px;'>");
                     boolean primero = true;
                     for (Modelo.EstadisticasDashboard.ItemEstadistica pMet : stats.getPagosPorMetodoHoy()) {
                         if (!primero) htmlVentas.append(" | ");
-                        htmlVentas.append("<b>").append(pMet.getNombre()).append(":</b> $ ")
-                                .append(String.format(java.util.Locale.US, "%.2f", pMet.getTotalDolares()))
-                                .append(" (Bs. ").append(String.format(java.util.Locale.US, "%.2f", pMet.getTotalBs())).append(")");
+                        htmlVentas.append("<b>").append(pMet.getNombre()).append(":</b> $")
+                                .append(String.format(java.util.Locale.US, "%.2f", pMet.getTotalDolares()));
                         primero = false;
                     }
                     htmlVentas.append("</span>");
                 }
-                htmlVentas.append("</small></html>");
+                htmlVentas.append("</div></html>");
                 lblVentasHoy.setText(htmlVentas.toString());
             }
             if (lblTicketPromedio != null) {
-                lblTicketPromedio.setText("<html><b style='font-size:13px;color:#004488;'>$ " + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHoyDolares())
-                        + "</b> &nbsp;|&nbsp; <span style='color:#003366;'>Bs. " + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHoyBs())
-                        + "</span><br><small style='color:#555555;'>Promedio hoy (" + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHistoricoDolares()) + " $ global)</small></html>");
+                lblTicketPromedio.setText("<html><div style='text-align:center;'><b style='font-size:14px;color:#004488;'>$ "
+                        + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHoyDolares())
+                        + "</b> &nbsp;|&nbsp; <span style='font-size:13px;color:#003366;'>Bs. "
+                        + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHoyBs())
+                        + "</span><br><span style='color:#555555;font-size:11px;'>Ticket promedio hoy</span>"
+                        + "<br><span style='color:#777777;font-size:10px;'>Promedio histórico: $"
+                        + String.format(java.util.Locale.US, "%.2f", stats.getTicketPromedioHistoricoDolares())
+                        + "</span></div></html>");
             }
             if (lblVentasHistoricas != null) {
-                lblVentasHistoricas.setText("<html><b style='font-size:13px;color:#772200;'>$ " + String.format(java.util.Locale.US, "%.2f", stats.getVentasHistoricasDolares())
-                        + "</b> &nbsp;|&nbsp; <span style='color:#003366;'>Bs. " + String.format(java.util.Locale.US, "%.2f", stats.getVentasHistoricasBs())
-                        + "</span><br><small style='color:#555555;'>" + stats.getPedidosHistoricos() + " pedidos finalizados</small></html>");
+                lblVentasHistoricas.setText("<html><div style='text-align:center;'><b style='font-size:14px;color:#772200;'>$ "
+                        + String.format(java.util.Locale.US, "%.2f", stats.getVentasHistoricasDolares())
+                        + "</b> &nbsp;|&nbsp; <span style='font-size:13px;color:#003366;'>Bs. "
+                        + String.format(java.util.Locale.US, "%.2f", stats.getVentasHistoricasBs())
+                        + "</span><br><span style='color:#555555;font-size:11px;'>"
+                        + stats.getPedidosHistoricos() + " pedidos finalizados</span>"
+                        + "<br><span style='color:#777777;font-size:10px;'>Histórico total acumulado</span></div></html>");
             }
             if (lblClientesYMesas != null) {
-                lblClientesYMesas.setText("<html><b style='font-size:13px;color:#440077;'>" + stats.getTotalClientes() + " Clientes</b>"
-                        + "<br><small style='color:#555555;'>" + stats.getMesasOcupadasActuales() + " mesas ocupadas en vivo</small></html>");
+                lblClientesYMesas.setText("<html><div style='text-align:center;'><b style='font-size:14px;color:#440077;'>"
+                        + stats.getTotalClientes() + " Clientes Registrados</b>"
+                        + "<br><span style='color:#28a745;font-size:11px;font-weight:bold;'>"
+                        + stats.getMesasOcupadasActuales() + " mesas ocupadas en vivo</span>"
+                        + "<br><span style='color:#777777;font-size:10px;'>Monitoreo en tiempo real</span></div></html>");
             }
 
             if (tableTopPlatos != null) {
                 javax.swing.table.DefaultTableModel modelPlatos = (javax.swing.table.DefaultTableModel) tableTopPlatos.getModel();
                 modelPlatos.setRowCount(0);
+                String topNombre = "—";
+                int topMaxCant = 0;
+                int totalUnidadesTop = 0;
+                java.math.BigDecimal totalUsdTop = java.math.BigDecimal.ZERO;
+                java.math.BigDecimal totalBsTop = java.math.BigDecimal.ZERO;
                 for (Modelo.EstadisticasDashboard.ItemEstadistica item : stats.getTopPlatos()) {
+                    java.math.BigDecimal dUsd = item.getTotalDolares() != null ? item.getTotalDolares().setScale(2, java.math.RoundingMode.HALF_UP) : java.math.BigDecimal.ZERO.setScale(2);
+                    java.math.BigDecimal dBs = item.getTotalBs() != null ? item.getTotalBs().setScale(2, java.math.RoundingMode.HALF_UP) : java.math.BigDecimal.ZERO.setScale(2);
                     modelPlatos.addRow(new Object[]{
                         item.getNombre(),
                         item.getCantidad(),
-                        "$ " + String.format(java.util.Locale.US, "%.2f", item.getTotalDolares()),
-                        "Bs. " + String.format(java.util.Locale.US, "%.2f", item.getTotalBs())
+                        "$ " + dUsd.toPlainString(),
+                        "Bs. " + dBs.toPlainString()
                     });
+                    totalUnidadesTop += item.getCantidad();
+                    totalUsdTop = totalUsdTop.add(dUsd);
+                    totalBsTop = totalBsTop.add(dBs);
+                    if (item.getCantidad() > topMaxCant) {
+                        topMaxCant = item.getCantidad();
+                        topNombre = item.getNombre();
+                    }
+                }
+                if (lblTopPlatoEstrella != null) {
+                    lblTopPlatoEstrella.setText("<html><div style='text-align:center;'><b style='font-size:13px;color:#d35400;'>"
+                            + topNombre + "</b><br><span style='color:#555555;font-size:11px;'>"
+                            + topMaxCant + " unidades despachadas</span></div></html>");
+                }
+                if (lblTopPlatosTotalUsd != null) {
+                    lblTopPlatosTotalUsd.setText("<html><div style='text-align:center;'><b style='font-size:14px;color:#007700;'>$ "
+                            + totalUsdTop.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()
+                            + "</b><br><span style='color:#003366;font-size:11px;'>Bs. "
+                            + totalBsTop.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString() + "</span></div></html>");
+                }
+                if (lblTopPlatosUnidades != null) {
+                    lblTopPlatosUnidades.setText("<html><div style='text-align:center;'><b style='font-size:15px;color:#004488;'>"
+                            + totalUnidadesTop + " platos</b><br><span style='color:#555555;font-size:11px;'>Rotación del top</span></div></html>");
                 }
             }
 
             if (tableMesonerosDashboard != null && stats.getEstadisticasMesoneros() != null) {
                 javax.swing.table.DefaultTableModel modelMesoneros = (javax.swing.table.DefaultTableModel) tableMesonerosDashboard.getModel();
                 modelMesoneros.setRowCount(0);
+                String topMesonero = "—";
+                int topMaxPedidos = 0;
+                int totalPedidosMes = 0;
+                java.math.BigDecimal totalUsdMes = java.math.BigDecimal.ZERO;
+                java.math.BigDecimal totalBsMes = java.math.BigDecimal.ZERO;
                 for (Modelo.EstadisticasDashboard.ItemEstadistica item : stats.getEstadisticasMesoneros()) {
+                    java.math.BigDecimal mUsd = item.getTotalDolares() != null ? item.getTotalDolares().setScale(2, java.math.RoundingMode.HALF_UP) : java.math.BigDecimal.ZERO.setScale(2);
+                    java.math.BigDecimal mBs = item.getTotalBs() != null ? item.getTotalBs().setScale(2, java.math.RoundingMode.HALF_UP) : java.math.BigDecimal.ZERO.setScale(2);
                     modelMesoneros.addRow(new Object[]{
                         item.getNombre(),
                         item.getCantidad(),
-                        "$ " + String.format(java.util.Locale.US, "%.2f", item.getTotalDolares()),
-                        "Bs. " + String.format(java.util.Locale.US, "%.2f", item.getTotalBs())
+                        "$ " + mUsd.toPlainString(),
+                        "Bs. " + mBs.toPlainString()
                     });
+                    totalPedidosMes += item.getCantidad();
+                    totalUsdMes = totalUsdMes.add(mUsd);
+                    totalBsMes = totalBsMes.add(mBs);
+                    if (item.getCantidad() > topMaxPedidos) {
+                        topMaxPedidos = item.getCantidad();
+                        topMesonero = item.getNombre();
+                    }
+                }
+                if (lblTopMesoneroDestacado != null) {
+                    lblTopMesoneroDestacado.setText("<html><div style='text-align:center;'><b style='font-size:13px;color:#5e2a84;'>"
+                            + topMesonero + "</b><br><span style='color:#555555;font-size:11px;'>"
+                            + topMaxPedidos + " pedidos atendidos</span></div></html>");
+                }
+                if (lblMesonerosTotalUsd != null) {
+                    lblMesonerosTotalUsd.setText("<html><div style='text-align:center;'><b style='font-size:14px;color:#007700;'>$ "
+                            + totalUsdMes.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()
+                            + "</b><br><span style='color:#003366;font-size:11px;'>Bs. "
+                            + totalBsMes.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString() + "</span></div></html>");
+                }
+                if (lblMesonerosTotalPedidos != null) {
+                    lblMesonerosTotalPedidos.setText("<html><div style='text-align:center;'><b style='font-size:15px;color:#004488;'>"
+                            + totalPedidosMes + " pedidos</b><br><span style='color:#555555;font-size:11px;'>Gestión del equipo</span></div></html>");
                 }
             }
         }
@@ -7521,6 +7713,12 @@ public final class Sistema extends javax.swing.JFrame {
         if (lblTicketPromedio != null) lblTicketPromedio.setText("<html><span style='color:red;'>Error al cargar</span></html>");
         if (lblVentasHistoricas != null) lblVentasHistoricas.setText("<html><span style='color:red;'>Error al cargar</span></html>");
         if (lblClientesYMesas != null) lblClientesYMesas.setText("<html><span style='color:red;'>Error al cargar</span></html>");
+        if (lblTopPlatoEstrella != null) lblTopPlatoEstrella.setText("<html><span style='color:red;'>Error</span></html>");
+        if (lblTopPlatosTotalUsd != null) lblTopPlatosTotalUsd.setText("<html><span style='color:red;'>Error</span></html>");
+        if (lblTopPlatosUnidades != null) lblTopPlatosUnidades.setText("<html><span style='color:red;'>Error</span></html>");
+        if (lblTopMesoneroDestacado != null) lblTopMesoneroDestacado.setText("<html><span style='color:red;'>Error</span></html>");
+        if (lblMesonerosTotalUsd != null) lblMesonerosTotalUsd.setText("<html><span style='color:red;'>Error</span></html>");
+        if (lblMesonerosTotalPedidos != null) lblMesonerosTotalPedidos.setText("<html><span style='color:red;'>Error</span></html>");
 
         String sugerencia = "";
         if (msg.contains("clientes") || msg.contains("Unknown column") || msg.contains("doesn't exist")) {
@@ -8015,6 +8213,8 @@ public final class Sistema extends javax.swing.JFrame {
     public javax.swing.JButton getBtnProbarImpresion() { return btnProbarImpresion; }
     public javax.swing.JButton getBtnAnularPedido() { return btnAnularPedido; }
     public javax.swing.JButton getBtnAuditoriaPedido() { return btnAuditoriaPedido; }
+    public javax.swing.JButton getBtnCobrarHistorialModal() { return btnCobrarHistorialModal; }
+    public javax.swing.JButton getBtnCobrarModalTab4() { return btnCobrarModalTab4; }
     public javax.swing.JLabel getLblBannerTasa() { return lblBannerTasa; }
     public javax.swing.JLabel getLblFechaTasaConfig() { return lblFechaTasaConfig; }
     public Servicio.ServicioRespaldoBaseDatos getServicioRespaldo() { return servicioRespaldo; }
@@ -11363,6 +11563,86 @@ public final class Sistema extends javax.swing.JFrame {
         return "Sistema";
     }
 
+    private final Servicio.GestorBloqueoCobro gestorBloqueoCobro = new Servicio.GestorBloqueoCobro();
+
+    public Servicio.GestorBloqueoCobro getGestorBloqueoCobro() {
+        return gestorBloqueoCobro;
+    }
+
+    public void abrirModalCobroPedido(int idPedido, Runnable alFinalizarExitoso) {
+        LOGGER.info("abrirModalCobroPedido: Solicitando cobro para pedido #" + idPedido);
+        if (!autorizar(PoliticaAcceso.Accion.COBRAR_PEDIDOS)) {
+            LOGGER.warning("abrirModalCobroPedido: No autorizado para cobrar pedidos");
+            return;
+        }
+        if (idPedido <= 0) {
+            LOGGER.warning("abrirModalCobroPedido: ID pedido inválido: " + idPedido);
+            mostrarAvisoEnBanda("ID de pedido inválido para cobrar");
+            return;
+        }
+
+        int idUser = getIdUsuarioActual() > 0 ? getIdUsuarioActual() : 1;
+        String nomUser = getNombreUsuarioActual();
+
+        // 1. Validar centinela anti-colisión
+        Servicio.GestorBloqueoCobro.ResultadoBloqueo resBloqueo = gestorBloqueoCobro.adquirir(idPedido, idUser, nomUser);
+        if (!resBloqueo.adquirido()) {
+            LOGGER.warning("abrirModalCobroPedido: Centinela ocupado: " + resBloqueo.mensaje());
+            JOptionPane.showMessageDialog(this,
+                    resBloqueo.mensaje() + "\n(Intente nuevamente cuando termine la operación).",
+                    "Pedido en Proceso de Cobro", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // 2. Cargar pedido y detalles en background
+        new PedidoEnPantallaSwingWorker(pedidosControlador, idPedido,
+                resultado -> {
+                    Pedidos pedidoCargado = resultado.getPedido();
+                    List<DetallePedido> detallesCargados = resultado.getDetalles();
+
+                    if (pedidoCargado == null || !"PENDIENTE".equalsIgnoreCase(pedidoCargado.getEstado())) {
+                        LOGGER.warning("abrirModalCobroPedido: Pedido #" + idPedido + " no está PENDIENTE o es nulo");
+                        gestorBloqueoCobro.liberar(idPedido, idUser);
+                        mostrarAvisoEnBanda("El pedido #" + idPedido + " no está en estado pendiente para cobrar.");
+                        return;
+                    }
+
+                    try {
+                        Config cfg = conf != null ? conf : lgDao.datosEmpresa();
+                        LOGGER.info("abrirModalCobroPedido: Creando DialogoCobroPedido para #" + idPedido);
+                        DialogoCobroPedido dialog = new DialogoCobroPedido(
+                                this, pedidosControlador, idPedido, pedidoCargado, detallesCargados,
+                                gestorBloqueoCobro, idUser, nomUser, cfg, politicaAcceso, finalizado -> {
+                            if (finalizado) {
+                                if (alFinalizarExitoso != null) {
+                                    alFinalizarExitoso.run();
+                                }
+                                ListarPedidos();
+                                RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                                RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
+                                RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
+                                mostrarAvisoEnBanda("Pedido #" + idPedido + " finalizado exitosamente.");
+                            }
+                        });
+
+                        // Apertura asíncrona no bloqueante
+                        javax.swing.SwingUtilities.invokeLater(() -> {
+                            LOGGER.info("abrirModalCobroPedido: Mostrando diálogo modal...");
+                            dialog.setVisible(true);
+                        });
+                    } catch (Exception ex) {
+                        LOGGER.log(java.util.logging.Level.SEVERE, "abrirModalCobroPedido: Error instanciando diálogo: " + ex.getMessage(), ex);
+                        gestorBloqueoCobro.liberar(idPedido, idUser);
+                        mostrarErrorCargaPedido(ex);
+                    }
+                },
+                error -> {
+                    LOGGER.log(java.util.logging.Level.SEVERE, "abrirModalCobroPedido: Error en PedidoEnPantallaSwingWorker: " + error.getMessage(), error);
+                    gestorBloqueoCobro.liberar(idPedido, idUser);
+                    mostrarErrorCargaPedido(error);
+                }).execute();
+    }
+
     public void cargarPedidoEnPantallaDesdeSplit(int idPedido) {
         cargarPedidoEnPantalla(idPedido, true);
     }
@@ -12484,6 +12764,9 @@ public final class Sistema extends javax.swing.JFrame {
                     if (version != versionPedidoPantalla) return;
                     mostrarPedidoEnPantalla(resultado.getPedido(), resultado.getDetalles());
                     btnFinalizar.setEnabled(permitirFinalizar);
+                    if (btnCobrarModalTab4 != null) {
+                        btnCobrarModalTab4.setEnabled(permitirFinalizar && politicaAcceso.permite(PoliticaAcceso.Accion.COBRAR_PEDIDOS));
+                    }
                     btnPdfPedido.setEnabled(!permitirFinalizar);
                     if (btnPrevisualizarPedido != null) {
                         btnPrevisualizarPedido.setEnabled(true);

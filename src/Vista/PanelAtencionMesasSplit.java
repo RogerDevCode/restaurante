@@ -1648,10 +1648,27 @@ public class PanelAtencionMesasSplit extends JPanel {
             // Guardar o actualizar cambios locales primero y luego cobrar
             enviarPedidoCocina();
             if (idPedidoActivo > 0) {
-                sistema.cargarPedidoEnPantallaDesdeSplit(idPedidoActivo);
+                final int idACobrar = idPedidoActivo;
+                sistema.abrirModalCobroPedido(idACobrar, () -> {
+                    modeloCarrito.setRowCount(0);
+                    detallesExistentesCarrito.clear();
+                    idPedidoActivo = 0;
+                    recalcularTotales();
+                    refrescarMesasSalaActual();
+                });
+            } else {
+                java.util.logging.Logger.getLogger(PanelAtencionMesasSplit.class.getName())
+                        .warning("cobrarPedidoDirecto: enviarPedidoCocina no fijó idPedidoActivo válido (" + idPedidoActivo + ")");
             }
         } else if (idPedidoActivo > 0) {
-            sistema.cargarPedidoEnPantallaDesdeSplit(idPedidoActivo);
+            final int idACobrar = idPedidoActivo;
+            sistema.abrirModalCobroPedido(idACobrar, () -> {
+                modeloCarrito.setRowCount(0);
+                detallesExistentesCarrito.clear();
+                idPedidoActivo = 0;
+                recalcularTotales();
+                refrescarMesasSalaActual();
+            });
         } else {
             sistema.mostrarAvisoEnBanda("No hay pedido para cobrar en esta mesa");
         }

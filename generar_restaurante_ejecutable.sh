@@ -160,8 +160,16 @@ if [ "${VERIFICAR_ZIP_REPRODUCIBLE:-SI}" = "SI" ]; then
 fi
 
 sha256sum "$ZIP_FILE" > "$ZIP_FILE.sha256"
+
+ZIP_PROYECTO="$(cd "$DIR/.." && pwd)/Restaurante.zip"
+echo "Empaquetando archivo del proyecto: $ZIP_PROYECTO (sin carpeta test/)..."
+rm -f "$ZIP_PROYECTO"
+(cd "$DIR/.." && zip -qr "$ZIP_PROYECTO" "Restaurante" -x "Restaurante/test/*")
+echo "  -> ZIP del proyecto generado con éxito."
+
 echo "================================================================================"
-echo "  [OK] Restaurante_Ejecutable y Restaurante_Ejecutable.zip generados con éxito."
+echo "  [OK] Restaurante_Ejecutable, Restaurante_Ejecutable.zip y Restaurante.zip generados con éxito."
 echo "  SHA-256 JAR: $(sha256sum "$OUTPUT_DIR/Restaurante.jar" | cut -d' ' -f1)"
-echo "  SHA-256 ZIP: $(sha256sum "$ZIP_FILE" | cut -d' ' -f1)"
+echo "  SHA-256 ZIP EJECUTABLE: $(sha256sum "$ZIP_FILE" | cut -d' ' -f1)"
+echo "  SHA-256 ZIP PROYECTO:   $(sha256sum "$ZIP_PROYECTO" | cut -d' ' -f1)"
 echo "================================================================================"

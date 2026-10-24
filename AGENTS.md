@@ -9,7 +9,7 @@
 | Comando | Uso |
 |---|---|
 | `ant -q compile jar && cp -f dist/Restaurante.jar Restaurante_Ejecutable/Restaurante.jar` | Flujo estándar de compilación + despliegue |
-| `./generar_restaurante_ejecutable.sh` | Regenera `Restaurante_Ejecutable/` (jar + librerías + zip reproducible). Exige árbol git limpio |
+| `./generar_restaurante_ejecutable.sh` | Regenera `Restaurante_Ejecutable/` (jar + librerías + zip reproducible). Exige árbol git limpio. También borra y regenera `/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante.zip` excluyendo la carpeta `test/` |
 | `./empaquetar_produccion.sh` | Genera `../Restaurante_2026_Produccion.zip` |
 | `ant test` | Suite unitaria (679 tests; usa BD del `.env` — con `.env` operativo aborta por guardia). Para BD desechable 3307: `ant test -DDB_URL="jdbc:mysql://127.0.0.1:3307/restaurante_test" -DDB_NAME=restaurante_test -DMYSQL_DATABASE=restaurante_test -DDB_USER=restaurante_test_app -DDB_PASSWORD=test_only_app_password` (+ mismas `-Dtest-sys-prop.*` con URL completa `?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC`), previo `docker compose -p <proyecto> -f docker-compose.e2e.yml up -d` + `./inicializar_bd_test.sh --datos` |
 | `ant integration-test` | Suite integra contra MySQL efímero (`restaurante_test` 3307); levanta/baja compose solo (liberar 3307 antes) |
@@ -57,3 +57,4 @@
 - **DI por constructor** para dependencias nuevas/modificadas; ensamblaje en el punto de composición (`restaurante.Restaurante`); no instanciar DAOs/servicios dentro de vistas. Migración incremental, sin frameworks DI ni refactors masivos sin necesidad.
 - **Diseñador Swing**: `src/Vista/Sistema.java` tiene edición manual fuera de `Sistema.form` (scroll lateral, `btnDashboard`, contrastes). No regenerar desde Matisse; si se edita el `.form`, remodelar el `JScrollPane` allí.
 - **Scripts Windows** (`.bat`/`.cmd`/`.ps1`/`.vbs`): guardar en **CRLF** (`sed -i 's/\r$//; s/$/\r/' <archivo>`; `.gitattributes` fija `eol=crlf`). `.bat`: sin `chcp 65001`, ASCII puro sin BOM (sin acentos/ñ/¿). `.ps1`: UTF-8 **con BOM** + `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8` al inicio. `.vbs`: ASCII puro sin BOM.
+- **Generación de ejecutable y zip de proyecto**: Al generar el ejecutable (`./generar_restaurante_ejecutable.sh`), también se debe generar el archivo `/home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante.zip`. La regla estricta es: primero borrarlo si existe (`rm -f /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante.zip`) y luego generarlo empaquetando el proyecto sin la carpeta de los tests (`cd .. && zip -r Restaurante.zip Restaurante/ -x "Restaurante/test/*"`).
