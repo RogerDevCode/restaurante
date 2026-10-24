@@ -6923,8 +6923,8 @@ public final class Sistema extends javax.swing.JFrame {
         // 2. Tarjetas KPI
         javax.swing.JPanel pnlKpis = new javax.swing.JPanel(new java.awt.GridLayout(1, 4, 12, 10));
         pnlKpis.setOpaque(false);
-        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 130));
-        pnlKpis.setMinimumSize(new java.awt.Dimension(800, 115));
+        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 155));
+        pnlKpis.setMinimumSize(new java.awt.Dimension(800, 130));
 
         lblVentasHoy = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
         lblTicketPromedio = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
@@ -6995,6 +6995,9 @@ public final class Sistema extends javax.swing.JFrame {
                 new int[]{180, 90, 120, 140, 80},
                 new int[]{-1, 110, 150, 180, 100});
         javax.swing.JScrollPane scrollMetodosResumen = new javax.swing.JScrollPane(tableMetodosResumen);
+        scrollMetodosResumen.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollMetodosResumen.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollMetodosResumen.getVerticalScrollBar().setUnitIncrement(16);
 
         javax.swing.JPanel pnlCuerpoResumen = new javax.swing.JPanel(new java.awt.BorderLayout(10, 4));
         pnlCuerpoResumen.setOpaque(false);
@@ -7062,7 +7065,11 @@ public final class Sistema extends javax.swing.JFrame {
                 cargarFacturasClienteSeleccionado();
             }
         });
-        pnlClientes.add(new javax.swing.JScrollPane(tableClientes), java.awt.BorderLayout.CENTER);
+        javax.swing.JScrollPane scrollClientes = new javax.swing.JScrollPane(tableClientes);
+        scrollClientes.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollClientes.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollClientes.getVerticalScrollBar().setUnitIncrement(16);
+        pnlClientes.add(scrollClientes, java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableClientes);
         configurarColumnasProporcionales(tableClientes,
                 new int[]{100, 140, 100, 70, 90, 90},
@@ -7119,7 +7126,11 @@ public final class Sistema extends javax.swing.JFrame {
             public boolean isCellEditable(int r, int c) { return false; }
         });
         tableFacturasCliente.setRowHeight(25);
-        pnlFacturas.add(new javax.swing.JScrollPane(tableFacturasCliente), java.awt.BorderLayout.CENTER);
+        javax.swing.JScrollPane scrollFacturas = new javax.swing.JScrollPane(tableFacturasCliente);
+        scrollFacturas.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollFacturas.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollFacturas.getVerticalScrollBar().setUnitIncrement(16);
+        pnlFacturas.add(scrollFacturas, java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableFacturasCliente);
         configurarColumnasProporcionales(tableFacturasCliente,
                 new int[]{80, 120, 90, 60, 90, 110, 120, 85},
@@ -7130,6 +7141,7 @@ public final class Sistema extends javax.swing.JFrame {
         splitClientes.setDividerLocation(280);
         splitClientes.setResizeWeight(0.5);
         splitClientes.setContinuousLayout(true);
+        splitClientes.setOneTouchExpandable(true);
         splitClientes.setOpaque(false);
         pnlTabClientes.add(splitClientes, java.awt.BorderLayout.CENTER);
 
@@ -7158,7 +7170,11 @@ public final class Sistema extends javax.swing.JFrame {
             public boolean isCellEditable(int r, int c) { return false; }
         });
         tableTopPlatos.setRowHeight(25);
-        pnlTopPlatos.add(new javax.swing.JScrollPane(tableTopPlatos), java.awt.BorderLayout.CENTER);
+        javax.swing.JScrollPane scrollTopPlatos = new javax.swing.JScrollPane(tableTopPlatos);
+        scrollTopPlatos.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollTopPlatos.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollTopPlatos.getVerticalScrollBar().setUnitIncrement(16);
+        pnlTopPlatos.add(scrollTopPlatos, java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableTopPlatos);
         configurarColumnasProporcionales(tableTopPlatos,
                 new int[]{120, 50, 80, 80},
@@ -7174,7 +7190,15 @@ public final class Sistema extends javax.swing.JFrame {
         pnlKpisTopPlatos.add(crearCardKpi("PLATO ESTRELLA", lblTopPlatoEstrella, new java.awt.Color(255, 248, 235), new java.awt.Color(230, 126, 34)));
         pnlKpisTopPlatos.add(crearCardKpi("INGRESOS TOP PLATOS", lblTopPlatosTotalUsd, new java.awt.Color(235, 248, 240), new java.awt.Color(40, 167, 69)));
         pnlKpisTopPlatos.add(crearCardKpi("UNIDADES DESPACHADAS", lblTopPlatosUnidades, new java.awt.Color(238, 245, 255), new java.awt.Color(0, 123, 255)));
-        pnlTopPlatos.add(pnlKpisTopPlatos, java.awt.BorderLayout.EAST);
+        
+        javax.swing.JScrollPane scrollKpisTop = new javax.swing.JScrollPane(pnlKpisTopPlatos);
+        scrollKpisTop.setBorder(null);
+        scrollKpisTop.setOpaque(false);
+        scrollKpisTop.getViewport().setOpaque(false);
+        scrollKpisTop.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollKpisTop.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollKpisTop.getVerticalScrollBar().setUnitIncrement(16);
+        pnlTopPlatos.add(scrollKpisTop, java.awt.BorderLayout.EAST);
         tabLeftDashboard.addTab("Top Platos", pnlTopPlatos);
 
         javax.swing.JPanel pnlMesonerosDashboard = new javax.swing.JPanel(new java.awt.BorderLayout(10, 8));
@@ -7194,7 +7218,11 @@ public final class Sistema extends javax.swing.JFrame {
             public boolean isCellEditable(int r, int c) { return false; }
         });
         tableMesonerosDashboard.setRowHeight(25);
-        pnlMesonerosDashboard.add(new javax.swing.JScrollPane(tableMesonerosDashboard), java.awt.BorderLayout.CENTER);
+        javax.swing.JScrollPane scrollMesoneros = new javax.swing.JScrollPane(tableMesonerosDashboard);
+        scrollMesoneros.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollMesoneros.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollMesoneros.getVerticalScrollBar().setUnitIncrement(16);
+        pnlMesonerosDashboard.add(scrollMesoneros, java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableMesonerosDashboard);
         configurarColumnasProporcionales(tableMesonerosDashboard,
                 new int[]{120, 70, 80, 80},
@@ -7210,7 +7238,15 @@ public final class Sistema extends javax.swing.JFrame {
         pnlKpisMesoneros.add(crearCardKpi("MESONERO DESTACADO", lblTopMesoneroDestacado, new java.awt.Color(248, 238, 255), new java.awt.Color(111, 66, 193)));
         pnlKpisMesoneros.add(crearCardKpi("TOTAL VENTAS POR EQUIPO", lblMesonerosTotalUsd, new java.awt.Color(235, 248, 240), new java.awt.Color(40, 167, 69)));
         pnlKpisMesoneros.add(crearCardKpi("TOTAL PEDIDOS ATENDIDOS", lblMesonerosTotalPedidos, new java.awt.Color(238, 245, 255), new java.awt.Color(0, 123, 255)));
-        pnlMesonerosDashboard.add(pnlKpisMesoneros, java.awt.BorderLayout.EAST);
+
+        javax.swing.JScrollPane scrollKpisMesoneros = new javax.swing.JScrollPane(pnlKpisMesoneros);
+        scrollKpisMesoneros.setBorder(null);
+        scrollKpisMesoneros.setOpaque(false);
+        scrollKpisMesoneros.getViewport().setOpaque(false);
+        scrollKpisMesoneros.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollKpisMesoneros.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollKpisMesoneros.getVerticalScrollBar().setUnitIncrement(16);
+        pnlMesonerosDashboard.add(scrollKpisMesoneros, java.awt.BorderLayout.EAST);
         tabLeftDashboard.addTab("Mesoneros", pnlMesonerosDashboard);
 
         pnlTabRendimiento.add(tabLeftDashboard, java.awt.BorderLayout.CENTER);
@@ -7263,14 +7299,26 @@ public final class Sistema extends javax.swing.JFrame {
         card.setBackground(fondo);
         card.setBorder(javax.swing.BorderFactory.createCompoundBorder(
                 javax.swing.BorderFactory.createLineBorder(borde, 2, true),
-                javax.swing.BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+                javax.swing.BorderFactory.createEmptyBorder(6, 8, 6, 8)));
         javax.swing.JLabel lblT = new javax.swing.JLabel(titulo);
         lblT.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         lblT.setForeground(borde.darker());
         card.add(lblT, java.awt.BorderLayout.NORTH);
         if (lblValor != null) {
             lblValor.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
-            card.add(lblValor, java.awt.BorderLayout.CENTER);
+            lblValor.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+            javax.swing.JPanel pnlCentro = new javax.swing.JPanel(new java.awt.BorderLayout());
+            pnlCentro.setOpaque(false);
+            pnlCentro.add(lblValor, java.awt.BorderLayout.CENTER);
+
+            javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(pnlCentro);
+            scroll.setBorder(null);
+            scroll.setOpaque(false);
+            scroll.getViewport().setOpaque(false);
+            scroll.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            scroll.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            scroll.getVerticalScrollBar().setUnitIncrement(12);
+            card.add(scroll, java.awt.BorderLayout.CENTER);
         }
         return card;
     }
@@ -7406,7 +7454,7 @@ public final class Sistema extends javax.swing.JFrame {
                                         .divide(totalUsd, 1, java.math.RoundingMode.HALF_UP).doubleValue())
                         : "—";
                 modelResumen.addRow(new Object[]{
-                    rm.getMetodo(),
+                    normalizarNombreMetodoPago(rm.getMetodo()),
                     rm.getCantidadTransacciones(),
                     "$ " + String.format(java.util.Locale.US, "%.2f", rm.getMontoUsd()),
                     "Bs. " + String.format(java.util.Locale.US, "%.2f", rm.getMontoBs()),
@@ -7500,6 +7548,23 @@ public final class Sistema extends javax.swing.JFrame {
         cargarResumenVentas();
     }
 
+    public static String normalizarNombreMetodoPago(String metodo) {
+        if (metodo == null || metodo.isBlank()) return "Otro";
+        String m = metodo.trim().toUpperCase(java.util.Locale.ROOT);
+        return switch (m) {
+            case "EFECTIVO_BS", "EFECTIVO BS", "EFECTIVO (BS)" -> "Efectivo Bs";
+            case "EFECTIVO_USD", "EFECTIVO USD", "EFECTIVO ($)", "EFECTIVO DOLARES", "EFECTIVO DÓLARES" -> "Efectivo $";
+            case "PAGO_MOVIL", "PAGOMOVIL", "PAGO MÓVIL" -> "Pago Móvil";
+            case "PUNTO_VENTA", "TARJETA", "TARJETA_DEBITO", "TARJETA_CREDITO" -> "Tarjeta";
+            case "TRANSFERENCIA", "TRANSFERENCIA_BANCARIA" -> "Transf.";
+            case "BIOPAGO" -> "BioPago";
+            default -> {
+                String limpio = metodo.replace('_', ' ').toLowerCase(java.util.Locale.ROOT);
+                yield Character.toUpperCase(limpio.charAt(0)) + limpio.substring(1);
+            }
+        };
+    }
+
     private void mostrarDashboardEnPantalla(DashboardSwingWorker.DatosDashboard datos) {
         if (datos == null) return;
         Modelo.EstadisticasDashboard stats = datos.getStats();
@@ -7518,7 +7583,8 @@ public final class Sistema extends javax.swing.JFrame {
                     boolean primero = true;
                     for (Modelo.EstadisticasDashboard.ItemEstadistica pMet : stats.getPagosPorMetodoHoy()) {
                         if (!primero) htmlVentas.append(" | ");
-                        htmlVentas.append("<b>").append(pMet.getNombre()).append(":</b> $")
+                        String nom = normalizarNombreMetodoPago(pMet.getNombre());
+                        htmlVentas.append("<b>").append(nom).append(":</b> $")
                                 .append(String.format(java.util.Locale.US, "%.2f", pMet.getTotalDolares()));
                         primero = false;
                     }
