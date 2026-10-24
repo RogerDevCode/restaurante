@@ -1007,7 +1007,11 @@ public class PedidosDao implements PedidosRepositorio {
                             ped.setCerradaEn(tsCierre.toLocalDateTime());
                         }
                         ped.setVersionPrecio(resultados.getInt("version_precio"));
-                    } catch (SQLException ignoreCol) {}
+                    } catch (Exception ignoreCol) {
+                        // Absorbe tanto SQLException (columna ausente en BD legacy) como
+                        // ErrorAplicacionException si el metodo_pago guardado no es reconocido.
+                        LOGGER.fine(() -> "verPedido #" + id_pedido + ": columna opcional no disponible o valor no reconocido: " + ignoreCol.getMessage());
+                    }
                 }
             }
         } catch (SQLException ex) {
@@ -2215,7 +2219,11 @@ public class PedidosDao implements PedidosRepositorio {
                         ped.setIdMesonero(idM);
                     }
                     ped.setMesoneroNombre(resultados.getString("mesonero_nombre"));
-                } catch (SQLException ignoreCol) {}
+                } catch (Exception ignoreCol) {
+                    // Absorbe tanto SQLException (columna ausente en BD legacy) como
+                    // ErrorAplicacionException si el metodo_pago guardado no es reconocido.
+                    LOGGER.fine(() -> "listarPedidos: columna opcional no disponible o valor no reconocido: " + ignoreCol.getMessage());
+                }
                 lista.add(ped);
             }
         } catch (SQLException ex) {

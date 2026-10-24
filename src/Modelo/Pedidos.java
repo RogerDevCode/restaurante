@@ -274,12 +274,13 @@ public class Pedidos {
             case "TRANSFERENCIA":
             case "TARJETA":
             case "PAGO_MOVIL":
+            case "CORTESIA":
             case "MIXTO":
                 this.metodoPago = normalizado;
                 break;
             default:
                 throw ErrorAplicacionException.validacion(
-                        "Método de pago no válido: " + metodoPago + ". Debe ser EFECTIVO, EFECTIVO_BS, EFECTIVO_USD, TRANSFERENCIA, TARJETA, PAGO_MOVIL o MIXTO.");
+                        "Método de pago no válido: " + metodoPago + ". Debe ser EFECTIVO, EFECTIVO_BS, EFECTIVO_USD, TRANSFERENCIA, TARJETA, PAGO_MOVIL, CORTESIA o MIXTO.");
         }
     }
 
