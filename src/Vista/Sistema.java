@@ -193,6 +193,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JTable tableFacturasCliente;
     private javax.swing.JTable tableTopPlatos;
     private javax.swing.JTabbedPane tabLeftDashboard;
+    private javax.swing.JTabbedPane tabDashboardInterno;
     private javax.swing.JTabbedPane tabConfigDerecha;
     private javax.swing.JLabel lblVentasHoy;
     private javax.swing.JLabel lblVentasHistoricas;
@@ -975,12 +976,12 @@ public final class Sistema extends javax.swing.JFrame {
                 new int[]{-1, 120, 120, 110});
         configurarColumnasProporcionales(tableTopPlatos,
                 new int[]{120, 50, 80, 80},
-                new int[]{150, 60, 100, 100},
-                new int[]{-1, 70, 110, 110});
+                new int[]{250, 90, 130, 130},
+                new int[]{-1, -1, -1, -1});
         configurarColumnasProporcionales(tableMesonerosDashboard,
-                new int[]{100, 70, 80, 80},
-                new int[]{140, 80, 100, 100},
-                new int[]{-1, 80, 100, 100});
+                new int[]{120, 70, 80, 80},
+                new int[]{250, 100, 130, 130},
+                new int[]{-1, -1, -1, -1});
         configurarColumnasProporcionales(tableClientes,
                 new int[]{100, 140, 100, 70, 90, 90},
                 new int[]{110, 180, 110, 80, 100, 100},
@@ -6810,22 +6811,22 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void initDashboardYClientes() {
-        panelDashboard = new javax.swing.JPanel(new java.awt.BorderLayout(10, 10));
+        panelDashboard = new javax.swing.JPanel(new java.awt.BorderLayout(8, 8));
         panelDashboard.setBackground(new java.awt.Color(245, 247, 250));
-        panelDashboard.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        panelDashboard.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 12, 8, 12));
 
-        // 1. Barra Superior con Título y Botón de Refresco
-        javax.swing.JPanel pnlHeader = new javax.swing.JPanel(new java.awt.BorderLayout());
+        // 1. Barra Superior con Título Compacto y Botones de Acción
+        javax.swing.JPanel pnlHeader = new javax.swing.JPanel(new java.awt.BorderLayout(10, 0));
         pnlHeader.setOpaque(false);
-        javax.swing.JLabel lblTituloDash = new javax.swing.JLabel("DASHBOARD DE VENTAS & CLIENTES");
-        lblTituloDash.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 18));
+        javax.swing.JLabel lblTituloDash = new javax.swing.JLabel("Control & Métricas");
+        lblTituloDash.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 16));
         lblTituloDash.setForeground(new java.awt.Color(20, 40, 80));
         pnlHeader.add(lblTituloDash, java.awt.BorderLayout.WEST);
 
         javax.swing.JPanel pnlAccionesDash = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
         pnlAccionesDash.setOpaque(false);
 
-        javax.swing.JButton btnCierreXDash = new javax.swing.JButton("Cierre Parcial (X)");
+        javax.swing.JButton btnCierreXDash = new javax.swing.JButton("Corte X");
         btnCierreXDash.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnCierreXDash.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         java.net.URL urlPrintDash = getClass().getResource("/Img/print.png");
@@ -6834,7 +6835,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnCierreXDash.addActionListener(e -> solicitarCierreCaja(Modelo.CierreCaja.TipoCierre.PARCIAL));
         pnlAccionesDash.add(btnCierreXDash);
 
-        javax.swing.JButton btnCierreZDash = new javax.swing.JButton("Cierre Total (Z)");
+        javax.swing.JButton btnCierreZDash = new javax.swing.JButton("Corte Z");
         btnCierreZDash.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnCierreZDash.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         if (urlPrintDash != null) btnCierreZDash.setIcon(new javax.swing.ImageIcon(urlPrintDash));
@@ -6842,7 +6843,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnCierreZDash.addActionListener(e -> solicitarCierreCaja(Modelo.CierreCaja.TipoCierre.TOTAL));
         pnlAccionesDash.add(btnCierreZDash);
 
-        javax.swing.JButton btnLogsDash = new javax.swing.JButton("Logs del Día");
+        javax.swing.JButton btnLogsDash = new javax.swing.JButton("Logs");
         btnLogsDash.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnLogsDash.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         java.net.URL urlLogsDash = getClass().getResource("/Img/lupa.png");
@@ -6851,22 +6852,24 @@ public final class Sistema extends javax.swing.JFrame {
         btnLogsDash.addActionListener(e -> mostrarDialogoLogsDelDia());
         pnlAccionesDash.add(btnLogsDash);
 
-        javax.swing.JButton btnRefrescar = new javax.swing.JButton("Actualizar Métricas");
+        javax.swing.JButton btnRefrescar = new javax.swing.JButton("Actualizar");
         btnRefrescar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnRefrescar.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         java.net.URL urlRefresh = getClass().getResource("/Img/Actualizar (2).png");
         if (urlRefresh != null) {
             btnRefrescar.setIcon(new javax.swing.ImageIcon(urlRefresh));
         }
+        btnRefrescar.setToolTipText("Actualizar métricas y datos del Dashboard");
         btnRefrescar.addActionListener(e -> cargarDashboardYClientes());
         pnlAccionesDash.add(btnRefrescar);
 
         pnlHeader.add(pnlAccionesDash, java.awt.BorderLayout.EAST);
+        panelDashboard.add(pnlHeader, java.awt.BorderLayout.NORTH);
 
         // 2. Tarjetas KPI
         javax.swing.JPanel pnlKpis = new javax.swing.JPanel(new java.awt.GridLayout(1, 4, 12, 10));
         pnlKpis.setOpaque(false);
-        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 75));
+        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 90));
 
         lblVentasHoy = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
         lblTicketPromedio = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
@@ -6878,23 +6881,18 @@ public final class Sistema extends javax.swing.JFrame {
         pnlKpis.add(crearCardKpi("VENTAS TOTALES", lblVentasHistoricas, new java.awt.Color(255, 245, 230), new java.awt.Color(253, 126, 20)));
         pnlKpis.add(crearCardKpi("CLIENTES Y ACTIVIDAD", lblClientesYMesas, new java.awt.Color(245, 235, 255), new java.awt.Color(111, 66, 193)));
 
-        javax.swing.JPanel pnlNorte = new javax.swing.JPanel(new java.awt.BorderLayout(5, 8));
-        pnlNorte.setOpaque(false);
-        pnlNorte.add(pnlHeader, java.awt.BorderLayout.NORTH);
-        pnlNorte.add(pnlKpis, java.awt.BorderLayout.CENTER);
-
         // 2.1 Franja: Resumen de Ventas (USD / Bs / métodos de pago)
         javax.swing.JPanel pnlResumen = new javax.swing.JPanel(new java.awt.BorderLayout(8, 4));
         pnlResumen.setBackground(java.awt.Color.WHITE);
         pnlResumen.setBorder(javax.swing.BorderFactory.createTitledBorder(
                 javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                "Resumen de Ventas",
+                "Resumen de Ventas por Período",
                 javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                 javax.swing.border.TitledBorder.DEFAULT_POSITION,
                 new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13),
                 new java.awt.Color(40, 40, 40)));
 
-        javax.swing.JPanel pnlControlesResumen = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 2));
+        javax.swing.JPanel pnlControlesResumen = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 4));
         pnlControlesResumen.setOpaque(false);
         pnlControlesResumen.add(new javax.swing.JLabel("Período:"));
         comboRangoResumen = new javax.swing.JComboBox<>(new String[]{"Hoy", "Ayer", "Últimos 7 días", "Este mes", "Personalizado"});
@@ -6921,9 +6919,9 @@ public final class Sistema extends javax.swing.JFrame {
         pnlControlesResumen.add(btnPdfResumen);
         pnlResumen.add(pnlControlesResumen, java.awt.BorderLayout.NORTH);
 
-        javax.swing.JPanel pnlTarjetasResumen = new javax.swing.JPanel(new java.awt.GridLayout(2, 1, 6, 6));
+        javax.swing.JPanel pnlTarjetasResumen = new javax.swing.JPanel(new java.awt.GridLayout(2, 1, 6, 8));
         pnlTarjetasResumen.setOpaque(false);
-        pnlTarjetasResumen.setPreferredSize(new java.awt.Dimension(240, 118));
+        pnlTarjetasResumen.setPreferredSize(new java.awt.Dimension(280, 140));
         lblResumenUsd = new javax.swing.JLabel("Pulsa Ver para calcular", javax.swing.SwingConstants.CENTER);
         lblResumenBs = new javax.swing.JLabel("Pulsa Ver para calcular", javax.swing.SwingConstants.CENTER);
         pnlTarjetasResumen.add(crearCardKpi("VENTAS DEL PERÍODO (USD)", lblResumenUsd, new java.awt.Color(230, 248, 235), new java.awt.Color(40, 167, 69)));
@@ -6935,83 +6933,30 @@ public final class Sistema extends javax.swing.JFrame {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
         });
-        tableMetodosResumen.setRowHeight(20);
+        tableMetodosResumen.setRowHeight(22);
         configurarTablaIndividual(tableMetodosResumen);
         javax.swing.JScrollPane scrollMetodosResumen = new javax.swing.JScrollPane(tableMetodosResumen);
 
-        javax.swing.JPanel pnlCuerpoResumen = new javax.swing.JPanel(new java.awt.BorderLayout(8, 4));
+        javax.swing.JPanel pnlCuerpoResumen = new javax.swing.JPanel(new java.awt.BorderLayout(10, 4));
         pnlCuerpoResumen.setOpaque(false);
         pnlCuerpoResumen.add(scrollMetodosResumen, java.awt.BorderLayout.CENTER);
         pnlCuerpoResumen.add(pnlTarjetasResumen, java.awt.BorderLayout.EAST);
         pnlResumen.add(pnlCuerpoResumen, java.awt.BorderLayout.CENTER);
-        pnlResumen.setPreferredSize(new java.awt.Dimension(1000, 178));
-
-        pnlNorte.add(pnlResumen, java.awt.BorderLayout.SOUTH);
         actualizarVisibilidadFechasResumen();
-        panelDashboard.add(pnlNorte, java.awt.BorderLayout.NORTH);
 
-        // 3. Área Central (Split Izquierda: Top Platos | Derecha: Clientes y Facturas)
-        javax.swing.JSplitPane splitPrincipal = new javax.swing.JSplitPane(javax.swing.JSplitPane.HORIZONTAL_SPLIT);
-        splitPrincipal.setDividerLocation(300);
-        splitPrincipal.setOpaque(false);
+        // SUB-TAB 1: Ventas & Métricas
+        javax.swing.JPanel pnlTabVentas = new javax.swing.JPanel(new java.awt.BorderLayout(8, 10));
+        pnlTabVentas.setOpaque(false);
+        pnlTabVentas.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 6, 8, 6));
+        pnlTabVentas.add(pnlKpis, java.awt.BorderLayout.NORTH);
+        pnlTabVentas.add(pnlResumen, java.awt.BorderLayout.CENTER);
 
-        // Panel Izquierdo: Tabbed con Top Platos y Rendimiento Mesoneros
-        tabLeftDashboard = new javax.swing.JTabbedPane();
-        tabLeftDashboard.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        // SUB-TAB 2: Directorio de Clientes y Facturas
+        javax.swing.JPanel pnlTabClientes = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
+        pnlTabClientes.setOpaque(false);
+        pnlTabClientes.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 6, 6, 6));
 
-        javax.swing.JPanel pnlTopPlatos = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
-        pnlTopPlatos.setBackground(java.awt.Color.WHITE);
-        pnlTopPlatos.setBorder(javax.swing.BorderFactory.createTitledBorder(
-                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                "Top Platos Más Vendidos",
-                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
-                javax.swing.border.TitledBorder.DEFAULT_POSITION,
-                new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13),
-                new java.awt.Color(40, 40, 40)));
-
-        tableTopPlatos = new javax.swing.JTable(new javax.swing.table.DefaultTableModel(
-                new Object[][]{}, new String[]{"Plato", "Cant.", "Total ($)", "Total (Bs.)"}
-        ) {
-            @Override
-            public boolean isCellEditable(int r, int c) { return false; }
-        });
-        tableTopPlatos.setRowHeight(22);
-        pnlTopPlatos.add(new javax.swing.JScrollPane(tableTopPlatos), java.awt.BorderLayout.CENTER);
-        configurarTablaIndividual(tableTopPlatos);
-        tabLeftDashboard.addTab("Top Platos", pnlTopPlatos);
-
-        javax.swing.JPanel pnlMesonerosDashboard = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
-        pnlMesonerosDashboard.setBackground(java.awt.Color.WHITE);
-        pnlMesonerosDashboard.setBorder(javax.swing.BorderFactory.createTitledBorder(
-                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                "Atención por Mesonero",
-                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
-                javax.swing.border.TitledBorder.DEFAULT_POSITION,
-                new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13),
-                new java.awt.Color(40, 40, 40)));
-
-        tableMesonerosDashboard = new javax.swing.JTable(new javax.swing.table.DefaultTableModel(
-                new Object[][]{}, new String[]{"Mesonero / Atención", "Pedidos", "Total ($)", "Total (Bs.)"}
-        ) {
-            @Override
-            public boolean isCellEditable(int r, int c) { return false; }
-        });
-        tableMesonerosDashboard.setRowHeight(22);
-        pnlMesonerosDashboard.add(new javax.swing.JScrollPane(tableMesonerosDashboard), java.awt.BorderLayout.CENTER);
-        configurarTablaIndividual(tableMesonerosDashboard);
-        tabLeftDashboard.addTab("Mesoneros", pnlMesonerosDashboard);
-        // Tope de ancho: evita scroll horizontal en pantallas de 1366 px.
-        tabLeftDashboard.setPreferredSize(new java.awt.Dimension(360, 600));
-
-        splitPrincipal.setDividerLocation(360);
-        splitPrincipal.setResizeWeight(0.30);
-        splitPrincipal.setLeftComponent(tabLeftDashboard);
-
-        // Panel Derecho: Clientes y Facturas
-        javax.swing.JPanel pnlClientesYFacturas = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
-        pnlClientesYFacturas.setOpaque(false);
-
-        // Subpanel Clientes (Norte)
+        // Subpanel Clientes (Norte de Split)
         javax.swing.JPanel pnlClientes = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
         pnlClientes.setBackground(java.awt.Color.WHITE);
         pnlClientes.setBorder(javax.swing.BorderFactory.createTitledBorder(
@@ -7025,7 +6970,7 @@ public final class Sistema extends javax.swing.JFrame {
         javax.swing.JPanel pnlBarraBuscar = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 4));
         pnlBarraBuscar.setOpaque(false);
         pnlBarraBuscar.add(new javax.swing.JLabel("Buscar por Nombre o Cédula/RIF:"));
-        txtBuscarCliente = new javax.swing.JTextField(16);
+        txtBuscarCliente = new javax.swing.JTextField(18);
         txtBuscarCliente.addActionListener(e -> buscarYListarClientes(txtBuscarCliente.getText().trim()));
         pnlBarraBuscar.add(txtBuscarCliente);
 
@@ -7061,7 +7006,7 @@ public final class Sistema extends javax.swing.JFrame {
         pnlClientes.add(new javax.swing.JScrollPane(tableClientes), java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableClientes);
 
-        // Subpanel Facturas del Cliente (Sur)
+        // Subpanel Facturas del Cliente (Sur de Split)
         javax.swing.JPanel pnlFacturas = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
         pnlFacturas.setBackground(java.awt.Color.WHITE);
         pnlFacturas.setBorder(javax.swing.BorderFactory.createTitledBorder(
@@ -7114,13 +7059,84 @@ public final class Sistema extends javax.swing.JFrame {
         pnlFacturas.add(new javax.swing.JScrollPane(tableFacturasCliente), java.awt.BorderLayout.CENTER);
         configurarTablaIndividual(tableFacturasCliente);
 
-        javax.swing.JSplitPane splitDerecha = new javax.swing.JSplitPane(javax.swing.JSplitPane.VERTICAL_SPLIT, pnlClientes, pnlFacturas);
-        splitDerecha.setDividerLocation(180);
-        splitDerecha.setOpaque(false);
-        pnlClientesYFacturas.add(splitDerecha, java.awt.BorderLayout.CENTER);
+        javax.swing.JSplitPane splitClientes = new javax.swing.JSplitPane(javax.swing.JSplitPane.VERTICAL_SPLIT, pnlClientes, pnlFacturas);
+        splitClientes.setDividerLocation(260);
+        splitClientes.setResizeWeight(0.45);
+        splitClientes.setContinuousLayout(true);
+        splitClientes.setOpaque(false);
+        pnlTabClientes.add(splitClientes, java.awt.BorderLayout.CENTER);
 
-        splitPrincipal.setRightComponent(pnlClientesYFacturas);
-        panelDashboard.add(splitPrincipal, java.awt.BorderLayout.CENTER);
+        // SUB-TAB 3: Rendimiento y Atención (Top Platos y Mesoneros)
+        javax.swing.JPanel pnlTabRendimiento = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
+        pnlTabRendimiento.setOpaque(false);
+        pnlTabRendimiento.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 6, 6, 6));
+
+        tabLeftDashboard = new javax.swing.JTabbedPane();
+        tabLeftDashboard.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+
+        javax.swing.JPanel pnlTopPlatos = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
+        pnlTopPlatos.setBackground(java.awt.Color.WHITE);
+        pnlTopPlatos.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                "Top Platos Más Vendidos",
+                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
+                javax.swing.border.TitledBorder.DEFAULT_POSITION,
+                new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13),
+                new java.awt.Color(40, 40, 40)));
+
+        tableTopPlatos = new javax.swing.JTable(new javax.swing.table.DefaultTableModel(
+                new Object[][]{}, new String[]{"Plato", "Cant.", "Total ($)", "Total (Bs.)"}
+        ) {
+            @Override
+            public boolean isCellEditable(int r, int c) { return false; }
+        });
+        tableTopPlatos.setRowHeight(22);
+        pnlTopPlatos.add(new javax.swing.JScrollPane(tableTopPlatos), java.awt.BorderLayout.CENTER);
+        configurarTablaIndividual(tableTopPlatos);
+        tabLeftDashboard.addTab("Top Platos", pnlTopPlatos);
+
+        javax.swing.JPanel pnlMesonerosDashboard = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
+        pnlMesonerosDashboard.setBackground(java.awt.Color.WHITE);
+        pnlMesonerosDashboard.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                "Atención por Mesonero",
+                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
+                javax.swing.border.TitledBorder.DEFAULT_POSITION,
+                new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13),
+                new java.awt.Color(40, 40, 40)));
+
+        tableMesonerosDashboard = new javax.swing.JTable(new javax.swing.table.DefaultTableModel(
+                new Object[][]{}, new String[]{"Mesonero / Atención", "Pedidos", "Total ($)", "Total (Bs.)"}
+        ) {
+            @Override
+            public boolean isCellEditable(int r, int c) { return false; }
+        });
+        tableMesonerosDashboard.setRowHeight(22);
+        pnlMesonerosDashboard.add(new javax.swing.JScrollPane(tableMesonerosDashboard), java.awt.BorderLayout.CENTER);
+        configurarTablaIndividual(tableMesonerosDashboard);
+        tabLeftDashboard.addTab("Mesoneros", pnlMesonerosDashboard);
+
+        pnlTabRendimiento.add(tabLeftDashboard, java.awt.BorderLayout.CENTER);
+
+        // Ensamble de Sub-Pestañas en tabDashboardInterno
+        tabDashboardInterno = new javax.swing.JTabbedPane();
+        tabDashboardInterno.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13));
+        tabDashboardInterno.addTab("Ventas y Métricas", pnlTabVentas);
+        tabDashboardInterno.addTab("Directorio de Clientes", pnlTabClientes);
+        tabDashboardInterno.addTab("Rendimiento", pnlTabRendimiento);
+
+        tabDashboardInterno.addChangeListener(e -> {
+            int sel = tabDashboardInterno.getSelectedIndex();
+            if (sel == 0) {
+                cargarResumenVentas();
+            } else if (sel == 1) {
+                if (tableClientes != null && tableClientes.getRowCount() == 0) {
+                    buscarYListarClientes("");
+                }
+            }
+        });
+
+        panelDashboard.add(tabDashboardInterno, java.awt.BorderLayout.CENTER);
 
         // Añadir Pestaña a jTabbedPane1
         jTabbedPane1.addTab("Dashboard", panelDashboard);
@@ -7358,6 +7374,7 @@ public final class Sistema extends javax.swing.JFrame {
                         mostrarErrorDashboard(error);
                     }
                 }).execute();
+        cargarResumenVentas();
     }
 
     private void mostrarDashboardEnPantalla(DashboardSwingWorker.DatosDashboard datos) {
@@ -11408,6 +11425,10 @@ public final class Sistema extends javax.swing.JFrame {
 
     public javax.swing.JTabbedPane getTabLeftDashboard() {
         return tabLeftDashboard;
+    }
+
+    public javax.swing.JTabbedPane getTabDashboardInterno() {
+        return tabDashboardInterno;
     }
 
     public javax.swing.JTable getTableUsuarios() {
