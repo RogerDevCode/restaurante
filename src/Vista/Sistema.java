@@ -6920,11 +6920,11 @@ public final class Sistema extends javax.swing.JFrame {
         pnlHeader.add(pnlAccionesDash, java.awt.BorderLayout.EAST);
         panelDashboard.add(pnlHeader, java.awt.BorderLayout.NORTH);
 
-        // 2. Tarjetas KPI en Grid 2x2
+        // 2. Tarjetas KPI en Grid 2x2 (+10% de altura para mayor holgura)
         javax.swing.JPanel pnlKpis = new javax.swing.JPanel(new java.awt.GridLayout(2, 2, 14, 10));
         pnlKpis.setOpaque(false);
-        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 270));
-        pnlKpis.setMinimumSize(new java.awt.Dimension(800, 240));
+        pnlKpis.setPreferredSize(new java.awt.Dimension(1000, 300));
+        pnlKpis.setMinimumSize(new java.awt.Dimension(800, 265));
 
         lblVentasHoy = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
         lblTicketPromedio = new javax.swing.JLabel("Cargando...", javax.swing.SwingConstants.CENTER);
