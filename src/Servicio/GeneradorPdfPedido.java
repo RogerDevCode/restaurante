@@ -466,7 +466,6 @@ public final class GeneradorPdfPedido {
         info.add("Atendido: " + texto(pedido.getUsuario()) + "\n");
         info.add("Cliente: " + texto(pedido.getClienteNombre()) + "\n");
         info.add("Cédula/RIF: " + texto(pedido.getClienteDocumento()) + "\n");
-        info.add("Método de Pago: " + textoFormaPago(pedido) + "\n");
         documento.add(info);
 
         Paragraph sep2 = new Paragraph("----------------------------------------------", fontSep);
@@ -822,7 +821,7 @@ public final class GeneradorPdfPedido {
             aviso.setAlignment(Element.ALIGN_CENTER);
             documento.add(aviso);
         } else {
-            Paragraph firma = new Paragraph("Forma de Pago: " + textoFormaPago(pedido) + "\n\n------------------------------------\nFirma\n",
+            Paragraph firma = new Paragraph("Método de Pago: " + textoFormaPago(pedido) + "\n\n------------------------------------\nFirma\n",
                     new Font(Font.FontFamily.HELVETICA, 7.5f, Font.NORMAL, BaseColor.BLACK));
             firma.setAlignment(Element.ALIGN_CENTER);
             documento.add(firma);
@@ -859,8 +858,7 @@ public final class GeneradorPdfPedido {
                         ? "\nModalidad: Pedido rápido para llevar"
                         : "\nSala: " + texto(pedido.getSala()) + "\nN° Mesa: " + pedido.getNum_mesa())
                 + "\nCliente: " + texto(pedido.getClienteNombre())
-                + "\nCédula/RIF: " + texto(pedido.getClienteDocumento())
-                + "\nMétodo de Pago: " + textoFormaPago(pedido));
+                + "\nCédula/RIF: " + texto(pedido.getClienteDocumento()));
         encabezado.addCell(informacion);
         documento.add(encabezado);
         documento.add(Chunk.NEWLINE);
@@ -1041,7 +1039,7 @@ public final class GeneradorPdfPedido {
             documento.add(notaEstimada);
         }
 
-        Paragraph firma = new Paragraph("Forma de Pago: " + textoFormaPago(pedido) + "\n\n------------------------------------\nFirma\n");
+        Paragraph firma = new Paragraph("Método de Pago: " + textoFormaPago(pedido) + "\n\n------------------------------------\nFirma\n");
         firma.setAlignment(Element.ALIGN_CENTER);
         documento.add(Chunk.NEWLINE);
         documento.add(firma);
