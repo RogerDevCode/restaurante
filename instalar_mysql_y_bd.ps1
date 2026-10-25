@@ -118,7 +118,31 @@ try {
     $probe = Invoke-MySql $rootFile @("-N", "-B", "-e", "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='restaurante'") $null
     if ($probe.Code -ne 0) { throw "No se pudo verificar la existencia de restaurante como root. No se modificó la base." }
     if ($probe.Output.Trim() -ne "0") {
-        throw "La base restaurante ya existe. Este instalador es solo para una base nueva y no la sobrescribirá. Para actualizar use actualizar_bd.bat."
+        Write-Host ""
+        Write-Host "AVISO: La base de datos 'restaurante' ya existe en este equipo." -ForegroundColor Yellow
+        Write-Host "Este instalador es solo para una base nueva y no la sobrescribira." -ForegroundColor Yellow
+        Write-Host "Sus datos actuales (ventas, platos, clientes, etc.) estan seguros y no se borraran." -ForegroundColor Cyan
+        Write-Host ""
+        $resp = Read-Host "Desea actualizar la base de datos existente conservando todos sus datos? (S/N) [S]"
+        if ([string]::IsNullOrWhiteSpace($resp) -or $resp.Trim().ToUpperInvariant() -eq "S" -or $resp.Trim().ToUpperInvariant() -eq "SI") {
+            Write-Host "Iniciando actualizador seguro de base de datos (actualizar_bd.bat)..." -ForegroundColor Green
+            $actualizarBat = Join-Path $scriptDir "actualizar_bd.bat"
+            if (-not (Test-Path -LiteralPath $actualizarBat)) {
+                $actualizarBat = Join-Path (Join-Path $scriptDir "Restaurante_Ejecutable") "actualizar_bd.bat"
+            }
+            if (Test-Path -LiteralPath $actualizarBat) {
+                & cmd.exe /c "`"$actualizarBat`""
+                if ($LASTEXITCODE -ne 0) {
+                    throw "La actualizacion de la base de datos fallo (codigo $LASTEXITCODE). Revise logs y respaldos."
+                }
+                Write-Host "Base de datos actualizada con exito conservando todos los datos." -ForegroundColor Green
+                return
+            } else {
+                throw "No se encontro actualizar_bd.bat para ejecutar la actualizacion."
+            }
+        } else {
+            throw "Operacion cancelada por el usuario. La base de datos no fue modificada."
+        }
     }
 
     $envFile = Join-Path $scriptDir ".env"
