@@ -24,6 +24,13 @@ target.txt
 tablet.txt
 tickets/
 respaldo_*.sql
+dashboard.jpeg
+metodo-pago.jpeg
+plan-tablets.md
+repaso.mp4
+.kilo/
+proceso/
+propuesta/
 
 # Respaldos y claves fuera de git (regla AGENTS.md: info sensible aunque sea de test)
 **/respaldo_*.sql

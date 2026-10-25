@@ -188,6 +188,8 @@ public final class Sistema extends javax.swing.JFrame {
     private final Modelo.ClienteDao clienteDao = new Modelo.ClienteDao();
     private javax.swing.JPanel panelDashboard;
     private javax.swing.JButton btnDashboard;
+    private javax.swing.JButton btnAcercaDe;
+    private javax.swing.JPanel panelAcercaDe;
     private javax.swing.JButton btnPedidoRapido;
     private boolean modoPedidoRapido;
     private javax.swing.JTextField txtBuscarCliente;
@@ -961,6 +963,7 @@ public final class Sistema extends javax.swing.JFrame {
         initDashboardYClientes();
         initIvaPlatosYBarraSalas();
         initGestionUsuarios();
+        initAcercaDe();
 
         if (politicaAcceso.esAdministrador() && panelDashboard != null) {
             int idxDashboard = jTabbedPane1.indexOfComponent(panelDashboard);
@@ -1096,6 +1099,12 @@ public final class Sistema extends javax.swing.JFrame {
                 PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES,
                 PoliticaAcceso.Accion.COBRAR_PEDIDOS, PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS);
         habilitarTab("Categorías", PoliticaAcceso.Accion.CONSULTAR_PLATOS);
+        for (int i = 0; i < jTabbedPane1.getTabCount(); i++) {
+            if ("Acerca de".equals(jTabbedPane1.getTitleAt(i))) {
+                jTabbedPane1.setEnabledAt(i, true);
+                break;
+            }
+        }
 
         if (btnSala != null) btnSala.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_SALAS));
         if (btnPlatos != null) btnPlatos.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PLATOS));
@@ -1109,6 +1118,7 @@ public final class Sistema extends javax.swing.JFrame {
                 PoliticaAcceso.Accion.REGISTRAR_PEDIDOS, PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES,
                 PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS, PoliticaAcceso.Accion.COBRAR_PEDIDOS));
         if (btnPedidoRapido != null) btnPedidoRapido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.REGISTRAR_PEDIDOS));
+        if (btnAcercaDe != null) btnAcercaDe.setEnabled(true);
 
         boolean gestionarSalas = politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_SALAS);
         for (javax.swing.JButton boton : new javax.swing.JButton[]{btnRegistrarSala, btnActualizarSala, btnNuevoSala, btnEliminarSala}) {
@@ -2767,6 +2777,23 @@ public final class Sistema extends javax.swing.JFrame {
             cargarDashboardYClientes();
         });
 
+        btnAcercaDe = new javax.swing.JButton("Acerca de");
+        btnAcercaDe.setBackground(new java.awt.Color(0, 0, 0));
+        btnAcercaDe.setForeground(new java.awt.Color(255, 255, 255));
+        btnAcercaDe.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        btnAcercaDe.setIcon(iconoBarra("/Img/capip_icon.png"));
+        btnAcercaDe.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        btnAcercaDe.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnAcercaDe.setFocusable(false);
+        btnAcercaDe.setToolTipText("Información de CAPIP Sistemas C.A., soporte y licencia");
+        btnAcercaDe.addActionListener(e -> {
+            int idx = jTabbedPane1.indexOfTab("Acerca de");
+            if (idx != -1) {
+                jTabbedPane1.setEnabledAt(idx, true);
+                jTabbedPane1.setSelectedIndex(idx);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -2786,6 +2813,7 @@ public final class Sistema extends javax.swing.JFrame {
             .addComponent(btnPlatos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnCategorias, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(btnDashboard, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(btnAcercaDe, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addComponent(labelLogo, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(0, 0, Short.MAX_VALUE))
@@ -2818,6 +2846,8 @@ public final class Sistema extends javax.swing.JFrame {
                 .addComponent(btnUsuarios, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(12, 12, 12)
                 .addComponent(btnDashboard, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(12, 12, 12)
+                .addComponent(btnAcercaDe, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -7326,6 +7356,277 @@ public final class Sistema extends javax.swing.JFrame {
         return card;
     }
 
+    private void initAcercaDe() {
+        panelAcercaDe = new javax.swing.JPanel(new java.awt.BorderLayout());
+        panelAcercaDe.setBackground(new java.awt.Color(245, 247, 250));
+
+        javax.swing.JPanel pnlContenedor = new javax.swing.JPanel();
+        pnlContenedor.setLayout(new javax.swing.BoxLayout(pnlContenedor, javax.swing.BoxLayout.Y_AXIS));
+        pnlContenedor.setOpaque(false);
+        pnlContenedor.setBorder(javax.swing.BorderFactory.createEmptyBorder(20, 30, 25, 30));
+
+        // 1. Tarjeta Cabecera: Logo Profesional e Identidad Corporativa
+        javax.swing.JPanel cardHero = new javax.swing.JPanel(new java.awt.BorderLayout(20, 15));
+        cardHero.setBackground(java.awt.Color.WHITE);
+        cardHero.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(218, 224, 233), 1, true),
+                javax.swing.BorderFactory.createEmptyBorder(20, 25, 20, 25)));
+        cardHero.setMaximumSize(new java.awt.Dimension(950, 180));
+        cardHero.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+
+        javax.swing.JLabel lblLogo = new javax.swing.JLabel();
+        lblLogo.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        java.net.URL urlLogo = Sistema.class.getResource("/Img/capip_logo.png");
+        if (urlLogo != null) {
+            javax.swing.ImageIcon raw = new javax.swing.ImageIcon(urlLogo);
+            java.awt.Image scaled = raw.getImage().getScaledInstance(380, 95, java.awt.Image.SCALE_SMOOTH);
+            lblLogo.setIcon(new javax.swing.ImageIcon(scaled));
+        } else {
+            lblLogo.setText("CAPIP SISTEMAS C.A.");
+            lblLogo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 22));
+            lblLogo.setForeground(new java.awt.Color(11, 37, 69));
+        }
+        cardHero.add(lblLogo, java.awt.BorderLayout.WEST);
+
+        javax.swing.JPanel pnlHeroInfo = new javax.swing.JPanel();
+        pnlHeroInfo.setLayout(new javax.swing.BoxLayout(pnlHeroInfo, javax.swing.BoxLayout.Y_AXIS));
+        pnlHeroInfo.setOpaque(false);
+
+        javax.swing.JLabel lblAppTitulo = new javax.swing.JLabel("Restaurante 2026");
+        lblAppTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 22));
+        lblAppTitulo.setForeground(new java.awt.Color(20, 40, 80));
+
+        javax.swing.JLabel lblAppSubtitulo = new javax.swing.JLabel("Sistema de Gestión Gastronómica & Punto de Venta (POS)");
+        lblAppSubtitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 13));
+        lblAppSubtitulo.setForeground(new java.awt.Color(85, 96, 112));
+
+        javax.swing.JLabel lblVersion = new javax.swing.JLabel("Versión 2.0 LTS — Edición Empresarial (2026 - 2027)");
+        lblVersion.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        lblVersion.setForeground(new java.awt.Color(0, 102, 102));
+
+        pnlHeroInfo.add(lblAppTitulo);
+        pnlHeroInfo.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(0, 4)));
+        pnlHeroInfo.add(lblAppSubtitulo);
+        pnlHeroInfo.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(0, 8)));
+        pnlHeroInfo.add(lblVersion);
+
+        cardHero.add(pnlHeroInfo, java.awt.BorderLayout.CENTER);
+        pnlContenedor.add(cardHero);
+        pnlContenedor.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(0, 16)));
+
+        // 2. Fila con dos tarjetas: Licencia Comercial y Contacto/Soporte
+        javax.swing.JPanel pnlFilaMedia = new javax.swing.JPanel(new java.awt.GridLayout(1, 2, 16, 0));
+        pnlFilaMedia.setOpaque(false);
+        pnlFilaMedia.setMaximumSize(new java.awt.Dimension(950, 240));
+        pnlFilaMedia.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+
+        // Tarjeta Licencia Comercial
+        javax.swing.JPanel cardLicencia = new javax.swing.JPanel(new java.awt.BorderLayout(10, 12));
+        cardLicencia.setBackground(java.awt.Color.WHITE);
+        cardLicencia.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(218, 224, 233), 1, true),
+                javax.swing.BorderFactory.createEmptyBorder(16, 20, 16, 20)));
+
+        javax.swing.JPanel pnlLicenciaHeader = new javax.swing.JPanel(new java.awt.BorderLayout(8, 0));
+        pnlLicenciaHeader.setOpaque(false);
+        javax.swing.JLabel lblLicenciaTitulo = new javax.swing.JLabel("Licencia de Software");
+        lblLicenciaTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 15));
+        lblLicenciaTitulo.setForeground(new java.awt.Color(20, 40, 80));
+
+        javax.swing.JLabel badgeLicencia = new javax.swing.JLabel("  LICENCIA COMERCIAL  ");
+        badgeLicencia.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        badgeLicencia.setOpaque(true);
+        badgeLicencia.setBackground(new java.awt.Color(232, 245, 233));
+        badgeLicencia.setForeground(new java.awt.Color(27, 94, 32));
+        badgeLicencia.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(129, 199, 132), 1, true));
+
+        pnlLicenciaHeader.add(lblLicenciaTitulo, java.awt.BorderLayout.WEST);
+        pnlLicenciaHeader.add(badgeLicencia, java.awt.BorderLayout.EAST);
+        cardLicencia.add(pnlLicenciaHeader, java.awt.BorderLayout.NORTH);
+
+        javax.swing.JPanel pnlLicenciaDetalles = new javax.swing.JPanel();
+        pnlLicenciaDetalles.setLayout(new javax.swing.BoxLayout(pnlLicenciaDetalles, javax.swing.BoxLayout.Y_AXIS));
+        pnlLicenciaDetalles.setOpaque(false);
+
+        javax.swing.JLabel lblTitular = new javax.swing.JLabel("<html><b>Titular:</b> CAPIP Sistemas C.A.</html>");
+        lblTitular.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        lblTitular.setForeground(new java.awt.Color(40, 40, 40));
+
+        javax.swing.JLabel lblDerechos = new javax.swing.JLabel("<html><b>Derechos Reservados:</b> Todos los derechos reservados © 2026, 2027</html>");
+        lblDerechos.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        lblDerechos.setForeground(new java.awt.Color(40, 40, 40));
+
+        javax.swing.JLabel lblTipoLic = new javax.swing.JLabel("<html><b>Modalidad:</b> Licencia Comercial</html>");
+        lblTipoLic.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        lblTipoLic.setForeground(new java.awt.Color(40, 40, 40));
+
+        javax.swing.JLabel lblProteccion = new javax.swing.JLabel("<html><b>Seguridad:</b> Criptografía asimétrica y verificación de integridad HMAC SHA-256.</html>");
+        lblProteccion.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        lblProteccion.setForeground(new java.awt.Color(100, 110, 120));
+
+        pnlLicenciaDetalles.add(lblTitular);
+        pnlLicenciaDetalles.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(0, 6)));
+        pnlLicenciaDetalles.add(lblDerechos);
+        pnlLicenciaDetalles.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(0, 6)));
+        pnlLicenciaDetalles.add(lblTipoLic);
+        pnlLicenciaDetalles.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(0, 8)));
+        pnlLicenciaDetalles.add(lblProteccion);
+
+        cardLicencia.add(pnlLicenciaDetalles, java.awt.BorderLayout.CENTER);
+        pnlFilaMedia.add(cardLicencia);
+
+        // Tarjeta Contacto, Ventas y Soporte
+        javax.swing.JPanel cardSoporte = new javax.swing.JPanel(new java.awt.BorderLayout(10, 12));
+        cardSoporte.setBackground(java.awt.Color.WHITE);
+        cardSoporte.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(218, 224, 233), 1, true),
+                javax.swing.BorderFactory.createEmptyBorder(16, 20, 16, 20)));
+
+        javax.swing.JLabel lblSoporteTitulo = new javax.swing.JLabel("Ventas y Soporte");
+        lblSoporteTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 15));
+        lblSoporteTitulo.setForeground(new java.awt.Color(20, 40, 80));
+        cardSoporte.add(lblSoporteTitulo, java.awt.BorderLayout.NORTH);
+
+        javax.swing.JPanel pnlSoporteDetalles = new javax.swing.JPanel();
+        pnlSoporteDetalles.setLayout(new javax.swing.BoxLayout(pnlSoporteDetalles, javax.swing.BoxLayout.Y_AXIS));
+        pnlSoporteDetalles.setOpaque(false);
+
+        javax.swing.JLabel lblEmpresaNombre = new javax.swing.JLabel("CAPIP Sistemas C.A.");
+        lblEmpresaNombre.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
+        lblEmpresaNombre.setForeground(new java.awt.Color(11, 37, 69));
+
+        javax.swing.JLabel lblEmailTag = new javax.swing.JLabel("Correo electrónico directo:");
+        lblEmailTag.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        lblEmailTag.setForeground(new java.awt.Color(100, 110, 120));
+
+        javax.swing.JLabel lblEmailValor = new javax.swing.JLabel("capipsistemas@gmail.com");
+        lblEmailValor.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
+        lblEmailValor.setForeground(new java.awt.Color(11, 94, 215));
+
+        javax.swing.JLabel lblAtencion = new javax.swing.JLabel("<html>Ventas, soporte técnico, asesoría y nuevas terminales.</html>");
+        lblAtencion.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        lblAtencion.setForeground(new java.awt.Color(80, 80, 80));
+
+        pnlSoporteDetalles.add(lblEmpresaNombre);
+        pnlSoporteDetalles.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(0, 4)));
+        pnlSoporteDetalles.add(lblEmailTag);
+        pnlSoporteDetalles.add(lblEmailValor);
+        pnlSoporteDetalles.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(0, 6)));
+        pnlSoporteDetalles.add(lblAtencion);
+
+        cardSoporte.add(pnlSoporteDetalles, java.awt.BorderLayout.CENTER);
+
+        javax.swing.JPanel pnlBotonesSoporte = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+        pnlBotonesSoporte.setOpaque(false);
+
+        javax.swing.JButton btnCopiarCorreo = new javax.swing.JButton("Copiar Correo");
+        btnCopiarCorreo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnCopiarCorreo.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnCopiarCorreo.setToolTipText("Copiar capipsistemas@gmail.com al portapapeles");
+        btnCopiarCorreo.addActionListener(e -> {
+            try {
+                java.awt.datatransfer.StringSelection sel = new java.awt.datatransfer.StringSelection("capipsistemas@gmail.com");
+                java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
+                javax.swing.JOptionPane.showMessageDialog(this,
+                        "Correo 'capipsistemas@gmail.com' copiado al portapapeles con éxito.",
+                        "Soporte CAPIP Sistemas", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                // Modo sin portapapeles o headless
+            }
+        });
+
+        javax.swing.JButton btnContactar = new javax.swing.JButton("Escribir Correo");
+        btnContactar.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnContactar.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnContactar.setToolTipText("Abrir cliente de correo predeterminado");
+        btnContactar.addActionListener(e -> {
+            boolean enviado = false;
+            try {
+                if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.MAIL)) {
+                    java.awt.Desktop.getDesktop().mail(new java.net.URI("mailto:capipsistemas@gmail.com?subject=Contacto%20Restaurante%202026%20-%20Ventas%20y%20Soporte"));
+                    enviado = true;
+                }
+            } catch (Exception ignored) {
+            }
+            if (!enviado) {
+                try {
+                    java.awt.datatransfer.StringSelection sel = new java.awt.datatransfer.StringSelection("capipsistemas@gmail.com");
+                    java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
+                    javax.swing.JOptionPane.showMessageDialog(this,
+                            "Correo 'capipsistemas@gmail.com' copiado al portapapeles.",
+                            "Soporte CAPIP Sistemas", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ignored) {
+                }
+            }
+        });
+
+        pnlBotonesSoporte.add(btnCopiarCorreo);
+        pnlBotonesSoporte.add(btnContactar);
+        cardSoporte.add(pnlBotonesSoporte, java.awt.BorderLayout.SOUTH);
+
+        pnlFilaMedia.add(cardSoporte);
+        pnlContenedor.add(pnlFilaMedia);
+        pnlContenedor.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(0, 16)));
+
+        // 3. Tarjeta Inferior: Especificaciones Técnicas
+        javax.swing.JPanel cardTecnico = new javax.swing.JPanel(new java.awt.BorderLayout(10, 10));
+        cardTecnico.setBackground(java.awt.Color.WHITE);
+        cardTecnico.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(218, 224, 233), 1, true),
+                javax.swing.BorderFactory.createEmptyBorder(16, 20, 16, 20)));
+        cardTecnico.setMaximumSize(new java.awt.Dimension(950, 180));
+        cardTecnico.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+
+        javax.swing.JLabel lblTecnicoTitulo = new javax.swing.JLabel("Arquitectura & Especificaciones Técnicas");
+        lblTecnicoTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 14));
+        lblTecnicoTitulo.setForeground(new java.awt.Color(20, 40, 80));
+        cardTecnico.add(lblTecnicoTitulo, java.awt.BorderLayout.NORTH);
+
+        javax.swing.JPanel pnlGridTecnico = new javax.swing.JPanel(new java.awt.GridLayout(2, 2, 14, 10));
+        pnlGridTecnico.setOpaque(false);
+
+        pnlGridTecnico.add(crearFichaInfoTecnica("Plataforma Runtime", "Java SE 21 LTS 64-Bit Enterprise OpenJDK"));
+        pnlGridTecnico.add(crearFichaInfoTecnica("Motor de Datos", "MySQL 8.4 LTS Transaccional InnoDB"));
+        pnlGridTecnico.add(crearFichaInfoTecnica("Seguridad & Cifrado", "Auditoría Encadenada SHA-256 + HMAC"));
+        pnlGridTecnico.add(crearFichaInfoTecnica("Motor de Impresión", "iText 5 & PDFBox Vectorial POS Directo"));
+
+        cardTecnico.add(pnlGridTecnico, java.awt.BorderLayout.CENTER);
+
+        javax.swing.JLabel lblPieLegal = new javax.swing.JLabel("© 2026 - 2027 CAPIP Sistemas C.A. — Prohibida su copia o distribución no autorizada. Licencia Comercial.");
+        lblPieLegal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.ITALIC, 11));
+        lblPieLegal.setForeground(new java.awt.Color(120, 130, 140));
+        lblPieLegal.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        cardTecnico.add(lblPieLegal, java.awt.BorderLayout.SOUTH);
+
+        pnlContenedor.add(cardTecnico);
+
+        javax.swing.JScrollPane scrollAcercaDe = new javax.swing.JScrollPane(pnlContenedor);
+        scrollAcercaDe.setBorder(null);
+        scrollAcercaDe.setOpaque(false);
+        scrollAcercaDe.getViewport().setOpaque(false);
+        scrollAcercaDe.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollAcercaDe.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollAcercaDe.getVerticalScrollBar().setUnitIncrement(16);
+
+        panelAcercaDe.add(scrollAcercaDe, java.awt.BorderLayout.CENTER);
+
+        jTabbedPane1.addTab("Acerca de", panelAcercaDe);
+    }
+
+    private javax.swing.JPanel crearFichaInfoTecnica(String etiqueta, String valor) {
+        javax.swing.JPanel p = new javax.swing.JPanel(new java.awt.BorderLayout(4, 2));
+        p.setOpaque(false);
+        javax.swing.JLabel lblE = new javax.swing.JLabel(etiqueta);
+        lblE.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        lblE.setForeground(new java.awt.Color(100, 110, 120));
+        javax.swing.JLabel lblV = new javax.swing.JLabel(valor);
+        lblV.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        lblV.setForeground(new java.awt.Color(30, 41, 59));
+        p.add(lblE, java.awt.BorderLayout.NORTH);
+        p.add(lblV, java.awt.BorderLayout.CENTER);
+        return p;
+    }
+
     private javax.swing.JSpinner crearSpinnerFechaResumen(java.time.LocalDate inicial) {
         javax.swing.SpinnerDateModel modelo = new javax.swing.SpinnerDateModel(
                 java.util.Date.from(inicial.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()),
@@ -11797,6 +12098,10 @@ public final class Sistema extends javax.swing.JFrame {
 
     public javax.swing.JButton getBtnDashboard() {
         return btnDashboard;
+    }
+
+    public javax.swing.JButton getBtnAcercaDe() {
+        return btnAcercaDe;
     }
 
     public javax.swing.JButton getBtnUsuarios() {
