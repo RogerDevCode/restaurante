@@ -13,7 +13,6 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JRootPane;
 import javax.swing.KeyStroke;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
@@ -64,14 +63,15 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
     }
 
     private void inicializarUi() {
-        setSize(560, 370);
+        // Tamaño incrementado un 30% (740 x 490) con tipografía grande y legible
+        setSize(740, 490);
         setResizable(false);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 
         JPanel panelPrincipal = new JPanel(new BorderLayout(0, 0));
         panelPrincipal.setBackground(COLOR_FONDO_VENTANA);
-        panelPrincipal.setBorder(BorderFactory.createLineBorder(COLOR_ROJO_ALERTA, 4));
+        panelPrincipal.setBorder(BorderFactory.createLineBorder(COLOR_ROJO_ALERTA, 5));
 
         panelPrincipal.add(crearCabecera(), BorderLayout.NORTH);
         panelPrincipal.add(crearCuerpo(), BorderLayout.CENTER);
@@ -83,12 +83,12 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
     }
 
     private JPanel crearCabecera() {
-        JPanel cab = new JPanel(new BorderLayout(10, 4));
+        JPanel cab = new JPanel(new BorderLayout(14, 6));
         cab.setBackground(COLOR_FONDO_CABECERA);
-        cab.setBorder(new EmptyBorder(12, 16, 12, 16));
+        cab.setBorder(new EmptyBorder(16, 20, 16, 20));
 
         JLabel lblIcono = new JLabel("⚠️");
-        lblIcono.setFont(new Font("Segoe UI", Font.PLAIN, 32));
+        lblIcono.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 46));
         cab.add(lblIcono, BorderLayout.WEST);
 
         JPanel pnlTexto = new JPanel();
@@ -96,15 +96,15 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
         pnlTexto.setOpaque(false);
 
         JLabel lblTit = new JLabel("ADVERTENCIA CRÍTICA: COPIA NO AUTORIZADA");
-        lblTit.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTit.setFont(new Font("Segoe UI", Font.BOLD, 19));
         lblTit.setForeground(Color.WHITE);
 
         JLabel lblSub = new JLabel("Este programa no cuenta con una licencia oficial válida registrada.");
-        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         lblSub.setForeground(new Color(250, 219, 216));
 
         pnlTexto.add(lblTit);
-        pnlTexto.add(Box.createVerticalStrut(2));
+        pnlTexto.add(Box.createVerticalStrut(4));
         pnlTexto.add(lblSub);
 
         cab.add(pnlTexto, BorderLayout.CENTER);
@@ -115,37 +115,37 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
         JPanel cuerpo = new JPanel();
         cuerpo.setLayout(new BoxLayout(cuerpo, BoxLayout.Y_AXIS));
         cuerpo.setOpaque(false);
-        cuerpo.setBorder(new EmptyBorder(16, 20, 10, 20));
+        cuerpo.setBorder(new EmptyBorder(22, 28, 16, 28));
 
         JLabel lblAmenaza1 = new JLabel("Protocolo de seguridad activado por el fabricante:");
-        lblAmenaza1.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblAmenaza1.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblAmenaza1.setForeground(COLOR_ROJO_ALERTA);
         lblAmenaza1.setAlignmentX(LEFT_ALIGNMENT);
         cuerpo.add(lblAmenaza1);
 
-        cuerpo.add(Box.createVerticalStrut(6));
+        cuerpo.add(Box.createVerticalStrut(10));
 
-        JLabel lblAmenaza2 = new JLabel("<html>Se procederá al <b>borrado total e irreversible de la Base de Datos</b> y archivos de respaldo.</html>");
-        lblAmenaza2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblAmenaza2.setForeground(new Color(44, 62, 80));
+        JLabel lblAmenaza2 = new JLabel("<html><span style='font-size:13pt; line-height: 1.4; color: #2c3e50;'>"
+                + "Se procederá al <b>borrado total e irreversible de la Base de Datos</b> y archivos de respaldo.</span></html>");
+        lblAmenaza2.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         lblAmenaza2.setAlignmentX(LEFT_ALIGNMENT);
         cuerpo.add(lblAmenaza2);
 
-        cuerpo.add(Box.createVerticalStrut(14));
+        cuerpo.add(Box.createVerticalStrut(20));
 
         barraProgreso = new JProgressBar(0, 100);
         barraProgreso.setStringPainted(true);
-        barraProgreso.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        barraProgreso.setFont(new Font("Segoe UI", Font.BOLD, 15));
         barraProgreso.setForeground(COLOR_ROJO_ALERTA);
-        barraProgreso.setPreferredSize(new Dimension(500, 28));
-        barraProgreso.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        barraProgreso.setPreferredSize(new Dimension(680, 36));
+        barraProgreso.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         barraProgreso.setAlignmentX(LEFT_ALIGNMENT);
         cuerpo.add(barraProgreso);
 
-        cuerpo.add(Box.createVerticalStrut(8));
+        cuerpo.add(Box.createVerticalStrut(14));
 
         lblFaseActual = new JLabel("Iniciando conexión para purga...");
-        lblFaseActual.setFont(new Font("Monospaced", Font.BOLD, 11));
+        lblFaseActual.setFont(new Font("Monospaced", Font.BOLD, 14));
         lblFaseActual.setForeground(new Color(120, 40, 31));
         lblFaseActual.setAlignmentX(LEFT_ALIGNMENT);
         cuerpo.add(lblFaseActual);
@@ -155,18 +155,18 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
     }
 
     private JPanel crearBotonera() {
-        JPanel sur = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 12));
+        JPanel sur = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 16));
         sur.setOpaque(false);
         sur.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(245, 183, 177)));
 
         JButton btnCancelar = new JButton("🛑 CANCELAR BORRADO (ESC)");
         btnCancelar.setName("btnCancelarBroma");
-        btnCancelar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnCancelar.setFont(new Font("Segoe UI", Font.BOLD, 16));
         btnCancelar.setForeground(Color.WHITE);
         btnCancelar.setBackground(new Color(192, 57, 43));
         btnCancelar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCancelar.setFocusPainted(false);
-        btnCancelar.setPreferredSize(new Dimension(260, 38));
+        btnCancelar.setPreferredSize(new Dimension(340, 46));
         btnCancelar.addActionListener(e -> revelarBromaYFinalizar("¡Cancelación de emergencia activada!"));
 
         sur.add(btnCancelar);
@@ -214,12 +214,18 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
             temporizador.stop();
         }
 
-        String mensaje = "😅 ¡TRANQUILO, ES UNA BROMA ENTRE PROGRAMADORES! 😉\n\n"
-                + "• Ningún dato ni tabla fue tocado.\n"
-                + "• Tu Base de Datos y tus respaldos están 100% intactos y seguros.\n\n"
-                + "Iniciando sistema normalmente...";
+        String mensajeHtml = "<html><body style='font-family: Segoe UI, Arial, sans-serif; padding: 8px;'>"
+                + "<h2 style='color: #196f3d; margin-top: 0; font-size: 16pt;'>😅 ¡TRANQUILO, ES UNA BROMA ENTRE PROGRAMADORES! 😉</h2>"
+                + "<p style='font-size: 12pt; color: #2c3e50; line-height: 1.5;'>"
+                + "• Ningún dato ni tabla fue tocado.<br>"
+                + "• Tu Base de Datos y tus respaldos están <b>100% intactos y seguros</b>."
+                + "</p>"
+                + "<p style='font-size: 11pt; color: #7f8c8d; font-style: italic; margin-top: 10px;'>"
+                + "Iniciando sistema normalmente..."
+                + "</p>"
+                + "</body></html>";
 
-        JOptionPane.showMessageDialog(this, mensaje, "🎉 Broma de Desarrolladores", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, mensajeHtml, "🎉 Broma de Desarrolladores", JOptionPane.INFORMATION_MESSAGE);
         dispose();
     }
 }
