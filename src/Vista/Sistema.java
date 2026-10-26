@@ -272,6 +272,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JComboBox<Platos> cbPlatoAsignacion;
     private javax.swing.JComboBox<Modelo.Categoria> cbCategoriaPlato;
     private javax.swing.JCheckBox chkFavoritoPlato;
+    private javax.swing.JCheckBox chkFavoritoFicha;
     private javax.swing.JButton btnAsignarCategoria;
     private final Servicio.ConfiguracionAccesosServicio configuracionAccesos =
             new Servicio.ConfiguracionAccesosServicio();
@@ -1144,6 +1145,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (btnReactivarPlato != null) btnReactivarPlato.setEnabled(gestionarPlatos);
         if (txtNombrePlato != null) txtNombrePlato.setEnabled(gestionarPlatos);
         if (txtPrecioPlato != null) txtPrecioPlato.setEnabled(gestionarPlatos);
+        if (chkFavoritoFicha != null) chkFavoritoFicha.setEnabled(gestionarPlatos);
 
         boolean gestionarUsuarios = politicaAcceso.permite(PoliticaAcceso.Accion.GESTIONAR_USUARIOS);
         for (javax.swing.JButton boton : new javax.swing.JButton[]{btnIniciar, btnLimpiarUsuario, btnEstadoUsuario, btnEliminarUsuario}) {
@@ -5860,6 +5862,9 @@ public final class Sistema extends javax.swing.JFrame {
                     chkPrecioIncluyeIvaPlato.setSelected(platoSel.isAplicaIva() && Boolean.TRUE.equals(platoSel.getPrecioIncluyeIva()));
                 }
                 seleccionarCategoriaFicha(platoSel.getIdCategoria());
+                if (chkFavoritoFicha != null) {
+                    chkFavoritoFicha.setSelected(platoSel.isFavorito());
+                }
                 actualizarPrecioReferenciaPlato();
             } else {
                 txtPrecioPlato.setText(Tables.valorModelo(TablePlatos, filaVista, 2).toString().replaceAll("[^0-9.]", "").trim());
@@ -5874,6 +5879,9 @@ public final class Sistema extends javax.swing.JFrame {
                 if (chkPrecioIncluyeIvaPlato != null) {
                     chkPrecioIncluyeIvaPlato.setEnabled(aplicaIva);
                     chkPrecioIncluyeIvaPlato.setSelected(false);
+                }
+                if (chkFavoritoFicha != null) {
+                    chkFavoritoFicha.setSelected(false);
                 }
                 actualizarPrecioReferenciaPlato();
             }
@@ -10424,6 +10432,9 @@ public final class Sistema extends javax.swing.JFrame {
         if (lblPrecioReferenciaPlato != null) {
             lblPrecioReferenciaPlato.setText("Ref: ---");
         }
+        if (chkFavoritoFicha != null) {
+            chkFavoritoFicha.setSelected(false);
+        }
         if (TablePlatos != null) {
             TablePlatos.clearSelection();
         }
@@ -10659,6 +10670,10 @@ public final class Sistema extends javax.swing.JFrame {
 
     public javax.swing.JCheckBox getChkAplicaIvaPlato() {
         return chkAplicaIvaPlato;
+    }
+
+    public javax.swing.JCheckBox getChkFavoritoFicha() {
+        return chkFavoritoFicha;
     }
 
     public javax.swing.JPanel getPnlDesgloseFiscalPlato() {
@@ -10954,8 +10969,18 @@ public final class Sistema extends javax.swing.JFrame {
             cbCategoriaFicha.setBackground(java.awt.Color.WHITE);
             cbCategoriaFicha.setRenderer(new RendererCategoria());
             cbCategoriaFicha.setToolTipText("Categoría del plato (se guarda con Guardar/Editar)");
-            jPanel11.add(cbCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 187, 240, 26));
+            jPanel11.add(cbCategoriaFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(85, 187, 135, 26));
             cargarCategoriasFicha();
+
+            chkFavoritoFicha = new javax.swing.JCheckBox("★ Favorito");
+            chkFavoritoFicha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+            chkFavoritoFicha.setForeground(new java.awt.Color(160, 100, 0));
+            chkFavoritoFicha.setBackground(new java.awt.Color(204, 204, 204));
+            chkFavoritoFicha.setOpaque(false);
+            chkFavoritoFicha.setFocusable(false);
+            chkFavoritoFicha.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            chkFavoritoFicha.setToolTipText("Marcar como plato favorito (aparece siempre de primero con ★ en pedidos y comandas)");
+            jPanel11.add(chkFavoritoFicha, new org.netbeans.lib.awtextra.AbsoluteConstraints(224, 187, 105, 26));
 
             chkAplicaIvaPlato = new javax.swing.JCheckBox(textoCheckboxIvaPlato(), true);
             chkAplicaIvaPlato.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
@@ -11225,17 +11250,26 @@ public final class Sistema extends javax.swing.JFrame {
         cbCategoriaFicha.setSelectedIndex(0);
     }
 
-    /** Guarda la categoría elegida en la ficha para el plato indicado. */
+    /** Guarda la categoría y el estado de favorito elegidos en la ficha para el plato indicado. */
     private void aplicarCategoriaFicha(String nombrePlato) {
-        if (cbCategoriaFicha == null || nombrePlato == null || nombrePlato.isBlank()) {
+        if (nombrePlato == null || nombrePlato.isBlank()) {
             return;
         }
-        Object sel = cbCategoriaFicha.getSelectedItem();
-        int idCat = (sel instanceof Modelo.Categoria c) ? c.getId() : 0;
-        try {
-            categoriaControlador().asignarPlato(nombrePlato.trim(), idCat);
-        } catch (Exception ex) {
-            mostrarAvisoEnBanda("Plato guardado, pero la categoría no se aplicó: " + mensajeError(ex));
+        if (cbCategoriaFicha != null) {
+            Object sel = cbCategoriaFicha.getSelectedItem();
+            int idCat = (sel instanceof Modelo.Categoria c) ? c.getId() : 0;
+            try {
+                categoriaControlador().asignarPlato(nombrePlato.trim(), idCat);
+            } catch (Exception ex) {
+                mostrarAvisoEnBanda("Plato guardado, pero la categoría no se aplicó: " + mensajeError(ex));
+            }
+        }
+        if (chkFavoritoFicha != null) {
+            try {
+                favoritoControlador().marcar(nombrePlato.trim(), chkFavoritoFicha.isSelected());
+            } catch (Exception ex) {
+                mostrarAvisoEnBanda("Plato guardado, pero el estado favorito no se aplicó: " + mensajeError(ex));
+            }
         }
     }
 
