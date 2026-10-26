@@ -10,8 +10,8 @@ BEGIN
     DECLARE v_fk_pago VARCHAR(64) DEFAULT NULL;
     DECLARE v_sql TEXT;
     -- 1. Ampliación de columnas en config y usuarios
-    ALTER TABLE config MODIFY COLUMN ruc VARCHAR(30) COLLATE utf8_spanish_ci NOT NULL;
-    ALTER TABLE config MODIFY COLUMN telefono VARCHAR(30) COLLATE utf8_spanish_ci NOT NULL;
+    ALTER TABLE config MODIFY COLUMN ruc VARCHAR(255) COLLATE utf8_spanish_ci NOT NULL;
+    ALTER TABLE config MODIFY COLUMN telefono VARCHAR(255) COLLATE utf8_spanish_ci NOT NULL;
     ALTER TABLE usuarios MODIFY COLUMN pass VARCHAR(255) COLLATE utf8_spanish_ci NOT NULL;
 
     -- 2. Columna logo_path en config

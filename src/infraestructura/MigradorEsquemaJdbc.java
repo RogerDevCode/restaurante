@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 15;
+    private static final int VERSION_ESQUEMA = 16;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
@@ -54,7 +54,9 @@ public final class MigradorEsquemaJdbc {
     private static final String CHECKSUM_MIGRACION_V14 = calcularChecksum(DEFINICION_MIGRACION_V14);
     private static final String DEFINICION_MIGRACION_V15 = "v15:comandas_marchas_incrementales_inmutables";
     private static final String CHECKSUM_MIGRACION_V15 = calcularChecksum(DEFINICION_MIGRACION_V15);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v15";
+    private static final String DEFINICION_MIGRACION_V16 = "v16:cifrado_aes256_datos_empresa";
+    private static final String CHECKSUM_MIGRACION_V16 = calcularChecksum(DEFINICION_MIGRACION_V16);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v16";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
@@ -192,7 +194,7 @@ public final class MigradorEsquemaJdbc {
             if (!rs.next()) return false;
             String checksum = rs.getString("checksum");
             String estado = rs.getString("estado");
-            if (!CHECKSUM_MIGRACION_V15.equals(checksum)) {
+            if (!CHECKSUM_MIGRACION_V16.equals(checksum)) {
                 throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
             }
             return "APLICADA".equalsIgnoreCase(estado);
@@ -229,7 +231,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ", '" + NOMBRE_MIGRACION + "', '" + CHECKSUM_MIGRACION_V15 + "', 'EN_CURSO', 'asegurar_esquema') "
+                    + VERSION_ESQUEMA + ", '" + NOMBRE_MIGRACION + "', '" + CHECKSUM_MIGRACION_V16 + "', 'EN_CURSO', 'asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -357,6 +359,7 @@ public final class MigradorEsquemaJdbc {
                 throw new SQLException("Postcondición no cumplida: faltan claves iniciales de configuración.");
             }
         }
+        asegurarCifradoDatosEmpresa(con);
     }
 
     public static void asegurarEsquema(Connection con) throws SQLException {
@@ -417,8 +420,8 @@ public final class MigradorEsquemaJdbc {
 
         // 3. Columnas en config
         asegurarColumna(con, meta, catalogo, "config", "logo_path", "VARCHAR(255) NULL DEFAULT NULL");
-        asegurarLongitudColumna(con, meta, catalogo, "config", "ruc", 30);
-        asegurarLongitudColumna(con, meta, catalogo, "config", "telefono", 30);
+        asegurarLongitudColumna(con, meta, catalogo, "config", "ruc", 255);
+        asegurarLongitudColumna(con, meta, catalogo, "config", "telefono", 255);
         asegurarColumna(con, meta, catalogo, "config", "tasa_dolar", "DECIMAL(12,4) NOT NULL DEFAULT 0.0000");
         asegurarColumna(con, meta, catalogo, "config", "iva_porcentaje", "DECIMAL(5,2) NOT NULL DEFAULT 16.00");
         asegurarColumna(con, meta, catalogo, "config", "cliente_predeterminado_nombre", "VARCHAR(150) NOT NULL DEFAULT 'Consumidor Final'");
@@ -539,6 +542,45 @@ public final class MigradorEsquemaJdbc {
                   AND total_bs >= subtotal_bs
                   AND iva_bs <> ROUND(total_bs - subtotal_bs, 2)
                 """);
+        }
+
+        // 19. Cifrado criptográfico funcional de datos de empresa (AES-256-GCM) si hay licencia activa
+        asegurarCifradoDatosEmpresa(con);
+    }
+
+    private static void asegurarCifradoDatosEmpresa(Connection con) throws SQLException {
+        infraestructura.seguridad.ValidadorLicencia validador = infraestructura.seguridad.ValidadorLicencia.getInstancia();
+        if (!validador.isActiva()) {
+            return;
+        }
+        String sqlSelect = "SELECT id, ruc, nombre, telefono, direccion FROM config";
+        String sqlUpdate = "UPDATE config SET ruc = ?, nombre = ?, telefono = ?, direccion = ? WHERE id = ?";
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sqlSelect)) {
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String ruc = rs.getString("ruc");
+                String nombre = rs.getString("nombre");
+                String tel = rs.getString("telefono");
+                String dir = rs.getString("direccion");
+
+                boolean necesitaCifrado = !validador.isDatoCifrado(ruc)
+                        || !validador.isDatoCifrado(nombre)
+                        || !validador.isDatoCifrado(tel)
+                        || !validador.isDatoCifrado(dir);
+
+                if (necesitaCifrado) {
+                    try (PreparedStatement pst = con.prepareStatement(sqlUpdate)) {
+                        pst.setString(1, validador.cifrarDato(ruc));
+                        pst.setString(2, validador.cifrarDato(nombre));
+                        pst.setString(3, validador.cifrarDato(tel));
+                        pst.setString(4, validador.cifrarDato(dir));
+                        pst.setInt(5, id);
+                        pst.executeUpdate();
+                    }
+                    LOGGER.info("Datos de empresa en config (id=" + id + ") cifrados con AES-256-GCM mediante licencia.");
+                }
+            }
         }
     }
 

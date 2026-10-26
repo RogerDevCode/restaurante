@@ -24,9 +24,9 @@ DROP TABLE IF EXISTS `config`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `config` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `ruc` varchar(30) COLLATE utf8_spanish_ci NOT NULL,
+  `ruc` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
   `nombre` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
-  `telefono` varchar(30) COLLATE utf8_spanish_ci NOT NULL,
+  `telefono` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
   `direccion` text COLLATE utf8_spanish_ci NOT NULL,
   `mensaje` varchar(255) COLLATE utf8_spanish_ci NOT NULL,
   `tasa_dolar` decimal(12,4) NOT NULL DEFAULT 36.5000,

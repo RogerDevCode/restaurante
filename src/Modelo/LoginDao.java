@@ -671,6 +671,22 @@ public class LoginDao implements AutenticacionRepositorio {
         }
     }
 
+    private static void cifrarCamposEmpresa(PreparedStatement sentencia, Config conf) throws SQLException {
+        infraestructura.seguridad.ValidadorLicencia lic = infraestructura.seguridad.ValidadorLicencia.getInstancia();
+        sentencia.setString(1, lic.cifrarDato(conf.getRuc()));
+        sentencia.setString(2, lic.cifrarDato(conf.getNombre()));
+        sentencia.setString(3, lic.cifrarDato(conf.getTelefono()));
+        sentencia.setString(4, lic.cifrarDato(conf.getDireccion()));
+    }
+
+    private static void descifrarCamposEmpresa(Config configuracion, ResultSet resultados) throws SQLException {
+        infraestructura.seguridad.ValidadorLicencia lic = infraestructura.seguridad.ValidadorLicencia.getInstancia();
+        configuracion.setRuc(lic.descifrarDato(resultados.getString("ruc")));
+        configuracion.setNombre(lic.descifrarDato(resultados.getString("nombre")));
+        configuracion.setTelefono(lic.descifrarDato(resultados.getString("telefono")));
+        configuracion.setDireccion(lic.descifrarDato(resultados.getString("direccion")));
+    }
+
     public boolean ModificarDatos(Config conf) {
         if (conf == null) {
             throw ErrorAplicacionException.validacion("Los datos de configuración son obligatorios.");
@@ -692,10 +708,7 @@ public class LoginDao implements AutenticacionRepositorio {
             try {
                 int filas;
                 try (PreparedStatement sentencia = conexion.prepareStatement(sqlCompleto)) {
-                    sentencia.setString(1, conf.getRuc());
-                    sentencia.setString(2, conf.getNombre());
-                    sentencia.setString(3, conf.getTelefono());
-                    sentencia.setString(4, conf.getDireccion());
+                    cifrarCamposEmpresa(sentencia, conf);
                     sentencia.setString(5, conf.getMensaje());
                     sentencia.setBigDecimal(6, conf.getTasaDolar());
                     sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
@@ -779,10 +792,7 @@ public class LoginDao implements AutenticacionRepositorio {
             WHERE id = ?
             """;
         try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, conf.getRuc());
-            sentencia.setString(2, conf.getNombre());
-            sentencia.setString(3, conf.getTelefono());
-            sentencia.setString(4, conf.getDireccion());
+            cifrarCamposEmpresa(sentencia, conf);
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
             sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
@@ -808,10 +818,7 @@ public class LoginDao implements AutenticacionRepositorio {
             WHERE id = ?
             """;
         try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, conf.getRuc());
-            sentencia.setString(2, conf.getNombre());
-            sentencia.setString(3, conf.getTelefono());
-            sentencia.setString(4, conf.getDireccion());
+            cifrarCamposEmpresa(sentencia, conf);
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
             sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
@@ -836,10 +843,7 @@ public class LoginDao implements AutenticacionRepositorio {
             WHERE id = ?
             """;
         try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, conf.getRuc());
-            sentencia.setString(2, conf.getNombre());
-            sentencia.setString(3, conf.getTelefono());
-            sentencia.setString(4, conf.getDireccion());
+            cifrarCamposEmpresa(sentencia, conf);
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
             sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
@@ -863,10 +867,7 @@ public class LoginDao implements AutenticacionRepositorio {
             WHERE id = ?
             """;
         try (PreparedStatement sentencia = conexion.prepareStatement(sql)) {
-            sentencia.setString(1, conf.getRuc());
-            sentencia.setString(2, conf.getNombre());
-            sentencia.setString(3, conf.getTelefono());
-            sentencia.setString(4, conf.getDireccion());
+            cifrarCamposEmpresa(sentencia, conf);
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
             sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
@@ -883,10 +884,7 @@ public class LoginDao implements AutenticacionRepositorio {
             LIMIT 1
             """;
         try (PreparedStatement sentencia = conexion.prepareStatement(sqlUpdatePrimero)) {
-            sentencia.setString(1, conf.getRuc());
-            sentencia.setString(2, conf.getNombre());
-            sentencia.setString(3, conf.getTelefono());
-            sentencia.setString(4, conf.getDireccion());
+            cifrarCamposEmpresa(sentencia, conf);
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
             sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
@@ -902,10 +900,7 @@ public class LoginDao implements AutenticacionRepositorio {
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """;
         try (PreparedStatement sentencia = conexion.prepareStatement(sqlInsert, java.sql.Statement.RETURN_GENERATED_KEYS)) {
-            sentencia.setString(1, conf.getRuc());
-            sentencia.setString(2, conf.getNombre());
-            sentencia.setString(3, conf.getTelefono());
-            sentencia.setString(4, conf.getDireccion());
+            cifrarCamposEmpresa(sentencia, conf);
             sentencia.setString(5, conf.getMensaje());
             sentencia.setBigDecimal(6, conf.getTasaDolar());
             sentencia.setBigDecimal(7, conf.getIvaPorcentaje());
@@ -935,10 +930,7 @@ public class LoginDao implements AutenticacionRepositorio {
             if (resultados.next()) {
                 configuracion = new Config();
                 configuracion.setId(resultados.getInt("id"));
-                configuracion.setRuc(resultados.getString("ruc"));
-                configuracion.setNombre(resultados.getString("nombre"));
-                configuracion.setTelefono(resultados.getString("telefono"));
-                configuracion.setDireccion(resultados.getString("direccion"));
+                descifrarCamposEmpresa(configuracion, resultados);
                 configuracion.setMensaje(resultados.getString("mensaje"));
                 configuracion.setTasaDolar(resultados.getBigDecimal("tasa_dolar"));
                 configuracion.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
@@ -981,10 +973,7 @@ public class LoginDao implements AutenticacionRepositorio {
             if (resultados.next()) {
                 configuracion = new Config();
                 configuracion.setId(resultados.getInt("id"));
-                configuracion.setRuc(resultados.getString("ruc"));
-                configuracion.setNombre(resultados.getString("nombre"));
-                configuracion.setTelefono(resultados.getString("telefono"));
-                configuracion.setDireccion(resultados.getString("direccion"));
+                descifrarCamposEmpresa(configuracion, resultados);
                 configuracion.setMensaje(resultados.getString("mensaje"));
                 configuracion.setTasaDolar(resultados.getBigDecimal("tasa_dolar"));
                 configuracion.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
@@ -1022,10 +1011,7 @@ public class LoginDao implements AutenticacionRepositorio {
             if (resultados.next()) {
                 configuracion = new Config();
                 configuracion.setId(resultados.getInt("id"));
-                configuracion.setRuc(resultados.getString("ruc"));
-                configuracion.setNombre(resultados.getString("nombre"));
-                configuracion.setTelefono(resultados.getString("telefono"));
-                configuracion.setDireccion(resultados.getString("direccion"));
+                descifrarCamposEmpresa(configuracion, resultados);
                 configuracion.setMensaje(resultados.getString("mensaje"));
                 configuracion.setTasaDolar(resultados.getBigDecimal("tasa_dolar"));
                 configuracion.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
@@ -1063,10 +1049,7 @@ public class LoginDao implements AutenticacionRepositorio {
             if (resultados.next()) {
                 configuracion = new Config();
                 configuracion.setId(resultados.getInt("id"));
-                configuracion.setRuc(resultados.getString("ruc"));
-                configuracion.setNombre(resultados.getString("nombre"));
-                configuracion.setTelefono(resultados.getString("telefono"));
-                configuracion.setDireccion(resultados.getString("direccion"));
+                descifrarCamposEmpresa(configuracion, resultados);
                 configuracion.setMensaje(resultados.getString("mensaje"));
                 configuracion.setTasaDolar(resultados.getBigDecimal("tasa_dolar"));
                 configuracion.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
@@ -1100,10 +1083,7 @@ public class LoginDao implements AutenticacionRepositorio {
             if (resultados.next()) {
                 configuracion = new Config();
                 configuracion.setId(resultados.getInt("id"));
-                configuracion.setRuc(resultados.getString("ruc"));
-                configuracion.setNombre(resultados.getString("nombre"));
-                configuracion.setTelefono(resultados.getString("telefono"));
-                configuracion.setDireccion(resultados.getString("direccion"));
+                descifrarCamposEmpresa(configuracion, resultados);
                 configuracion.setMensaje(resultados.getString("mensaje"));
                 configuracion.setTasaDolar(resultados.getBigDecimal("tasa_dolar"));
                 configuracion.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
@@ -1135,10 +1115,7 @@ public class LoginDao implements AutenticacionRepositorio {
             if (resultados.next()) {
                 configuracion = new Config();
                 configuracion.setId(resultados.getInt("id"));
-                configuracion.setRuc(resultados.getString("ruc"));
-                configuracion.setNombre(resultados.getString("nombre"));
-                configuracion.setTelefono(resultados.getString("telefono"));
-                configuracion.setDireccion(resultados.getString("direccion"));
+                descifrarCamposEmpresa(configuracion, resultados);
                 configuracion.setMensaje(resultados.getString("mensaje"));
                 configuracion.setTasaDolar(resultados.getBigDecimal("tasa_dolar"));
                 configuracion.setIvaPorcentaje(resultados.getBigDecimal("iva_porcentaje"));
@@ -1169,10 +1146,7 @@ public class LoginDao implements AutenticacionRepositorio {
             if (resultados.next()) {
                 configuracion = new Config();
                 configuracion.setId(resultados.getInt("id"));
-                configuracion.setRuc(resultados.getString("ruc"));
-                configuracion.setNombre(resultados.getString("nombre"));
-                configuracion.setTelefono(resultados.getString("telefono"));
-                configuracion.setDireccion(resultados.getString("direccion"));
+                descifrarCamposEmpresa(configuracion, resultados);
                 configuracion.setMensaje(resultados.getString("mensaje"));
                 configuracion.setTasaDolar(null);
                 configuracion.setIvaPorcentaje(new java.math.BigDecimal("16.00"));
