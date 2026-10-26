@@ -214,8 +214,8 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
     }
 
     private void iniciarAnimacionBroma() {
-        // Ticks cada 80ms para un recorrido total de ~8 segundos
-        temporizador = new Timer(80, e -> {
+        // Ticks cada 200ms para un recorrido total exacto de 20 segundos (100 pasos * 200ms)
+        temporizador = new Timer(200, e -> {
             progreso++;
             barraProgreso.setValue(progreso);
 
@@ -243,18 +243,19 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
             temporizador.stop();
         }
 
-        String mensajeHtml = "<html><body style='font-family: Segoe UI, Arial, sans-serif; padding: 10px;'>"
-                + "<h2 style='color: #196f3d; margin-top: 0; font-size: 17pt;'>😅 ¡TRANQUILO, ES UNA BROMA ENTRE PROGRAMADORES! 😉</h2>"
-                + "<p style='font-size: 14pt; color: #17202a; line-height: 1.6;'>"
+        String mensajeHtml = "<html><body style='font-family: Segoe UI, Arial, sans-serif; padding: 12px; text-align: center;'>"
+                + "<h1 style='color: #c0392b; font-size: 26pt; margin-top: 0; margin-bottom: 8px;'>¡¡¡ Paga tu Licencia !!!</h1>"
+                + "<h2 style='color: #196f3d; font-size: 18pt; margin-top: 0; margin-bottom: 12px;'>😅 ¡Tranquilo, es una broma entre programadores! 😉</h2>"
+                + "<p style='font-size: 15pt; color: #17202a; line-height: 1.6; margin: 6px 0;'>"
                 + "• Ningún dato ni tabla fue tocado.<br>"
                 + "• Tu Base de Datos y tus respaldos están <b>100% intactos y seguros</b>."
                 + "</p>"
-                + "<p style='font-size: 12pt; color: #566573; font-style: italic; margin-top: 12px;'>"
+                + "<p style='font-size: 13pt; color: #566573; font-style: italic; margin-top: 14px;'>"
                 + "Iniciando sistema normalmente..."
                 + "</p>"
                 + "</body></html>";
 
-        JOptionPane.showMessageDialog(this, mensajeHtml, "🎉 Broma de Desarrolladores", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, mensajeHtml, "🎉 ¡¡¡ Paga tu Licencia !!!", JOptionPane.INFORMATION_MESSAGE);
         dispose();
     }
 }
