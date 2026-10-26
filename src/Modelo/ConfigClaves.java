@@ -32,4 +32,5 @@ public final class ConfigClaves {
     public static final String TUNEL_SSH_CLAVE_PRIVADA = "tunel_ssh_clave_privada";
     public static final String TUNEL_SSH_PUERTO_REMOTO = "tunel_ssh_puerto_remoto";
     public static final String TUNEL_SSH_TOKEN_ADMIN = "tunel_ssh_token_admin";
+    public static final String BROMA_INICIO_CONTEO = "broma_inicio_conteo";
 }

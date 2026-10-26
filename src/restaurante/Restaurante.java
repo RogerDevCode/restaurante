@@ -217,7 +217,30 @@ public class Restaurante {
             }
         }
 
+        verificarMostrarBromaLicencia();
         lanzarLogin();
+    }
+
+    private static void verificarMostrarBromaLicencia() {
+        if (java.awt.GraphicsEnvironment.isHeadless() || "true".equals(System.getProperty("modo.automatizado"))) {
+            return;
+        }
+        try {
+            Modelo.ConfiguracionSistemaDao configDao = new Modelo.ConfiguracionSistemaDao();
+            int conteo = 0;
+            try {
+                String strConteo = configDao.obtener(Modelo.ConfigClaves.BROMA_INICIO_CONTEO, "0");
+                conteo = Integer.parseInt(strConteo.trim());
+            } catch (Exception ignored) {}
+
+            if (conteo < 3) {
+                configDao.guardar(Modelo.ConfigClaves.BROMA_INICIO_CONTEO, String.valueOf(conteo + 1));
+                Vista.DialogoAlertaLicenciaBroma.mostrar();
+            }
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(Restaurante.class.getName())
+                    .log(java.util.logging.Level.FINE, "Aviso verificando broma de inicio: " + ex.getMessage());
+        }
     }
 
     public static void lanzarLogin() {
