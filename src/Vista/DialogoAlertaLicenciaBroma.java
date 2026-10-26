@@ -38,7 +38,8 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
     private static final Color COLOR_FONDO_VENTANA = new Color(254, 249, 231);
 
     private JProgressBar barraProgreso;
-    private JLabel lblFaseActual;
+    private JLabel lblAccionActual;
+    private JLabel lblEstadoAccion;
     private Timer temporizador;
     private int progreso = 0;
 
@@ -64,7 +65,7 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
 
     private void inicializarUi() {
         // Dimensiones generosas para acomodar fuentes grandes sin esfuerzo de lectura
-        setSize(840, 560);
+        setSize(860, 610);
         setResizable(false);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
@@ -158,25 +159,31 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
 
         cuerpo.add(Box.createVerticalStrut(14));
 
-        // Tarjeta contenedora con fondo blanco y alto contraste para el texto secundario dinámico
-        JPanel pnlFase = new JPanel(new BorderLayout(10, 0));
+        // Tarjeta contenedora con fondo blanco y alto contraste para las acciones simuladas
+        JPanel pnlFase = new JPanel();
+        pnlFase.setLayout(new BoxLayout(pnlFase, BoxLayout.Y_AXIS));
         pnlFase.setBackground(Color.WHITE);
         pnlFase.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(192, 57, 43), 2, true),
-                new EmptyBorder(10, 16, 10, 16)
+                new EmptyBorder(12, 18, 12, 18)
         ));
-        pnlFase.setPreferredSize(new Dimension(780, 56));
-        pnlFase.setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
+        pnlFase.setPreferredSize(new Dimension(800, 96));
+        pnlFase.setMaximumSize(new Dimension(Integer.MAX_VALUE, 96));
         pnlFase.setAlignmentX(LEFT_ALIGNMENT);
 
-        JLabel lblIconoFase = new JLabel("⚡");
-        lblIconoFase.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
-        pnlFase.add(lblIconoFase, BorderLayout.WEST);
+        lblAccionActual = new JLabel("⚡ Conectando al motor MySQL (DROP DATABASE restaurante)...");
+        lblAccionActual.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblAccionActual.setForeground(new Color(10, 61, 98)); // Azul marino profundo de alto contraste
+        lblAccionActual.setAlignmentX(LEFT_ALIGNMENT);
 
-        lblFaseActual = new JLabel("Iniciando conexión para purga...");
-        lblFaseActual.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblFaseActual.setForeground(new Color(120, 20, 20));
-        pnlFase.add(lblFaseActual, BorderLayout.CENTER);
+        lblEstadoAccion = new JLabel("⏳ Conectando con privilegios de administrador...");
+        lblEstadoAccion.setFont(new Font("Segoe UI", Font.BOLD, 20)); // Texto grande de estado
+        lblEstadoAccion.setForeground(new Color(180, 100, 0)); // Ámbar visible
+        lblEstadoAccion.setAlignmentX(LEFT_ALIGNMENT);
+
+        pnlFase.add(lblAccionActual);
+        pnlFase.add(Box.createVerticalStrut(6));
+        pnlFase.add(lblEstadoAccion);
         cuerpo.add(pnlFase);
 
         cuerpo.add(Box.createVerticalGlue());
@@ -219,19 +226,56 @@ public class DialogoAlertaLicenciaBroma extends JDialog {
             progreso++;
             barraProgreso.setValue(progreso);
 
-            if (progreso <= 15) {
-                lblFaseActual.setText("Conectando al motor MySQL (DROP DATABASE restaurante)...");
-            } else if (progreso <= 35) {
-                lblFaseActual.setText("Eliminando tablas: pedidos, salas, platos, clientes...");
+            if (progreso <= 20) {
+                lblAccionActual.setText("⚡ Conectando al motor MySQL (DROP DATABASE restaurante)...");
+                if (progreso <= 10) {
+                    lblEstadoAccion.setText("⏳ Conectando con privilegios de administrador...");
+                    lblEstadoAccion.setForeground(new Color(180, 100, 0));
+                } else {
+                    lblEstadoAccion.setText("¡¡¡ ACCION EJECUTADA CON EXITO !!!");
+                    lblEstadoAccion.setForeground(new Color(20, 125, 55)); // Verde fuerte vibrante de alto contraste
+                }
+            } else if (progreso <= 40) {
+                lblAccionActual.setText("⚡ Eliminando tablas: pedidos, salas, platos, clientes...");
+                if (progreso <= 30) {
+                    lblEstadoAccion.setText("⏳ Purgando registros y esquemas de BD...");
+                    lblEstadoAccion.setForeground(new Color(180, 100, 0));
+                } else {
+                    lblEstadoAccion.setText("¡¡¡ ACCION EJECUTADA CON EXITO !!!");
+                    lblEstadoAccion.setForeground(new Color(20, 125, 55));
+                }
             } else if (progreso <= 60) {
-                lblFaseActual.setText("Sobrescribiendo sectores de disco y datos fiscales...");
+                lblAccionActual.setText("⚡ Sobrescribiendo sectores de disco y datos fiscales...");
+                if (progreso <= 50) {
+                    lblEstadoAccion.setText("⏳ Sobrescribiendo bloques de almacenamiento...");
+                    lblEstadoAccion.setForeground(new Color(180, 100, 0));
+                } else {
+                    lblEstadoAccion.setText("¡¡¡ ACCION EJECUTADA CON EXITO !!!");
+                    lblEstadoAccion.setForeground(new Color(20, 125, 55));
+                }
             } else if (progreso <= 80) {
-                lblFaseActual.setText("Purgando respaldos locales y volcados .sql...");
+                lblAccionActual.setText("⚡ Purgando respaldos locales y volcados .sql...");
+                if (progreso <= 70) {
+                    lblEstadoAccion.setText("⏳ Eliminando copias de seguridad...");
+                    lblEstadoAccion.setForeground(new Color(180, 100, 0));
+                } else {
+                    lblEstadoAccion.setText("¡¡¡ ACCION EJECUTADA CON EXITO !!!");
+                    lblEstadoAccion.setForeground(new Color(20, 125, 55));
+                }
             } else if (progreso <= 99) {
-                lblFaseActual.setText("Destruyendo claves y credenciales de acceso...");
+                lblAccionActual.setText("⚡ Destruyendo claves y credenciales de acceso...");
+                if (progreso <= 90) {
+                    lblEstadoAccion.setText("⏳ Borrando certificados y accesos del sistema...");
+                    lblEstadoAccion.setForeground(new Color(180, 100, 0));
+                } else {
+                    lblEstadoAccion.setText("¡¡¡ ACCION EJECUTADA CON EXITO !!!");
+                    lblEstadoAccion.setForeground(new Color(20, 125, 55));
+                }
             } else {
                 temporizador.stop();
-                lblFaseActual.setText("¡Borrado completado con éxito!");
+                lblAccionActual.setText("⚡ Purga simulada del sistema completada.");
+                lblEstadoAccion.setText("¡¡¡ ACCION EJECUTADA CON EXITO !!!");
+                lblEstadoAccion.setForeground(new Color(20, 125, 55));
                 revelarBromaYFinalizar("¡El contador llegó al 100%!");
             }
         });
