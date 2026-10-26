@@ -6702,7 +6702,7 @@ public final class Sistema extends javax.swing.JFrame {
             + "<ul>"
             + "<li><b>[F1]</b>: Mostrar este panel de ayuda.</li>"
             + "<li><b>[F2]</b>: Ir directo al buscador de platos de la mesa actual.</li>"
-            + "<li><b>[F4]</b>: Menú rápido de platos favoritos (requiere mesa seleccionada).</li>"
+            + "<li><b>[F4]</b>: Menú rápido de platos favoritos (requiere ventana con tabla de platos abierta y mesa seleccionada).</li>"
             + "<li><b>[F5]</b>: Finalizar o Actualizar Pedido (cuando estás en el carrito).</li>"
             + "<li><b>[ESC]</b>: Limpiar el carrito de la mesa actual.</li>"
             + "<li><b>[Enter] en Buscador</b>: Agrega el plato actualmente seleccionado de la lista.</li>"
@@ -6712,36 +6712,42 @@ public final class Sistema extends javax.swing.JFrame {
 
     /**
      * Muestra el menú flotante emergente con los platos favoritos (F4).
-     * Solo se activa si hay una mesa seleccionada en Atención Directa o en Pedidos.
+     * Solo se activa si en la ventana está abierta la JTable de platos y una mesa seleccionada.
      * Permite seleccionar con teclado numérico (1..9) o con clic del ratón.
      */
     public void mostrarPopupFavoritos() {
-        // 1. Determinar modo y verificar mesa seleccionada
+        // 1. Determinar si en la ventana está abierta la JTable de platos y si hay una mesa seleccionada
         java.awt.Component compSel = jTabbedPane1.getSelectedComponent();
-        boolean esSplit = (compSel == panelSplitScreen && panelSplitScreen != null);
-        boolean esTradicional = (compSel == jPanel23);
+        boolean esSplit = (compSel == panelSplitScreen && panelSplitScreen != null && panelSplitScreen.isShowing());
+        boolean esTradicional = (compSel == jPanel23 && tblTemPlatos != null && tblTemPlatos.isShowing());
 
+        boolean tablaPlatosAbierta = false;
+        boolean mesaSeleccionada = false;
         String descMesa = "";
         javax.swing.JComponent ancla = null;
 
         if (esSplit) {
-            if (!panelSplitScreen.tieneMesaSeleccionada()) {
-                mostrarAvisoEnBanda("Selecciona primero una mesa a la izquierda para ver favoritos (F4)");
-                return;
+            if (panelSplitScreen.getTablaCatalogo() != null && panelSplitScreen.getTablaCatalogo().isShowing()) {
+                tablaPlatosAbierta = true;
+                if (panelSplitScreen.tieneMesaSeleccionada()) {
+                    mesaSeleccionada = true;
+                    descMesa = panelSplitScreen.getCodigoMesaSeleccionada();
+                    ancla = panelSplitScreen.getComponenteParaAnclarPopup();
+                }
             }
-            descMesa = panelSplitScreen.getCodigoMesaSeleccionada();
-            ancla = panelSplitScreen.getComponenteParaAnclarPopup();
         } else if (esTradicional) {
+            tablaPlatosAbierta = true;
             String mesaTxt = txtTempNumMesa != null ? txtTempNumMesa.getText().trim() : "";
-            if (numMesaEdicion <= 0 && (mesaTxt.isEmpty() || "0".equals(mesaTxt))) {
-                mostrarAvisoEnBanda("Selecciona primero una mesa para ver favoritos (F4)");
-                return;
+            int numMesa = numMesaEdicion > 0 ? numMesaEdicion : (mesaTxt.matches("\\d+") ? Integer.parseInt(mesaTxt) : 0);
+            if (numMesa > 0) {
+                mesaSeleccionada = true;
+                descMesa = "Mesa " + numMesa;
+                ancla = txtBuscarPlato;
             }
-            int numMesa = numMesaEdicion > 0 ? numMesaEdicion : Integer.parseInt(mesaTxt);
-            descMesa = "Mesa " + numMesa;
-            ancla = txtBuscarPlato;
-        } else {
-            mostrarAvisoEnBanda("Primero abre una comanda de mesa para usar F4 (Favoritos)");
+        }
+
+        // Si la JTable de platos no está abierta en la ventana o no hay una mesa seleccionada, no se activa el menú
+        if (!tablaPlatosAbierta || !mesaSeleccionada) {
             return;
         }
 
