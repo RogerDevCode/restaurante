@@ -41,7 +41,8 @@ public class Restaurante {
         boolean respaldar = "--respaldar".equalsIgnoreCase(args[0]);
         boolean restaurar = "--restaurar-respaldo".equalsIgnoreCase(args[0]);
         boolean verificar = "--verificar-respaldo".equalsIgnoreCase(args[0]);
-        if (!respaldar && !restaurar && !verificar) {
+        boolean api = "--api".equalsIgnoreCase(args[0]) || "--servidor-api".equalsIgnoreCase(args[0]);
+        if (!respaldar && !restaurar && !verificar && !api) {
             return false;
         }
         try {
@@ -49,6 +50,17 @@ public class Restaurante {
         } catch (Exception ignored) {
         }
         try {
+            if (api) {
+                int puerto = args.length >= 2 ? Integer.parseInt(args[1]) : 8080;
+                infraestructura.MigradorEsquemaJdbc.migrarSiEsNecesario(new infraestructura.ProveedorConexionJdbc());
+                infraestructura.api.ServidorRestTablets.iniciar(puerto);
+                System.out.println("SERVIDOR_API_INICIADO en puerto " + puerto);
+                try {
+                    Thread.currentThread().join();
+                } catch (InterruptedException ignored) {
+                }
+                return true;
+            }
             Servicio.ServicioRespaldoBaseDatos servicio = new Servicio.ServicioRespaldoBaseDatos();
             servicio.recuperarOperacionInterrumpida();
             if (respaldar) {
@@ -174,6 +186,14 @@ public class Restaurante {
             } catch (Exception ex) {
                 java.util.logging.Logger.getLogger(Restaurante.class.getName())
                         .log(java.util.logging.Level.FINE, "Aviso en respaldo automático inicial: " + ex.getMessage());
+            }
+        });
+        Thread.ofVirtual().name("servidor-rest-tablets").start(() -> {
+            try {
+                infraestructura.api.ServidorRestTablets.iniciarSiEstaHabilitado();
+            } catch (Exception ex) {
+                java.util.logging.Logger.getLogger(Restaurante.class.getName())
+                        .log(java.util.logging.Level.WARNING, "Aviso iniciando servidor REST para tablets: " + ex.getMessage());
             }
         });
 
