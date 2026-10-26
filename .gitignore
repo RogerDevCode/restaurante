@@ -51,3 +51,8 @@ propuesta/
 /test/
 /testunit/
 /testqa/
+
+# Python cache & archivos PDF procesados en sermig (documentos de usuario)
+__pycache__/
+*.pyc
+sermig/*.pdf
