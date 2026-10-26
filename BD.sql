@@ -879,6 +879,51 @@ CREATE TABLE `schema_migrations` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Table structure for table `ledger_fiscal_ancla`
+--
+
+DROP TABLE IF EXISTS `ledger_fiscal_ancla`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ledger_fiscal_ancla` (
+  `id` int(11) NOT NULL,
+  `secuencia` bigint(20) NOT NULL DEFAULT 0,
+  `hash_actual` varchar(64) COLLATE utf8_spanish_ci NOT NULL,
+  `actualizado_en` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `ledger_fiscal_ancla` WRITE;
+/*!40000 ALTER TABLE `ledger_fiscal_ancla` DISABLE KEYS */;
+INSERT INTO `ledger_fiscal_ancla` (`id`, `secuencia`, `hash_actual`) VALUES (1,0,'0000000000000000000000000000000000000000000000000000000000000000');
+/*!40000 ALTER TABLE `ledger_fiscal_ancla` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ledger_fiscal`
+--
+
+DROP TABLE IF EXISTS `ledger_fiscal`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ledger_fiscal` (
+  `secuencia` bigint(20) NOT NULL,
+  `tipo_evento` varchar(30) COLLATE utf8_spanish_ci NOT NULL,
+  `referencia_id` int(11) NOT NULL,
+  `correlativo` varchar(60) COLLATE utf8_spanish_ci NOT NULL,
+  `payload_canonico` text COLLATE utf8_spanish_ci NOT NULL,
+  `hash_anterior` varchar(64) COLLATE utf8_spanish_ci NOT NULL,
+  `hash_actual` varchar(64) COLLATE utf8_spanish_ci NOT NULL,
+  `key_epoch_id` varchar(64) COLLATE utf8_spanish_ci NOT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`secuencia`),
+  KEY `idx_ledger_referencia` (`tipo_evento`,`referencia_id`),
+  KEY `idx_ledger_creado` (`creado_en`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

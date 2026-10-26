@@ -938,6 +938,31 @@ BEGIN
             SELECT 1 FROM configuracion_sistema WHERE clave = 'bootstrap_inicial_completado'
         );
     END IF;
+
+    -- 52. Tablas de Ledger Fiscal Inmutable y Hash Chaining
+    CREATE TABLE IF NOT EXISTS ledger_fiscal_ancla (
+        id INT NOT NULL PRIMARY KEY,
+        secuencia BIGINT NOT NULL DEFAULT 0,
+        hash_actual VARCHAR(64) NOT NULL,
+        actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    INSERT IGNORE INTO ledger_fiscal_ancla (id, secuencia, hash_actual)
+    VALUES (1, 0, '0000000000000000000000000000000000000000000000000000000000000000');
+
+    CREATE TABLE IF NOT EXISTS ledger_fiscal (
+        secuencia BIGINT NOT NULL PRIMARY KEY,
+        tipo_evento VARCHAR(30) NOT NULL,
+        referencia_id INT NOT NULL,
+        correlativo VARCHAR(60) NOT NULL,
+        payload_canonico TEXT NOT NULL,
+        hash_anterior VARCHAR(64) NOT NULL,
+        hash_actual VARCHAR(64) NOT NULL,
+        key_epoch_id VARCHAR(64) NOT NULL,
+        creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ledger_referencia (tipo_evento, referencia_id),
+        INDEX idx_ledger_creado (creado_en)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 END$$
 DELIMITER ;
 

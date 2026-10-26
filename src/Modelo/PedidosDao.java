@@ -1127,10 +1127,12 @@ public class PedidosDao implements PedidosRepositorio {
             conexion.setAutoCommit(false);
             try {
                 BigDecimal totalBs;
+                BigDecimal subtotalBs;
+                BigDecimal ivaBs;
                 BigDecimal tasa;
                 int versionPrecio;
                 try (PreparedStatement ps = conexion.prepareStatement(
-                        "SELECT total, total_bs, tasa_cambio, cerrada_en, version_precio FROM pedidos WHERE id = ? AND estado = 'PENDIENTE' FOR UPDATE")) {
+                        "SELECT total, total_bs, subtotal_bs, iva_bs, tasa_cambio, cerrada_en, version_precio FROM pedidos WHERE id = ? AND estado = 'PENDIENTE' FOR UPDATE")) {
                     ps.setInt(1, id_pedido);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (!rs.next()) {
@@ -1148,6 +1150,8 @@ public class PedidosDao implements PedidosRepositorio {
                             throw ErrorAplicacionException.validacion(
                                     "No se puede cobrar: el pedido #" + id_pedido + " no tiene total en bolívares (total_bs) guardado en la base de datos.");
                         }
+                        subtotalBs = rs.getBigDecimal("subtotal_bs");
+                        ivaBs = rs.getBigDecimal("iva_bs");
                         versionPrecio = rs.getInt("version_precio");
                     }
                 }
@@ -1306,6 +1310,15 @@ public class PedidosDao implements PedidosRepositorio {
                 } catch (SQLException ign) {
                     // La factura no se bloquea si la tabla de clientes no existe en una BD legacy.
                 }
+
+                try {
+                    infraestructura.seguridad.ServicioLedgerFiscal.registrarFactura(
+                            conexion, id_pedido, "FAC-" + id_pedido,
+                            java.time.LocalDateTime.now(), subtotalBs, ivaBs, totalBs, doc);
+                } catch (SQLException exLedger) {
+                    LOGGER.log(Level.WARNING, "No se pudo registrar en ledger fiscal para pedido #" + id_pedido, exLedger);
+                    throw exLedger;
+                }
                 conexion.commit();
                 return true;
             } catch (RuntimeException | SQLException ex) {
@@ -1407,6 +1420,23 @@ public class PedidosDao implements PedidosRepositorio {
                     }
                 } catch (SQLException ign) {
                     // No bloquear si la tabla clientes no está presente
+                }
+
+                try (PreparedStatement psPed = conexion.prepareStatement(
+                        "SELECT total_bs, subtotal_bs, iva_bs FROM pedidos WHERE id = ?")) {
+                    psPed.setInt(1, id_pedido);
+                    try (ResultSet rsPed = psPed.executeQuery()) {
+                        if (rsPed.next()) {
+                            BigDecimal totBs = rsPed.getBigDecimal("total_bs");
+                            BigDecimal subBs = rsPed.getBigDecimal("subtotal_bs");
+                            BigDecimal ivaBs = rsPed.getBigDecimal("iva_bs");
+                            infraestructura.seguridad.ServicioLedgerFiscal.registrarFactura(
+                                    conexion, id_pedido, "FAC-" + id_pedido,
+                                    java.time.LocalDateTime.now(), subBs, ivaBs, totBs, doc);
+                        }
+                    }
+                } catch (SQLException exLedger) {
+                    LOGGER.log(Level.WARNING, "No se pudo registrar en ledger fiscal para pedido #" + id_pedido, exLedger);
                 }
             }
             return exito;
@@ -1765,6 +1795,24 @@ public class PedidosDao implements PedidosRepositorio {
                     psAud.setString(2, motivo.trim());
                     psAud.setString(3, usr);
                     psAud.executeUpdate();
+                }
+
+                if (!pagosRegistrados.isEmpty()) {
+                    BigDecimal totalAnuladoBs = BigDecimal.ZERO;
+                    for (Object[] pago : pagosRegistrados) {
+                        BigDecimal eqVes = pago[6] != null ? (BigDecimal) pago[6] : (BigDecimal) pago[4];
+                        if (eqVes != null) {
+                            totalAnuladoBs = totalAnuladoBs.add(eqVes);
+                        }
+                    }
+                    try {
+                        infraestructura.seguridad.ServicioLedgerFiscal.registrarAnulacionFactura(
+                                con, id_pedido, "ANUL-" + id_pedido,
+                                java.time.LocalDateTime.now(), totalAnuladoBs, motivo, null);
+                    } catch (SQLException exLedger) {
+                        LOGGER.log(Level.WARNING, "No se pudo registrar anulación en ledger fiscal para pedido #" + id_pedido, exLedger);
+                        throw exLedger;
+                    }
                 }
 
                 con.commit();

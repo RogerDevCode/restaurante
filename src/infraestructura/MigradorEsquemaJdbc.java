@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 16;
+    private static final int VERSION_ESQUEMA = 17;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
@@ -56,7 +56,9 @@ public final class MigradorEsquemaJdbc {
     private static final String CHECKSUM_MIGRACION_V15 = calcularChecksum(DEFINICION_MIGRACION_V15);
     private static final String DEFINICION_MIGRACION_V16 = "v16:cifrado_aes256_datos_empresa";
     private static final String CHECKSUM_MIGRACION_V16 = calcularChecksum(DEFINICION_MIGRACION_V16);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v16";
+    private static final String DEFINICION_MIGRACION_V17 = "v17:ledger_fiscal_inmutable_hash_chaining";
+    private static final String CHECKSUM_MIGRACION_V17 = calcularChecksum(DEFINICION_MIGRACION_V17);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v17";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
@@ -194,7 +196,7 @@ public final class MigradorEsquemaJdbc {
             if (!rs.next()) return false;
             String checksum = rs.getString("checksum");
             String estado = rs.getString("estado");
-            if (!CHECKSUM_MIGRACION_V16.equals(checksum)) {
+            if (!CHECKSUM_MIGRACION_V17.equals(checksum)) {
                 throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
             }
             return "APLICADA".equalsIgnoreCase(estado);
@@ -231,7 +233,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ", '" + NOMBRE_MIGRACION + "', '" + CHECKSUM_MIGRACION_V16 + "', 'EN_CURSO', 'asegurar_esquema') "
+                    + VERSION_ESQUEMA + ", '" + NOMBRE_MIGRACION + "', '" + CHECKSUM_MIGRACION_V17 + "', 'EN_CURSO', 'asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -248,7 +250,7 @@ public final class MigradorEsquemaJdbc {
         for (String tabla : Set.of("clientes", "configuracion_sistema", "auditoria_pedidos", "cierres_caja", "mesoneros",
                 "categorias", "plato_categoria", "plato_favorito", "preferencias_tabla", "pedido_pagos", "login_intentos",
                 "auditoria_cambios_precio", "pedido_liquidaciones", "pedido_saldos_movimientos",
-                "comandas_marchas", "comandas_marchas_detalle")) {
+                "comandas_marchas", "comandas_marchas_detalle", "ledger_fiscal_ancla", "ledger_fiscal")) {
             if (!tablaExiste(con, tabla)) throw new SQLException("Postcondición no cumplida: falta tabla " + tabla);
         }
         for (String[] par : new String[][] {
@@ -546,6 +548,9 @@ public final class MigradorEsquemaJdbc {
 
         // 19. Cifrado criptográfico funcional de datos de empresa (AES-256-GCM) si hay licencia activa
         asegurarCifradoDatosEmpresa(con);
+
+        // 20. Ledger Fiscal Inmutable y Hash Chaining (Cierres Z y Facturas)
+        infraestructura.seguridad.ServicioLedgerFiscal.asegurarTablasLedger(con);
     }
 
     private static void asegurarCifradoDatosEmpresa(Connection con) throws SQLException {

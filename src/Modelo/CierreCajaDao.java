@@ -950,7 +950,8 @@ public class CierreCajaDao {
                 }
 
                 boolean exito;
-                try (PreparedStatement ps = con.prepareStatement(sql)) {
+                int idCierreGenerado = 0;
+                try (PreparedStatement ps = con.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
                     ps.setString(1, tipoCierre);
                     ps.setString(2, fechaJornada);
                     String fechaEmision = (cierre.getFechaHoraEmision() != null && !cierre.getFechaHoraEmision().isBlank())
@@ -971,6 +972,23 @@ public class CierreCajaDao {
                     ps.setBigDecimal(15, cierre.getTasaCambioReferencia());
                     ps.setString(16, rutaPdf);
                     exito = ps.executeUpdate() > 0;
+                    if (exito) {
+                        try (ResultSet rsKeys = ps.getGeneratedKeys()) {
+                            if (rsKeys.next()) {
+                                idCierreGenerado = rsKeys.getInt(1);
+                            }
+                        }
+                    }
+                }
+                if (exito && "TOTAL".equalsIgnoreCase(tipoCierre)) {
+                    try {
+                        infraestructura.seguridad.ServicioLedgerFiscal.registrarCierreZ(
+                                con, idCierreGenerado, fechaJornada,
+                                cierre.getTotalVentasBs(), cierre.getTotalVentasUsd(), null);
+                    } catch (SQLException exLedger) {
+                        LOGGER.log(Level.WARNING, "No se pudo registrar Cierre Z en ledger fiscal para fecha " + fechaJornada, exLedger);
+                        throw exLedger;
+                    }
                 }
                 con.commit();
                 return exito;
