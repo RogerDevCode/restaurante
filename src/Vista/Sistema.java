@@ -6668,6 +6668,14 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
 
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F4, 0), "ux.favoritos");
+        am.put("ux.favoritos", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                mostrarPopupFavoritos();
+            }
+        });
+
         im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, 0), "ux.generar");
         am.put("ux.generar", new javax.swing.AbstractAction() {
             @Override
@@ -6694,11 +6702,204 @@ public final class Sistema extends javax.swing.JFrame {
             + "<ul>"
             + "<li><b>[F1]</b>: Mostrar este panel de ayuda.</li>"
             + "<li><b>[F2]</b>: Ir directo al buscador de platos de la mesa actual.</li>"
+            + "<li><b>[F4]</b>: Menú rápido de platos favoritos (requiere mesa seleccionada).</li>"
             + "<li><b>[F5]</b>: Finalizar o Actualizar Pedido (cuando estás en el carrito).</li>"
             + "<li><b>[ESC]</b>: Limpiar el carrito de la mesa actual.</li>"
             + "<li><b>[Enter] en Buscador</b>: Agrega el plato actualmente seleccionado de la lista.</li>"
             + "</ul><p>¡Usar estos atajos en horas pico agilizará tus pedidos significativamente!</p></html>";
         JOptionPane.showMessageDialog(this, ayuda, "Ayuda de Atajos", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /**
+     * Muestra el menú flotante emergente con los platos favoritos (F4).
+     * Solo se activa si hay una mesa seleccionada en Atención Directa o en Pedidos.
+     * Permite seleccionar con teclado numérico (1..9) o con clic del ratón.
+     */
+    public void mostrarPopupFavoritos() {
+        // 1. Determinar modo y verificar mesa seleccionada
+        java.awt.Component compSel = jTabbedPane1.getSelectedComponent();
+        boolean esSplit = (compSel == panelSplitScreen && panelSplitScreen != null);
+        boolean esTradicional = (compSel == jPanel23);
+
+        String descMesa = "";
+        javax.swing.JComponent ancla = null;
+
+        if (esSplit) {
+            if (!panelSplitScreen.tieneMesaSeleccionada()) {
+                mostrarAvisoEnBanda("Selecciona primero una mesa a la izquierda para ver favoritos (F4)");
+                return;
+            }
+            descMesa = panelSplitScreen.getCodigoMesaSeleccionada();
+            ancla = panelSplitScreen.getComponenteParaAnclarPopup();
+        } else if (esTradicional) {
+            String mesaTxt = txtTempNumMesa != null ? txtTempNumMesa.getText().trim() : "";
+            if (numMesaEdicion <= 0 && (mesaTxt.isEmpty() || "0".equals(mesaTxt))) {
+                mostrarAvisoEnBanda("Selecciona primero una mesa para ver favoritos (F4)");
+                return;
+            }
+            int numMesa = numMesaEdicion > 0 ? numMesaEdicion : Integer.parseInt(mesaTxt);
+            descMesa = "Mesa " + numMesa;
+            ancla = txtBuscarPlato;
+        } else {
+            mostrarAvisoEnBanda("Primero abre una comanda de mesa para usar F4 (Favoritos)");
+            return;
+        }
+
+        // 2. Obtener lista de platos favoritos
+        java.util.List<Platos> favoritos = new java.util.ArrayList<>();
+        for (Platos p : platosPorId.values()) {
+            if (p != null && p.isFavorito()) {
+                favoritos.add(p);
+            }
+        }
+        if (favoritos.isEmpty() && platosControlador != null) {
+            try {
+                for (Platos p : platosControlador.listarPlatosParaVenta("", fechaActual())) {
+                    if (p != null && p.isFavorito()) {
+                        favoritos.add(p);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        favoritos.sort((a, b) -> a.getNombre().compareToIgnoreCase(b.getNombre()));
+
+        if (favoritos.isEmpty()) {
+            mostrarAvisoEnBanda("No hay platos marcados como favoritos. Márcalos con [★ Favorito] en Platos.");
+            return;
+        }
+
+        // 3. Construir JPopupMenu estilizado
+        javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
+        popup.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 102, 102), 2),
+                javax.swing.BorderFactory.createEmptyBorder(4, 4, 4, 4)
+        ));
+
+        // Título del popup
+        javax.swing.JLabel lblTitulo = new javax.swing.JLabel("  ★ PLATOS FAVORITOS — " + descMesa + "  ");
+        lblTitulo.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        lblTitulo.setForeground(new java.awt.Color(0, 102, 102));
+        lblTitulo.setBorder(javax.swing.BorderFactory.createEmptyBorder(4, 8, 6, 8));
+        popup.add(lblTitulo);
+        popup.addSeparator();
+
+        BigDecimal tasa = getTasaActual();
+
+        for (int i = 0; i < favoritos.size(); i++) {
+            Platos p = favoritos.get(i);
+            String moneda = (p.getMonedaBase() != null) ? p.getMonedaBase().toUpperCase() : "USD";
+            BigDecimal precio = "VES".equals(moneda) && p.getPrecioVes() != null
+                    ? p.getPrecioVes()
+                    : (p.getPrecioUsd() != null ? p.getPrecioUsd() : p.getPrecioDecimal());
+            if (precio == null) precio = BigDecimal.ZERO;
+            String precioStr = formatearMontoCelda(precio.setScale(2, RoundingMode.HALF_UP), moneda, tasa);
+
+            String atajoTexto = (i < 9) ? ("[" + (i + 1) + "] ") : "    ";
+            String textoItem = atajoTexto + p.getNombre() + "  —  " + precioStr;
+
+            javax.swing.JMenuItem item = new javax.swing.JMenuItem(textoItem);
+            item.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+            item.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+
+            if (i < 9) {
+                int keyCode = java.awt.event.KeyEvent.VK_1 + i;
+                item.setMnemonic(keyCode);
+                item.setAccelerator(javax.swing.KeyStroke.getKeyStroke(keyCode, 0));
+            }
+
+            final boolean finalEsSplit = esSplit;
+            item.addActionListener(ev -> {
+                if (finalEsSplit) {
+                    panelSplitScreen.agregarPlatoDirectoAlCarrito(p);
+                } else {
+                    agregarPlatoACarritoDirecto(p);
+                }
+                mostrarAvisoEnBanda("Agregado a la comanda: " + p.getNombre());
+            });
+
+            popup.add(item);
+        }
+
+        // Mostrar popup anclado
+        if (ancla != null && ancla.isShowing()) {
+            popup.show(ancla, 0, ancla.getHeight() + 2);
+        } else {
+            popup.show(this, getWidth() / 2 - 120, getHeight() / 2 - 100);
+        }
+    }
+
+    /**
+     * Inserta directamente una unidad del plato indicado al carrito tradicional (tableMenu).
+     */
+    public void agregarPlatoACarritoDirecto(Platos plato) {
+        if (plato == null) return;
+        int id = plato.getId();
+        String descripcion = plato.getNombre();
+        BigDecimal precio = ("VES".equalsIgnoreCase(plato.getMonedaBase()) && plato.getPrecioVes() != null)
+                ? plato.getPrecioVes()
+                : (plato.getPrecioUsd() != null ? plato.getPrecioUsd() : plato.getPrecioDecimal());
+        if (precio == null) precio = BigDecimal.ZERO;
+
+        item = item + 1;
+        tmp = (DefaultTableModel) tableMenu.getModel();
+        for (int i = 0; i < tableMenu.getRowCount(); i++) {
+            String idFila = Tables.valorModelo(tableMenu, i, 0).toString();
+            String nombreFila = Tables.valorModelo(tableMenu, i, 1).toString();
+            boolean coincide = false;
+            if (!idFila.isBlank() && idFila.matches("\\d+")) {
+                coincide = Integer.parseInt(idFila) == id;
+            }
+            if (!coincide && nombreFila.equalsIgnoreCase(descripcion)) {
+                coincide = true;
+            }
+            if (coincide) {
+                int cantActual = Integer.parseInt(Tables.valorModelo(tableMenu, i, 2).toString());
+                if (cantActual >= Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO) {
+                    tableMenu.setRowSelectionInterval(i, i);
+                    mostrarAlertaCampo(txtCantidadManual, "La cantidad máxima por plato es "
+                            + Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO + ".");
+                    return;
+                }
+                setCantidadPlatoPorFila(i, cantActual + 1);
+                autoLimpiarFiltroPlatosTrasAgregar(id);
+                return;
+            }
+        }
+        java.util.ArrayList lista = new java.util.ArrayList();
+        lista.add(item);
+        lista.add(id);
+        lista.add(descripcion);
+        lista.add(1);
+        BigDecimal precio2Dec = precio.setScale(2, RoundingMode.HALF_UP);
+        String precioStr = String.format(java.util.Locale.US, "%.2f", precio2Dec);
+        lista.add(precioStr);
+        lista.add(precioStr);
+        boolean aplicaIva = platoAplicaIvaMap.getOrDefault(id, plato.isAplicaIva());
+        boolean tieneColumnaIva = tmp.getColumnCount() >= 7;
+        String mb = (plato.getMonedaBase() != null) ? plato.getMonedaBase() : "USD";
+        BigDecimal tasaActual = getTasaActual();
+        Object[] O = new Object[tieneColumnaIva ? 7 : 6];
+        O[0] = lista.get(1);
+        O[1] = lista.get(2);
+        O[2] = lista.get(3);
+        O[3] = formatearMontoCelda(precio2Dec, mb, tasaActual);
+        O[4] = formatearMontoCelda(precio2Dec, mb, tasaActual);
+        O[5] = "";
+        if (tieneColumnaIva) {
+            O[6] = formatearEtiquetaIva(aplicaIva);
+        }
+        tmp.addRow(O);
+        tableMenu.setModel(tmp);
+        Tables.ocultarColumnaModelo(tableMenu, 0);
+        Tables.agregarColumnaMoneda(tableMenu, 3, mf -> monedaUbFila(tableMenu, mf));
+        TotalPagar(tableMenu, totalMenu);
+        actualizarEstadoBotonesCarrito();
+        int nuevaFila = tableMenu.getRowCount() - 1;
+        if (nuevaFila >= 0) {
+            tableMenu.setRowSelectionInterval(nuevaFila, nuevaFila);
+            tableMenu.scrollRectToVisible(tableMenu.getCellRect(nuevaFila, 0, true));
+        }
+        autoLimpiarFiltroPlatosTrasAgregar(id);
     }
 
     /**

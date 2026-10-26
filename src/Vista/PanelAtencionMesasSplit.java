@@ -1918,4 +1918,68 @@ public class PanelAtencionMesasSplit extends JPanel {
     public int getIdPedidoActivo() {
         return idPedidoActivo;
     }
+
+    public boolean tieneMesaSeleccionada() {
+        return numMesaSeleccionada > 0 && idSalaSeleccionada > 0;
+    }
+
+    public int getNumMesaSeleccionada() {
+        return numMesaSeleccionada;
+    }
+
+    public String getCodigoMesaSeleccionada() {
+        return codigoMesaSeleccionada != null && !codigoMesaSeleccionada.isBlank()
+                ? codigoMesaSeleccionada : ("Mesa " + numMesaSeleccionada);
+    }
+
+    public javax.swing.JComponent getComponenteParaAnclarPopup() {
+        return txtBuscarPlato != null ? txtBuscarPlato : this;
+    }
+
+    public void agregarPlatoDirectoAlCarrito(Platos platoObj) {
+        if (numMesaSeleccionada <= 0) {
+            sistema.mostrarAvisoEnBanda("Primero selecciona una mesa a la izquierda");
+            return;
+        }
+        if (platoObj == null) return;
+        int idPlato = platoObj.getId();
+
+        String nombre = platoObj.getNombre();
+        String moneda = (platoObj.getMonedaBase() != null) ? platoObj.getMonedaBase().toUpperCase() : "USD";
+        BigDecimal precio = "VES".equals(moneda) && platoObj.getPrecioVes() != null
+                ? platoObj.getPrecioVes()
+                : (platoObj.getPrecioUsd() != null ? platoObj.getPrecioUsd() : platoObj.getPrecioDecimal());
+        if (precio == null) precio = BigDecimal.ZERO;
+        precio = precio.setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal tasa = sistema.getTasaActual();
+        for (int i = 0; i < modeloCarrito.getRowCount(); i++) {
+            int idFila = (int) modeloCarrito.getValueAt(i, 0);
+            if (idFila == idPlato) {
+                int cantActual = (int) modeloCarrito.getValueAt(i, 2);
+                int nuevaCant = cantActual + 1;
+                modeloCarrito.setValueAt(nuevaCant, i, 2);
+                BigDecimal sub = precio.multiply(BigDecimal.valueOf(nuevaCant)).setScale(2, RoundingMode.HALF_UP);
+                modeloCarrito.setValueAt(Sistema.formatearMontoCelda(sub, moneda, tasa), i, 4);
+                tblCarrito.setRowSelectionInterval(i, i);
+                txtCantManual.setText(String.valueOf(nuevaCant));
+                recalcularTotales();
+                autoLimpiarFiltroSplitTrasAgregar(idPlato);
+                return;
+            }
+        }
+
+        modeloCarrito.addRow(new Object[]{
+                idPlato,
+                nombre,
+                1,
+                Sistema.formatearMontoCelda(precio, moneda, tasa),
+                Sistema.formatearMontoCelda(precio, moneda, tasa),
+                ""
+        });
+        tblCarrito.setRowSelectionInterval(modeloCarrito.getRowCount() - 1, modeloCarrito.getRowCount() - 1);
+        txtCantManual.setText("1");
+        recalcularTotales();
+        autoLimpiarFiltroSplitTrasAgregar(idPlato);
+    }
 }
