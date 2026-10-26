@@ -1113,6 +1113,13 @@ public final class ServidorRestTablets {
                 return;
             }
 
+            ConfiguracionServicio configServicio = new ConfiguracionServicio();
+            boolean habilitada = configServicio.getBoolean(ConfigClaves.PANTALLA_COCINA_HABILITADA, true);
+            if (!habilitada) {
+                enviarError(exchange, 403, "Pantalla de cocina deshabilitada.");
+                return;
+            }
+
             String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             if (body.isBlank()) {
                 enviarError(exchange, 400, "Payload vacío.");

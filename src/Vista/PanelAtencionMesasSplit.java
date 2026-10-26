@@ -260,6 +260,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         txtBuscarPlato = new JTextField();
         txtBuscarPlato.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         txtBuscarPlato.putClientProperty("JTextField.placeholderText", "Buscar plato o categoría...");
+        txtBuscarPlato.setToolTipText("Buscar platos por código o descripción en el catálogo (Atajo: F4 para Favoritos)");
         txtBuscarPlato.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
@@ -331,6 +332,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCatalogoPlatos.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         tblCatalogoPlatos.setRowHeight(25);
         tblCatalogoPlatos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tblCatalogoPlatos.setToolTipText("Catálogo de platos: doble clic o Enter para agregar a la comanda (F4: Favoritos)");
         tblCatalogoPlatos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
         for (int i = 0; i < tblCatalogoPlatos.getColumnModel().getColumnCount(); i++) {
             tblCatalogoPlatos.getColumnModel().getColumn(i).setPreferredWidth(100);
@@ -385,6 +387,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         tblCarrito.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         tblCarrito.setRowHeight(24);
         tblCarrito.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tblCarrito.setToolTipText("Comanda actual: detalle de platos consumidos por la mesa seleccionada");
         tblCarrito.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
         // Ancho proporcional igualitario: sin topes, AUTO_RESIZE reparte según
         // preferredWidth, así cada columna ocupa 1/6 del viewport y crece pareja.
@@ -431,6 +434,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         txtCantManual = new JTextField("1", 3);
         txtCantManual.setFont(new Font("Segoe UI", Font.BOLD, 12));
         txtCantManual.setHorizontalAlignment(JTextField.CENTER);
+        txtCantManual.setToolTipText("Cantidad para la línea seleccionada (escriba el número o use los botones + y -)");
         txtCantManual.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -483,6 +487,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         cbMesonero = new JComboBox<>();
         cbMesonero.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         cbMesonero.setPreferredSize(new Dimension(140, 26));
+        cbMesonero.setToolTipText("Mesonero asignado a la atención de esta mesa");
         cbMesonero.setRenderer(new DefaultListCellRenderer() {
             @Override
             public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -1946,6 +1951,10 @@ public class PanelAtencionMesasSplit extends JPanel {
             return;
         }
         if (platoObj == null) return;
+        if (!platoObj.isPrecioClasificado()) {
+            sistema.mostrarAvisoEnBanda("El producto '" + platoObj.getNombre() + "' no está clasificado con moneda/IVA.");
+            return;
+        }
         int idPlato = platoObj.getId();
 
         String nombre = platoObj.getNombre();
@@ -1961,6 +1970,10 @@ public class PanelAtencionMesasSplit extends JPanel {
             int idFila = (int) modeloCarrito.getValueAt(i, 0);
             if (idFila == idPlato) {
                 int cantActual = (int) modeloCarrito.getValueAt(i, 2);
+                if (cantActual >= Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO) {
+                    sistema.mostrarAvisoEnBanda("La cantidad máxima por plato es " + Modelo.DetallePedido.CANTIDAD_MAXIMA_POR_PLATO);
+                    return;
+                }
                 int nuevaCant = cantActual + 1;
                 modeloCarrito.setValueAt(nuevaCant, i, 2);
                 BigDecimal sub = precio.multiply(BigDecimal.valueOf(nuevaCant)).setScale(2, RoundingMode.HALF_UP);

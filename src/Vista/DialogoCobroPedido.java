@@ -73,12 +73,12 @@ public class DialogoCobroPedido extends JDialog {
     private static final Map<Metodo, EstiloMetodo> ESTILOS = new EnumMap<>(Metodo.class);
 
     static {
-        ESTILOS.put(Metodo.EFECTIVO_USD, new EstiloMetodo("💵 Efectivo $", "btnCobroEfectivoUsd", new Color(39, 174, 96), KeyEvent.VK_F1));
-        ESTILOS.put(Metodo.EFECTIVO_BS, new EstiloMetodo("💵 Efectivo Bs", "btnCobroEfectivoBs", new Color(41, 128, 185), KeyEvent.VK_F2));
-        ESTILOS.put(Metodo.TARJETA, new EstiloMetodo("💳 Punto / Tarjeta", "btnCobroTarjeta", new Color(52, 73, 94), KeyEvent.VK_F3));
-        ESTILOS.put(Metodo.PAGO_MOVIL, new EstiloMetodo("📱 Pago Móvil", "btnCobroPagoMovil", new Color(142, 68, 173), KeyEvent.VK_F4));
-        ESTILOS.put(Metodo.TRANSFERENCIA, new EstiloMetodo("🏦 Transferencia", "btnCobroTransferencia", new Color(22, 160, 133), KeyEvent.VK_F5));
-        ESTILOS.put(Metodo.CORTESIA, new EstiloMetodo("🎁 Cortesía", "btnCobroCortesia", new Color(211, 84, 0), KeyEvent.VK_F6));
+        ESTILOS.put(Metodo.EFECTIVO_USD, new EstiloMetodo("💵 Efectivo $", "btnCobroEfectivoUsd", new Color(39, 174, 96), KeyEvent.VK_F2));
+        ESTILOS.put(Metodo.EFECTIVO_BS, new EstiloMetodo("💵 Efectivo Bs", "btnCobroEfectivoBs", new Color(41, 128, 185), KeyEvent.VK_F3));
+        ESTILOS.put(Metodo.TARJETA, new EstiloMetodo("💳 Punto / Tarjeta", "btnCobroTarjeta", new Color(52, 73, 94), KeyEvent.VK_F4));
+        ESTILOS.put(Metodo.PAGO_MOVIL, new EstiloMetodo("📱 Pago Móvil", "btnCobroPagoMovil", new Color(142, 68, 173), KeyEvent.VK_F5));
+        ESTILOS.put(Metodo.TRANSFERENCIA, new EstiloMetodo("🏦 Transferencia", "btnCobroTransferencia", new Color(22, 160, 133), KeyEvent.VK_F6));
+        ESTILOS.put(Metodo.CORTESIA, new EstiloMetodo("🎁 Cortesía", "btnCobroCortesia", new Color(211, 84, 0), KeyEvent.VK_F7));
     }
 
     // ---------------------------------------------------------------- datos del pedido
@@ -132,6 +132,7 @@ public class DialogoCobroPedido extends JDialog {
 
     private JButton btnPreFactura;
     private JButton btnMas;
+    private JButton btnAyuda;
     private JPopupMenu menuMas;
     private JButton btnCancelar;
     private JButton btnConfirmarCobro;
@@ -298,7 +299,7 @@ public class DialogoCobroPedido extends JDialog {
         txtMonto.setHorizontalAlignment(JTextField.RIGHT);
         txtMonto.setMaximumSize(new Dimension(Short.MAX_VALUE, 36));
         txtMonto.setPreferredSize(new Dimension(300, 36));
-        txtMonto.setToolTipText("Escriba el monto y presione ENTER o pulse el método de pago");
+        txtMonto.setToolTipText("Escriba el monto y presione ENTER o pulse el método de pago. Vacío = paga el saldo completo.");
         txtMonto.addActionListener(e -> aplicarDesdeUi(metodoActivo));
         txtMonto.addFocusListener(new FocusAdapter() {
             @Override
@@ -346,6 +347,7 @@ public class DialogoCobroPedido extends JDialog {
         btnChipExactoUsd.setName("btnChipExactoUsd");
         btnChipExactoUsd.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnChipExactoUsd.setBackground(new Color(236, 240, 241));
+        btnChipExactoUsd.setToolTipText("Pagar exactamente el saldo restante en Efectivo USD ($)");
         btnChipExactoUsd.setFocusable(false);
         btnChipExactoUsd.addActionListener(e -> aplicarPago(Metodo.EFECTIVO_USD, null));
         chips.add(btnChipExactoUsd);
@@ -390,6 +392,7 @@ public class DialogoCobroPedido extends JDialog {
         btnCambiarCliente.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         btnCambiarCliente.setMargin(new Insets(1, 6, 1, 6));
         btnCambiarCliente.setFocusable(false);
+        btnCambiarCliente.setToolTipText("Modificar el nombre y documento fiscal (C.I./RIF) del cliente");
         btnCambiarCliente.addActionListener(e -> alternarEdicionCliente());
         pnlCliente.add(btnCambiarCliente, BorderLayout.EAST);
         pnl.add(pnlCliente);
@@ -410,10 +413,12 @@ public class DialogoCobroPedido extends JDialog {
 
         lblTotalUsd = etiqueta("TOTAL:  $ " + totalUsd.toPlainString(), 18, Font.BOLD, new Color(21, 67, 96));
         lblTotalUsd.setName("lblCobroTotalUsd");
+        lblTotalUsd.setToolTipText("Monto total del pedido en dólares estadounidenses (USD)");
         cardTotal.add(lblTotalUsd);
 
         lblTotalBs = etiqueta(tasaValida ? "Equivalente:  Bs " + totalBs.toPlainString() : "Sin equivalente en Bs", 11, Font.PLAIN, new Color(46, 64, 83));
         lblTotalBs.setName("lblCobroTotalBs");
+        lblTotalBs.setToolTipText("Monto equivalente en bolívares según la tasa de cambio oficial");
         cardTotal.add(lblTotalBs);
         pnl.add(cardTotal);
         pnl.add(Box.createVerticalStrut(4));
@@ -426,6 +431,7 @@ public class DialogoCobroPedido extends JDialog {
         lblSaldo = etiqueta("SALDO: —", 14, Font.BOLD, COLOR_TEXTO);
         lblSaldo.setName("lblCobroSaldo");
         lblSaldo.setHorizontalAlignment(SwingConstants.CENTER);
+        lblSaldo.setToolTipText("Saldo restante por pagar para completar la factura");
         cardSaldo.add(lblSaldo, BorderLayout.CENTER);
         pnl.add(cardSaldo);
         pnl.add(Box.createVerticalStrut(4));
@@ -461,6 +467,7 @@ public class DialogoCobroPedido extends JDialog {
 
         lblVueltoValor = etiqueta("VUELTO: —", 13, Font.BOLD, new Color(125, 102, 8));
         lblVueltoValor.setName("lblCobroVuelto");
+        lblVueltoValor.setToolTipText("Monto a devolver al cliente como cambio en efectivo");
         cardVuelto.add(lblVueltoValor, BorderLayout.CENTER);
         pnl.add(cardVuelto);
 
@@ -478,12 +485,14 @@ public class DialogoCobroPedido extends JDialog {
         txtClienteNombre = new JTextField(CLIENTE_NOMBRE_DEFECTO);
         txtClienteNombre.setName("txtCobroClienteNombre");
         txtClienteNombre.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        txtClienteNombre.setToolTipText("Nombre o razón social para la factura fiscal");
         p.add(txtClienteNombre);
 
         p.add(etiqueta("C.I. / RIF:", 10, Font.PLAIN, COLOR_TEXTO));
         txtClienteDoc = new JTextField(CLIENTE_DOC_DEFECTO);
         txtClienteDoc.setName("txtCobroClienteDoc");
         txtClienteDoc.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        txtClienteDoc.setToolTipText("Cédula de Identidad o RIF del cliente");
         p.add(txtClienteDoc);
 
         return p;
@@ -508,18 +517,20 @@ public class DialogoCobroPedido extends JDialog {
         JPanel barra = new JPanel(new BorderLayout(8, 0));
         barra.setOpaque(false);
 
-        // Izquierda: Pre-Factura y Menú Más
+        // Izquierda: Pre-Factura, Menú Más y Ayuda (F1)
         btnPreFactura = new JButton("🧾 Pre-Factura (F8)");
         btnPreFactura.setName("btnCobroPreFactura");
         btnPreFactura.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnPreFactura.setPreferredSize(new Dimension(150, 40));
         btnPreFactura.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnPreFactura.setToolTipText("Imprimir comprobante preliminar / cuenta para el cliente sin cerrar la mesa (Atajo: F8)");
         btnPreFactura.addActionListener(e -> emitirPreFactura());
 
         btnMas = new JButton("⋯ Más");
         btnMas.setName("btnCobroMas");
         btnMas.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnMas.setPreferredSize(new Dimension(85, 40));
+        btnMas.setToolTipText("Opciones avanzadas: Previsualizar ticket o registrar Fuga / No pagó");
         menuMas = crearMenuMas();
         btnMas.addActionListener(e -> {
             if (!enProcesamiento) {
@@ -527,10 +538,19 @@ public class DialogoCobroPedido extends JDialog {
             }
         });
 
+        btnAyuda = new JButton("❓ Ayuda (F1)");
+        btnAyuda.setName("btnCobroAyuda");
+        btnAyuda.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnAyuda.setPreferredSize(new Dimension(125, 40));
+        btnAyuda.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAyuda.setToolTipText("Guía interactiva con resumen de situaciones frecuentes de cobro (Atajo: F1)");
+        btnAyuda.addActionListener(e -> mostrarGuiaAyudaCobro());
+
         JPanel izquierda = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         izquierda.setOpaque(false);
         izquierda.add(btnPreFactura);
         izquierda.add(btnMas);
+        izquierda.add(btnAyuda);
         barra.add(izquierda, BorderLayout.WEST);
 
         progressBar = new JProgressBar();
@@ -550,6 +570,7 @@ public class DialogoCobroPedido extends JDialog {
         btnCancelar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnCancelar.setPreferredSize(new Dimension(145, 40));
         btnCancelar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCancelar.setToolTipText("Cancelar operación y regresar a la atención de mesas (Atajo: ESC)");
         btnCancelar.addActionListener(e -> cancelarYCerrar());
         derecha.add(btnCancelar);
 
@@ -558,6 +579,7 @@ public class DialogoCobroPedido extends JDialog {
         btnConfirmarCobro.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnConfirmarCobro.setPreferredSize(new Dimension(175, 40));
         btnConfirmarCobro.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnConfirmarCobro.setToolTipText("Confirmar pagos, liberar mesa y emitir factura fiscal (Atajo: ENTER)");
         Sistema.botonSolido(btnConfirmarCobro, new Color(39, 174, 96), Color.WHITE);
         btnConfirmarCobro.addActionListener(e -> ejecutarCobro());
         derecha.add(btnConfirmarCobro);
@@ -593,6 +615,7 @@ public class DialogoCobroPedido extends JDialog {
         mapearAccion(root, KeyEvent.VK_ENTER, "cobrarEnter", this::ejecutarCobro);
         mapearAccion(root, KeyEvent.VK_ESCAPE, "cancelarEsc", this::cancelarYCerrar);
         mapearAccion(root, KeyEvent.VK_F8, "prefacturaF8", this::emitirPreFactura);
+        mapearAccion(root, KeyEvent.VK_F1, "ayudaCobroF1", this::mostrarGuiaAyudaCobro);
 
         for (Metodo m : Metodo.values()) {
             EstiloMetodo e = ESTILOS.get(m);
@@ -622,7 +645,7 @@ public class DialogoCobroPedido extends JDialog {
                         ((JButton) focusOwner).doClick();
                         return;
                     }
-                    if (focusOwner instanceof JTextComponent && keyCode != KeyEvent.VK_ENTER && keyCode != KeyEvent.VK_ESCAPE && keyCode != KeyEvent.VK_F8) {
+                    if (focusOwner instanceof JTextComponent && keyCode != KeyEvent.VK_ENTER && keyCode != KeyEvent.VK_ESCAPE && keyCode != KeyEvent.VK_F8 && keyCode != KeyEvent.VK_F1) {
                         return;
                     }
                     accion.run();
@@ -903,10 +926,12 @@ public class DialogoCobroPedido extends JDialog {
             if (i < sugeridos.size()) {
                 montosChip[i] = sugeridos.get(i);
                 chipsSugeridos[i].setText("$ " + sugeridos.get(i).toBigInteger());
+                chipsSugeridos[i].setToolTipText("Pagar con billete de $" + sugeridos.get(i).toBigInteger() + " (Atajo: tecla " + (i + 1) + ")");
                 chipsSugeridos[i].setEnabled(true);
             } else {
                 montosChip[i] = null;
                 chipsSugeridos[i].setText("—");
+                chipsSugeridos[i].setToolTipText(null);
                 chipsSugeridos[i].setEnabled(false);
             }
         }
@@ -916,6 +941,17 @@ public class DialogoCobroPedido extends JDialog {
         btnCancelar.setEnabled(libre);
         btnPreFactura.setEnabled(libre);
         btnMas.setEnabled(libre);
+        if (btnAyuda != null) {
+            btnAyuda.setEnabled(libre);
+        }
+    }
+
+    public void mostrarGuiaAyudaCobro() {
+        if (enProcesamiento) {
+            return;
+        }
+        DialogoGuiaCobro guia = new DialogoGuiaCobro(this);
+        guia.setVisible(true);
     }
 
     private void reconstruirLineas() {

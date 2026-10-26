@@ -2666,6 +2666,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnSala.setForeground(new java.awt.Color(255, 255, 255));
         btnSala.setIcon(iconoBarra("/Img/sala.png"));
         btnSala.setText("Salas");
+        btnSala.setToolTipText("Gestión de Salas y distribución física de mesas");
         btnSala.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnSala.setFocusable(false);
         btnSala.addActionListener(new java.awt.event.ActionListener() {
@@ -2678,6 +2679,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnVentas.setForeground(new java.awt.Color(255, 255, 255));
         btnVentas.setIcon(iconoBarra("/Img/pedidos.png"));
         btnVentas.setText("Pedidos");
+        btnVentas.setToolTipText("Historial de pedidos, auditoría de ventas y cobros");
         btnVentas.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnVentas.setFocusable(false);
         btnVentas.addActionListener(new java.awt.event.ActionListener() {
@@ -2690,6 +2692,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnConfig.setForeground(new java.awt.Color(255, 255, 255));
         btnConfig.setIcon(iconoBarra("/Img/config.png"));
         btnConfig.setText("Config");
+        btnConfig.setToolTipText("Configuración general del sistema, empresa e impresora");
         btnConfig.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnConfig.setFocusable(false);
         btnConfig.addActionListener(new java.awt.event.ActionListener() {
@@ -2707,6 +2710,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnUsuarios.setForeground(new java.awt.Color(255, 255, 255));
         btnUsuarios.setIcon(iconoBarra("/Img/usuarios.png"));
         btnUsuarios.setText("Usuarios");
+        btnUsuarios.setToolTipText("Gestión de usuarios operadores y control de accesos");
         btnUsuarios.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnUsuarios.setFocusable(false);
         btnUsuarios.addActionListener(new java.awt.event.ActionListener() {
@@ -2719,6 +2723,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnPlatos.setForeground(new java.awt.Color(255, 255, 255));
         btnPlatos.setIcon(iconoBarra("/Img/platos.png"));
         btnPlatos.setText("Platos");
+        btnPlatos.setToolTipText("Catálogo general de platos, precios y productos");
         btnPlatos.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnPlatos.setFocusable(false);
         btnPlatos.addActionListener(new java.awt.event.ActionListener() {
@@ -2732,6 +2737,7 @@ public final class Sistema extends javax.swing.JFrame {
         // Reuse platos icon or config icon
         btnCategorias.setIcon(iconoBarra("/Img/platos.png"));
         btnCategorias.setText("Categorías");
+        btnCategorias.setToolTipText("Organización de platos por categorías y favoritos");
         btnCategorias.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         btnCategorias.setFocusable(false);
         btnCategorias.addActionListener(new java.awt.event.ActionListener() {
@@ -2746,6 +2752,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnInicio.setForeground(new java.awt.Color(255, 255, 255));
         btnInicio.setIcon(iconoBarra("/Img/mesa.png"));
         btnInicio.setText("Inicio");
+        btnInicio.setToolTipText("Mapa general de mesas y atención en salas");
         btnInicio.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         btnInicio.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnInicio.setFocusable(false);
@@ -2783,6 +2790,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnDashboard.setForeground(new java.awt.Color(255, 255, 255));
         btnDashboard.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
         btnDashboard.setIcon(iconoBarra("/Img/pedidos.png"));
+        btnDashboard.setToolTipText("Tablero de control: métricas y gráficos de ventas");
         btnDashboard.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         btnDashboard.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnDashboard.setFocusable(false);
@@ -6722,6 +6730,11 @@ public final class Sistema extends javax.swing.JFrame {
      * Permite seleccionar con teclado numérico (1..9) o con clic del ratón.
      */
     public void mostrarPopupFavoritos() {
+        if (popupFavoritosActivo != null && (popupFavoritosActivo.isVisible() || popupFavoritosActivo.isShowing())) {
+            popupFavoritosActivo.setVisible(false);
+            popupFavoritosActivo = null;
+            return;
+        }
         // 1. Determinar si en la ventana está abierta la JTable de platos y si hay una mesa seleccionada
         boolean esSplit = (panelSplitScreen != null && panelSplitScreen.isShowing());
         boolean esTradicional = (tblTemPlatos != null && tblTemPlatos.isShowing());
@@ -6859,6 +6872,10 @@ public final class Sistema extends javax.swing.JFrame {
      */
     public void agregarPlatoACarritoDirecto(Platos plato) {
         if (plato == null) return;
+        if (!plato.isPrecioClasificado()) {
+            mostrarAvisoEnBanda("El producto '" + plato.getNombre() + "' no está clasificado con moneda/IVA.");
+            return;
+        }
         int id = plato.getId();
         String descripcion = plato.getNombre();
         BigDecimal precio = ("VES".equalsIgnoreCase(plato.getMonedaBase()) && plato.getPrecioVes() != null)
@@ -12862,6 +12879,7 @@ public final class Sistema extends javax.swing.JFrame {
             limpiarFormularioCategoria();
             cargarCategorias();
             RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
+            RefrescoVistas.notificar(RefrescoVistas.PLATOS);
             mostrarAvisoEnBanda("Categoría registrada");
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
@@ -12887,6 +12905,7 @@ public final class Sistema extends javax.swing.JFrame {
             categoriaControlador().modificar(c);
             cargarCategorias();
             RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
+            RefrescoVistas.notificar(RefrescoVistas.PLATOS);
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }
@@ -13115,6 +13134,7 @@ public final class Sistema extends javax.swing.JFrame {
             cargarPlatosAsignacion();
             ListarPlatos(tblTemPlatos, txtBuscarPlato.getText());
             RefrescoVistas.notificar(RefrescoVistas.CATEGORIAS);
+            RefrescoVistas.notificar(RefrescoVistas.PLATOS);
         } catch (Exception ex) {
             mostrarErrorCategorias(ex);
         }
