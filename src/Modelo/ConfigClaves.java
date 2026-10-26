@@ -20,4 +20,8 @@ public final class ConfigClaves {
     public static final String MODO_ATENCION = "modo_atencion";
     public static final String FILTRO_RAPIDO_PLATOS = "filtro_rapido_platos";
     public static final String IMPRIMIR_COMANDA_COCINA = "imprimir_comanda_cocina";
+    public static final String IMPRESORA_COCINA_IP = "impresora_cocina_ip";
+    public static final String IMPRESORA_COCINA_PUERTO = "impresora_cocina_puerto";
+    public static final String IMPRESORA_COCINA_FAILOVER = "impresora_cocina_failover";
+    public static final String IMPRESORA_COCINA_BUZZER = "impresora_cocina_buzzer";
 }

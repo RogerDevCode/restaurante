@@ -224,21 +224,32 @@ public final class ServicioComandaCocina {
 
     public static void imprimirAsync(ComandaMarcha marcha, String nombreSala, int numMesa, String nombreMesonero) {
         if (marcha == null || marcha.movimientos().isEmpty()) return;
-        new Thread(() -> {
+        Thread.ofVirtual().name("Hilo-Impresion-Comanda-Cocina").start(() -> {
             try {
-                Path archivoComanda = generarDocumentoComanda(marcha, nombreSala, numMesa, nombreMesonero);
-                boolean exito = ServicioImpresionTicket.procesarSalida(archivoComanda);
-                if (exito) {
-                    LOGGER.info(() -> "Comanda de cocina para pedido #" + marcha.idPedido()
-                            + ", marcha #" + marcha.secuencia() + " impresa exitosamente.");
-                } else {
-                    LOGGER.warning(() -> "Comanda de cocina para pedido #" + marcha.idPedido()
-                            + ", marcha #" + marcha.secuencia() + " despachada a visor alternativo.");
+                // 1. Intentar despacho mediante Spooler Bidireccional TCP RAW (Puerto 9100)
+                infraestructura.impresion.SpoolerCocinaTcp.ResultadoDespacho res =
+                        infraestructura.impresion.SpoolerCocinaTcp.despacharComanda(marcha, nombreSala, numMesa, nombreMesonero);
+
+                if (res.modo() == infraestructura.impresion.SpoolerCocinaTcp.ModoResultado.NO_CONFIGURADA) {
+                    // 2. Si no hay IP de cocina configurada, usar el flujo tradicional de driver de sistema
+                    Path archivoComanda = generarDocumentoComanda(marcha, nombreSala, numMesa, nombreMesonero);
+                    boolean exito = ServicioImpresionTicket.procesarSalida(archivoComanda);
+                    if (exito) {
+                        LOGGER.info(() -> "Comanda de cocina para pedido #" + marcha.idPedido()
+                                + ", marcha #" + marcha.secuencia() + " impresa exitosamente en tickera local.");
+                    } else {
+                        LOGGER.warning(() -> "Comanda de cocina para pedido #" + marcha.idPedido()
+                                + ", marcha #" + marcha.secuencia() + " despachada a visor alternativo.");
+                    }
+                } else if (res.modo() == infraestructura.impresion.SpoolerCocinaTcp.ModoResultado.EXITO_TCP_DIRECTO) {
+                    LOGGER.info(() -> "Comanda de cocina #" + marcha.idPedido() + " enviada por socket TCP RAW exitosamente.");
+                } else if (res.modo() == infraestructura.impresion.SpoolerCocinaTcp.ModoResultado.FAILOVER_BARRA) {
+                    LOGGER.warning(() -> "Comanda de cocina #" + marcha.idPedido() + " redirigida a impresora de barra (FAILOVER).");
                 }
             } catch (Exception ex) {
-                LOGGER.log(Level.WARNING, "No se pudo imprimir la comanda de cocina del pedido #"
+                LOGGER.log(Level.WARNING, "No se pudo procesar la comanda de cocina del pedido #"
                         + marcha.idPedido() + ", marcha #" + marcha.secuencia() + ": " + ex.getMessage(), ex);
             }
-        }, "Hilo-Impresion-Comanda-Cocina").start();
+        });
     }
 }
