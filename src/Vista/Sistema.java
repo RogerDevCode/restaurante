@@ -6710,6 +6710,12 @@ public final class Sistema extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this, ayuda, "Ayuda de Atajos", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    private javax.swing.JPopupMenu popupFavoritosActivo;
+
+    public javax.swing.JPopupMenu getPopupFavoritosActivo() {
+        return popupFavoritosActivo;
+    }
+
     /**
      * Muestra el menú flotante emergente con los platos favoritos (F4).
      * Solo se activa si en la ventana está abierta la JTable de platos y una mesa seleccionada.
@@ -6717,9 +6723,8 @@ public final class Sistema extends javax.swing.JFrame {
      */
     public void mostrarPopupFavoritos() {
         // 1. Determinar si en la ventana está abierta la JTable de platos y si hay una mesa seleccionada
-        java.awt.Component compSel = jTabbedPane1.getSelectedComponent();
-        boolean esSplit = (compSel == panelSplitScreen && panelSplitScreen != null && panelSplitScreen.isShowing());
-        boolean esTradicional = (compSel == jPanel23 && tblTemPlatos != null && tblTemPlatos.isShowing());
+        boolean esSplit = (panelSplitScreen != null && panelSplitScreen.isShowing());
+        boolean esTradicional = (tblTemPlatos != null && tblTemPlatos.isShowing());
 
         boolean tablaPlatosAbierta = false;
         boolean mesaSeleccionada = false;
@@ -6752,8 +6757,12 @@ public final class Sistema extends javax.swing.JFrame {
         }
 
         // 2. Obtener lista de platos favoritos
+        java.util.Collection<Platos> poolPlatos = (esSplit && panelSplitScreen != null)
+                ? panelSplitScreen.getPlatosCatalogo()
+                : platosPorId.values();
+
         java.util.List<Platos> favoritos = new java.util.ArrayList<>();
-        for (Platos p : platosPorId.values()) {
+        for (Platos p : poolPlatos) {
             if (p != null && p.isFavorito()) {
                 favoritos.add(p);
             }
@@ -6825,6 +6834,17 @@ public final class Sistema extends javax.swing.JFrame {
 
             popup.add(item);
         }
+
+        this.popupFavoritosActivo = popup;
+        popup.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+            @Override public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {}
+            @Override public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {
+                if (popupFavoritosActivo == popup) popupFavoritosActivo = null;
+            }
+            @Override public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {
+                if (popupFavoritosActivo == popup) popupFavoritosActivo = null;
+            }
+        });
 
         // Mostrar popup anclado
         if (ancla != null && ancla.isShowing()) {

@@ -1887,6 +1887,10 @@ public class PanelAtencionMesasSplit extends JPanel {
         return tblCatalogoPlatos;
     }
 
+    public java.util.Collection<Platos> getPlatosCatalogo() {
+        return new java.util.ArrayList<>(platosPorId.values());
+    }
+
     public JTable getTablaCarrito() {
         return tblCarrito;
     }
