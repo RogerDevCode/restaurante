@@ -6,6 +6,9 @@ import Servicio.ConfiguracionServicio;
 import Servicio.ServicioComandaCocina;
 import com.sun.net.httpserver.*;
 import infraestructura.ProveedorConexionJdbc;
+import infraestructura.impresion.CircuitBreakerImpresora;
+import infraestructura.impresion.SpoolerCocinaTcp;
+import infraestructura.red.ServicioTunelSsh;
 import infraestructura.seguridad.ValidadorLicencia;
 
 import java.io.*;
@@ -81,6 +84,8 @@ public final class ServidorRestTablets {
             servidorHttp.createContext("/api/v1/mesas", new MesasHandler());
             servidorHttp.createContext("/api/v1/platos", new PlatosHandler());
             servidorHttp.createContext("/api/v1/comandas", new ComandasHandler());
+            servidorHttp.createContext("/api/v1/telemetria/resumen", new TelemetriaHandler());
+            servidorHttp.createContext("/gerencia", new DashboardGerencialHandler());
 
             // Servir la aplicación web PWA para tablets en la raíz
             servidorHttp.createContext("/", new PwaWebHandler());
@@ -565,6 +570,345 @@ public final class ServidorRestTablets {
                 enviarError(exchange, 500, "Error despachando comanda: " + ex.getMessage());
             }
         }
+    }
+
+    private static class TelemetriaHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                enviarCorsOk(exchange);
+                return;
+            }
+
+            // Validar token si está configurado
+            String tokenConfigurado = ServicioTunelSsh.getTokenAdmin();
+            if (!tokenConfigurado.isBlank()) {
+                String tokenRecibido = "";
+                String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+                if (authHeader != null && authHeader.toLowerCase().startsWith("bearer ")) {
+                    tokenRecibido = authHeader.substring(7).trim();
+                }
+                if (tokenRecibido.isBlank()) {
+                    tokenRecibido = exchange.getRequestHeaders().getFirst("X-Admin-Token");
+                }
+                if (tokenRecibido == null || tokenRecibido.isBlank()) {
+                    String query = exchange.getRequestURI().getQuery();
+                    if (query != null && query.contains("token=")) {
+                        tokenRecibido = query.replaceAll(".*token=([^&]+).*", "$1").trim();
+                    }
+                }
+                if (tokenRecibido == null || !tokenConfigurado.equals(tokenRecibido.trim())) {
+                    enviarError(exchange, 401, "Acceso no autorizado. Token gerencial inválido o ausente.");
+                    return;
+                }
+            }
+
+            try {
+                if (!DB_THROTTLE.tryAcquire(5, TimeUnit.SECONDS)) {
+                    enviarError(exchange, 503, "Servidor ocupado.");
+                    return;
+                }
+                try {
+                    ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc();
+                    EstadisticasDashboard stats;
+                    boolean dbOk = true;
+                    try {
+                        ClienteDao clienteDao = new ClienteDao(proveedor);
+                        stats = clienteDao.obtenerEstadisticasDashboard();
+                    } catch (Exception exDb) {
+                        LOGGER.log(Level.WARNING, "Error consultando estadísticas para telemetría: " + exDb.getMessage());
+                        stats = new EstadisticasDashboard();
+                        dbOk = false;
+                    }
+
+                    ValidadorLicencia lic = ValidadorLicencia.getInstancia();
+                    CircuitBreakerImpresora cb = SpoolerCocinaTcp.getCircuitBreaker();
+
+                    StringBuilder sb = new StringBuilder("{");
+                    sb.append("\"ok\":true,");
+                    sb.append("\"empresa\":\"").append(escaparJson(lic.getNombreEmpresa())).append("\",");
+                    sb.append("\"rif\":\"").append(escaparJson(lic.getRif())).append("\",");
+                    sb.append("\"licencia_activa\":").append(lic.isActiva()).append(",");
+                    sb.append("\"ventas\":{");
+                    sb.append("\"ventas_usd\":").append(stats.getVentasHoyDolares()).append(",");
+                    sb.append("\"ventas_bs\":").append(stats.getVentasHoyBs()).append(",");
+                    sb.append("\"pedidos_hoy\":").append(stats.getPedidosHoy()).append(",");
+                    sb.append("\"pagos_metodos\":[");
+                    List<EstadisticasDashboard.ItemEstadistica> pagos = stats.getPagosPorMetodoHoy();
+                    for (int i = 0; i < pagos.size(); i++) {
+                        EstadisticasDashboard.ItemEstadistica p = pagos.get(i);
+                        if (i > 0) sb.append(",");
+                        sb.append("{\"metodo\":\"").append(escaparJson(p.getNombre())).append("\"")
+                          .append(",\"cantidad\":").append(p.getCantidad())
+                          .append(",\"total_usd\":").append(p.getTotalDolares())
+                          .append(",\"total_bs\":").append(p.getTotalBs()).append("}");
+                    }
+                    sb.append("]},");
+
+                    sb.append("\"operaciones\":{");
+                    sb.append("\"mesas_ocupadas\":").append(stats.getMesasOcupadasActuales()).append(",");
+                    sb.append("\"top_platos\":[");
+                    List<EstadisticasDashboard.ItemEstadistica> platos = stats.getTopPlatos();
+                    for (int i = 0; i < Math.min(5, platos.size()); i++) {
+                        EstadisticasDashboard.ItemEstadistica pl = platos.get(i);
+                        if (i > 0) sb.append(",");
+                        sb.append("{\"nombre\":\"").append(escaparJson(pl.getNombre())).append("\"")
+                          .append(",\"cantidad\":").append(pl.getCantidad())
+                          .append(",\"total_usd\":").append(pl.getTotalDolares()).append("}");
+                    }
+                    sb.append("]},");
+
+                    sb.append("\"salud\":{");
+                    sb.append("\"impresora_cocina\":\"").append(cb.getEstado().name()).append("\",");
+                    sb.append("\"impresora_cocina_fallos\":").append(cb.getFallosConsecutivos()).append(",");
+                    sb.append("\"tunel_ssh\":\"").append(ServicioTunelSsh.getEstado().name()).append("\",");
+                    sb.append("\"tunel_ssh_mensaje\":\"").append(escaparJson(ServicioTunelSsh.getUltimoMensaje())).append("\"");
+                    sb.append("},");
+                    sb.append("\"timestamp\":\"").append(java.time.LocalDateTime.now().toString()).append("\"");
+                    sb.append("}");
+
+                    enviarJson(exchange, 200, sb.toString());
+
+                } finally {
+                    DB_THROTTLE.release();
+                }
+            } catch (Exception ex) {
+                enviarError(exchange, 500, "Error recopilando telemetría: " + ex.getMessage());
+            }
+        }
+    }
+
+    private static class DashboardGerencialHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String html = generarDashboardGerencialHtml();
+            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
+            byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        }
+    }
+
+    private static String generarDashboardGerencialHtml() {
+        return """
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+              <meta name="theme-color" content="#0b1120">
+              <title>Gerencia Móvil — Restaurante 2026</title>
+              <style>
+                :root {
+                  --bg: #0b1120;
+                  --card: #1e293b;
+                  --border: #334155;
+                  --text: #f8fafc;
+                  --muted: #94a3b8;
+                  --emerald: #10b981;
+                  --sky: #38bdf8;
+                  --amber: #f59e0b;
+                  --rose: #f43f5e;
+                }
+                * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+                body { background: var(--bg); color: var(--text); padding: 16px; padding-bottom: 40px; }
+                .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+                .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.2rem; color: var(--sky); }
+                .live-badge { display: flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--emerald); color: var(--emerald); padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+                .pulse-dot { width: 8px; height: 8px; background: var(--emerald); border-radius: 50%; animation: pulse 1.5s infinite; }
+                @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(1.3); } 100% { opacity: 1; transform: scale(1); } }
+                
+                .grid-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
+                .card-kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; }
+                .kpi-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+                .kpi-val { font-size: 1.35rem; font-weight: 800; }
+                .val-emerald { color: var(--emerald); }
+                .val-sky { color: var(--sky); }
+                
+                .section-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 20px; }
+                .section-header { font-size: 0.95rem; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+                
+                .row-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(51, 65, 85, 0.5); font-size: 0.9rem; }
+                .row-item:last-child { border-bottom: none; }
+                
+                .badge-status { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+                .status-ok { background: rgba(16, 185, 129, 0.2); color: var(--emerald); }
+                .status-warn { background: rgba(245, 158, 11, 0.2); color: var(--amber); }
+                .status-err { background: rgba(244, 63, 94, 0.2); color: var(--rose); }
+
+                .btn-refresh { background: var(--card); border: 1px solid var(--border); color: white; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+                .btn-refresh:active { background: #334155; }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <div>
+                  <div class="brand">📊 <span>Gerencia Móvil</span></div>
+                  <div style="font-size:0.75rem; color:var(--muted); margin-top:2px;" id="txtEmpresa">Cargando datos...</div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <div class="live-badge"><div class="pulse-dot"></div> En Vivo</div>
+                  <button class="btn-refresh" onclick="cargarTelemetria()">🔄</button>
+                </div>
+              </div>
+
+              <!-- KPIs Principales -->
+              <div class="grid-kpis">
+                <div class="card-kpi">
+                  <div class="kpi-title">Ventas Hoy (USD)</div>
+                  <div class="kpi-val val-emerald" id="txtVentasUsd">$0.00</div>
+                </div>
+                <div class="card-kpi">
+                  <div class="kpi-title">Ventas Hoy (VES)</div>
+                  <div class="kpi-val val-sky" id="txtVentasBs">Bs. 0.00</div>
+                </div>
+                <div class="card-kpi">
+                  <div class="kpi-title">Facturas Hoy</div>
+                  <div class="kpi-val" id="txtPedidosHoy">0</div>
+                </div>
+                <div class="card-kpi">
+                  <div class="kpi-title">Mesas Ocupadas</div>
+                  <div class="kpi-val" id="txtMesasOcupadas">0</div>
+                </div>
+              </div>
+
+              <!-- Salud y Estado del Sistema -->
+              <div class="section-card">
+                <div class="section-header">
+                  <span>Monitor de Infraestructura</span>
+                  <span style="font-size:0.75rem; color:var(--muted);" id="txtActualizado">--:--:--</span>
+                </div>
+                <div class="row-item">
+                  <span>Impresora de Cocina (TCP 9100)</span>
+                  <span id="badgeImpresora" class="badge-status status-ok">CONSULTANDO</span>
+                </div>
+                <div class="row-item">
+                  <span>Túnel Seguro Zero-Trust</span>
+                  <span id="badgeTunel" class="badge-status status-ok">ACTIVO</span>
+                </div>
+                <div class="row-item">
+                  <span>Licencia Comercial</span>
+                  <span id="badgeLicencia" class="badge-status status-ok">ACTIVA</span>
+                </div>
+              </div>
+
+              <!-- Desglose por Método de Pago -->
+              <div class="section-card">
+                <div class="section-header">Cobros del Día por Método</div>
+                <div id="listaPagos">
+                  <div style="color:var(--muted); font-size:0.85rem; text-align:center; padding:12px;">Consultando pagos...</div>
+                </div>
+              </div>
+
+              <!-- Top 5 Platos -->
+              <div class="section-card">
+                <div class="section-header">Top Platos Más Vendidos Hoy</div>
+                <div id="listaPlatos">
+                  <div style="color:var(--muted); font-size:0.85rem; text-align:center; padding:12px;">Consultando platos...</div>
+                </div>
+              </div>
+
+              <script>
+                async function cargarTelemetria() {
+                  const token = localStorage.getItem('tunel_admin_token') || '';
+                  try {
+                    const headers = {};
+                    if (token) headers['X-Admin-Token'] = token;
+
+                    const res = await fetch('/api/v1/telemetria/resumen', { headers });
+                    if (res.status === 401) {
+                      const nuevoToken = prompt('Ingrese el Token de Acceso Gerencial:');
+                      if (nuevoToken) {
+                        localStorage.setItem('tunel_admin_token', nuevoToken.trim());
+                        cargarTelemetria();
+                      }
+                      return;
+                    }
+                    const data = await res.json();
+                    if (!data.ok) return;
+
+                    // Actualizar UI
+                    document.getElementById('txtEmpresa').textContent = (data.empresa || 'Restaurante') + ' — ' + (data.rif || '');
+                    document.getElementById('txtVentasUsd').textContent = '$' + Number(data.ventas.ventas_usd).toFixed(2);
+                    document.getElementById('txtVentasBs').textContent = 'Bs. ' + Number(data.ventas.ventas_bs).toFixed(2);
+                    document.getElementById('txtPedidosHoy').textContent = data.ventas.pedidos_hoy + ' órdenes';
+                    document.getElementById('txtMesasOcupadas').textContent = data.operaciones.mesas_ocupadas + ' activas';
+
+                    const hora = new Date().toLocaleTimeString();
+                    document.getElementById('txtActualizado').textContent = 'Act: ' + hora;
+
+                    // Impresora
+                    const bImp = document.getElementById('badgeImpresora');
+                    if (data.salud.impresora_cocina === 'CLOSED') {
+                      bImp.className = 'badge-status status-ok';
+                      bImp.textContent = 'LISTA / EN LÍNEA';
+                    } else if (data.salud.impresora_cocina === 'HALF_OPEN') {
+                      bImp.className = 'badge-status status-warn';
+                      bImp.textContent = 'PROBANDO ENLACE';
+                    } else {
+                      bImp.className = 'badge-status status-err';
+                      bImp.textContent = 'OFFLINE (' + data.salud.impresora_cocina_fallos + ' fallos)';
+                    }
+
+                    // Túnel
+                    const bTunel = document.getElementById('badgeTunel');
+                    bTunel.textContent = data.salud.tunel_ssh;
+                    bTunel.className = 'badge-status ' + (data.salud.tunel_ssh === 'ACTIVO' ? 'status-ok' : 'status-warn');
+
+                    // Licencia
+                    const bLic = document.getElementById('badgeLicencia');
+                    bLic.textContent = data.licencia_activa ? 'VERIFICADA' : 'DEMO';
+
+                    // Desglose de pagos
+                    const divPagos = document.getElementById('listaPagos');
+                    if (data.ventas.pagos_metodos.length === 0) {
+                      divPagos.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; text-align:center; padding:8px;">Sin cobros registrados aún hoy.</div>';
+                    } else {
+                      divPagos.innerHTML = data.ventas.pagos_metodos.map(p => `
+                        <div class="row-item">
+                          <div>
+                            <div style="font-weight:600;">${p.metodo}</div>
+                            <div style="font-size:0.75rem; color:var(--muted);">${p.cantidad} transacciones</div>
+                          </div>
+                          <div style="text-align:right;">
+                            <div style="font-weight:700; color:var(--emerald);">$${Number(p.total_usd).toFixed(2)}</div>
+                            <div style="font-size:0.75rem; color:var(--sky);">Bs. ${Number(p.total_bs).toFixed(2)}</div>
+                          </div>
+                        </div>
+                      `).join('');
+                    }
+
+                    // Top Platos
+                    const divPlatos = document.getElementById('listaPlatos');
+                    if (data.operaciones.top_platos.length === 0) {
+                      divPlatos.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; text-align:center; padding:8px;">Sin platos facturados aún hoy.</div>';
+                    } else {
+                      divPlatos.innerHTML = data.operaciones.top_platos.map((pl, idx) => `
+                        <div class="row-item">
+                          <div>
+                            <span style="font-weight:700; color:var(--sky); margin-right:6px;">#${idx+1}</span>
+                            <span>${pl.nombre}</span>
+                          </div>
+                          <div style="font-weight:700;">${pl.cantidad} un.</div>
+                        </div>
+                      `).join('');
+                    }
+
+                  } catch (e) {
+                    console.error('Error cargando telemetría', e);
+                  }
+                }
+
+                window.onload = () => {
+                  cargarTelemetria();
+                  setInterval(cargarTelemetria, 20000); // Polling cada 20 segundos
+                };
+              </script>
+            </body>
+            </html>
+            """;
     }
 
     private static String obtenerNombreSala(ProveedorConexionJdbc proveedor, int idSala) {

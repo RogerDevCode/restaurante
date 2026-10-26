@@ -196,6 +196,15 @@ public class Restaurante {
                         .log(java.util.logging.Level.WARNING, "Aviso iniciando servidor REST para tablets: " + ex.getMessage());
             }
         });
+        Thread.ofVirtual().name("tunel-inverso-ssh").start(() -> {
+            try {
+                infraestructura.red.ServicioTunelSsh.iniciarSiEstaHabilitado();
+            } catch (Exception ex) {
+                java.util.logging.Logger.getLogger(Restaurante.class.getName())
+                        .log(java.util.logging.Level.WARNING, "Aviso iniciando túnel SSH para monitoreo: " + ex.getMessage());
+            }
+        });
+        Runtime.getRuntime().addShutdownHook(new Thread(infraestructura.red.ServicioTunelSsh::detener, "shutdown-tunel-ssh"));
 
         if (!java.awt.GraphicsEnvironment.isHeadless()) {
             Servicio.ServicioBootstrapInicial servicioBootstrap = new Servicio.ServicioBootstrapInicial(new infraestructura.ProveedorConexionJdbc());
