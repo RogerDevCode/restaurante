@@ -171,6 +171,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnRestablecerLogo;
     private javax.swing.JCheckBox chkImprimirLogoTicket;
     private javax.swing.JCheckBox chkImprimirComandaCocina;
+    private javax.swing.JCheckBox chkPantallaCocina;
     private javax.swing.JComboBox<String> cbImpresorasConfig;
     private javax.swing.JComboBox<Modelo.ModoSalidaTicket> cbModoSalidaConfig;
     private javax.swing.JComboBox<Modelo.ModoSalidaTicket> cbModoSalidaFinalizar;
@@ -875,9 +876,18 @@ public final class Sistema extends javax.swing.JFrame {
         chkImprimirComandaCocina.setBounds(30, 188, 440, 26);
         panelImpresionConfig.add(chkImprimirComandaCocina);
 
+        chkPantallaCocina = new javax.swing.JCheckBox("Habilitar Pantalla Digital de Cocina (KDS Tablet)");
+        chkPantallaCocina.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        chkPantallaCocina.setSelected(true);
+        chkPantallaCocina.setOpaque(false);
+        chkPantallaCocina.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        chkPantallaCocina.setToolTipText("Habilita la pantalla web táctil para tablet de cocina en /cocina (Kitchen Display System con alertas y tiempos en vivo)");
+        chkPantallaCocina.setBounds(30, 216, 440, 26);
+        panelImpresionConfig.add(chkPantallaCocina);
+
         btnProbarImpresion = new javax.swing.JButton("Probar Impresión de Ticket");
         btnProbarImpresion.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
-        btnProbarImpresion.setBounds(30, 222, 230, 32);
+        btnProbarImpresion.setBounds(30, 248, 230, 32);
         btnProbarImpresion.setToolTipText("Enviar un ticket de prueba usando la impresora y modo seleccionados");
         btnProbarImpresion.addActionListener(e -> probarImpresionTicket());
         panelImpresionConfig.add(btnProbarImpresion);
@@ -893,12 +903,12 @@ public final class Sistema extends javax.swing.JFrame {
                 + "• Archivo PDF: Genera el ticket y abre el visor predeterminado para guardar/ver.\n"
                 + "• PDF24 Creator: Envía a la impresora virtual PDF24 o abre su asistente para enviar por WhatsApp, correo o guardar con calidad.\n"
                 + "Nota: Si 'PDF24' no está instalado en este equipo, el sistema abrirá automáticamente el visor PDF estándar.");
-        txtInfoModos.setBounds(30, 255, 480, 120);
+        txtInfoModos.setBounds(30, 285, 480, 110);
         panelImpresionConfig.add(txtInfoModos);
 
         tabConfigDerecha = new javax.swing.JTabbedPane();
         tabConfigDerecha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
-        tabConfigDerecha.addTab("Impresión y Tickets", panelImpresionConfig);
+        tabConfigDerecha.addTab("Impresión y Cocina", panelImpresionConfig);
         tabConfigDerecha.addTab("Logo e Ícono", panelLogoConfig);
         tabConfigDerecha.addTab("Base de Datos y Respaldos", crearPanelRespaldoConfig());
         tabConfigDerecha.addTab("Mesoneros", crearPanelMesonerosConfig());
@@ -1600,6 +1610,9 @@ public final class Sistema extends javax.swing.JFrame {
         }
         if (chkImprimirComandaCocina != null) {
             chkImprimirComandaCocina.addActionListener(e -> versionCargaConfig++);
+        }
+        if (chkPantallaCocina != null) {
+            chkPantallaCocina.addActionListener(e -> versionCargaConfig++);
         }
         if (cbImpresorasConfig != null) {
             cbImpresorasConfig.addActionListener(e -> versionCargaConfig++);
@@ -4261,6 +4274,10 @@ public final class Sistema extends javax.swing.JFrame {
                 new Modelo.ConfiguracionSistemaDao().guardar(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA,
                         chkImprimirComandaCocina.isSelected() ? "1" : "0");
             }
+            if (chkPantallaCocina != null) {
+                new Modelo.ConfiguracionSistemaDao().guardar(Modelo.ConfigClaves.PANTALLA_COCINA_HABILITADA,
+                        chkPantallaCocina.isSelected() ? "1" : "0");
+            }
             if (txtClienteDefaultNombre != null && !txtClienteDefaultNombre.getText().trim().isEmpty()) {
                 candidata.setClienteDefaultNombre(txtClienteDefaultNombre.getText().trim());
             }
@@ -6771,6 +6788,10 @@ public final class Sistema extends javax.swing.JFrame {
             String valComanda = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.IMPRIMIR_COMANDA_COCINA, "1");
             chkImprimirComandaCocina.setSelected(!"0".equals(valComanda) && !"false".equalsIgnoreCase(valComanda));
         }
+        if (chkPantallaCocina != null) {
+            String valKds = new Modelo.ConfiguracionSistemaDao().obtener(Modelo.ConfigClaves.PANTALLA_COCINA_HABILITADA, "1");
+            chkPantallaCocina.setSelected(!"0".equals(valKds) && !"false".equalsIgnoreCase(valKds));
+        }
         if (txtClienteDefaultNombre != null) {
             txtClienteDefaultNombre.setText(conf.getClienteDefaultNombre());
         }
@@ -8555,6 +8576,7 @@ public final class Sistema extends javax.swing.JFrame {
     public javax.swing.JButton getBtnCierreTotal() { return btnCierreTotal; }
     public javax.swing.JCheckBox getChkImprimirLogoTicket() { return chkImprimirLogoTicket; }
     public javax.swing.JCheckBox getChkImprimirComandaCocina() { return chkImprimirComandaCocina; }
+    public javax.swing.JCheckBox getChkPantallaCocina() { return chkPantallaCocina; }
     public javax.swing.JTextField getTxtClienteNombreFac() { return txtClienteNombreFac; }
     public javax.swing.JTextField getTxtClienteDocFac() { return txtClienteDocFac; }
     public javax.swing.JButton getBtnFinalizar() { return btnFinalizar; }

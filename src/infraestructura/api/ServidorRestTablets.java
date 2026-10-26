@@ -41,6 +41,11 @@ public final class ServidorRestTablets {
     private static final Semaphore DB_THROTTLE = new Semaphore(MAX_CONEXIONES_BD_API, true);
     private static final Map<String, RespuestaIdempotente> CACHE_IDEMPOTENCIA = new ConcurrentHashMap<>();
 
+    // Estado volátil de pantalla digital de cocina (KDS)
+    private static final Set<Integer> KDS_PEDIDOS_DESPACHADOS = ConcurrentHashMap.newKeySet();
+    private static final Set<Integer> KDS_ITEMS_LISTOS = ConcurrentHashMap.newKeySet();
+    private static final Map<Integer, Integer> KDS_CONTEO_ITEMS = new ConcurrentHashMap<>();
+
     private static HttpServer servidorHttp;
     private static boolean activo = false;
     private static int puertoEnUso = PUERTO_DEFAULT;
@@ -85,7 +90,10 @@ public final class ServidorRestTablets {
             servidorHttp.createContext("/api/v1/platos", new PlatosHandler());
             servidorHttp.createContext("/api/v1/comandas", new ComandasHandler());
             servidorHttp.createContext("/api/v1/telemetria/resumen", new TelemetriaHandler());
+            servidorHttp.createContext("/api/v1/cocina/comandas", new CocinaComandasHandler());
+            servidorHttp.createContext("/api/v1/cocina/despachar", new CocinaDespacharHandler());
             servidorHttp.createContext("/gerencia", new DashboardGerencialHandler());
+            servidorHttp.createContext("/cocina", new CocinaKdsHandler());
 
             // Servir la aplicación web PWA para tablets en la raíz
             servidorHttp.createContext("/", new PwaWebHandler());
@@ -97,6 +105,8 @@ public final class ServidorRestTablets {
             LOGGER.info("================================================================================");
             LOGGER.info(" [OK] SERVIDOR REST TABLETS ACTIVO (JAVA 21 VIRTUAL THREADS)");
             LOGGER.info(" URL para Tablets Fire HD 8: http://" + ipLocal + ":" + puerto + "/");
+            LOGGER.info(" URL Pantalla Cocina (KDS):  http://" + ipLocal + ":" + puerto + "/cocina");
+            LOGGER.info(" URL Gerencia Móvil:         http://" + ipLocal + ":" + puerto + "/gerencia");
             LOGGER.info("================================================================================");
 
         } catch (Exception ex) {
@@ -119,6 +129,12 @@ public final class ServidorRestTablets {
 
     public static int getPuerto() {
         return puertoEnUso;
+    }
+
+    public static void limpiarEstadoKdsParaPruebas() {
+        KDS_PEDIDOS_DESPACHADOS.clear();
+        KDS_ITEMS_LISTOS.clear();
+        KDS_CONTEO_ITEMS.clear();
     }
 
     private static String obtenerIpLocal() {
@@ -921,6 +937,602 @@ public final class ServidorRestTablets {
         } catch (Exception ignored) {
         }
         return "Sala " + idSala;
+    }
+
+    // --------------------------------------------------------------------------
+    // KDS — Pantalla Digital de Cocina en Tablet (Kitchen Display System)
+    // --------------------------------------------------------------------------
+
+    private static class ItemKds {
+        final int id;
+        final String nombre;
+        final int cantidad;
+        final String comentario;
+        final int idPlato;
+
+        ItemKds(int id, String nombre, int cantidad, String comentario, int idPlato) {
+            this.id = id;
+            this.nombre = nombre;
+            this.cantidad = cantidad;
+            this.comentario = comentario;
+            this.idPlato = idPlato;
+        }
+    }
+
+    private static class CocinaComandasHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                enviarCorsOk(exchange);
+                return;
+            }
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                enviarError(exchange, 405, "Método no permitido. Use GET.");
+                return;
+            }
+
+            ConfiguracionServicio configServicio = new ConfiguracionServicio();
+            boolean habilitada = configServicio.getBoolean(ConfigClaves.PANTALLA_COCINA_HABILITADA, true);
+            if (!habilitada) {
+                enviarJson(exchange, 200, "{\"ok\":true,\"habilitada\":false,\"total_activas\":0,\"comandas\":[]}");
+                return;
+            }
+
+            try {
+                if (!DB_THROTTLE.tryAcquire(5, TimeUnit.SECONDS)) {
+                    enviarError(exchange, 503, "Servidor ocupado.");
+                    return;
+                }
+                try {
+                    ProveedorConexionJdbc proveedor = new ProveedorConexionJdbc();
+                    String sqlPedidos = """
+                        SELECT p.id, p.num_mesa, p.tipo_pedido, p.fecha, p.usuario, p.mesonero_nombre,
+                               s.nombre AS sala_nombre,
+                               TIMESTAMPDIFF(MINUTE, p.fecha, NOW()) AS minutos_transcurridos
+                        FROM pedidos p
+                        LEFT JOIN salas s ON p.id_sala = s.id
+                        WHERE p.estado = 'PENDIENTE' AND p.cerrada_en IS NULL
+                        ORDER BY p.id ASC
+                    """;
+
+                    String sqlItems = """
+                        SELECT d.id, d.nombre, d.cantidad, d.comentario, d.id_plato
+                        FROM detalle_pedidos d
+                        WHERE d.id_pedido = ?
+                        ORDER BY d.id ASC
+                    """;
+
+                    StringBuilder sb = new StringBuilder("{");
+                    sb.append("\"ok\":true,");
+                    sb.append("\"habilitada\":true,");
+                    sb.append("\"timestamp\":").append(System.currentTimeMillis()).append(",");
+                    sb.append("\"comandas\":[");
+
+                    int totalActivas = 0;
+                    try (Connection con = proveedor.getConnection();
+                         PreparedStatement psPed = con.prepareStatement(sqlPedidos);
+                         PreparedStatement psIt = con.prepareStatement(sqlItems);
+                         ResultSet rsPed = psPed.executeQuery()) {
+
+                        boolean firstPed = true;
+                        while (rsPed.next()) {
+                            int idPedido = rsPed.getInt("id");
+                            int numMesa = rsPed.getInt("num_mesa");
+                            String tipoPedido = rsPed.getString("tipo_pedido");
+                            String usuario = rsPed.getString("usuario");
+                            String mesonero = rsPed.getString("mesonero_nombre");
+                            String sala = rsPed.getString("sala_nombre");
+                            long minutos = rsPed.getLong("minutos_transcurridos");
+                            if (minutos < 0) minutos = 0;
+
+                            psIt.setInt(1, idPedido);
+                            List<ItemKds> items = new ArrayList<>();
+                            try (ResultSet rsIt = psIt.executeQuery()) {
+                                while (rsIt.next()) {
+                                    items.add(new ItemKds(
+                                            rsIt.getInt("id"),
+                                            rsIt.getString("nombre"),
+                                            rsIt.getInt("cantidad"),
+                                            rsIt.getString("comentario"),
+                                            rsIt.getInt("id_plato")
+                                    ));
+                                }
+                            }
+
+                            if (items.isEmpty()) continue;
+
+                            int cantActual = items.size();
+                            Integer cantPrevia = KDS_CONTEO_ITEMS.get(idPedido);
+                            if (cantPrevia != null && cantActual > cantPrevia) {
+                                KDS_PEDIDOS_DESPACHADOS.remove(idPedido);
+                            }
+                            KDS_CONTEO_ITEMS.put(idPedido, cantActual);
+
+                            boolean despachada = KDS_PEDIDOS_DESPACHADOS.contains(idPedido);
+                            if (!despachada) {
+                                totalActivas++;
+                            }
+
+                            String urgencia = minutos < 10 ? "NORMAL" : (minutos < 20 ? "ADVERTENCIA" : "URGENTE");
+
+                            if (!firstPed) sb.append(",");
+                            firstPed = false;
+
+                            sb.append("{");
+                            sb.append("\"id_pedido\":").append(idPedido).append(",");
+                            sb.append("\"num_mesa\":").append(numMesa).append(",");
+                            sb.append("\"tipo_pedido\":\"").append(escaparJson(tipoPedido != null ? tipoPedido : "MESA")).append("\",");
+                            sb.append("\"sala\":\"").append(escaparJson(sala != null ? sala : "Principal")).append("\",");
+                            sb.append("\"mesonero\":\"").append(escaparJson(mesonero != null && !mesonero.isBlank() ? mesonero : (usuario != null ? usuario : "Caja"))).append("\",");
+                            sb.append("\"minutos\":").append(minutos).append(",");
+                            sb.append("\"urgencia\":\"").append(urgencia).append("\",");
+                            sb.append("\"despachada\":").append(despachada).append(",");
+                            sb.append("\"items\":[");
+
+                            for (int i = 0; i < items.size(); i++) {
+                                ItemKds it = items.get(i);
+                                if (i > 0) sb.append(",");
+                                sb.append("{");
+                                sb.append("\"id\":").append(it.id).append(",");
+                                sb.append("\"nombre\":\"").append(escaparJson(it.nombre)).append("\",");
+                                sb.append("\"cantidad\":").append(it.cantidad).append(",");
+                                sb.append("\"comentario\":\"").append(escaparJson(it.comentario != null ? it.comentario : "")).append("\",");
+                                sb.append("\"listo\":").append(KDS_ITEMS_LISTOS.contains(it.id));
+                                sb.append("}");
+                            }
+                            sb.append("]}");
+                        }
+                    } catch (Exception exDb) {
+                        LOGGER.log(Level.WARNING, "Error consultando comandas de cocina: " + exDb.getMessage());
+                    }
+
+                    sb.append("],");
+                    sb.append("\"total_activas\":").append(totalActivas);
+                    sb.append("}");
+
+                    enviarJson(exchange, 200, sb.toString());
+                } finally {
+                    DB_THROTTLE.release();
+                }
+            } catch (Exception ex) {
+                LOGGER.log(Level.WARNING, "Error procesando petición de comandas cocina: " + ex.getMessage(), ex);
+                enviarError(exchange, 500, "Error interno consultando comandas: " + ex.getMessage());
+            }
+        }
+    }
+
+    private static class CocinaDespacharHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                enviarCorsOk(exchange);
+                return;
+            }
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                enviarError(exchange, 405, "Método no permitido. Use POST.");
+                return;
+            }
+
+            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            if (body.isBlank()) {
+                enviarError(exchange, 400, "Payload vacío.");
+                return;
+            }
+
+            try {
+                String accion = extraerString(body, "accion").toUpperCase();
+                int idPedido = extraerInt(body, "id_pedido");
+                int idDetalle = extraerInt(body, "id_detalle");
+
+                if (accion.isBlank()) {
+                    if (idDetalle > 0 && idPedido <= 0) {
+                        accion = "ITEM";
+                    } else {
+                        accion = "COMANDA";
+                    }
+                }
+
+                if ("ITEM".equals(accion)) {
+                    if (idDetalle > 0) {
+                        if (KDS_ITEMS_LISTOS.contains(idDetalle)) {
+                            KDS_ITEMS_LISTOS.remove(idDetalle);
+                        } else {
+                            KDS_ITEMS_LISTOS.add(idDetalle);
+                        }
+                    }
+                } else if ("REABRIR".equals(accion)) {
+                    if (idPedido > 0) {
+                        KDS_PEDIDOS_DESPACHADOS.remove(idPedido);
+                    }
+                } else { // COMANDA
+                    if (idPedido > 0) {
+                        KDS_PEDIDOS_DESPACHADOS.add(idPedido);
+                    }
+                }
+
+                StringBuilder sb = new StringBuilder("{");
+                sb.append("\"ok\":true,");
+                sb.append("\"accion\":\"").append(escaparJson(accion)).append("\",");
+                sb.append("\"id_pedido\":").append(idPedido).append(",");
+                sb.append("\"id_detalle\":").append(idDetalle);
+                sb.append("}");
+
+                enviarJson(exchange, 200, sb.toString());
+            } catch (Exception ex) {
+                LOGGER.log(Level.WARNING, "Error despachando comanda en KDS: " + ex.getMessage(), ex);
+                enviarError(exchange, 500, "Error procesando despacho: " + ex.getMessage());
+            }
+        }
+    }
+
+    private static class CocinaKdsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String html = generarCocinaKdsHtml();
+            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
+            byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        }
+    }
+
+    private static String generarCocinaKdsHtml() {
+        return """
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+              <meta name="theme-color" content="#090d16">
+              <title>Pantalla de Cocina — KDS Restaurante 2026</title>
+              <style>
+                :root {
+                  --bg: #090d16;
+                  --card-bg: #131b2e;
+                  --card-border: #24324f;
+                  --text: #f8fafc;
+                  --muted: #94a3b8;
+                  --emerald: #10b981;
+                  --amber: #f59e0b;
+                  --rose: #f43f5e;
+                  --sky: #0ea5e9;
+                }
+                * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+                body { background: var(--bg); color: var(--text); padding: 12px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+                
+                .topbar { display: flex; justify-content: space-between; align-items: center; background: #0f172a; border: 1px solid var(--card-border); border-radius: 12px; padding: 10px 16px; margin-bottom: 12px; gap: 12px; flex-shrink: 0; }
+                .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem; color: #fff; }
+                .pulse-dot { width: 10px; height: 10px; background: var(--emerald); border-radius: 50%; box-shadow: 0 0 10px var(--emerald); animation: pulse 1.5s infinite; }
+                @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
+                
+                .tabs-nav { display: flex; gap: 8px; }
+                .tab-btn { background: #1e293b; border: 1px solid var(--card-border); color: var(--muted); padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+                .tab-btn.active { background: var(--sky); color: #fff; border-color: var(--sky); box-shadow: 0 0 12px rgba(14, 165, 233, 0.4); }
+                
+                .actions-nav { display: flex; align-items: center; gap: 10px; }
+                .clock-display { font-family: monospace; font-size: 1.15rem; font-weight: 800; color: #38bdf8; background: #020617; padding: 6px 12px; border-radius: 8px; border: 1px solid #1e293b; }
+                .btn-tool { background: #1e293b; border: 1px solid var(--card-border); color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+                .btn-tool:hover { background: #334155; }
+                
+                .kds-container { flex: 1; overflow-y: auto; overflow-x: hidden; padding-right: 4px; }
+                .kds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; align-items: start; }
+                
+                .kds-card { background: var(--card-bg); border: 2px solid var(--card-border); border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.4); transition: transform 0.15s, opacity 0.2s; }
+                .kds-card.urgente { border-color: var(--rose); box-shadow: 0 0 14px rgba(244, 63, 94, 0.35); }
+                .kds-card.advertencia { border-color: var(--amber); }
+                .kds-card.normal { border-color: var(--emerald); }
+                
+                .card-header { padding: 10px 14px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; }
+                .mesa-badge { font-size: 1.25rem; font-weight: 900; color: #fff; letter-spacing: 0.02em; }
+                .meta-info { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+                
+                .timer-badge { font-weight: 800; font-size: 0.9rem; padding: 4px 10px; border-radius: 9999px; display: flex; align-items: center; gap: 4px; }
+                .timer-normal { background: rgba(16, 185, 129, 0.15); color: var(--emerald); border: 1px solid var(--emerald); }
+                .timer-advertencia { background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid var(--amber); }
+                .timer-urgente { background: rgba(244, 63, 94, 0.15); color: var(--rose); border: 1px solid var(--rose); animation: pulse 1.2s infinite; }
+                
+                .card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; max-height: 380px; overflow-y: auto; }
+                .item-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; cursor: pointer; transition: all 0.15s; min-height: 44px; }
+                .item-row:hover { background: rgba(255,255,255,0.05); }
+                .item-row.item-listo { opacity: 0.35; text-decoration: line-through; background: rgba(0,0,0,0.2); }
+                .item-qty { font-weight: 900; font-size: 1.05rem; background: #020617; border: 1px solid var(--card-border); color: #38bdf8; padding: 2px 8px; border-radius: 6px; min-width: 32px; text-align: center; }
+                .item-content { flex: 1; }
+                .item-title { font-weight: 700; font-size: 0.95rem; color: #f1f5f9; }
+                .item-nota { font-size: 0.8rem; color: #fbbf24; font-style: italic; margin-top: 3px; font-weight: 500; }
+                .check-icon { font-size: 1.1rem; color: var(--emerald); opacity: 0; }
+                .item-row.item-listo .check-icon { opacity: 1; }
+                
+                .card-footer { padding: 10px 14px; background: rgba(255,255,255,0.02); border-top: 1px solid var(--card-border); }
+                .btn-despachar { width: 100%; padding: 12px; background: #059669; border: none; border-radius: 8px; color: #fff; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 6px; }
+                .btn-despachar:hover { background: #10b981; box-shadow: 0 0 12px rgba(16,185,129,0.4); }
+                .btn-reabrir { width: 100%; padding: 12px; background: #d97706; border: none; border-radius: 8px; color: #fff; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; }
+                .btn-reabrir:hover { background: #f59e0b; }
+                
+                .state-box { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; padding: 20px; }
+                .state-icon { font-size: 4rem; margin-bottom: 16px; }
+                .state-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; color: #f8fafc; }
+                .state-desc { color: var(--muted); max-width: 450px; font-size: 0.95rem; line-height: 1.4; }
+              </style>
+            </head>
+            <body>
+              <div class="topbar">
+                <div class="brand">
+                  <div class="pulse-dot"></div>
+                  <span>KDS COCINA</span>
+                </div>
+                
+                <div class="tabs-nav">
+                  <button id="tab-pendientes" class="tab-btn active" onclick="cambiarTab('pendientes')">
+                    Pendientes (<span id="count-pendientes">0</span>)
+                  </button>
+                  <button id="tab-despachadas" class="tab-btn" onclick="cambiarTab('despachadas')">
+                    Despachadas (<span id="count-despachadas">0</span>)
+                  </button>
+                </div>
+                
+                <div class="actions-nav">
+                  <button id="btn-sonido" class="btn-tool" onclick="toggleSonido()">🔕 Activar Sonido</button>
+                  <button class="btn-tool" onclick="toggleFullscreen()">⛶ Pantalla</button>
+                  <div id="reloj" class="clock-display">--:--:--</div>
+                </div>
+              </div>
+
+              <div class="kds-container">
+                <div id="kds-grid" class="kds-grid">
+                  <div class="state-box">
+                    <div class="state-icon">⏳</div>
+                    <div class="state-title">Cargando comandas...</div>
+                  </div>
+                </div>
+              </div>
+
+              <script>
+                let audioCtx = null;
+                let sonidoHabilitado = false;
+                let pedidosConocidos = new Set();
+                let primerCarga = true;
+                let tabActual = 'pendientes';
+                let comandasActuales = [];
+
+                function actualizarReloj() {
+                  const d = new Date();
+                  document.getElementById('reloj').textContent = d.toTimeString().split(' ')[0];
+                }
+                setInterval(actualizarReloj, 1000);
+                actualizarReloj();
+
+                function toggleSonido() {
+                  if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                  }
+                  if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                  }
+                  sonidoHabilitado = !sonidoHabilitado;
+                  actualizarBotonSonido();
+                  if (sonidoHabilitado) {
+                    tocarCampana();
+                  }
+                }
+
+                function actualizarBotonSonido() {
+                  const btn = document.getElementById('btn-sonido');
+                  if (sonidoHabilitado) {
+                    btn.innerHTML = '🔔 Sonido ACTIVO';
+                    btn.style.borderColor = '#10b981';
+                    btn.style.color = '#10b981';
+                  } else {
+                    btn.innerHTML = '🔕 Activar Sonido';
+                    btn.style.borderColor = '#334155';
+                    btn.style.color = '#fff';
+                  }
+                }
+
+                function tocarCampana() {
+                  try {
+                    if (!audioCtx) {
+                      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    const t = audioCtx.currentTime;
+                    const osc1 = audioCtx.createOscillator();
+                    const g1 = audioCtx.createGain();
+                    osc1.type = 'sine';
+                    osc1.frequency.setValueAtTime(880, t);
+                    osc1.frequency.exponentialRampToValueAtTime(1760, t + 0.12);
+                    g1.gain.setValueAtTime(0.4, t);
+                    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+                    osc1.connect(g1);
+                    g1.connect(audioCtx.destination);
+                    osc1.start(t);
+                    osc1.stop(t + 0.7);
+
+                    const osc2 = audioCtx.createOscillator();
+                    const g2 = audioCtx.createGain();
+                    osc2.type = 'triangle';
+                    osc2.frequency.setValueAtTime(1320, t + 0.15);
+                    g2.gain.setValueAtTime(0.3, t + 0.15);
+                    g2.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
+                    osc2.connect(g2);
+                    g2.connect(audioCtx.destination);
+                    osc2.start(t + 0.15);
+                    osc2.stop(t + 1.1);
+                  } catch(e) {
+                    console.error('Audio error:', e);
+                  }
+                }
+
+                function toggleFullscreen() {
+                  if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => console.log(err));
+                  } else {
+                    if (document.exitFullscreen) {
+                      document.exitFullscreen();
+                    }
+                  }
+                }
+
+                function cambiarTab(tab) {
+                  tabActual = tab;
+                  document.getElementById('tab-pendientes').className = 'tab-btn' + (tab === 'pendientes' ? ' active' : '');
+                  document.getElementById('tab-despachadas').className = 'tab-btn' + (tab === 'despachadas' ? ' active' : '');
+                  renderizarComandas();
+                }
+
+                function escaparHtml(str) {
+                  if (!str) return '';
+                  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+                }
+
+                async function cargarComandas() {
+                  try {
+                    const res = await fetch('/api/v1/cocina/comandas');
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+
+                    if (!data.habilitada) {
+                      document.getElementById('kds-grid').innerHTML = `
+                        <div class="state-box">
+                          <div class="state-icon">⚠️</div>
+                          <div class="state-title">Pantalla de Cocina Deshabilitada</div>
+                          <div class="state-desc">La pantalla digital de cocina está desactivada en la configuración del sistema. Puede habilitarla en la estación de caja principal en <b>Configuración &rarr; Impresión y Cocina</b>.</div>
+                        </div>
+                      `;
+                      return;
+                    }
+
+                    comandasActuales = data.comandas || [];
+
+                    let hayNueva = false;
+                    comandasActuales.forEach(c => {
+                      if (!c.despachada) {
+                        if (!primerCarga && !pedidosConocidos.has(c.id_pedido)) {
+                          hayNueva = true;
+                        }
+                        pedidosConocidos.add(c.id_pedido);
+                      }
+                    });
+                    primerCarga = false;
+
+                    if (hayNueva && sonidoHabilitado) {
+                      tocarCampana();
+                    }
+
+                    const cantPend = comandasActuales.filter(c => !c.despachada).length;
+                    const cantDesp = comandasActuales.filter(c => c.despachada).length;
+                    document.getElementById('count-pendientes').textContent = cantPend;
+                    document.getElementById('count-despachadas').textContent = cantDesp;
+
+                    renderizarComandas();
+                  } catch(e) {
+                    console.error('Error cargando comandas:', e);
+                  }
+                }
+
+                function renderizarComandas() {
+                  const grid = document.getElementById('kds-grid');
+                  const filtradas = comandasActuales.filter(c => tabActual === 'pendientes' ? !c.despachada : c.despachada);
+
+                  if (filtradas.length === 0) {
+                    grid.innerHTML = `
+                      <div class="state-box">
+                        <div class="state-icon">👨‍🍳</div>
+                        <div class="state-title">${tabActual === 'pendientes' ? '¡Cocina al Día!' : 'Sin comandas despachadas'}</div>
+                        <div class="state-desc">${tabActual === 'pendientes' ? 'No hay pedidos pendientes por despachar en este momento.' : 'Las comandas completadas aparecerán aquí.'}</div>
+                      </div>
+                    `;
+                    return;
+                  }
+
+                  grid.innerHTML = filtradas.map(c => {
+                    const urgClass = (c.urgencia || 'NORMAL').toLowerCase();
+                    const timerClass = 'timer-' + urgClass;
+                    const mesaText = c.tipo_pedido === 'LLEVAR' ? '🥡 PARA LLEVAR' : 'MESA ' + c.num_mesa;
+                    const subText = `${escaparHtml(c.sala)} • Garzón: ${escaparHtml(c.mesonero)} • #${c.id_pedido}`;
+
+                    const itemsHtml = c.items.map(it => `
+                      <div class="item-row ${it.listo ? 'item-listo' : ''}" onclick="tacharItem(${c.id_pedido}, ${it.id}, this)">
+                        <div class="item-qty">${it.cantidad}x</div>
+                        <div class="item-content">
+                          <div class="item-title">${escaparHtml(it.nombre)}</div>
+                          ${it.comentario ? `<div class="item-nota">⚠️ ${escaparHtml(it.comentario)}</div>` : ''}
+                        </div>
+                        <div class="check-icon">✓</div>
+                      </div>
+                    `).join('');
+
+                    const btnFooter = tabActual === 'pendientes'
+                      ? `<button class="btn-despachar" onclick="despacharComanda(${c.id_pedido})">✓ DESPACHAR COMANDA</button>`
+                      : `<button class="btn-reabrir" onclick="reabrirComanda(${c.id_pedido})">↩ REABRIR A PENDIENTES</button>`;
+
+                    return `
+                      <div id="card-${c.id_pedido}" class="kds-card ${urgClass}">
+                        <div class="card-header">
+                          <div>
+                            <div class="mesa-badge">${mesaText}</div>
+                            <div class="meta-info">${subText}</div>
+                          </div>
+                          <div class="timer-badge ${timerClass}">⏱️ ${c.minutos}m</div>
+                        </div>
+                        <div class="card-body">
+                          ${itemsHtml}
+                        </div>
+                        <div class="card-footer">
+                          ${btnFooter}
+                        </div>
+                      </div>
+                    `;
+                  }).join('');
+                }
+
+                async function tacharItem(idPedido, idDetalle, el) {
+                  el.classList.toggle('item-listo');
+                  try {
+                    await fetch('/api/v1/cocina/despachar', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ accion: 'ITEM', id_pedido: idPedido, id_detalle: idDetalle })
+                    });
+                  } catch(e) { console.error(e); }
+                }
+
+                async function despacharComanda(idPedido) {
+                  const card = document.getElementById('card-' + idPedido);
+                  if (card) {
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.95)';
+                  }
+                  try {
+                    await fetch('/api/v1/cocina/despachar', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ accion: 'COMANDA', id_pedido: idPedido })
+                    });
+                    setTimeout(cargarComandas, 200);
+                  } catch(e) {
+                    console.error(e);
+                    cargarComandas();
+                  }
+                }
+
+                async function reabrirComanda(idPedido) {
+                  try {
+                    await fetch('/api/v1/cocina/despachar', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ accion: 'REABRIR', id_pedido: idPedido })
+                    });
+                    cargarComandas();
+                  } catch(e) { console.error(e); }
+                }
+
+                cargarComandas();
+                setInterval(cargarComandas, 5000);
+              </script>
+            </body>
+            </html>
+            """;
     }
 
     // --------------------------------------------------------------------------

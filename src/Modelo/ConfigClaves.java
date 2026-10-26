@@ -24,6 +24,7 @@ public final class ConfigClaves {
     public static final String IMPRESORA_COCINA_PUERTO = "impresora_cocina_puerto";
     public static final String IMPRESORA_COCINA_FAILOVER = "impresora_cocina_failover";
     public static final String IMPRESORA_COCINA_BUZZER = "impresora_cocina_buzzer";
+    public static final String PANTALLA_COCINA_HABILITADA = "pantalla_cocina_habilitada";
     public static final String TUNEL_SSH_HABILITADO = "tunel_ssh_habilitado";
     public static final String TUNEL_SSH_HOST = "tunel_ssh_host";
     public static final String TUNEL_SSH_PUERTO = "tunel_ssh_puerto";
