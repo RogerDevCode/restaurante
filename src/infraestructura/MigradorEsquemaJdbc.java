@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 public final class MigradorEsquemaJdbc {
 
     private static final Logger LOGGER = Logger.getLogger(MigradorEsquemaJdbc.class.getName());
-    private static final int VERSION_ESQUEMA = 17;
+    private static final int VERSION_ESQUEMA = 18;
     private static final String DEFINICION_MIGRACION_V1 = "v1:clients,pedidos,config,platos,indices,config-kv,auditoria,cierres,generated-pending,unique-email,config-ruc30-phone30-userpass255";
     private static final String CHECKSUM_MIGRACION_V1 = calcularChecksum(DEFINICION_MIGRACION_V1);
     private static final String DEFINICION_MIGRACION_V2 = "v2:mesoneros,pedidos_mesonero";
@@ -58,7 +58,9 @@ public final class MigradorEsquemaJdbc {
     private static final String CHECKSUM_MIGRACION_V16 = calcularChecksum(DEFINICION_MIGRACION_V16);
     private static final String DEFINICION_MIGRACION_V17 = "v17:ledger_fiscal_inmutable_hash_chaining";
     private static final String CHECKSUM_MIGRACION_V17 = calcularChecksum(DEFINICION_MIGRACION_V17);
-    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v17";
+    private static final String DEFINICION_MIGRACION_V18 = "v18:factura_digital_seniat,igtf,notas_credito";
+    private static final String CHECKSUM_MIGRACION_V18 = calcularChecksum(DEFINICION_MIGRACION_V18);
+    private static final String NOMBRE_MIGRACION = "sincronizacion_esquema_v18";
     private static final String LOCK_MIGRACION = "restaurante_schema_migration";
 
     public static int versionEsquemaActual() { return VERSION_ESQUEMA; }
@@ -196,7 +198,7 @@ public final class MigradorEsquemaJdbc {
             if (!rs.next()) return false;
             String checksum = rs.getString("checksum");
             String estado = rs.getString("estado");
-            if (!CHECKSUM_MIGRACION_V17.equals(checksum)) {
+            if (!CHECKSUM_MIGRACION_V18.equals(checksum)) {
                 throw new SQLException("El checksum de la migración aplicada no coincide. No se modificará el historial; se requiere una nueva migración.");
             }
             return "APLICADA".equalsIgnoreCase(estado);
@@ -233,7 +235,7 @@ public final class MigradorEsquemaJdbc {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
                 """);
             st.executeUpdate("INSERT INTO schema_migrations (version,nombre,checksum,estado,paso_actual) VALUES ("
-                    + VERSION_ESQUEMA + ", '" + NOMBRE_MIGRACION + "', '" + CHECKSUM_MIGRACION_V17 + "', 'EN_CURSO', 'asegurar_esquema') "
+                    + VERSION_ESQUEMA + ", '" + NOMBRE_MIGRACION + "', '" + CHECKSUM_MIGRACION_V18 + "', 'EN_CURSO', 'asegurar_esquema') "
                     + "ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), estado='EN_CURSO', paso_actual='asegurar_esquema', iniciada_en=CURRENT_TIMESTAMP");
         }
     }
@@ -280,7 +282,11 @@ public final class MigradorEsquemaJdbc {
                 {"login_intentos", "intentos"},
                 {"login_intentos", "bloqueado_hasta_ms"},
                 {"cierres_caja", "fecha_jornada_z"},
-                {"categorias", "activo"}
+                {"categorias", "activo"},
+                {"pedidos", "numero_control"},
+                {"pedidos", "estado_fiscal"},
+                {"pedidos", "igtf_total_usd"},
+                {"pedido_pagos", "igtf_monto_usd"}
         }) {
             if (!columnaExiste(meta, catalogo, par[0], par[1])) {
                 throw new SQLException("Postcondición no cumplida: falta columna " + par[0] + "." + par[1]);
@@ -551,6 +557,26 @@ public final class MigradorEsquemaJdbc {
 
         // 20. Ledger Fiscal Inmutable y Hash Chaining (Cierres Z y Facturas)
         infraestructura.seguridad.ServicioLedgerFiscal.asegurarTablasLedger(con);
+
+        // 21. Facturación Digital SENIAT Providencia SNAT/2026/00093 (v18)
+        asegurarColumna(con, meta, catalogo, "pedidos", "numero_control", "VARCHAR(30) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "sello_digital", "TEXT NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "url_validacion", "VARCHAR(500) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "estado_fiscal",
+                "ENUM('PENDIENTE_TRANSMISION','TRANSMITIDA','CONTINGENCIA','RECHAZADA','NO_APLICA') NOT NULL DEFAULT 'NO_APLICA'");
+        asegurarColumna(con, meta, catalogo, "pedidos", "es_contingencia", "TINYINT(1) NOT NULL DEFAULT 0");
+        asegurarColumna(con, meta, catalogo, "pedidos", "nro_talonario", "VARCHAR(30) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "transmitida_en", "DATETIME NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "igtf_total_usd", "DECIMAL(18,2) NOT NULL DEFAULT 0.00");
+        asegurarColumna(con, meta, catalogo, "pedidos", "igtf_total_bs", "DECIMAL(18,2) NOT NULL DEFAULT 0.00");
+        asegurarColumna(con, meta, catalogo, "pedidos", "nc_numero_control", "VARCHAR(30) NULL DEFAULT NULL");
+        asegurarColumna(con, meta, catalogo, "pedidos", "nc_transmitida_en", "DATETIME NULL DEFAULT NULL");
+        asegurarIndice(con, meta, catalogo, "pedidos", "idx_pedidos_estado_fiscal", "(estado_fiscal)");
+        asegurarIndice(con, meta, catalogo, "pedidos", "idx_pedidos_daemon_reintento", "(estado_fiscal, id)");
+
+        asegurarColumna(con, meta, catalogo, "pedido_pagos", "igtf_porcentaje", "DECIMAL(5,2) NOT NULL DEFAULT 0.00");
+        asegurarColumna(con, meta, catalogo, "pedido_pagos", "igtf_monto_usd", "DECIMAL(18,2) NOT NULL DEFAULT 0.00");
+        asegurarColumna(con, meta, catalogo, "pedido_pagos", "igtf_monto_bs", "DECIMAL(18,2) NOT NULL DEFAULT 0.00");
     }
 
     private static void asegurarCifradoDatosEmpresa(Connection con) throws SQLException {

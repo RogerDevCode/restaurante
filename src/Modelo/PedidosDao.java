@@ -1314,7 +1314,7 @@ public class PedidosDao implements PedidosRepositorio {
                 try {
                     infraestructura.seguridad.ServicioLedgerFiscal.registrarFactura(
                             conexion, id_pedido, "FAC-" + id_pedido,
-                            java.time.LocalDateTime.now(), subtotalBs, ivaBs, totalBs, doc);
+                            java.time.LocalDateTime.now(), subtotalBs, ivaBs, totalBs, null);
                 } catch (SQLException exLedger) {
                     LOGGER.log(Level.WARNING, "No se pudo registrar en ledger fiscal para pedido #" + id_pedido, exLedger);
                     throw exLedger;
@@ -1432,7 +1432,7 @@ public class PedidosDao implements PedidosRepositorio {
                             BigDecimal ivaBs = rsPed.getBigDecimal("iva_bs");
                             infraestructura.seguridad.ServicioLedgerFiscal.registrarFactura(
                                     conexion, id_pedido, "FAC-" + id_pedido,
-                                    java.time.LocalDateTime.now(), subBs, ivaBs, totBs, doc);
+                                    java.time.LocalDateTime.now(), subBs, ivaBs, totBs, null);
                         }
                     }
                 } catch (SQLException exLedger) {

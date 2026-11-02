@@ -34,6 +34,8 @@ public class FrmBootstrapInicial extends JDialog {
     private final JTextField txtUsuario;
     private final JPasswordField txtPass;
     private final JPasswordField txtPassConfirm;
+    private final JButton btnSalir;
+    private final JButton btnGuardar;
     private boolean completado = false;
 
     public FrmBootstrapInicial(Frame parent, ServicioBootstrapInicial servicio) {
@@ -120,11 +122,11 @@ public class FrmBootstrapInicial extends JDialog {
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         panelBotones.setOpaque(false);
 
-        JButton btnSalir = new JButton("Salir");
+        btnSalir = new JButton("Salir");
         btnSalir.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         btnSalir.addActionListener(e -> confirmarSalida());
 
-        JButton btnGuardar = new JButton("Crear Administrador e Iniciar");
+        btnGuardar = new JButton("Crear Administrador e Iniciar");
         btnGuardar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnGuardar.setBackground(new Color(0, 102, 102));
         btnGuardar.setForeground(Color.WHITE);
@@ -149,6 +151,12 @@ public class FrmBootstrapInicial extends JDialog {
             JOptionPane.showMessageDialog(this,
                     "Todos los campos son obligatorios para inicializar el Administrador.",
                     "Datos incompletos", JOptionPane.WARNING_MESSAGE);
+            if (pass != null) {
+                Arrays.fill(pass, '\0');
+            }
+            if (passConf != null) {
+                Arrays.fill(passConf, '\0');
+            }
             return;
         }
 
@@ -156,6 +164,8 @@ public class FrmBootstrapInicial extends JDialog {
             JOptionPane.showMessageDialog(this,
                     "El usuario debe tener entre 4 y 60 caracteres y contener solo letras y números (sin espacios ni símbolos).",
                     "Usuario inválido", JOptionPane.WARNING_MESSAGE);
+            Arrays.fill(pass, '\0');
+            Arrays.fill(passConf, '\0');
             return;
         }
 
@@ -163,6 +173,8 @@ public class FrmBootstrapInicial extends JDialog {
             JOptionPane.showMessageDialog(this,
                     "La contraseña del Administrador debe tener al menos 8 caracteres.",
                     "Contraseña muy corta", JOptionPane.WARNING_MESSAGE);
+            Arrays.fill(pass, '\0');
+            Arrays.fill(passConf, '\0');
             return;
         }
 
@@ -170,25 +182,59 @@ public class FrmBootstrapInicial extends JDialog {
             JOptionPane.showMessageDialog(this,
                     "La confirmación de la contraseña no coincide. Verifíquela e intente de nuevo.",
                     "Error de coincidencia", JOptionPane.WARNING_MESSAGE);
+            Arrays.fill(pass, '\0');
             Arrays.fill(passConf, '\0');
             return;
         }
         Arrays.fill(passConf, '\0');
 
-        try {
-            servicio.completarBootstrap(usuario, pass);
-            JOptionPane.showMessageDialog(this,
-                    "¡Cuenta de Administrador configurada exitosamente!\nAhora puede iniciar sesión con su usuario y contraseña.",
-                    "Configuración Completada", JOptionPane.INFORMATION_MESSAGE);
-            completado = true;
-            dispose();
-        } catch (ErrorAplicacionException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Validación de Bootstrap", JOptionPane.WARNING_MESSAGE);
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Ocurrió un error al guardar el Administrador inicial: " + ex.getMessage(),
-                    "Error de Inicialización", JOptionPane.ERROR_MESSAGE);
-        }
+        btnGuardar.setEnabled(false);
+        btnSalir.setEnabled(false);
+        txtUsuario.setEnabled(false);
+        txtPass.setEnabled(false);
+        txtPassConfirm.setEnabled(false);
+        setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
+
+        new javax.swing.SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                try {
+                    servicio.completarBootstrap(usuario, pass);
+                } finally {
+                    Arrays.fill(pass, '\0');
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setCursor(java.awt.Cursor.getDefaultCursor());
+                btnGuardar.setEnabled(true);
+                btnSalir.setEnabled(true);
+                txtUsuario.setEnabled(true);
+                txtPass.setEnabled(true);
+                txtPassConfirm.setEnabled(true);
+
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(FrmBootstrapInicial.this,
+                            "¡Cuenta de Administrador configurada exitosamente!\nAhora puede iniciar sesión con su usuario y contraseña.",
+                            "Configuración Completada", JOptionPane.INFORMATION_MESSAGE);
+                    completado = true;
+                    dispose();
+                } catch (Exception ex) {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    if (cause instanceof ErrorAplicacionException) {
+                        JOptionPane.showMessageDialog(FrmBootstrapInicial.this,
+                                cause.getMessage(), "Validación de Bootstrap", JOptionPane.WARNING_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(FrmBootstrapInicial.this,
+                                "Ocurrió un error al guardar el Administrador inicial: " + cause.getMessage(),
+                                "Error de Inicialización", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }
+        }.execute();
     }
 
     private void confirmarSalida() {

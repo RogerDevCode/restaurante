@@ -963,6 +963,120 @@ BEGIN
         INDEX idx_ledger_referencia (tipo_evento, referencia_id),
         INDEX idx_ledger_creado (creado_en)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+    -- 53. Soporte Facturación Digital SENIAT Providencia SNAT/2026/00093 (v18)
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'numero_control'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN numero_control VARCHAR(30) NULL COMMENT 'Número de control fiscal formal asignado por PTA o imprenta';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'sello_digital'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN sello_digital TEXT NULL COMMENT 'Token de autenticidad criptográfica devuelto por el PTA';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'url_validacion'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN url_validacion VARCHAR(500) NULL COMMENT 'URL para consulta pública del comprobante en el portal fiscal';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'estado_fiscal'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN estado_fiscal ENUM('PENDIENTE_TRANSMISION','TRANSMITIDA','CONTINGENCIA','RECHAZADA','NO_APLICA') NOT NULL DEFAULT 'NO_APLICA' COMMENT 'Estado en el flujo de facturación electrónica';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'es_contingencia'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN es_contingencia TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = emitida con respaldo de talonario físico';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'nro_talonario'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN nro_talonario VARCHAR(30) NULL COMMENT 'Número de documento en talonario físico si es contingencia';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'transmitida_en'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN transmitida_en DATETIME NULL COMMENT 'Fecha y hora exacta de respuesta exitosa del PTA';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'igtf_total_usd'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN igtf_total_usd DECIMAL(18,2) NOT NULL DEFAULT 0.00 COMMENT 'Total IGTF percibido en USD';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'igtf_total_bs'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN igtf_total_bs DECIMAL(18,2) NOT NULL DEFAULT 0.00 COMMENT 'Total IGTF percibido en Bs a tasa BCV';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'nc_numero_control'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN nc_numero_control VARCHAR(30) NULL COMMENT 'Número de control de la Nota de Crédito en caso de anulación';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'nc_transmitida_en'
+    ) THEN
+        ALTER TABLE pedidos ADD COLUMN nc_transmitida_en DATETIME NULL COMMENT 'Timestamp de transmisión de la Nota de Crédito';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND index_name = 'idx_pedidos_estado_fiscal'
+    ) THEN
+        ALTER TABLE pedidos ADD INDEX idx_pedidos_estado_fiscal (estado_fiscal);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND index_name = 'idx_pedidos_daemon_reintento'
+    ) THEN
+        ALTER TABLE pedidos ADD INDEX idx_pedidos_daemon_reintento (estado_fiscal, id);
+    END IF;
+
+    -- 54. Columnas de IGTF en pedido_pagos
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedido_pagos' AND column_name = 'igtf_porcentaje'
+    ) THEN
+        ALTER TABLE pedido_pagos ADD COLUMN igtf_porcentaje DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT 'Alícuota IGTF aplicada a este tramo (3.00 si aplica)';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedido_pagos' AND column_name = 'igtf_monto_usd'
+    ) THEN
+        ALTER TABLE pedido_pagos ADD COLUMN igtf_monto_usd DECIMAL(18,2) NOT NULL DEFAULT 0.00 COMMENT 'Monto percibido por IGTF en USD';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'pedido_pagos' AND column_name = 'igtf_monto_bs'
+    ) THEN
+        ALTER TABLE pedido_pagos ADD COLUMN igtf_monto_bs DECIMAL(18,2) NOT NULL DEFAULT 0.00 COMMENT 'Monto percibido por IGTF en Bs a tasa del pedido';
+    END IF;
 END$$
 DELIMITER ;
 

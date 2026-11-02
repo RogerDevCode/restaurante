@@ -1531,6 +1531,10 @@ public class PanelAtencionMesasSplit extends JPanel {
     }
 
     private void enviarPedidoCocina() {
+        enviarPedidoCocina(null);
+    }
+
+    private void enviarPedidoCocina(Runnable callbackPostGuardado) {
         if (numMesaSeleccionada <= 0 || idSalaSeleccionada <= 0) {
             sistema.mostrarAvisoEnBanda("Seleccione una mesa primero");
             return;
@@ -1608,63 +1612,98 @@ public class PanelAtencionMesasSplit extends JPanel {
             p.setMesoneroNombre(nombreMesoneroOriginal);
         }
 
-        try {
-            boolean eraEdicion = idPedidoActivo > 0;
-            boolean imprimirComanda = chkImprimirComanda != null && chkImprimirComanda.isSelected();
-            Modelo.ResultadoPedidoComanda resultado;
-            if (eraEdicion) {
-                if (sistema != null) {
-                    if (!sistema.autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return;
-                } else if (politicaAcceso != null
-                        && !politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) {
-                    JOptionPane.showMessageDialog(this,
-                            "Tu rol no permite modificar pedidos existentes.",
-                            "Acceso Denegado", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
-                resultado = pedidosControlador.actualizarPedidoCompletoConMarcha(
-                        idPedidoActivo, p, detalles, imprimirComanda);
-                sistema.mostrarAvisoEnBanda(resultado.marcha() == null
-                        ? "Pedido actualizado; sin salida de cocina nueva para " + codigoMesaSeleccionada
-                        : "Pedido actualizado para " + codigoMesaSeleccionada);
-            } else {
-                resultado = pedidosControlador.registrarPedidoCompletoConMarcha(p, detalles, imprimirComanda);
-                int idNuevo = resultado.idPedido();
-                this.idPedidoActivo = idNuevo;
-                sistema.mostrarAvisoEnBanda(imprimirComanda
-                        ? "Pedido enviado a cocina para " + codigoMesaSeleccionada + " [#" + idNuevo + "]"
-                        : "Pedido guardado sin emitir comanda para " + codigoMesaSeleccionada + " [#" + idNuevo + "]");
+        final boolean eraEdicion = idPedidoActivo > 0;
+        if (eraEdicion) {
+            if (sistema != null) {
+                if (!sistema.autorizar(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) return;
+            } else if (politicaAcceso != null
+                    && !politicaAcceso.permite(PoliticaAcceso.Accion.EDITAR_PEDIDOS_ABIERTOS)) {
+                JOptionPane.showMessageDialog(this,
+                        "Tu rol no permite modificar pedidos existentes.",
+                        "Acceso Denegado", JOptionPane.WARNING_MESSAGE);
+                return;
             }
-            if (resultado.marcha() != null) {
-                String salaTexto = (nombreSalaSeleccionada != null && !nombreSalaSeleccionada.isBlank()) ? nombreSalaSeleccionada : "Sala " + idSalaSeleccionada;
-                String mesoneroTexto = (p.getMesoneroNombre() != null && !p.getMesoneroNombre().isBlank()) ? p.getMesoneroNombre() : sistema.getNombreUsuarioActual();
-                Servicio.ServicioComandaCocina.imprimirAsync(resultado.marcha(), salaTexto,
-                        numMesaSeleccionada, mesoneroTexto);
-            }
-            refrescarMesasSalaActual();
-        } catch (Exception ex) {
-            sistema.mostrarAvisoEnBanda("Error al procesar: " + ex.getMessage());
-            JOptionPane.showMessageDialog(this, "Error al procesar el pedido: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
+
+        final boolean imprimirComanda = chkImprimirComanda != null && chkImprimirComanda.isSelected();
+        final int idEdicion = idPedidoActivo;
+        final String codMesa = codigoMesaSeleccionada;
+        final String salaTexto = (nombreSalaSeleccionada != null && !nombreSalaSeleccionada.isBlank()) ? nombreSalaSeleccionada : "Sala " + idSalaSeleccionada;
+        final String mesoneroTexto = (p.getMesoneroNombre() != null && !p.getMesoneroNombre().isBlank()) ? p.getMesoneroNombre() : sistema.getNombreUsuarioActual();
+        final int numMesa = numMesaSeleccionada;
+
+        btnEnviarCocina.setEnabled(false);
+        btnCobrar.setEnabled(false);
+        if (btnPreFactura != null) btnPreFactura.setEnabled(false);
+        Cursor cursorPrevio = getCursor();
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+        new javax.swing.SwingWorker<Modelo.ResultadoPedidoComanda, Void>() {
+            @Override
+            protected Modelo.ResultadoPedidoComanda doInBackground() {
+                if (eraEdicion) {
+                    return pedidosControlador.actualizarPedidoCompletoConMarcha(
+                            idEdicion, p, detalles, imprimirComanda);
+                } else {
+                    return pedidosControlador.registrarPedidoCompletoConMarcha(p, detalles, imprimirComanda);
+                }
+            }
+
+            @Override
+            protected void done() {
+                setCursor(cursorPrevio);
+                btnEnviarCocina.setEnabled(true);
+                btnCobrar.setEnabled(true);
+                if (btnPreFactura != null) btnPreFactura.setEnabled(true);
+                try {
+                    Modelo.ResultadoPedidoComanda resultado = get();
+                    if (eraEdicion) {
+                        sistema.mostrarAvisoEnBanda(resultado.marcha() == null
+                                ? "Pedido actualizado; sin salida de cocina nueva para " + codMesa
+                                : "Pedido actualizado para " + codMesa);
+                    } else {
+                        int idNuevo = resultado.idPedido();
+                        idPedidoActivo = idNuevo;
+                        sistema.mostrarAvisoEnBanda(imprimirComanda
+                                ? "Pedido enviado a cocina para " + codMesa + " [#" + idNuevo + "]"
+                                : "Pedido guardado sin emitir comanda para " + codMesa + " [#" + idNuevo + "]");
+                    }
+                    if (resultado.marcha() != null) {
+                        Servicio.ServicioComandaCocina.imprimirAsync(resultado.marcha(), salaTexto,
+                                numMesa, mesoneroTexto);
+                    }
+                    refrescarMesasSalaActual();
+                    if (callbackPostGuardado != null) {
+                        callbackPostGuardado.run();
+                    }
+                } catch (Exception ex) {
+                    Throwable causa = ex.getCause() != null ? ex.getCause() : ex;
+                    sistema.mostrarAvisoEnBanda("Error al procesar: " + causa.getMessage());
+                    JOptionPane.showMessageDialog(PanelAtencionMesasSplit.this,
+                            "Error al procesar el pedido: " + causa.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     private void cobrarPedidoDirecto() {
         if (modeloCarrito.getRowCount() > 0) {
-            // Guardar o actualizar cambios locales primero y luego cobrar
-            enviarPedidoCocina();
-            if (idPedidoActivo > 0) {
-                final int idACobrar = idPedidoActivo;
-                sistema.abrirModalCobroPedido(idACobrar, () -> {
-                    modeloCarrito.setRowCount(0);
-                    detallesExistentesCarrito.clear();
-                    idPedidoActivo = 0;
-                    recalcularTotales();
-                    refrescarMesasSalaActual();
-                });
-            } else {
-                java.util.logging.Logger.getLogger(PanelAtencionMesasSplit.class.getName())
-                        .warning("cobrarPedidoDirecto: enviarPedidoCocina no fijó idPedidoActivo válido (" + idPedidoActivo + ")");
-            }
+            // Guardar o actualizar cambios locales primero de forma asíncrona y luego cobrar
+            enviarPedidoCocina(() -> {
+                if (idPedidoActivo > 0) {
+                    final int idACobrar = idPedidoActivo;
+                    sistema.abrirModalCobroPedido(idACobrar, () -> {
+                        modeloCarrito.setRowCount(0);
+                        detallesExistentesCarrito.clear();
+                        idPedidoActivo = 0;
+                        recalcularTotales();
+                        refrescarMesasSalaActual();
+                    });
+                } else {
+                    java.util.logging.Logger.getLogger(PanelAtencionMesasSplit.class.getName())
+                            .warning("cobrarPedidoDirecto: enviarPedidoCocina no fijó idPedidoActivo válido (" + idPedidoActivo + ")");
+                }
+            });
         } else if (idPedidoActivo > 0) {
             final int idACobrar = idPedidoActivo;
             sistema.abrirModalCobroPedido(idACobrar, () -> {
@@ -1686,25 +1725,46 @@ public class PanelAtencionMesasSplit extends JPanel {
         }
 
         // Si hay consumos en el carrito pero el pedido aún no se ha guardado, o se han modificado items,
-        // guardamos/actualizamos primero para tener el pedido persistido en BD.
+        // guardamos/actualizamos primero para tener el pedido persistido en BD de forma asíncrona.
         if (modeloCarrito.getRowCount() > 0) {
-            enviarPedidoCocina();
+            enviarPedidoCocina(this::ejecutarEmisionPreFactura);
+            return;
         }
 
+        ejecutarEmisionPreFactura();
+    }
+
+    private void ejecutarEmisionPreFactura() {
         if (idPedidoActivo <= 0) {
             sistema.mostrarAvisoEnBanda("No se pudo emitir la pre-factura: pedido no guardado.");
             return;
         }
 
-        try {
-            pedidosControlador.emitirPreFactura(idPedidoActivo);
-            sistema.mostrarAvisoEnBanda("Pre-factura emitida exitosamente para pedido #" + idPedidoActivo);
-        } catch (Exception ex) {
-            sistema.mostrarAvisoEnBanda("Error al emitir pre-factura: " + ex.getMessage());
-            JOptionPane.showMessageDialog(this,
-                    "Error al emitir pre-factura: " + ex.getMessage(),
-                    "Pre-Factura", JOptionPane.ERROR_MESSAGE);
-        }
+        final int id = idPedidoActivo;
+        Cursor cursorPrevio = getCursor();
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        Thread.startVirtualThread(() -> {
+            boolean exito = false;
+            Throwable error = null;
+            try {
+                exito = pedidosControlador.emitirPreFactura(id);
+            } catch (Exception ex) {
+                error = ex;
+            }
+            final boolean ok = exito;
+            final Throwable err = error;
+            SwingUtilities.invokeLater(() -> {
+                setCursor(cursorPrevio);
+                if (err != null) {
+                    sistema.mostrarAvisoEnBanda("Error al emitir pre-factura: " + err.getMessage());
+                    JOptionPane.showMessageDialog(this,
+                            "Error al emitir pre-factura: " + err.getMessage(),
+                            "Pre-Factura", JOptionPane.ERROR_MESSAGE);
+                } else if (ok) {
+                    sistema.mostrarAvisoEnBanda("Pre-factura emitida exitosamente para pedido #" + id);
+                }
+            });
+        });
     }
 
     private void anularPedidoPorFugaDirecto() {
@@ -1734,39 +1794,63 @@ public class PanelAtencionMesasSplit extends JPanel {
         if (confirmacion != JOptionPane.YES_OPTION) return;
 
         String usr = (sistema != null) ? sistema.getNombreUsuarioActual() : "Sistema";
-        try {
-            boolean exito = pedidosControlador.anularPedido(id, motivo.trim(), usr);
-            if (exito) {
-                sistema.mostrarAvisoEnBanda("Pedido #" + id + " anulado por fuga. Mesa liberada.");
-                idPedidoActivo = -1;
-                idMesoneroOriginal = null;
-                nombreMesoneroOriginal = null;
-                mesoneroQuitadoExplicito = false;
-                modeloCarrito.setRowCount(0);
-                lblCabeceraMesa.setText("MESA: " + codigoMesaSeleccionada + " (" + nombreSalaSeleccionada + ") — DISPONIBLE (Nuevo Pedido)");
-                lblCabeceraMesa.setForeground(new Color(0, 102, 102));
-                btnEnviarCocina.setText("Enviar a Cocina");
-                btnCobrar.setEnabled(false);
-                if (btnPreFactura != null) btnPreFactura.setEnabled(false);
-                if (btnCortesia != null) btnCortesia.setEnabled(false);
-                if (btnFuga != null) btnFuga.setEnabled(false);
-                recalcularTotales();
-                refrescarMesasSalaActual();
-                RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
-                RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
-                RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
-            } else {
-                JOptionPane.showMessageDialog(this, "No se pudo anular el pedido #" + id + ".", "Error", JOptionPane.ERROR_MESSAGE);
+        btnEnviarCocina.setEnabled(false);
+        btnCobrar.setEnabled(false);
+        Cursor cursorPrevio = getCursor();
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        Thread.startVirtualThread(() -> {
+            boolean ok = false;
+            Throwable error = null;
+            try {
+                ok = pedidosControlador.anularPedido(id, motivo.trim(), usr);
+            } catch (Exception ex) {
+                error = ex;
             }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error al anular pedido por fuga: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
+            final boolean exito = ok;
+            final Throwable err = error;
+            SwingUtilities.invokeLater(() -> {
+                setCursor(cursorPrevio);
+                btnEnviarCocina.setEnabled(true);
+                btnCobrar.setEnabled(true);
+                if (err != null) {
+                    JOptionPane.showMessageDialog(PanelAtencionMesasSplit.this,
+                            "Error al anular pedido por fuga: " + err.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                } else if (exito) {
+                    sistema.mostrarAvisoEnBanda("Pedido #" + id + " anulado por fuga. Mesa liberada.");
+                    idPedidoActivo = -1;
+                    idMesoneroOriginal = null;
+                    nombreMesoneroOriginal = null;
+                    mesoneroQuitadoExplicito = false;
+                    modeloCarrito.setRowCount(0);
+                    lblCabeceraMesa.setText("MESA: " + codigoMesaSeleccionada + " (" + nombreSalaSeleccionada + ") — DISPONIBLE (Nuevo Pedido)");
+                    lblCabeceraMesa.setForeground(new Color(0, 102, 102));
+                    btnEnviarCocina.setText("Enviar a Cocina");
+                    btnCobrar.setEnabled(false);
+                    if (btnPreFactura != null) btnPreFactura.setEnabled(false);
+                    if (btnCortesia != null) btnCortesia.setEnabled(false);
+                    if (btnFuga != null) btnFuga.setEnabled(false);
+                    recalcularTotales();
+                    refrescarMesasSalaActual();
+                    RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
+                    RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
+                    RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
+                } else {
+                    JOptionPane.showMessageDialog(PanelAtencionMesasSplit.this,
+                            "No se pudo anular el pedido #" + id + ".", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+        });
     }
 
     private void aplicarCortesiaDirecto() {
         if (modeloCarrito.getRowCount() > 0) {
-            enviarPedidoCocina();
+            enviarPedidoCocina(this::ejecutarCortesiaDirecto);
+            return;
         }
+        ejecutarCortesiaDirecto();
+    }
+
+    private void ejecutarCortesiaDirecto() {
         if (idPedidoActivo <= 0) {
             sistema.mostrarAvisoEnBanda("No hay pedido activo en esta mesa para aplicar cortesía");
             return;

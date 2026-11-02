@@ -33,4 +33,20 @@ public final class ConfigClaves {
     public static final String TUNEL_SSH_PUERTO_REMOTO = "tunel_ssh_puerto_remoto";
     public static final String TUNEL_SSH_TOKEN_ADMIN = "tunel_ssh_token_admin";
     public static final String BROMA_INICIO_CONTEO = "broma_inicio_conteo";
+
+    // Facturación Digital SENIAT — Providencia SNAT/2026/00093
+    public static final String FISCAL_PROVEEDOR_URL = "fiscal_proveedor_url";
+    public static final String FISCAL_PROVEEDOR_TOKEN = "fiscal_proveedor_token";
+    public static final String FISCAL_MODO_TRANSMISION = "fiscal_modo_transmision";
+    public static final String FISCAL_RIF_CONTRIBUYENTE = "fiscal_rif_contribuyente";
+    public static final String FISCAL_PROVEEDOR_NOMBRE = "fiscal_proveedor_nombre";
+    public static final String FISCAL_TIMEOUT_MS = "fiscal_timeout_ms";
+    public static final String FISCAL_ES_CONTRIBUYENTE_ESPECIAL = "fiscal_es_contribuyente_especial";
+    public static final String FISCAL_ALICUOTA_IGTF = "fiscal_alicuota_igtf";
+    public static final String FISCAL_DAEMON_INTERVALO_S = "fiscal_daemon_intervalo_s";
+    public static final String FISCAL_CONTINGENCIA_TALONARIO_DESDE = "fiscal_contingencia_talonario_desde";
+    public static final String FISCAL_CONTINGENCIA_TALONARIO_HASTA = "fiscal_contingencia_talonario_hasta";
+    public static final String FISCAL_CONTINGENCIA_TALONARIO_ACTUAL = "fiscal_contingencia_talonario_actual";
+    public static final String FISCAL_CONTINGENCIA_AUTORIZACION_SENIAT = "fiscal_contingencia_autorizacion_seniat";
+    public static final String FISCAL_MODO_MOCK = "fiscal_modo_mock";
 }

@@ -9306,47 +9306,46 @@ public final class Sistema extends javax.swing.JFrame {
 
         char[] claveChars = pwd.getPassword();
         pwd.setText("");
-        try {
-            AutenticacionServicio auth = new AutenticacionServicio(lgDao);
-            String correoAdmin = (usuarioActual != null && usuarioActual.getCorreo() != null)
-                    ? usuarioActual.getCorreo().trim() : "";
-            if (correoAdmin.isEmpty()) {
-                String inputCorreo = JOptionPane.showInputDialog(this,
-                        "Confirme el usuario o correo del administrador:", "Identificación de Administrador",
-                        JOptionPane.QUESTION_MESSAGE);
-                if (inputCorreo == null || inputCorreo.trim().isEmpty()) {
-                    return;
-                }
-                correoAdmin = inputCorreo.trim();
-            }
 
-            java.util.Optional<Usuario> usuarioAuth = auth.autenticar(correoAdmin, claveChars);
-            if (usuarioAuth.isEmpty() || !"Administrador".equalsIgnoreCase(usuarioAuth.get().getRol())) {
-                JOptionPane.showMessageDialog(this, "Contraseña incorrecta o usuario sin permisos de administrador.",
-                        "Autenticación Fallida", JOptionPane.ERROR_MESSAGE);
+        String correoAdminTemp = (usuarioActual != null && usuarioActual.getCorreo() != null)
+                ? usuarioActual.getCorreo().trim() : "";
+        if (correoAdminTemp.isEmpty()) {
+            String inputCorreo = JOptionPane.showInputDialog(this,
+                    "Confirme el usuario o correo del administrador:", "Identificación de Administrador",
+                    JOptionPane.QUESTION_MESSAGE);
+            if (inputCorreo == null || inputCorreo.trim().isEmpty()) {
+                java.util.Arrays.fill(claveChars, '\0');
                 return;
             }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Fallo al verificar credenciales: " + mensajeError(ex),
-                    "Error de Seguridad", JOptionPane.ERROR_MESSAGE);
-            return;
-        } finally {
-            java.util.Arrays.fill(claveChars, '\0');
+            correoAdminTemp = inputCorreo.trim();
         }
+        final String correoAdmin = correoAdminTemp;
 
         final int mesesFinal = meses;
         if (btnPurgarHistorial != null) {
             btnPurgarHistorial.setEnabled(false);
         }
+        setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
 
         new javax.swing.SwingWorker<Integer, Void>() {
             @Override
-            protected Integer doInBackground() {
+            protected Integer doInBackground() throws Exception {
+                try {
+                    AutenticacionServicio auth = new AutenticacionServicio(lgDao);
+                    java.util.Optional<Usuario> usuarioAuth = auth.autenticar(correoAdmin, claveChars);
+                    if (usuarioAuth.isEmpty() || !"Administrador".equalsIgnoreCase(usuarioAuth.get().getRol())) {
+                        throw Modelo.ErrorAplicacionException.validacion(
+                                "Contraseña incorrecta o usuario sin permisos de administrador.");
+                    }
+                } finally {
+                    java.util.Arrays.fill(claveChars, '\0');
+                }
                 return pedidosControlador.purgarPedidosFinalizados(mesesFinal);
             }
 
             @Override
             protected void done() {
+                setCursor(java.awt.Cursor.getDefaultCursor());
                 if (btnPurgarHistorial != null) {
                     btnPurgarHistorial.setEnabled(politicaAcceso.esAdministrador());
                 }
@@ -9359,9 +9358,16 @@ public final class Sistema extends javax.swing.JFrame {
                     RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
                     RefrescoVistas.notificar(RefrescoVistas.DASHBOARD);
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(Sistema.this,
-                            "No se pudo completar la purga: " + mensajeError(ex),
-                            "Error en Purga", JOptionPane.ERROR_MESSAGE);
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    if (cause instanceof Modelo.ErrorAplicacionException) {
+                        JOptionPane.showMessageDialog(Sistema.this,
+                                cause.getMessage(),
+                                "Autenticación Fallida", JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(Sistema.this,
+                                "No se pudo completar la purga: " + mensajeError((Exception) (cause instanceof Exception ? cause : ex)),
+                                "Error en Purga", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             }
         }.execute();
