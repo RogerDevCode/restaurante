@@ -193,9 +193,8 @@ Mejoras de layout en `Sistema.java`:
   agregar a un pedido pendiente (dispara `PedidoPendienteExistenteException` por la
   constraint `uq_pedidos_mesa_pendiente`). `PedidosDao.actualizarPedidoCompleto` es correcto.
 - `Sistema.java` es un archivo monolítico (~7.159 líneas): candidato a refactor por pestañas.
-- Documentos de planificación en la raíz: `plan.md`, `plan_reparacion.md`,
-  `MIGRATION_PLAN_JAVA_21.md`, `plan_multihibrido_cantidades.md`, `QA_Adversarial_Report.md`,
-  `reporte.md` (este último enfocado en el subsistema de impresión de tickera).
+- Documentos de planificación vigentes: `plans/adecuacion-seniat.md` (adecuación tributaria SENIAT 2026/2027)
+  y `plans/plan_arquitectura_empresarial_tablets_seguridad_restaurante.md` (arquitectura móvil/seguridad v2.0).
 
 ---
 

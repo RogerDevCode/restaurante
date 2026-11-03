@@ -185,6 +185,14 @@ public final class ServidorRestTablets {
                 enviarError(exchange, 405, "Método no permitido. Use POST.");
                 return;
             }
+
+            // Rate Limiting por IP para mitigar fuerza bruta en credenciales (OWASP A07)
+            String ipCliente = obtenerIpCliente(exchange);
+            if (!GestorTokensApi.verificarRateLimitIp(ipCliente, 5)) {
+                enviarError(exchange, 429, "Demasiados intentos de acceso desde esta IP. Intente más tarde.");
+                return;
+            }
+
             String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             Map<String, String> params = parsearJsonSimple(body);
             String codigo = params.get("codigo");
@@ -220,7 +228,7 @@ public final class ServidorRestTablets {
                         return;
                     }
 
-                    String token = generarTokenMesonero(encontrado);
+                    String token = GestorTokensApi.generarTokenMesonero(encontrado);
                     String resp = "{\"ok\":true,\"token\":\"" + token + "\",\"id_mesonero\":" + encontrado.getId()
                             + ",\"nombre\":\"" + escaparJson(encontrado.getNombreCompleto()) + "\",\"rol\":\"MESONERO\"}";
                     enviarJson(exchange, 200, resp);
@@ -433,6 +441,19 @@ public final class ServidorRestTablets {
                 return;
             }
 
+            // Autenticación Zero-Trust: validar token de mesonero firmado con HMAC-SHA256 (NIST SP 800-207)
+            GestorTokensApi.SesionMesonero sesion = autenticarMesonero(exchange);
+            if (sesion == null) {
+                enviarError(exchange, 401, "Acceso no autorizado. Token de comanda inválido o sesión expirada.");
+                return;
+            }
+
+            // Rate Limiting diferenciado por mesonero (15 req/s) para evitar DoS sin bloquear el router Wi-Fi común
+            if (!GestorTokensApi.verificarRateLimitMesonero(sesion.idMesonero(), 15)) {
+                enviarError(exchange, 429, "Límite de tasa de comandas excedido para el mesonero #" + sesion.idMesonero());
+                return;
+            }
+
             // 1. Control de Idempotencia estricto (Anti-duplicación Wi-Fi)
             String idempotencyKey = exchange.getRequestHeaders().getFirst("Idempotency-Key");
             if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -469,6 +490,10 @@ public final class ServidorRestTablets {
                         enviarError(exchange, 400, "Debe agregar al menos un ítem a la comanda.");
                         return;
                     }
+
+                    // Enforzar identidad criptográfica autenticada (elimina suplantación OWASP A01)
+                    comanda.idMesonero = sesion.idMesonero();
+                    comanda.mesoneroNombre = sesion.nombre();
 
                     // Cargar parámetros de configuración del sistema (Tasa e IVA)
                     ConfiguracionServicio configServicio = new ConfiguracionServicio();
@@ -546,11 +571,9 @@ public final class ServidorRestTablets {
                     p.setSubtotalBs(calc.subtotalVes());
                     p.setIvaBs(calc.ivaVes());
                     p.setTotalBs(calc.totalVes());
-                    p.setUsuario(comanda.mesoneroNombre != null && !comanda.mesoneroNombre.isBlank() ? comanda.mesoneroNombre : "Tablet");
-                    if (comanda.idMesonero > 0) {
-                        p.setIdMesonero(comanda.idMesonero);
-                        p.setMesoneroNombre(comanda.mesoneroNombre);
-                    }
+                    p.setUsuario(sesion.nombre());
+                    p.setIdMesonero(sesion.idMesonero());
+                    p.setMesoneroNombre(sesion.nombre());
 
                     ResultadoPedidoComanda resultado;
                     if (idPedidoExistente > 0) {
@@ -1713,11 +1736,28 @@ public final class ServidorRestTablets {
                   nombreMesonero: 'Mesonero 1'
                 };
 
+                async function authFetch(url, options = {}) {
+                  options.headers = options.headers || {};
+                  const token = localStorage.getItem('auth_token') || '';
+                  if (token) {
+                    options.headers['Authorization'] = 'Bearer ' + token;
+                  }
+                  const res = await fetch(url, options);
+                  if (res.status === 401) {
+                    alert('Sesión expirada o no autorizada. Por favor inicie sesión.');
+                    await cambiarMesonero();
+                  }
+                  return res;
+                }
+
                 async function init() {
                   const savedMes = localStorage.getItem('mesonero_id');
-                  if (savedMes) {
+                  const savedToken = localStorage.getItem('auth_token');
+                  if (savedMes && savedToken) {
                     state.idMesonero = parseInt(savedMes);
                     state.nombreMesonero = localStorage.getItem('mesonero_nombre') || 'Mesonero ' + savedMes;
+                  } else {
+                    setTimeout(cambiarMesonero, 300);
                   }
                   document.getElementById('txtMesonero').textContent = state.nombreMesonero;
 
@@ -1727,7 +1767,7 @@ public final class ServidorRestTablets {
 
                 async function cargarSalas() {
                   try {
-                    const res = await fetch('/api/v1/salas');
+                    const res = await authFetch('/api/v1/salas');
                     state.salas = await res.json();
                     if (state.salas.length > 0) {
                       state.salaActual = state.salas[0];
@@ -1760,7 +1800,7 @@ public final class ServidorRestTablets {
 
                   let mesasOcupadas = [];
                   try {
-                    const res = await fetch('/api/v1/mesas?id_sala=' + state.salaActual.id);
+                    const res = await authFetch('/api/v1/mesas?id_sala=' + state.salaActual.id);
                     mesasOcupadas = await res.json();
                   } catch (e) {}
 
@@ -1791,7 +1831,7 @@ public final class ServidorRestTablets {
 
                 async function cargarPlatos() {
                   try {
-                    const res = await fetch('/api/v1/platos');
+                    const res = await authFetch('/api/v1/platos');
                     state.platos = await res.json();
                     state.platosFiltrados = [...state.platos];
                     renderPlatos();
@@ -1914,7 +1954,7 @@ public final class ServidorRestTablets {
                   };
 
                   try {
-                    const res = await fetch('/api/v1/comandas', {
+                    const res = await authFetch('/api/v1/comandas', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
@@ -1956,6 +1996,7 @@ public final class ServidorRestTablets {
                       state.nombreMesonero = json.nombre;
                       localStorage.setItem('mesonero_id', json.id_mesonero);
                       localStorage.setItem('mesonero_nombre', json.nombre);
+                      localStorage.setItem('auth_token', json.token);
                       document.getElementById('txtMesonero').textContent = json.nombre;
                       alert('Sesión iniciada: ' + json.nombre);
                     } else {
@@ -1977,15 +2018,52 @@ public final class ServidorRestTablets {
     // Utilidades Criptográficas y Auxiliares
     // --------------------------------------------------------------------------
 
-    private static String generarTokenMesonero(Mesonero m) {
-        String data = m.getId() + ":" + m.getCedula() + ":" + System.currentTimeMillis();
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(data.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (Exception e) {
-            return UUID.randomUUID().toString();
+    private static GestorTokensApi.SesionMesonero autenticarMesonero(HttpExchange exchange) {
+        if (exchange == null) {
+            return null;
         }
+        String token = null;
+        String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+        if (authHeader != null && authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            token = authHeader.substring(7).trim();
+        } else {
+            token = exchange.getRequestHeaders().getFirst("X-Auth-Token");
+            if (token == null || token.isBlank()) {
+                URI uri = exchange.getRequestURI();
+                if (uri != null && uri.getQuery() != null) {
+                    for (String param : uri.getQuery().split("&")) {
+                        String[] par = param.split("=", 2);
+                        if ("token".equalsIgnoreCase(par[0]) && par.length > 1) {
+                            try {
+                                token = java.net.URLDecoder.decode(par[1], StandardCharsets.UTF_8);
+                            } catch (Exception ignored) {
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        return GestorTokensApi.validarToken(token);
+    }
+
+    private static String obtenerIpCliente(HttpExchange exchange) {
+        if (exchange == null) {
+            return "127.0.0.1";
+        }
+        String xff = exchange.getRequestHeaders().getFirst("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            int idx = xff.indexOf(',');
+            return (idx > 0 ? xff.substring(0, idx) : xff).trim();
+        }
+        InetSocketAddress remote = exchange.getRemoteAddress();
+        if (remote != null && remote.getAddress() != null) {
+            return remote.getAddress().getHostAddress();
+        }
+        return "127.0.0.1";
     }
 
     private static void enviarJson(HttpExchange exchange, int status, String json) throws IOException {
