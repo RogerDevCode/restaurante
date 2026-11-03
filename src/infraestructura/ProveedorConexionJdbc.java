@@ -599,6 +599,10 @@ public class ProveedorConexionJdbc {
         if (esHostLocal(h)) {
             return true;
         }
+        if ("restaurante-db-1".equals(h) || "db".equals(h) || "mysql".equals(h)
+                || h.endsWith(".local") || h.endsWith(".lan")) {
+            return true;
+        }
         String literal = h.startsWith("[") && h.endsWith("]")
                 ? h.substring(1, h.length() - 1) : h;
         if (literal.matches("[0-9.]+")) {
