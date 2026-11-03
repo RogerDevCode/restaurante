@@ -472,6 +472,22 @@ public final class ServicioImpresionTicket {
         }
     }
 
+    /**
+     * Valida que el nombre de la impresora sea seguro y no contenga caracteres de inyección
+     * de comandos o control de shell. Admite nombres con tildes, eñes, espacios, almohadilla (#)
+     * y rutas de red Windows SMB/UNC (ej. "\\SERVIDOR\Ticketera").
+     */
+    public static boolean esNombreImpresoraValido(String nombreImpresora) {
+        if (nombreImpresora == null || nombreImpresora.isBlank()) {
+            return false;
+        }
+        String trim = nombreImpresora.trim();
+        if ("DEFAULT".equalsIgnoreCase(trim)) {
+            return true;
+        }
+        return trim.matches("^(?:\\\\\\\\[a-zA-Z0-9_\\-\\.]+\\\\)?+[a-zA-Z0-9_\\-\\.\\ \\p{L}#]{1,80}$");
+    }
+
     /** Envía el archivo PDF a imprimir directamente en Windows 11. */
     public static boolean imprimirEnWindows(Path archivoPdf, String nombreImpresora) {
         if (archivoPdf == null || !Files.isRegularFile(archivoPdf)) {
@@ -487,65 +503,33 @@ public final class ServicioImpresionTicket {
                 return true;
             }
 
-            // Abortar invocación a PowerShell si la impresora destino coincide con impresoras virtuales
+            // Abortar si la impresora destino coincide con impresoras virtuales
             if (esImpresoraVirtual(nombreImpresora)) {
-                LOGGER.warning(() -> "Impresora virtual detectada (" + nombreImpresora + "). Se aborta PowerShell para evitar ventanas huérfanas.");
+                LOGGER.warning(() -> "Impresora virtual detectada (" + nombreImpresora + "). Se aborta impresión para evitar ventanas huérfanas.");
                 return false;
             }
 
-            // 2. Si no fue posible vía Java Spooler, intentar comando PowerShell con captura estricta de error
+            // 2. Validación de allow-list para nombres de impresora antes de cualquier invocación externa
             if (nombreImpresora != null && !nombreImpresora.isBlank() && !"DEFAULT".equalsIgnoreCase(nombreImpresora)) {
-                Process proceso = null;
-                try {
-                    String cmd = String.format(
-                            "$ErrorActionPreference = 'Stop'; try { Start-Process -FilePath '%s' -Verb PrintTo -ArgumentList '%s' -WindowStyle Hidden -Wait; exit 0 } catch { exit 1 }",
-                            rutaAbsoluta.replace("'", "''"),
-                            nombreImpresora.replace("'", "''"));
-                    proceso = new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", cmd).start();
-                    boolean finalizo = proceso.waitFor(7, TimeUnit.SECONDS);
-                    if (finalizo && proceso.exitValue() == 0) {
-                        return true;
-                    }
-                    if (!finalizo) {
-                        LOGGER.warning("Timeout (7s) agotado en PrintTo hacia " + nombreImpresora + ". Terminando proceso.");
-                        proceso.destroyForcibly();
-                    }
-                } catch (Exception ex) {
-                    LOGGER.log(Level.WARNING, "Aviso en PrintTo hacia " + nombreImpresora + ": " + ex.getMessage(), ex);
-                    if (proceso != null && proceso.isAlive()) {
-                        proceso.destroyForcibly();
-                    }
+                if (!esNombreImpresoraValido(nombreImpresora)) {
+                    LOGGER.warning("Nombre de impresora rechazado por caracteres inválidos o potencialmente peligrosos: " + nombreImpresora);
+                    return false;
                 }
-            }
 
-            // Desktop.print eliminado (Punto 2): retornaba true ciegamente sin garantizar que se imprimiera.
-            // Se confía en el fallback de PowerShell (Paso 3) que sí permite tracking.
-
-            // 4. Fallback PowerShell: imprimir a la predeterminada de Windows con trampa de error
-            String pred = obtenerImpresoraPredeterminada();
-            if (esImpresoraVirtual(pred)) {
-                LOGGER.warning(() -> "Impresora predeterminada virtual detectada (" + pred + "). Se aborta PowerShell para evitar ventanas huérfanas.");
-                return false;
-            }
-
-            Process procesoFallback = null;
-            try {
-                String cmd = String.format(
-                        "$ErrorActionPreference = 'Stop'; try { Start-Process -FilePath '%s' -Verb Print -WindowStyle Hidden -Wait; exit 0 } catch { exit 1 }",
-                        rutaAbsoluta.replace("'", "''"));
-                procesoFallback = new ProcessBuilder("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", cmd).start();
-                boolean finalizo = procesoFallback.waitFor(7, TimeUnit.SECONDS);
-                if (finalizo && procesoFallback.exitValue() == 0) {
+                // Intentar ejecución de utilitarios estándar si existen (SumatraPDF / Acrobat) sin pasar por shell interactivo
+                if (intentarImpresionDirectaEjecutable(rutaAbsoluta, nombreImpresora.trim())) {
                     return true;
                 }
-                if (!finalizo) {
-                    LOGGER.warning("Timeout (7s) agotado en Print de PowerShell predeterminado. Terminando proceso.");
-                    procesoFallback.destroyForcibly();
+            }
+
+            // 3. Fallback: intentar imprimir a la predeterminada si es válida
+            String pred = obtenerImpresoraPredeterminada();
+            if (pred != null && !pred.isBlank() && !esImpresoraVirtual(pred) && esNombreImpresoraValido(pred)) {
+                if (imprimirDirectoJavaSpooler(archivoPdf, pred)) {
+                    return true;
                 }
-            } catch (Exception ex) {
-                LOGGER.log(Level.WARNING, "Aviso en Print por PowerShell: " + ex.getMessage(), ex);
-                if (procesoFallback != null && procesoFallback.isAlive()) {
-                    procesoFallback.destroyForcibly();
+                if (intentarImpresionDirectaEjecutable(rutaAbsoluta, pred.trim())) {
+                    return true;
                 }
             }
         } else {
@@ -553,14 +537,22 @@ public final class ServicioImpresionTicket {
             if (imprimirDirectoJavaSpooler(archivoPdf, nombreImpresora)) {
                 return true;
             }
+            if (nombreImpresora != null && !nombreImpresora.isBlank() && !"DEFAULT".equalsIgnoreCase(nombreImpresora)) {
+                if (!esNombreImpresoraValido(nombreImpresora)) {
+                    LOGGER.warning("Nombre de impresora rechazado en Linux: " + nombreImpresora);
+                    return false;
+                }
+            }
             Process procesoLp = null;
             try {
                 ProcessBuilder pb;
                 if (nombreImpresora != null && !nombreImpresora.isBlank() && !"DEFAULT".equalsIgnoreCase(nombreImpresora)) {
-                    pb = new ProcessBuilder("lp", "-d", nombreImpresora, rutaAbsoluta);
+                    pb = new ProcessBuilder("lp", "-d", nombreImpresora.trim(), rutaAbsoluta);
                 } else {
                     pb = new ProcessBuilder("lp", rutaAbsoluta);
                 }
+                pb.redirectErrorStream(true);
+                pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
                 procesoLp = pb.start();
                 boolean finalizo = procesoLp.waitFor(3, TimeUnit.SECONDS);
                 if (finalizo && procesoLp.exitValue() == 0) {
@@ -577,6 +569,64 @@ public final class ServicioImpresionTicket {
             }
         }
 
+        return false;
+    }
+
+    /**
+     * Intenta enviar el PDF a imprimir directamente invocando visores con flags silenciosos
+     * (SumatraPDF, PDFtoPrinter, Acrobat Reader) mediante paso canónico de argumentos en ProcessBuilder,
+     * sin invocar intérpretes de comandos (cmd.exe o powershell.exe).
+     */
+    private static boolean intentarImpresionDirectaEjecutable(String rutaPdf, String nombreImpresora) {
+        String[] candidatos = {
+            "C:\\Program Files\\SumatraPDF\\SumatraPDF.exe",
+            "C:\\Program Files (x86)\\SumatraPDF\\SumatraPDF.exe",
+            "C:\\Tools\\PDFtoPrinter.exe",
+            "C:\\Program Files\\Adobe\\Acrobat DC\\Acrobat\\AcroRd32.exe",
+            "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe"
+        };
+        for (String ejecutable : candidatos) {
+            java.io.File exeFile = new java.io.File(ejecutable);
+            if (exeFile.isFile() && exeFile.canExecute()) {
+                Process subproceso = null;
+                try {
+                    List<String> comando = new ArrayList<>();
+                    comando.add(ejecutable);
+                    if (ejecutable.toLowerCase().contains("sumatrapdf")) {
+                        comando.add("-print-to");
+                        comando.add(nombreImpresora);
+                        comando.add("-silent");
+                        comando.add(rutaPdf);
+                    } else if (ejecutable.toLowerCase().contains("pdftoprinter")) {
+                        comando.add(rutaPdf);
+                        comando.add(nombreImpresora);
+                    } else {
+                        // Acrobat Reader flags silenciosos: /t <filename> <printername> <drivername> <portname>
+                        comando.add("/t");
+                        comando.add(rutaPdf);
+                        comando.add(nombreImpresora);
+                    }
+                    ProcessBuilder pb = new ProcessBuilder(comando);
+                    pb.redirectErrorStream(true);
+                    pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+                    subproceso = pb.start();
+                    boolean finalizo = subproceso.waitFor(7, TimeUnit.SECONDS);
+                    if (finalizo && subproceso.exitValue() == 0) {
+                        LOGGER.info(() -> "Impresión despachada exitosamente con " + exeFile.getName() + " hacia " + nombreImpresora);
+                        return true;
+                    }
+                    if (!finalizo) {
+                        LOGGER.warning("Timeout agotado en subproceso de impresión (" + exeFile.getName() + "). Cancelando.");
+                        subproceso.destroyForcibly();
+                    }
+                } catch (Exception ex) {
+                    LOGGER.log(Level.WARNING, "Error al despachar mediante " + exeFile.getName() + ": " + ex.getMessage(), ex);
+                    if (subproceso != null && subproceso.isAlive()) {
+                        subproceso.destroyForcibly();
+                    }
+                }
+            }
+        }
         return false;
     }
 
