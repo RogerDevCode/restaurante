@@ -65,7 +65,7 @@ echo [INFO] No se encontro dist\Restaurante.jar ni Apache Ant.
 echo Compilando clases con javac...
 if not exist "build\classes" mkdir "build\classes"
 
-javac -encoding UTF-8 -cp "librerias\AbsoluteLayout.jar;librerias\itextpdf-5.5.1.jar;librerias\mysql-connector-j-8.0.31.jar;librerias\pdfbox-2.0.31.jar;librerias\fontbox-2.0.31.jar;librerias\commons-logging-1.2.jar" -d "build\classes" src\infraestructura\*.java src\Modelo\*.java src\Servicio\*.java src\Controlador\*.java src\Vista\*.java src\restaurante\*.java
+javac -encoding UTF-8 -cp "librerias\AbsoluteLayout.jar;librerias\itextpdf-5.5.13.4.jar;librerias\mysql-connector-j-8.0.31.jar;librerias\pdfbox-2.0.31.jar;librerias\fontbox-2.0.31.jar;librerias\commons-logging-1.2.jar" -d "build\classes" src\infraestructura\*.java src\Modelo\*.java src\Servicio\*.java src\Controlador\*.java src\Vista\*.java src\restaurante\*.java
 
 if %errorlevel% neq 0 (
     echo.
@@ -79,7 +79,7 @@ if %errorlevel% neq 0 (
 xcopy /E /I /Y "src\Img" "build\classes\Img" >nul 2>&1
 
 echo [INFO] Iniciando la aplicacion...
-java -cp "librerias\AbsoluteLayout.jar;librerias\itextpdf-5.5.1.jar;librerias\mysql-connector-j-8.0.31.jar;librerias\pdfbox-2.0.31.jar;librerias\fontbox-2.0.31.jar;librerias\commons-logging-1.2.jar;build\classes" restaurante.Restaurante
+java -cp "librerias\AbsoluteLayout.jar;librerias\itextpdf-5.5.13.4.jar;librerias\mysql-connector-j-8.0.31.jar;librerias\pdfbox-2.0.31.jar;librerias\fontbox-2.0.31.jar;librerias\commons-logging-1.2.jar;build\classes" restaurante.Restaurante
 
 :fin
 if %errorlevel% neq 0 (

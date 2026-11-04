@@ -19,7 +19,7 @@ TEMP_ZIP_VERIF=""
 
 BIBLIOTECAS=(
     "AbsoluteLayout.jar"
-    "itextpdf-5.5.1.jar"
+    "itextpdf-5.5.13.4.jar"
     "mysql-connector-j-8.0.31.jar"
     "pdfbox-2.0.31.jar"
     "fontbox-2.0.31.jar"

@@ -30,7 +30,7 @@ Java 21 LTS.
   `test/integracion/` contra Docker (puerto 3307).
 
 Dependencias en `librerias/` y empaquetadas en `dist/lib/`:
-`AbsoluteLayout.jar`, `itextpdf-5.5.1.jar`, `mysql-connector-j-8.0.31.jar`,
+`AbsoluteLayout.jar`, `itextpdf-5.5.13.4.jar`, `mysql-connector-j-8.0.31.jar`,
 `pdfbox-2.0.31.jar`, `fontbox-2.0.31.jar`, `commons-logging-1.2.jar`.
 
 ---

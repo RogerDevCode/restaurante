@@ -211,7 +211,7 @@ Copy-Item -LiteralPath $DistJar -Destination (Join-Path $OutputDir "Restaurante.
 Write-Host "  -> Copiando dependencias en lib/..." -ForegroundColor Gray
 $libreriasRuntime = @(
     "AbsoluteLayout.jar",
-    "itextpdf-5.5.1.jar",
+    "itextpdf-5.5.13.4.jar",
     "mysql-connector-j-8.0.31.jar",
     "pdfbox-2.0.31.jar",
     "fontbox-2.0.31.jar",

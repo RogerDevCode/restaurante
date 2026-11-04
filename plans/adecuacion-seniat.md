@@ -368,7 +368,7 @@ private float calcularAltoTicket80mm(Pedidos pedido, Config config, List<Detalle
 ```
 
 ### 6.2 Generación de Código QR con `BarcodeQRCode` Nativo de iText
-Evita incluir librerías externas redundantes como ZXing. `itextpdf-5.5.1.jar` ya contiene la clase:
+Evita incluir librerías externas redundantes como ZXing. `itextpdf-5.5.13.4.jar` ya contiene la clase:
 
 ```java
 import com.itextpdf.text.pdf.BarcodeQRCode;

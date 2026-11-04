@@ -46,7 +46,7 @@ Paso 2: Reemplazo del archivo JAR
 Paso 3: Sincronización de dependencias (Carpeta lib/)
 - El JAR depende obligatoriamente de las librerías ubicadas en "Restaurante_Ejecutable/lib/":
   * AbsoluteLayout.jar
-  * itextpdf-5.5.1.jar
+  * itextpdf-5.5.13.4.jar
   * mysql-connector-j-8.0.31.jar
 - Si su socio añadió o actualizó librerías en NetBeans, copie los nuevos archivos .jar desde "dist/lib/" hacia "Restaurante_Ejecutable/lib/". Si no hubo nuevas dependencias, conserve la carpeta lib/ intacta.
 

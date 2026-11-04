@@ -64,7 +64,7 @@ trap cleanup EXIT
 mkdir -p "$STAGING/Restaurante_Ejecutable/lib"
 
 cp -f "dist/Restaurante.jar" "$STAGING/Restaurante_Ejecutable/Restaurante.jar"
-for library in AbsoluteLayout.jar itextpdf-5.5.1.jar mysql-connector-j-8.0.31.jar pdfbox-2.0.31.jar fontbox-2.0.31.jar commons-logging-1.2.jar; do
+for library in AbsoluteLayout.jar itextpdf-5.5.13.4.jar mysql-connector-j-8.0.31.jar pdfbox-2.0.31.jar fontbox-2.0.31.jar commons-logging-1.2.jar; do
     if [ -f "Restaurante_Ejecutable/lib/$library" ]; then
         cp -f "Restaurante_Ejecutable/lib/$library" "$STAGING/Restaurante_Ejecutable/lib/"
     fi
