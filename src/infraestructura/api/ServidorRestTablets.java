@@ -720,6 +720,7 @@ public final class ServidorRestTablets {
     private static class DashboardGerencialHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
+            agregarCabecerasCors(exchange);
             String html = generarDashboardGerencialHtml();
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
             byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
@@ -994,6 +995,12 @@ public final class ServidorRestTablets {
                 return;
             }
 
+            // Autenticación de Acceso a Cocina KDS (NIST SP 800-207 / OWASP A01)
+            if (!autenticarAccesoCocina(exchange)) {
+                enviarError(exchange, 401, "Acceso no autorizado a Comandas de Cocina. Token o PIN inválido o ausente.");
+                return;
+            }
+
             ConfiguracionServicio configServicio = new ConfiguracionServicio();
             boolean habilitada = configServicio.getBoolean(ConfigClaves.PANTALLA_COCINA_HABILITADA, true);
             if (!habilitada) {
@@ -1136,6 +1143,12 @@ public final class ServidorRestTablets {
                 return;
             }
 
+            // Autenticación de Acceso a Cocina KDS (NIST SP 800-207 / OWASP A01)
+            if (!autenticarAccesoCocina(exchange)) {
+                enviarError(exchange, 401, "Acceso no autorizado a Despacho de Cocina. Token o PIN inválido o ausente.");
+                return;
+            }
+
             ConfiguracionServicio configServicio = new ConfiguracionServicio();
             boolean habilitada = configServicio.getBoolean(ConfigClaves.PANTALLA_COCINA_HABILITADA, true);
             if (!habilitada) {
@@ -1198,6 +1211,7 @@ public final class ServidorRestTablets {
     private static class CocinaKdsHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
+            agregarCabecerasCors(exchange);
             String html = generarCocinaKdsHtml();
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
             byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
@@ -1415,9 +1429,31 @@ public final class ServidorRestTablets {
                   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
                 }
 
+                function getKdsToken() {
+                  return localStorage.getItem('kds_access_token') || '1234';
+                }
+
+                async function authFetchCocina(url, options = {}) {
+                  options.headers = options.headers || {};
+                  const token = getKdsToken();
+                  if (token) {
+                    options.headers['Authorization'] = 'Bearer ' + token;
+                    options.headers['X-KDS-Token'] = token;
+                  }
+                  const res = await fetch(url, options);
+                  if (res.status === 401) {
+                    const nuevo = prompt('Acceso Restringido a Cocina (KDS).\\nIngrese el Token o PIN de Cocina (Predeterminado: 1234):');
+                    if (nuevo && nuevo.trim()) {
+                      localStorage.setItem('kds_access_token', nuevo.trim());
+                      return authFetchCocina(url, options);
+                    }
+                  }
+                  return res;
+                }
+
                 async function cargarComandas() {
                   try {
-                    const res = await fetch('/api/v1/cocina/comandas');
+                    const res = await authFetchCocina('/api/v1/cocina/comandas');
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     const data = await res.json();
 
@@ -1519,7 +1555,7 @@ public final class ServidorRestTablets {
                 async function tacharItem(idPedido, idDetalle, el) {
                   el.classList.toggle('item-listo');
                   try {
-                    await fetch('/api/v1/cocina/despachar', {
+                    await authFetchCocina('/api/v1/cocina/despachar', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ accion: 'ITEM', id_pedido: idPedido, id_detalle: idDetalle })
@@ -1534,7 +1570,7 @@ public final class ServidorRestTablets {
                     card.style.transform = 'scale(0.95)';
                   }
                   try {
-                    await fetch('/api/v1/cocina/despachar', {
+                    await authFetchCocina('/api/v1/cocina/despachar', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ accion: 'COMANDA', id_pedido: idPedido })
@@ -1548,7 +1584,7 @@ public final class ServidorRestTablets {
 
                 async function reabrirComanda(idPedido) {
                   try {
-                    await fetch('/api/v1/cocina/despachar', {
+                    await authFetchCocina('/api/v1/cocina/despachar', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ accion: 'REABRIR', id_pedido: idPedido })
@@ -1572,6 +1608,7 @@ public final class ServidorRestTablets {
     private static class PwaWebHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
+            agregarCabecerasCors(exchange);
             String path = exchange.getRequestURI().getPath();
             if (path.equals("/manifest.json")) {
                 String manifest = """
@@ -2066,8 +2103,103 @@ public final class ServidorRestTablets {
         return "127.0.0.1";
     }
 
+    public static final String DEFAULT_KDS_TOKEN = "kds_cocina_2026";
+    public static final String DEFAULT_KDS_PIN = "1234";
+
+    public static String getTokenCocina() {
+        String prop = System.getProperty("COCINA_KDS_TOKEN");
+        if (prop != null && !prop.isBlank()) return prop.trim();
+        String env = System.getenv("COCINA_KDS_TOKEN");
+        if (env != null && !env.isBlank()) return env.trim();
+        try {
+            return new ConfiguracionServicio().getString(ConfigClaves.PANTALLA_COCINA_TOKEN, "").trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    public static String getPinCocina() {
+        String prop = System.getProperty("COCINA_KDS_PIN");
+        if (prop != null && !prop.isBlank()) return prop.trim();
+        String env = System.getenv("COCINA_KDS_PIN");
+        if (env != null && !env.isBlank()) return env.trim();
+        try {
+            return new ConfiguracionServicio().getString(ConfigClaves.PANTALLA_COCINA_PIN, "").trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static boolean autenticarAccesoCocina(HttpExchange exchange) {
+        if (exchange == null) {
+            return false;
+        }
+        String tokenRecibido = "";
+        String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+        if (authHeader != null && authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            tokenRecibido = authHeader.substring(7).trim();
+        }
+        if (tokenRecibido.isBlank()) {
+            tokenRecibido = exchange.getRequestHeaders().getFirst("X-KDS-Token");
+        }
+        if (tokenRecibido == null || tokenRecibido.isBlank()) {
+            tokenRecibido = exchange.getRequestHeaders().getFirst("X-Cocina-Pin");
+        }
+        if (tokenRecibido == null || tokenRecibido.isBlank()) {
+            tokenRecibido = exchange.getRequestHeaders().getFirst("X-Auth-Token");
+        }
+        if (tokenRecibido == null || tokenRecibido.isBlank()) {
+            URI uri = exchange.getRequestURI();
+            if (uri != null && uri.getQuery() != null) {
+                for (String param : uri.getQuery().split("&")) {
+                    String[] par = param.split("=", 2);
+                    if (("token".equalsIgnoreCase(par[0]) || "pin".equalsIgnoreCase(par[0])) && par.length > 1) {
+                        try {
+                            tokenRecibido = java.net.URLDecoder.decode(par[1], StandardCharsets.UTF_8);
+                        } catch (Exception ignored) {
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (tokenRecibido == null || tokenRecibido.isBlank()) {
+            return false;
+        }
+
+        // 1. Probar token de cocina configurado o por defecto (tiempo constante)
+        String tokenEsperado = getTokenCocina();
+        if (tokenEsperado.isBlank()) tokenEsperado = DEFAULT_KDS_TOKEN;
+        if (MessageDigest.isEqual(tokenEsperado.getBytes(StandardCharsets.UTF_8), tokenRecibido.getBytes(StandardCharsets.UTF_8))) {
+            return true;
+        }
+
+        // 2. Probar PIN de cocina configurado o por defecto (tiempo constante)
+        String pinEsperado = getPinCocina();
+        if (pinEsperado.isBlank()) pinEsperado = DEFAULT_KDS_PIN;
+        if (MessageDigest.isEqual(pinEsperado.getBytes(StandardCharsets.UTF_8), tokenRecibido.getBytes(StandardCharsets.UTF_8))) {
+            return true;
+        }
+
+        // 3. Probar si es un token válido de Mesonero firmado criptográficamente
+        if (GestorTokensApi.validarToken(tokenRecibido) != null) {
+            return true;
+        }
+
+        // 4. Probar token admin gerencial (si está configurado)
+        String tokenAdmin = ServicioTunelSsh.getTokenAdmin();
+        if (!tokenAdmin.isBlank() && MessageDigest.isEqual(tokenAdmin.getBytes(StandardCharsets.UTF_8), tokenRecibido.getBytes(StandardCharsets.UTF_8))) {
+            return true;
+        }
+
+        return false;
+    }
+
     private static void enviarJson(HttpExchange exchange, int status, String json) throws IOException {
-        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+        Headers headers = exchange.getResponseHeaders();
+        headers.set("Content-Type", "application/json; charset=UTF-8");
+        headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
         agregarCabecerasCors(exchange);
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         exchange.sendResponseHeaders(status, bytes.length);
@@ -2088,9 +2220,23 @@ public final class ServidorRestTablets {
 
     private static void agregarCabecerasCors(HttpExchange exchange) {
         Headers headers = exchange.getResponseHeaders();
-        headers.set("Access-Control-Allow-Origin", "*");
+        // 1. Cabeceras de seguridad defensiva (OWASP A05 / CIS Control 4.8)
+        headers.set("X-Content-Type-Options", "nosniff");
+        headers.set("X-Frame-Options", "SAMEORIGIN");
+        headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+        headers.set("X-XSS-Protection", "1; mode=block");
+
+        // 2. Control dinámico de CORS con soporte de credenciales seguras
+        String origin = exchange.getRequestHeaders().getFirst("Origin");
+        if (origin != null && !origin.isBlank()) {
+            headers.set("Access-Control-Allow-Origin", origin);
+            headers.set("Vary", "Origin");
+        } else {
+            headers.set("Access-Control-Allow-Origin", "*");
+        }
         headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, Idempotency-Key");
+        headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, Idempotency-Key, X-Auth-Token, X-KDS-Token, X-Cocina-Pin, X-Admin-Token");
+        headers.set("Access-Control-Max-Age", "86400");
     }
 
     private static String escaparJson(String s) {
