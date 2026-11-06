@@ -2372,6 +2372,40 @@ public class PedidosDao implements PedidosRepositorio {
     }
 
     @Override
+    public Map<Integer, InfoMesaResumen> consultarDetalleMesasPendientes(int idSala) {
+        if (idSala <= 0) return Collections.emptyMap();
+        Map<Integer, InfoMesaResumen> resultado = new HashMap<>();
+        String sql = """
+            SELECT num_mesa, id, mesonero_nombre, total, total_bs, fecha
+            FROM pedidos
+            WHERE id_sala = ? AND estado = 'PENDIENTE' AND cerrada_en IS NULL
+            """;
+        try (Connection conexion = conexiones.getConnection();
+                PreparedStatement sentencia = conexion.prepareStatement(sql)) {
+            sentencia.setInt(1, idSala);
+            try (ResultSet rs = sentencia.executeQuery()) {
+                while (rs.next()) {
+                    int numMesa = rs.getInt("num_mesa");
+                    int id = rs.getInt("id");
+                    String nombre = rs.getString("mesonero_nombre");
+                    BigDecimal total = rs.getBigDecimal("total");
+                    BigDecimal totalBs = rs.getBigDecimal("total_bs");
+                    java.sql.Timestamp ts = rs.getTimestamp("fecha");
+                    String fechaStr = ts != null ? ts.toString() : null;
+                    resultado.put(numMesa, new InfoMesaResumen(
+                            numMesa, id, nombre,
+                            total != null ? total : BigDecimal.ZERO,
+                            totalBs != null ? totalBs : BigDecimal.ZERO,
+                            fechaStr));
+                }
+            }
+        } catch (SQLException ex) {
+            LOGGER.warning("Aviso consultando detalle de mesas pendientes: " + ex.getMessage());
+        }
+        return Collections.unmodifiableMap(resultado);
+    }
+
+    @Override
     public int purgarPedidosFinalizados(int mesesAnteriores) {
         if (mesesAnteriores < 1) {
             throw ErrorAplicacionException.validacion("El período de retención debe ser al menos 1 mes.");

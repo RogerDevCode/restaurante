@@ -1079,6 +1079,7 @@ public final class Sistema extends javax.swing.JFrame {
             if (titulo == null) {
                 continue;
             }
+            boolean habilitado = jTabbedPane1.isEnabledAt(i);
             java.awt.Component comp = jTabbedPane1.getTabComponentAt(i);
             javax.swing.JLabel lbl;
             if (comp instanceof javax.swing.JLabel l) {
@@ -1089,8 +1090,37 @@ public final class Sistema extends javax.swing.JFrame {
                 jTabbedPane1.setTabComponentAt(i, lbl);
             }
             lbl.setText(titulo);
-            lbl.setForeground(new java.awt.Color(i == sel ? 0x00_66_66 : 0x21_21_21));
+            if (!habilitado) {
+                lbl.setForeground(new java.awt.Color(0x9E_9E_9E));
+                lbl.setToolTipText("Opción restringida para su rol actual");
+            } else if (i == sel) {
+                lbl.setForeground(new java.awt.Color(0x00_66_66));
+                lbl.setToolTipText(obtenerTooltipTab(titulo));
+            } else {
+                lbl.setForeground(new java.awt.Color(0x21_21_21));
+                lbl.setToolTipText(obtenerTooltipTab(titulo));
+            }
         }
+    }
+
+    private static String obtenerTooltipTab(String titulo) {
+        if (titulo == null) return "";
+        return switch (titulo) {
+            case "Atención Directa (Split)" -> "Punto de venta táctil: mapa de mesas y comanda en una sola pantalla";
+            case "Panel" -> "Vista general de salas y mesas del restaurante";
+            case "Salas" -> "Administración y configuración de salas del local";
+            case "Mesas" -> "Mapa interactivo de mesas por sala";
+            case "Platos" -> "Toma rápida de pedido y selección de productos";
+            case "Catálogo de Platos", "Platos (Catálogo)" -> "Gestión del menú maestro, precios y clasificación fiscal";
+            case "Finalizar Pedido" -> "Facturación, cobro y cierre de cuentas";
+            case "Historial Pedidos" -> "Historial de ventas, reimpresiones y auditoría";
+            case "Datos de la Empresa" -> "Configuración fiscal, impresoras, respaldos y mesoneros";
+            case "Usuarios" -> "Gestión de operadores, roles y credenciales de acceso";
+            case "Dashboard" -> "Panel de métricas, ventas del día y estadísticas";
+            case "Categorías" -> "Organización de platos en categorías y favoritos";
+            case "Acerca de" -> "Información del sistema, versión y licencias";
+            default -> titulo;
+        };
     }
 
     private void aplicarAccesosInterfaz() {
@@ -1100,6 +1130,7 @@ public final class Sistema extends javax.swing.JFrame {
         habilitarTab("Salas", PoliticaAcceso.Accion.CONSULTAR_SALAS);
         habilitarTab("Mesas", PoliticaAcceso.Accion.CONSULTAR_SALAS);
         habilitarTab("Platos", PoliticaAcceso.Accion.CONSULTAR_PLATOS);
+        habilitarTab("Catálogo de Platos", PoliticaAcceso.Accion.GESTIONAR_PLATOS, PoliticaAcceso.Accion.CONSULTAR_PLATOS);
         habilitarTab("Finalizar Pedido", PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES,
                 PoliticaAcceso.Accion.COBRAR_PEDIDOS, PoliticaAcceso.Accion.REGISTRAR_PEDIDOS);
         habilitarTab("Historial Pedidos", PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
@@ -1167,6 +1198,12 @@ public final class Sistema extends javax.swing.JFrame {
                     jTabbedPane1.setSelectedIndex(i);
                     break;
                 }
+            }
+        }
+        if (!politicaAcceso.esAdministrador()) {
+            int idxSplit = jTabbedPane1.indexOfTab("Atención Directa (Split)");
+            if (idxSplit >= 0 && jTabbedPane1.isEnabledAt(idxSplit) && jTabbedPane1.getSelectedIndex() == 0) {
+                jTabbedPane1.setSelectedIndex(idxSplit);
             }
         }
     }
@@ -1636,6 +1673,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (mensaje == null || mensaje.isBlank()) {
             return;
         }
+        ToastNotificacion.mostrarExito(this, mensaje);
         if (getRootPane() != null) {
             String origWinTitle = (String) getRootPane().getClientProperty("ux.winTituloOriginal");
             if (origWinTitle == null) {
@@ -2138,6 +2176,7 @@ public final class Sistema extends javax.swing.JFrame {
                     ListarPlatos(TablePlatos, "");
                 }
             }
+            case "Catálogo de Platos" -> ListarPlatos(TablePlatos, "");
             case "Datos de la Empresa" -> ListarConfig();
             case "Usuarios" -> ListarUsuarios();
             case "Dashboard" -> { if (politicaAcceso.esAdministrador()) cargarDashboardYClientes(); }
@@ -4199,7 +4238,7 @@ public final class Sistema extends javax.swing.JFrame {
                 .addContainerGap(22, Short.MAX_VALUE))
         );
 
-        jTabbedPane1.addTab("Platos", jPanel2);
+        jTabbedPane1.addTab("Catálogo de Platos", jPanel2);
 
         getContentPane().add(jTabbedPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(150, 95, 1080, 620));
 
@@ -6662,7 +6701,11 @@ public final class Sistema extends javax.swing.JFrame {
         am.put("ux.ayuda", new javax.swing.AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
-                mostrarPanelAyuda();
+                if (panelSplitScreen != null && panelSplitScreen.isShowing()) {
+                    panelSplitScreen.enfocarBuscador();
+                } else {
+                    mostrarPanelAyuda();
+                }
             }
         });
 
@@ -6670,9 +6713,25 @@ public final class Sistema extends javax.swing.JFrame {
         am.put("ux.irMenu", new javax.swing.AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
-                jTabbedPane1.setSelectedIndex(3);
-                txtBuscarPlato.requestFocusInWindow();
-                txtBuscarPlato.requestFocus();
+                if (panelSplitScreen != null && panelSplitScreen.isShowing()) {
+                    panelSplitScreen.ejecutarAccionEnviarCocina();
+                } else {
+                    jTabbedPane1.setSelectedIndex(3);
+                    txtBuscarPlato.requestFocusInWindow();
+                    txtBuscarPlato.requestFocus();
+                }
+            }
+        });
+
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F3, 0), "ux.prefactura");
+        am.put("ux.prefactura", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (panelSplitScreen != null && panelSplitScreen.isShowing()) {
+                    panelSplitScreen.ejecutarAccionPreFactura();
+                } else if (jTabbedPane1.getSelectedIndex() == 3 && btnPreFacturaPedido != null && btnPreFacturaPedido.isShowing() && btnPreFacturaPedido.isEnabled()) {
+                    btnPreFacturaPedido.doClick();
+                }
             }
         });
 
@@ -6688,8 +6747,24 @@ public final class Sistema extends javax.swing.JFrame {
         am.put("ux.generar", new javax.swing.AbstractAction() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
-                if (jTabbedPane1.getSelectedIndex() == 3) {
+                if (panelSplitScreen != null && panelSplitScreen.isShowing()) {
+                    panelSplitScreen.refrescarMesasSalaActual();
+                } else if (jTabbedPane1.getSelectedIndex() == 3) {
                     btnGenerarPedido.doClick();
+                }
+            }
+        });
+
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F12, 0), "ux.cobrar");
+        am.put("ux.cobrar", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (panelSplitScreen != null && panelSplitScreen.isShowing()) {
+                    panelSplitScreen.ejecutarAccionCobrar();
+                } else if (jTabbedPane1.getSelectedIndex() == 3 && btnCobrarModalTab4 != null && btnCobrarModalTab4.isShowing() && btnCobrarModalTab4.isEnabled()) {
+                    btnCobrarModalTab4.doClick();
+                } else if (btnCobrarHistorialModal != null && btnCobrarHistorialModal.isShowing() && btnCobrarHistorialModal.isEnabled()) {
+                    btnCobrarHistorialModal.doClick();
                 }
             }
         });
@@ -6708,12 +6783,17 @@ public final class Sistema extends javax.swing.JFrame {
     private void mostrarPanelAyuda() {
         String ayuda = "<html><h3>Atajos de Teclado (Mejoras UX)</h3>"
             + "<ul>"
-            + "<li><b>[F1]</b>: Mostrar este panel de ayuda.</li>"
-            + "<li><b>[F2]</b>: Ir directo al buscador de platos de la mesa actual.</li>"
-            + "<li><b>[F4]</b>: Menú rápido de platos favoritos (requiere ventana con tabla de platos abierta y mesa seleccionada).</li>"
-            + "<li><b>[F5]</b>: Finalizar o Actualizar Pedido (cuando estás en el carrito).</li>"
-            + "<li><b>[ESC]</b>: Limpiar el carrito de la mesa actual.</li>"
-            + "<li><b>[Enter] en Buscador</b>: Agrega el plato actualmente seleccionado de la lista.</li>"
+            + "<li><b>[F1]</b>: Buscar plato en Atención Directa / Mostrar este panel de ayuda.</li>"
+            + "<li><b>[F2]</b>: Enviar a Cocina en Atención Directa / Ir directo al buscador tradicional.</li>"
+            + "<li><b>[F3]</b>: Emitir Pre-Factura (cuenta para el cliente sin cerrar mesa).</li>"
+            + "<li><b>[F4]</b>: Menú rápido de platos favoritos (con tabla de platos y mesa seleccionada).</li>"
+            + "<li><b>[F5]</b>: Actualizar estado de mesas / Finalizar pedido tradicional.</li>"
+            + "<li><b>[F12]</b>: Cobro rápido y facturación de la mesa actual.</li>"
+            + "<li><b>[ESC]</b>: Limpiar buscador de platos o comanda en curso.</li>"
+            + "<li><b>[Enter] en Buscador/Catálogo</b>: Agrega el plato seleccionado a la comanda.</li>"
+            + "<li><b>[+] / [-] en Comanda</b>: Aumentar o disminuir la cantidad del plato seleccionado.</li>"
+            + "<li><b>[Supr] en Comanda</b>: Eliminar la línea seleccionada de la comanda.</li>"
+            + "<li><b>[Flechas ← → ↑ ↓]</b>: Navegar entre buscador, catálogo y comanda sin usar ratón.</li>"
             + "</ul><p>¡Usar estos atajos en horas pico agilizará tus pedidos significativamente!</p></html>";
         JOptionPane.showMessageDialog(this, ayuda, "Ayuda de Atajos", JOptionPane.INFORMATION_MESSAGE);
     }
@@ -11602,6 +11682,7 @@ public final class Sistema extends javax.swing.JFrame {
         panelFooter.add(lblLeyendaTitulo);
         panelFooter.add(cuadroColor(Servicio.ServicioMesa.FONDO_MESA_LIBRE, "Libre"));
         panelFooter.add(cuadroColor(Servicio.ServicioMesa.FONDO_MESA_OCUPADA, "Ocupada"));
+        panelFooter.add(cuadroColor(Servicio.ServicioMesa.FONDO_MESA_PREFACTURA, "Cuenta"));
 
         jPanel22.add(panelFooter, java.awt.BorderLayout.SOUTH);
         jPanel22.revalidate();
@@ -11721,7 +11802,16 @@ public final class Sistema extends javax.swing.JFrame {
                     : null;
 
             String prefijoTexto = esBarra ? "PUESTO " : "MESA ";
-            if (verificar > 0) {
+            boolean prefactura = verificar > 0 && ServicioMesa.tienePreFactura(verificar);
+            if (prefactura) {
+                boton.setBackground(Servicio.ServicioMesa.FONDO_MESA_PREFACTURA);
+                boton.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br>"
+                        + "<span style='font-size:11px;'><b>" + prefijoTexto + i + "</b></span><br>"
+                        + "<span style='font-size:10px; background-color:#0D47A1; color:#FFFFFF; padding:1px 3px;'><b>[CUENTA]</b></span>"
+                        + (visual != null ? "<br><span style='font-size:10px;'><b>" + visual + "</b></span>" : "")
+                        + "</center></html>");
+                boton.setToolTipText("Cuenta solicitada (" + codigoMesa + ") - Pedido #" + verificar + (nombreMesonero != null ? " (" + nombreMesonero + ")" : ""));
+            } else if (verificar > 0) {
                 boton.setBackground(Servicio.ServicioMesa.FONDO_MESA_OCUPADA);
                 if (visual != null && !visual.isBlank()) {
                     boton.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + prefijoTexto + i + "</b></span><br><span style='font-size:12px;'><b>" + visual + "</b></span></center></html>");

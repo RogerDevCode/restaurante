@@ -27,7 +27,12 @@ public final class ServicioMesa {
     /** Paleta de alto contraste para tarjetas de mesa (blanco sobre fondo oscuro ~5-7:1). */
     public static final java.awt.Color FONDO_MESA_LIBRE = new java.awt.Color(27, 94, 32);
     public static final java.awt.Color FONDO_MESA_OCUPADA = new java.awt.Color(183, 28, 28);
+    public static final java.awt.Color FONDO_MESA_PREFACTURA = new java.awt.Color(21, 101, 192); // Azul #1565C0: Cuenta pedida
+    public static final java.awt.Color FONDO_MESA_COBRADA = new java.awt.Color(97, 97, 97); // Gris #616161: Pendiente limpiar
     public static final java.awt.Color BORDE_MESA_SELECCIONADA = new java.awt.Color(255, 214, 0);
+
+    /** Registro en memoria de pedidos con pre-factura emitida y esperando pago. */
+    private static final java.util.Set<Integer> PEDIDOS_PREFACTURADOS = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private static final Set<String> PALABRAS_IGNORADAS = Set.of(
             "SALA", "SALON", "AREA", "ZONA", "ESPACIO", "SECTOR", "DE", "DEL", "LA", "EL", "LOS", "LAS"
@@ -38,6 +43,63 @@ public final class ServicioMesa {
     );
 
     private ServicioMesa() {
+    }
+
+    public static void marcarPreFactura(int idPedido) {
+        if (idPedido > 0) {
+            PEDIDOS_PREFACTURADOS.add(idPedido);
+        }
+    }
+
+    public static boolean tienePreFactura(int idPedido) {
+        return idPedido > 0 && PEDIDOS_PREFACTURADOS.contains(idPedido);
+    }
+
+    public static void limpiarPreFactura(int idPedido) {
+        if (idPedido > 0) {
+            PEDIDOS_PREFACTURADOS.remove(idPedido);
+        }
+    }
+
+    /**
+     * Calcula una etiqueta concisa de tiempo transcurrido (ej. "12m", "1h 15m")
+     * a partir de una fecha o timestamp de inicio de comanda.
+     */
+    public static String formatearTiempoTranscurrido(java.util.Date fechaInicio) {
+        if (fechaInicio == null) {
+            return "";
+        }
+        long diffMs = System.currentTimeMillis() - fechaInicio.getTime();
+        if (diffMs < 0) {
+            return "0m";
+        }
+        long diffMin = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes(diffMs);
+        if (diffMin < 60) {
+            return Math.max(1, diffMin) + "m";
+        }
+        long horas = diffMin / 60;
+        long minRestantes = diffMin % 60;
+        return horas + "h" + (minRestantes > 0 ? " " + minRestantes + "m" : "");
+    }
+
+    /**
+     * Parsea un String de fecha SQL ("yyyy-MM-dd HH:mm:ss" o similar) y calcula el tiempo transcurrido.
+     */
+    public static String formatearTiempoTranscurrido(String fechaTexto) {
+        if (fechaTexto == null || fechaTexto.isBlank()) {
+            return "";
+        }
+        String texto = fechaTexto.trim();
+        try {
+            if (texto.length() >= 19) {
+                java.time.LocalDateTime ldt = java.time.LocalDateTime.parse(
+                        texto.substring(0, 19).replace(' ', 'T'));
+                java.time.ZonedDateTime zdt = ldt.atZone(java.time.ZoneId.systemDefault());
+                return formatearTiempoTranscurrido(java.util.Date.from(zdt.toInstant()));
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
     }
 
     /**
@@ -58,8 +120,29 @@ public final class ServicioMesa {
             int idPedidoPendiente,
             String nombreMesonero,
             String nombreVisualMesonero,
-            boolean ocupada
+            boolean ocupada,
+            java.math.BigDecimal totalUsd,
+            java.math.BigDecimal totalBs,
+            String tiempoTranscurrido,
+            boolean preFacturaEmitida
     ) {
+        public MesaVisual(
+                int idSala,
+                String nombreSala,
+                String prefijoSala,
+                int numMesa,
+                String codigoMesa,
+                boolean esBarra,
+                int idPedidoPendiente,
+                String nombreMesonero,
+                String nombreVisualMesonero,
+                boolean ocupada
+        ) {
+            this(idSala, nombreSala, prefijoSala, numMesa, codigoMesa, esBarra,
+                    idPedidoPendiente, nombreMesonero, nombreVisualMesonero, ocupada,
+                    java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO, "", false);
+        }
+
         public String etiquetaBoton() {
             String etiqueta = esBarra ? "Puesto " : "Mesa ";
             return codigoMesa + " (" + etiqueta + numMesa + ")";

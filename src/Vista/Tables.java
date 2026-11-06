@@ -31,6 +31,10 @@ public class Tables extends DefaultTableCellRenderer {
                 setBackground(ServicioMesa.FONDO_MESA_OCUPADA);
                 setForeground(Color.WHITE);
                 break;
+            case "PREFACTURA", "PRE_FACTURA", "CUENTA":
+                setBackground(ServicioMesa.FONDO_MESA_PREFACTURA);
+                setForeground(Color.WHITE);
+                break;
             case "FINALIZADO":
                 setBackground(ServicioMesa.FONDO_MESA_LIBRE);
                 setForeground(Color.WHITE);

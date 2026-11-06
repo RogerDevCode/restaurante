@@ -99,6 +99,21 @@ public interface PedidosRepositorio {
         return java.util.Collections.emptyMap();
     }
 
+    /** Registro con el detalle resumido de una mesa con pedido pendiente. */
+    record InfoMesaResumen(
+            int numMesa,
+            int idPedido,
+            String mesoneroNombre,
+            java.math.BigDecimal totalUsd,
+            java.math.BigDecimal totalBs,
+            String fechaTexto
+    ) {}
+
+    /** Devuelve el detalle consolidado (id pedido, mesonero, totales, tiempo) de las mesas ocupadas en una sala. */
+    default java.util.Map<Integer, InfoMesaResumen> consultarDetalleMesasPendientes(int idSala) {
+        return java.util.Collections.emptyMap();
+    }
+
     /** Purga pedidos finalizados anteriores a la cantidad de meses especificada. Retorna la cantidad eliminada. */
     default int purgarPedidosFinalizados(int mesesAnteriores) {
         return 0;

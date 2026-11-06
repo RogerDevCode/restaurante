@@ -206,6 +206,10 @@ public final class PedidosControlador {
         return consultas.buscarPedidoPendiente(mesa, idSala);
     }
 
+    public java.util.Map<Integer, Modelo.PedidosRepositorio.InfoMesaResumen> consultarDetalleMesasPendientes(int idSala) {
+        return consultas.consultarDetalleMesasPendientes(idSala);
+    }
+
     public List<Pedidos> listarPedidos() {
         return consultas.listarHistorial();
     }
