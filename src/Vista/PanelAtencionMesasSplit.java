@@ -50,6 +50,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
@@ -102,6 +103,7 @@ public class PanelAtencionMesasSplit extends JPanel {
     private JScrollPane scrollMesas;
     private JLabel lblEstadoSalas;
     private JButton btnRefrescarMesas;
+    private JProgressBar progressRefrescoMesas;
 
     // Componentes lado derecho (Catálogo y Comanda)
     private JLabel lblCabeceraMesa;
@@ -123,6 +125,13 @@ public class PanelAtencionMesasSplit extends JPanel {
     private JButton btnCortesia;
     private JButton btnFuga;
     private JButton btnLimpiar;
+    private JPanel wrapBtnLimpiar;
+    private JPanel wrapBtnEnviarCocina;
+    private JPanel wrapBtnPreFactura;
+    private JPanel wrapBtnCobrar;
+    private JPanel wrapBtnCortesia;
+    private JPanel wrapBtnFuga;
+    private JButton btnLimpiarBuscar;
     private JCheckBox chkImprimirComanda;
     private ImageIcon iconoMesaSplit;
     private JCheckBox chkFiltroRapidoSplit;
@@ -215,12 +224,22 @@ public class PanelAtencionMesasSplit extends JPanel {
         pnlSurSalas.add(lblEstadoSalas, BorderLayout.WEST);
         pnlSurSalas.add(crearLeyendaMini(), BorderLayout.CENTER);
 
+        progressRefrescoMesas = new JProgressBar();
+        progressRefrescoMesas.setIndeterminate(true);
+        progressRefrescoMesas.setPreferredSize(new Dimension(50, 14));
+        progressRefrescoMesas.setVisible(false);
+
         btnRefrescarMesas = new JButton("Actualizar [F5]");
         btnRefrescarMesas.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnRefrescarMesas.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnRefrescarMesas.setToolTipText("Recargar el estado de las mesas de la sala (Atajo: F5)");
         btnRefrescarMesas.addActionListener(e -> refrescarMesasSalaActual());
-        pnlSurSalas.add(btnRefrescarMesas, BorderLayout.EAST);
+
+        JPanel pnlSurEste = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        pnlSurEste.setOpaque(false);
+        pnlSurEste.add(progressRefrescoMesas);
+        pnlSurEste.add(btnRefrescarMesas);
+        pnlSurSalas.add(pnlSurEste, BorderLayout.EAST);
 
         pnlIzquierdo.add(pnlSurSalas, BorderLayout.SOUTH);
 
@@ -305,14 +324,24 @@ public class PanelAtencionMesasSplit extends JPanel {
         JPanel pnlAccionesBuscar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         pnlAccionesBuscar.setOpaque(false);
 
-        JButton btnLimpiarBuscar = new JButton("x");
+        btnLimpiarBuscar = new JButton("✖");
         btnLimpiarBuscar.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnLimpiarBuscar.setFocusable(false);
-        btnLimpiarBuscar.setToolTipText("Limpiar filtro de búsqueda");
+        btnLimpiarBuscar.setVisible(false);
+        btnLimpiarBuscar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnLimpiarBuscar.setToolTipText("Limpiar filtro de búsqueda (ESC)");
         btnLimpiarBuscar.addActionListener(e -> {
             txtBuscarPlato.setText("");
             filtrarCatalogoPlatos("");
             txtBuscarPlato.requestFocusInWindow();
+        });
+        txtBuscarPlato.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private void actualizar() {
+                btnLimpiarBuscar.setVisible(!txtBuscarPlato.getText().trim().isEmpty());
+            }
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { actualizar(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { actualizar(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { actualizar(); }
         });
 
         JButton btnAddPlato = new JButton("+");
@@ -346,7 +375,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         };
         tblCatalogoPlatos = new JTable(modeloCatalogoPlatos);
         tblCatalogoPlatos.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-        tblCatalogoPlatos.setRowHeight(25);
+        tblCatalogoPlatos.setRowHeight(Tables.ALTURA_FILA_DEFECTO);
         tblCatalogoPlatos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tblCatalogoPlatos.setToolTipText("Catálogo de platos: doble clic o Enter para agregar a la comanda (F4: Favoritos)");
         tblCatalogoPlatos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -412,7 +441,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         };
         tblCarrito = new JTable(modeloCarrito);
         tblCarrito.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-        tblCarrito.setRowHeight(24);
+        tblCarrito.setRowHeight(Tables.ALTURA_FILA_DEFECTO);
         tblCarrito.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tblCarrito.setToolTipText("Comanda actual: detalle de platos consumidos por la mesa seleccionada");
         tblCarrito.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -612,64 +641,64 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         pnlAcciones.add(pnlFilaTotales);
 
-        // Fila 2: Botones de Acción
+        // Fila 2: Botones de Acción (estandarizados para pantallas táctiles y desktop)
         JPanel pnlBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         pnlBotones.setOpaque(false);
 
         btnLimpiar = new JButton("Limpiar");
         btnLimpiar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        btnLimpiar.setPreferredSize(new Dimension(80, 28));
         btnLimpiar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnLimpiar.setToolTipText("Vaciar la comanda actual sin guardar");
         btnLimpiar.addActionListener(e -> limpiarComanda());
-        pnlBotones.add(btnLimpiar);
+        wrapBtnLimpiar = envolverBotonConTamano(btnLimpiar, 85, 34);
+        pnlBotones.add(wrapBtnLimpiar);
 
         btnEnviarCocina = new JButton("Enviar a Cocina [F2]");
         btnEnviarCocina.setFont(new Font("Segoe UI", Font.BOLD, 12));
         Sistema.botonSolido(btnEnviarCocina, new Color(0, 102, 102),
                 Sistema.colorTextoContraste(new Color(0, 102, 102)));
-        btnEnviarCocina.setPreferredSize(new Dimension(155, 28));
         btnEnviarCocina.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnEnviarCocina.setToolTipText("Guardar la comanda y enviarla a cocina (Atajo: F2)");
         btnEnviarCocina.addActionListener(e -> enviarPedidoCocina());
-        pnlBotones.add(btnEnviarCocina);
+        wrapBtnEnviarCocina = envolverBotonConTamano(btnEnviarCocina, 155, 34);
+        pnlBotones.add(wrapBtnEnviarCocina);
 
         btnPreFactura = new JButton("Pre-Factura [F3]");
         btnPreFactura.setFont(new Font("Segoe UI", Font.BOLD, 12));
         Sistema.botonSolido(btnPreFactura, new Color(39, 174, 96), new Color(0, 0, 0));
-        btnPreFactura.setPreferredSize(new Dimension(118, 28));
         btnPreFactura.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnPreFactura.setToolTipText("Emitir la cuenta / pre-factura para el cliente sin cerrar la mesa (Atajo: F3)");
         btnPreFactura.addActionListener(e -> emitirPreFacturaDirecta());
-        pnlBotones.add(btnPreFactura);
+        wrapBtnPreFactura = envolverBotonConTamano(btnPreFactura, 125, 34);
+        pnlBotones.add(wrapBtnPreFactura);
 
         btnCortesia = new JButton("Cortesía");
         btnCortesia.setFont(new Font("Segoe UI", Font.BOLD, 12));
         Sistema.botonSolido(btnCortesia, new Color(142, 68, 173), new Color(0, 0, 0));
-        btnCortesia.setPreferredSize(new Dimension(80, 28));
         btnCortesia.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCortesia.setToolTipText("Registrar como consumo de la casa / cortesía autorizada");
         btnCortesia.addActionListener(e -> aplicarCortesiaDirecto());
-        pnlBotones.add(btnCortesia);
+        wrapBtnCortesia = envolverBotonConTamano(btnCortesia, 85, 34);
+        pnlBotones.add(wrapBtnCortesia);
 
         btnFuga = new JButton("No Pagó");
         btnFuga.setFont(new Font("Segoe UI", Font.BOLD, 12));
         Sistema.botonSolido(btnFuga, new Color(192, 57, 43), new Color(0, 0, 0));
-        btnFuga.setPreferredSize(new Dimension(80, 28));
         btnFuga.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnFuga.setToolTipText("Liberar la mesa anulando el pedido por retiro sin pago (Fuga / Incobrable)");
         btnFuga.addActionListener(e -> anularPedidoPorFugaDirecto());
-        pnlBotones.add(btnFuga);
+        wrapBtnFuga = envolverBotonConTamano(btnFuga, 85, 34);
+        pnlBotones.add(wrapBtnFuga);
 
         btnCobrar = new JButton("Cobrar [F12]");
         btnCobrar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         Sistema.botonSolido(btnCobrar, new Color(40, 116, 166),
                 Sistema.colorTextoContraste(new Color(40, 116, 166)));
-        btnCobrar.setPreferredSize(new Dimension(105, 28));
         btnCobrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCobrar.setToolTipText("Cobrar y facturar la comanda de la mesa (Atajo: F12)");
         btnCobrar.addActionListener(e -> cobrarPedidoDirecto());
-        pnlBotones.add(btnCobrar);
+        wrapBtnCobrar = envolverBotonConTamano(btnCobrar, 115, 34);
+        pnlBotones.add(wrapBtnCobrar);
 
         pnlAcciones.add(pnlBotones);
         pnlDerecho.add(pnlAcciones, BorderLayout.SOUTH);
@@ -883,6 +912,12 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         panelGrillaMesas.removeAll();
         lblEstadoSalas.setText("Cargando mesas de " + nombreSalaSeleccionada + "...");
+        if (progressRefrescoMesas != null) {
+            progressRefrescoMesas.setVisible(true);
+        }
+        if (btnRefrescarMesas != null) {
+            btnRefrescarMesas.setEnabled(false);
+        }
 
         final long tokenRevision = tokenRevisionMesas.incrementAndGet();
         final int idSalaPeticion = idSalaSeleccionada;
@@ -902,9 +937,11 @@ public class PanelAtencionMesasSplit extends JPanel {
                         if (info.mesoneroNombre() != null && !info.mesoneroNombre().isBlank()) {
                             mesoneros.put(m, info.mesoneroNombre());
                         }
-                    } else {
-                        // Respaldo de seguridad por si alguna mesa no vino en la consulta consolidada
+                    } else if (detalles == null) {
+                        // Respaldo de seguridad solo si falló la consulta consolidada
                         estados.put(m, pedidosControlador.buscarPedidoPendiente(m, idSalaPeticion));
+                    } else {
+                        estados.put(m, 0); // Mesa libre garantizada por la consulta consolidada
                     }
                 }
                 if (mesoneros.isEmpty()) {
@@ -915,14 +952,25 @@ public class PanelAtencionMesasSplit extends JPanel {
 
             @Override
             protected void done() {
-                if (tokenRevision != tokenRevisionMesas.get() || idSalaPeticion != idSalaSeleccionada) {
-                    return; // Callback obsoleto, descartar
-                }
                 try {
-                    PanelMesasDatos datos = get();
-                    mostrarMesasEnGrilla(datos.estados, datos.mesoneros, datos.detalles);
-                } catch (Exception ex) {
-                    lblEstadoSalas.setText("Error al cargar mesas: " + ex.getMessage());
+                    if (tokenRevision != tokenRevisionMesas.get() || idSalaPeticion != idSalaSeleccionada) {
+                        return; // Callback obsoleto, descartar
+                    }
+                    try {
+                        PanelMesasDatos datos = get();
+                        mostrarMesasEnGrilla(datos.estados, datos.mesoneros, datos.detalles);
+                    } catch (Exception ex) {
+                        lblEstadoSalas.setText("Error al cargar mesas: " + ex.getMessage());
+                    }
+                } finally {
+                    if (tokenRevision == tokenRevisionMesas.get()) {
+                        if (progressRefrescoMesas != null) {
+                            progressRefrescoMesas.setVisible(false);
+                        }
+                        if (btnRefrescarMesas != null) {
+                            btnRefrescarMesas.setEnabled(true);
+                        }
+                    }
                 }
             }
         }.execute();
@@ -1009,9 +1057,11 @@ public class PanelAtencionMesasSplit extends JPanel {
                 btnMesa.setToolTipText("Disponible (" + codigoMesa + ")");
             }
 
-            // Resaltar si esta mesa es la actualmente abierta en el panel derecho
+            // Resaltar si esta mesa es la actualmente abierta en el panel derecho (doble borde contrastante)
             if (numMesa == numMesaSeleccionada) {
-                btnMesa.setBorder(BorderFactory.createLineBorder(ServicioMesa.BORDE_MESA_SELECCIONADA, 4));
+                btnMesa.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(Color.WHITE, 1),
+                        BorderFactory.createLineBorder(ServicioMesa.BORDE_MESA_SELECCIONADA, 3)));
             } else {
                 btnMesa.setBorder(BorderFactory.createLineBorder(btnMesa.getBackground().darker(), 2));
             }
@@ -1066,7 +1116,9 @@ public class PanelAtencionMesasSplit extends JPanel {
             if (c instanceof JButton b) {
                 Object val = b.getClientProperty("numMesa");
                 if (val instanceof Integer nm && nm == numMesa) {
-                    b.setBorder(BorderFactory.createLineBorder(ServicioMesa.BORDE_MESA_SELECCIONADA, 4));
+                    b.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createLineBorder(Color.WHITE, 1),
+                            BorderFactory.createLineBorder(ServicioMesa.BORDE_MESA_SELECCIONADA, 3)));
                 } else {
                     b.setBorder(BorderFactory.createLineBorder(b.getBackground().darker(), 2));
                 }
@@ -1136,6 +1188,76 @@ public class PanelAtencionMesasSplit extends JPanel {
                 && politicaAcceso.permite(PoliticaAcceso.Accion.APLICAR_CORTESIA));
         if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0
                 && politicaAcceso.permite(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE));
+        actualizarTooltipsBotonesDeshabilitados();
+    }
+
+    private JPanel envolverBotonConTamano(JButton btn, int anchoMin, int altoMin) {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        int w = Math.max(anchoMin, btn.getPreferredSize().width);
+        int h = Math.max(altoMin, btn.getPreferredSize().height);
+        wrapper.setPreferredSize(new Dimension(w, h));
+        btn.setPreferredSize(new Dimension(w, h));
+        wrapper.add(btn, BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private void actualizarTooltipsBotonesDeshabilitados() {
+        if (wrapBtnCobrar != null) {
+            if (numMesaSeleccionada <= 0) {
+                wrapBtnCobrar.setToolTipText("Primero seleccione una mesa a la izquierda");
+            } else if (idPedidoActivo <= 0) {
+                wrapBtnCobrar.setToolTipText("No hay comanda guardada en esta mesa para cobrar");
+            } else if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.COBRAR_PEDIDOS)) {
+                wrapBtnCobrar.setToolTipText("Su rol no tiene permisos para cobrar pedidos");
+            } else {
+                wrapBtnCobrar.setToolTipText(null);
+            }
+        }
+        if (wrapBtnPreFactura != null) {
+            if (numMesaSeleccionada <= 0) {
+                wrapBtnPreFactura.setToolTipText("Primero seleccione una mesa a la izquierda");
+            } else if (idPedidoActivo <= 0) {
+                wrapBtnPreFactura.setToolTipText("Primero guarde la comanda antes de emitir pre-factura");
+            } else if (politicaAcceso != null && !politicaAcceso.permite(PoliticaAcceso.Accion.CONSULTAR_PEDIDOS_PENDIENTES)) {
+                wrapBtnPreFactura.setToolTipText("Su rol no tiene permisos para consultar pedidos");
+            } else {
+                wrapBtnPreFactura.setToolTipText(null);
+            }
+        }
+        if (wrapBtnEnviarCocina != null) {
+            if (numMesaSeleccionada <= 0) {
+                wrapBtnEnviarCocina.setToolTipText("Primero seleccione una mesa a la izquierda");
+            } else if (tblCarrito != null && tblCarrito.getRowCount() <= 0) {
+                wrapBtnEnviarCocina.setToolTipText("Agregue al menos un plato a la comanda");
+            } else {
+                wrapBtnEnviarCocina.setToolTipText(null);
+            }
+        }
+        if (wrapBtnCortesia != null) {
+            if (idPedidoActivo <= 0) {
+                wrapBtnCortesia.setToolTipText("No hay pedido activo para aplicar cortesía");
+            } else {
+                wrapBtnCortesia.setToolTipText(null);
+            }
+        }
+        if (wrapBtnFuga != null) {
+            if (idPedidoActivo <= 0) {
+                wrapBtnFuga.setToolTipText("No hay pedido activo para anular por fuga");
+            } else {
+                wrapBtnFuga.setToolTipText(null);
+            }
+        }
+    }
+
+    private void asegurarVisibilidadFilaCarrito(int fila) {
+        if (tblCarrito == null || fila < 0) return;
+        SwingUtilities.invokeLater(() -> {
+            if (fila < tblCarrito.getRowCount()) {
+                Rectangle rect = tblCarrito.getCellRect(fila, 0, true);
+                tblCarrito.scrollRectToVisible(rect);
+            }
+        });
     }
 
     /** Acción explícita para dejar el pedido sin mesonero (con confirmación). */
@@ -1401,6 +1523,7 @@ public class PanelAtencionMesasSplit extends JPanel {
                 BigDecimal sub = precio.multiply(BigDecimal.valueOf(nuevaCant)).setScale(2, RoundingMode.HALF_UP);
                 modeloCarrito.setValueAt(Sistema.formatearMontoCelda(sub, moneda, tasa), i, 4);
                 tblCarrito.setRowSelectionInterval(i, i);
+                asegurarVisibilidadFilaCarrito(i);
                 txtCantManual.setText(String.valueOf(nuevaCant));
                 recalcularTotales();
                 autoLimpiarFiltroSplitTrasAgregar(idPlato);
@@ -1419,6 +1542,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         });
         int indexNuevo = modeloCarrito.getRowCount() - 1;
         tblCarrito.setRowSelectionInterval(indexNuevo, indexNuevo);
+        asegurarVisibilidadFilaCarrito(indexNuevo);
         txtCantManual.setText("1");
         recalcularTotales();
         autoLimpiarFiltroSplitTrasAgregar(idPlato);
@@ -1529,6 +1653,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             if (btnPreFactura != null) btnPreFactura.setEnabled(permitir);
             if (btnCortesia != null) btnCortesia.setEnabled(permitir);
             if (btnFuga != null) btnFuga.setEnabled(permitir);
+            actualizarTooltipsBotonesDeshabilitados();
             return;
         }
 
@@ -1540,6 +1665,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             if (btnPreFactura != null) btnPreFactura.setEnabled(false);
             if (btnCortesia != null) btnCortesia.setEnabled(false);
             if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0);
+            actualizarTooltipsBotonesDeshabilitados();
             return;
         }
         BigDecimal ivaPorcentaje = sistema.getIvaPorcentajeActual();
@@ -1550,6 +1676,7 @@ public class PanelAtencionMesasSplit extends JPanel {
             if (btnPreFactura != null) btnPreFactura.setEnabled(false);
             if (btnCortesia != null) btnCortesia.setEnabled(false);
             if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0);
+            actualizarTooltipsBotonesDeshabilitados();
             return;
         }
 
@@ -1615,6 +1742,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         if (btnCortesia != null) btnCortesia.setEnabled(puedeAccion);
         if (btnFuga != null) btnFuga.setEnabled(idPedidoActivo > 0);
         actualizarCabecerasMonedaCarrito();
+        actualizarTooltipsBotonesDeshabilitados();
     }
 
     /** Cabeceras Precio/SubTotal según la moneda de las líneas (USD, VES o USD/VES). */
@@ -2025,7 +2153,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         Object seleccionado = cbMesonero.getSelectedItem();
         Integer idSeleccionado = (seleccionado instanceof Mesonero m) ? m.getId() : null;
         cbMesonero.removeAllItems();
-        cbMesonero.addItem("- Sin mesonero -");
+        cbMesonero.addItem("— Sin mesonero —");
         try {
             MesoneroDao dao = new MesoneroDao();
             List<Mesonero> activos = dao.listarActivos();
@@ -2171,6 +2299,7 @@ public class PanelAtencionMesasSplit extends JPanel {
                 BigDecimal sub = precio.multiply(BigDecimal.valueOf(nuevaCant)).setScale(2, RoundingMode.HALF_UP);
                 modeloCarrito.setValueAt(Sistema.formatearMontoCelda(sub, moneda, tasa), i, 4);
                 tblCarrito.setRowSelectionInterval(i, i);
+                asegurarVisibilidadFilaCarrito(i);
                 txtCantManual.setText(String.valueOf(nuevaCant));
                 recalcularTotales();
                 autoLimpiarFiltroSplitTrasAgregar(idPlato);
@@ -2186,7 +2315,9 @@ public class PanelAtencionMesasSplit extends JPanel {
                 Sistema.formatearMontoCelda(precio, moneda, tasa),
                 ""
         });
-        tblCarrito.setRowSelectionInterval(modeloCarrito.getRowCount() - 1, modeloCarrito.getRowCount() - 1);
+        int indexNuevoDirecto = modeloCarrito.getRowCount() - 1;
+        tblCarrito.setRowSelectionInterval(indexNuevoDirecto, indexNuevoDirecto);
+        asegurarVisibilidadFilaCarrito(indexNuevoDirecto);
         txtCantManual.setText("1");
         recalcularTotales();
         autoLimpiarFiltroSplitTrasAgregar(idPlato);

@@ -45,7 +45,7 @@ public class FrmLogin extends javax.swing.JFrame {
     private final Function<Usuario, Sistema> crearSistema;
     private Timer tiempo;
     int contador;
-    int segundos = 30;
+    int segundos = 5;
     public FrmLogin(LoginControlador controlador, Function<Usuario, Sistema> crearSistema) {
         if (controlador == null) {
             throw ErrorAplicacionException.validacion("El controlador de inicio de sesión es obligatorio.");

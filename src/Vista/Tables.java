@@ -9,6 +9,9 @@ import javax.swing.table.DefaultTableCellRenderer;
 /** Renderer Swing que colorea pedidos según su estado (paleta central ServicioMesa). */
 public class Tables extends DefaultTableCellRenderer {
 
+    /** Altura estándar recomendada para filas de tabla (óptima para lectura y pantallas táctiles). */
+    public static final int ALTURA_FILA_DEFECTO = 28;
+
     @Override
     public Component getTableCellRendererComponent(
             JTable tabla, Object valor, boolean seleccionado, boolean enfocado, int fila, int columna) {

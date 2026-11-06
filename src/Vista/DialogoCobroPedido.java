@@ -203,7 +203,7 @@ public class DialogoCobroPedido extends JDialog {
     private void construirUi() {
         setSize(920, 525);
         setMinimumSize(new Dimension(880, 500));
-        setResizable(false);
+        setResizable(true);
         setLocationRelativeTo(getOwner());
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
@@ -346,7 +346,8 @@ public class DialogoCobroPedido extends JDialog {
         btnChipExactoUsd = new JButton("Exacto $");
         btnChipExactoUsd.setName("btnChipExactoUsd");
         btnChipExactoUsd.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnChipExactoUsd.setBackground(new Color(236, 240, 241));
+        btnChipExactoUsd.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        Sistema.botonSolido(btnChipExactoUsd, new Color(0, 102, 102), Color.WHITE);
         btnChipExactoUsd.setToolTipText("Pagar exactamente el saldo restante en Efectivo USD ($)");
         btnChipExactoUsd.setFocusable(false);
         btnChipExactoUsd.addActionListener(e -> aplicarPago(Metodo.EFECTIVO_USD, null));
@@ -523,6 +524,7 @@ public class DialogoCobroPedido extends JDialog {
         btnPreFactura.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnPreFactura.setPreferredSize(new Dimension(150, 40));
         btnPreFactura.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        Sistema.botonSolido(btnPreFactura, new Color(41, 128, 185), Color.WHITE);
         btnPreFactura.setToolTipText("Imprimir comprobante preliminar / cuenta para el cliente sin cerrar la mesa (Atajo: F8)");
         btnPreFactura.addActionListener(e -> emitirPreFactura());
 
@@ -570,6 +572,7 @@ public class DialogoCobroPedido extends JDialog {
         btnCancelar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnCancelar.setPreferredSize(new Dimension(145, 40));
         btnCancelar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        Sistema.botonSolido(btnCancelar, new Color(192, 57, 43), Color.WHITE);
         btnCancelar.setToolTipText("Cancelar operación y regresar a la atención de mesas (Atajo: ESC)");
         btnCancelar.addActionListener(e -> cancelarYCerrar());
         derecha.add(btnCancelar);

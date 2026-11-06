@@ -88,6 +88,13 @@ public final class Sistema extends javax.swing.JFrame {
     /** Barra lateral izquierda original 200 px reducida un 25 %. */
     private static final int ANCHO_BARRA_LATERAL = 150;
     private static final int ALTO_CABECERA = 90;
+    private static final int ALTO_BARRA_ESTADO = 26;
+    private javax.swing.JPanel pnlBarraEstado;
+    private javax.swing.JLabel lblEstadoUsuario;
+    private javax.swing.JLabel lblEstadoTasa;
+    private javax.swing.JLabel lblEstadoBd;
+    private javax.swing.JLabel lblEstadoReloj;
+    private javax.swing.JButton btnCheatSheetAtajos;
 
     Salas sl = new Salas();
     Config conf = new Config();
@@ -1089,7 +1096,8 @@ public final class Sistema extends javax.swing.JFrame {
                 lbl.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
                 jTabbedPane1.setTabComponentAt(i, lbl);
             }
-            lbl.setText(titulo);
+            String icono = obtenerIconoTab(titulo);
+            lbl.setText((icono.isEmpty() ? "" : icono + " ") + titulo);
             if (!habilitado) {
                 lbl.setForeground(new java.awt.Color(0x9E_9E_9E));
                 lbl.setToolTipText("Opción restringida para su rol actual");
@@ -1101,6 +1109,26 @@ public final class Sistema extends javax.swing.JFrame {
                 lbl.setToolTipText(obtenerTooltipTab(titulo));
             }
         }
+    }
+
+    private static String obtenerIconoTab(String titulo) {
+        if (titulo == null) return "";
+        return switch (titulo) {
+            case "Atención Directa (Split)" -> "⚡";
+            case "Panel" -> "❖";
+            case "Salas" -> "◫";
+            case "Mesas" -> "▦";
+            case "Platos" -> "✦";
+            case "Catálogo de Platos", "Platos (Catálogo)" -> "☰";
+            case "Finalizar Pedido" -> "✔";
+            case "Historial Pedidos" -> "≡";
+            case "Datos de la Empresa" -> "⚙";
+            case "Usuarios" -> "♟";
+            case "Dashboard" -> "▲";
+            case "Categorías" -> "★";
+            case "Acerca de" -> "ℹ";
+            default -> "•";
+        };
     }
 
     private static String obtenerTooltipTab(String titulo) {
@@ -1234,8 +1262,8 @@ public final class Sistema extends javax.swing.JFrame {
         }
         javax.swing.UIManager.put("Button.font", baseNegrita);
         javax.swing.UIManager.put("TableHeader.font", baseNegrita);
-        // Selección visible en fondo blanco con texto negro (contraste máximo).
-        javax.swing.UIManager.put("Table.selectionBackground", new javax.swing.plaf.ColorUIResource(java.awt.Color.WHITE));
+        // Selección visible en celeste suave con texto negro para scanability.
+        javax.swing.UIManager.put("Table.selectionBackground", new javax.swing.plaf.ColorUIResource(new java.awt.Color(184, 218, 240)));
         javax.swing.UIManager.put("Table.selectionForeground", new javax.swing.plaf.ColorUIResource(java.awt.Color.BLACK));
         // Pestañas legibles en cualquier tema del SO: texto oscuro sobre fondo claro.
         javax.swing.UIManager.put("TabbedPane.foreground", new javax.swing.plaf.ColorUIResource(new java.awt.Color(33, 33, 33)));
@@ -2113,6 +2141,7 @@ public final class Sistema extends javax.swing.JFrame {
         setResizable(true);
         java.awt.Container cp = getContentPane();
         cp.setLayout(null);
+        construirBarraEstado();
         cp.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentResized(java.awt.event.ComponentEvent e) {
@@ -2121,6 +2150,98 @@ public final class Sistema extends javax.swing.JFrame {
         });
         setExtendedState(getExtendedState() | javax.swing.JFrame.MAXIMIZED_BOTH);
         javax.swing.SwingUtilities.invokeLater(this::reacomodarComponentes);
+    }
+
+    private void construirBarraEstado() {
+        if (pnlBarraEstado != null) return;
+        pnlBarraEstado = new javax.swing.JPanel(new java.awt.BorderLayout(8, 0));
+        pnlBarraEstado.setBackground(new java.awt.Color(241, 245, 249));
+        pnlBarraEstado.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0, new java.awt.Color(203, 213, 225)),
+                javax.swing.BorderFactory.createEmptyBorder(2, 10, 2, 10)
+        ));
+
+        // Izquierda: Usuario activo y rol
+        String nombreUsr = (usuarioActual != null && usuarioActual.getNombre() != null)
+                ? usuarioActual.getNombre() : "Usuario";
+        String rolUsr = (usuarioActual != null && usuarioActual.getRol() != null)
+                ? usuarioActual.getRol() : "Operador";
+        lblEstadoUsuario = new javax.swing.JLabel("👤 " + nombreUsr + " (" + rolUsr + ")");
+        lblEstadoUsuario.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        lblEstadoUsuario.setForeground(new java.awt.Color(51, 65, 85));
+
+        javax.swing.JPanel pnlIzq = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 10, 0));
+        pnlIzq.setOpaque(false);
+        pnlIzq.add(lblEstadoUsuario);
+        pnlBarraEstado.add(pnlIzq, java.awt.BorderLayout.WEST);
+
+        // Centro: Tasa Oficial y Estado de BD
+        javax.swing.JPanel pnlCentro = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 14, 0));
+        pnlCentro.setOpaque(false);
+
+        java.math.BigDecimal tasaActual = getTasaActual();
+        String strTasa = (tasaActual != null && tasaActual.signum() > 0)
+                ? String.format(java.util.Locale.US, "%.2f", tasaActual)
+                : "No conf.";
+        lblEstadoTasa = new javax.swing.JLabel("💵 Tasa: " + strTasa + " Bs/$");
+        lblEstadoTasa.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        lblEstadoTasa.setForeground(new java.awt.Color(15, 118, 110));
+
+        lblEstadoBd = new javax.swing.JLabel("🟢 BD: Operativa");
+        lblEstadoBd.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        lblEstadoBd.setForeground(new java.awt.Color(22, 101, 52));
+
+        pnlCentro.add(lblEstadoTasa);
+        pnlCentro.add(lblEstadoBd);
+        pnlBarraEstado.add(pnlCentro, java.awt.BorderLayout.CENTER);
+
+        // Derecha: Reloj y Botón de Atajos
+        javax.swing.JPanel pnlDer = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
+        pnlDer.setOpaque(false);
+
+        java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss");
+        lblEstadoReloj = new javax.swing.JLabel("🕒 " + java.time.LocalTime.now().format(dtf));
+        lblEstadoReloj.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        lblEstadoReloj.setForeground(new java.awt.Color(71, 85, 105));
+
+        javax.swing.Timer timerReloj = new javax.swing.Timer(1000, e -> {
+            lblEstadoReloj.setText("🕒 " + java.time.LocalTime.now().format(dtf));
+        });
+        timerReloj.start();
+
+        btnCheatSheetAtajos = new javax.swing.JButton("❓ Atajos [F11]");
+        btnCheatSheetAtajos.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnCheatSheetAtajos.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnCheatSheetAtajos.setFocusable(false);
+        btnCheatSheetAtajos.setToolTipText("Ver mapa completo de atajos de teclado del sistema (Atajo: F11 / Shift+F1)");
+        btnCheatSheetAtajos.addActionListener(e -> mostrarCheatSheetAtajos());
+
+        pnlDer.add(lblEstadoReloj);
+        pnlDer.add(btnCheatSheetAtajos);
+        pnlBarraEstado.add(pnlDer, java.awt.BorderLayout.EAST);
+
+        getContentPane().add(pnlBarraEstado);
+    }
+
+    public void notificarEstadoBd(boolean operativa) {
+        if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+            javax.swing.SwingUtilities.invokeLater(() -> notificarEstadoBd(operativa));
+            return;
+        }
+        if (lblEstadoBd != null) {
+            if (operativa) {
+                lblEstadoBd.setText("🟢 BD: Operativa");
+                lblEstadoBd.setForeground(new java.awt.Color(22, 101, 52));
+            } else {
+                lblEstadoBd.setText("🔴 BD: Error de enlace");
+                lblEstadoBd.setForeground(new java.awt.Color(185, 28, 28));
+            }
+        }
+    }
+
+    public void mostrarCheatSheetAtajos() {
+        DialogoAtajosTeclado diag = new DialogoAtajosTeclado(this);
+        diag.setVisible(true);
     }
 
     /** Reubica los paneles principales (barra lateral, banner, pestañas) al tamano actual. */
@@ -2152,8 +2273,13 @@ public final class Sistema extends javax.swing.JFrame {
         }
         if (jTabbedPane1 != null) {
             int yTabs = ALTO_CABECERA + 5;
+            int altoTabs = Math.max(150, alto - yTabs - ALTO_BARRA_ESTADO);
             jTabbedPane1.setBounds(anchoBarra, yTabs,
-                    Math.max(200, ancho - anchoBarra), Math.max(150, alto - yTabs));
+                    Math.max(200, ancho - anchoBarra), altoTabs);
+        }
+        if (pnlBarraEstado != null) {
+            pnlBarraEstado.setBounds(anchoBarra, alto - ALTO_BARRA_ESTADO,
+                    Math.max(200, ancho - anchoBarra), ALTO_BARRA_ESTADO);
         }
     }
 
@@ -2528,8 +2654,7 @@ public final class Sistema extends javax.swing.JFrame {
             configuracionAccesos.guardarPermisos(rol, cambios, politicaAcceso,
                     usuarioActual != null ? usuarioActual.getId() : 0);
             lblEstadoPermisosRol.setText("Permisos guardados; se aplicarán en el próximo inicio de sesión.");
-            JOptionPane.showMessageDialog(this, "Permisos del rol " + rol + " guardados.",
-                    "Accesos actualizados", JOptionPane.INFORMATION_MESSAGE);
+            mostrarAvisoEnBanda("Permisos del rol " + rol + " guardados exitosamente.");
         } catch (RuntimeException ex) {
             lblEstadoPermisosRol.setText("No se pudieron guardar los permisos.");
             JOptionPane.showMessageDialog(this, "No se pudieron guardar los permisos. No se aplicaron cambios.",
@@ -6770,6 +6895,16 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
 
+        javax.swing.AbstractAction accionAtajos = new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                mostrarCheatSheetAtajos();
+            }
+        };
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F11, 0), "ux.atajos");
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F1, java.awt.event.InputEvent.SHIFT_DOWN_MASK), "ux.atajos");
+        am.put("ux.atajos", accionAtajos);
+
         javax.swing.InputMap imCarrito = jPanel23.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
         javax.swing.ActionMap amCarrito = jPanel23.getActionMap();
         imCarrito.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0), "ux.cancelarPedido");
@@ -6782,21 +6917,7 @@ public final class Sistema extends javax.swing.JFrame {
     }
 
     private void mostrarPanelAyuda() {
-        String ayuda = "<html><h3>Atajos de Teclado (Mejoras UX)</h3>"
-            + "<ul>"
-            + "<li><b>[F1]</b>: Buscar plato en Atención Directa / Mostrar este panel de ayuda.</li>"
-            + "<li><b>[F2]</b>: Enviar a Cocina en Atención Directa / Ir directo al buscador tradicional.</li>"
-            + "<li><b>[F3]</b>: Emitir Pre-Factura (cuenta para el cliente sin cerrar mesa).</li>"
-            + "<li><b>[F4]</b>: Menú rápido de platos favoritos (con tabla de platos y mesa seleccionada).</li>"
-            + "<li><b>[F5]</b>: Actualizar estado de mesas / Finalizar pedido tradicional.</li>"
-            + "<li><b>[F12]</b>: Cobro rápido y facturación de la mesa actual.</li>"
-            + "<li><b>[ESC]</b>: Limpiar buscador de platos o comanda en curso.</li>"
-            + "<li><b>[Enter] en Buscador/Catálogo</b>: Agrega el plato seleccionado a la comanda.</li>"
-            + "<li><b>[+] / [-] en Comanda</b>: Aumentar o disminuir la cantidad del plato seleccionado.</li>"
-            + "<li><b>[Supr] en Comanda</b>: Eliminar la línea seleccionada de la comanda.</li>"
-            + "<li><b>[Flechas ← → ↑ ↓]</b>: Navegar entre buscador, catálogo y comanda sin usar ratón.</li>"
-            + "</ul><p>¡Usar estos atajos en horas pico agilizará tus pedidos significativamente!</p></html>";
-        JOptionPane.showMessageDialog(this, ayuda, "Ayuda de Atajos", JOptionPane.INFORMATION_MESSAGE);
+        mostrarCheatSheetAtajos();
     }
 
     private javax.swing.JPopupMenu popupFavoritosActivo;
@@ -8602,7 +8723,7 @@ public final class Sistema extends javax.swing.JFrame {
         btnCopiar.addActionListener(e -> {
             java.awt.datatransfer.StringSelection sel = new java.awt.datatransfer.StringSelection(txtLogs.getText());
             java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
-            JOptionPane.showMessageDialog(dialog, "Contenido copiado al portapapeles.", "Logs", JOptionPane.INFORMATION_MESSAGE);
+            ToastNotificacion.mostrar(dialog, "Contenido copiado al portapapeles.", ToastNotificacion.Tipo.EXITO);
         });
 
         btnCerrar.addActionListener(e -> dialog.dispose());
@@ -9583,6 +9704,10 @@ public final class Sistema extends javax.swing.JFrame {
                     lblBannerTasa.setText("<html><b style='color:#721c24;font-size:11px;'>⚠️ TASA NO CONFIGURADA</b><br>"
                             + "<span style='font-size:12px;font-weight:bold;color:#721c24;'>Configure la tasa en Ajustes</span></html>");
                 }
+                if (lblEstadoTasa != null) {
+                    lblEstadoTasa.setText("💵 Tasa: No conf.");
+                    lblEstadoTasa.setForeground(new java.awt.Color(185, 28, 28));
+                }
                 return;
             }
             java.sql.Timestamp ts = configServicio.getFechaActualizacionTasaDolar();
@@ -9591,6 +9716,11 @@ public final class Sistema extends javax.swing.JFrame {
             String fechaStr = ts != null
                     ? ts.toLocalDateTime().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                     : "No registrada";
+
+            if (lblEstadoTasa != null) {
+                lblEstadoTasa.setText("💵 Tasa: " + tasaStr + " Bs/$");
+                lblEstadoTasa.setForeground(new java.awt.Color(15, 118, 110));
+            }
 
             if (lblBannerTasa != null) {
                 if (desactualizada) {
@@ -10662,6 +10792,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (tabla == null) {
             return;
         }
+        tabla.setRowHeight(Tables.ALTURA_FILA_DEFECTO);
         tabla.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
         javax.swing.table.TableColumnModel columnas = tabla.getColumnModel();
         for (int i = 0; i < columnas.getColumnCount(); i++) {
@@ -10675,6 +10806,7 @@ public final class Sistema extends javax.swing.JFrame {
         if (padre instanceof javax.swing.JScrollPane scroll) {
             scroll.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
             scroll.setVerticalScrollBarPolicy(javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            scroll.getVerticalScrollBar().setUnitIncrement(16);
         }
     }
 
@@ -12489,6 +12621,10 @@ public final class Sistema extends javax.swing.JFrame {
 
     public PanelAtencionMesasSplit getPanelSplitScreen() {
         return panelSplitScreen;
+    }
+
+    public javax.swing.JPanel getPanelBarraEstado() {
+        return pnlBarraEstado;
     }
 
     public javax.swing.JButton getBtnSala() {
