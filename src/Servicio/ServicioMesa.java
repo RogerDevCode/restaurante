@@ -61,6 +61,10 @@ public final class ServicioMesa {
         }
     }
 
+    public static void limpiarTodasLasPreFacturas() {
+        PEDIDOS_PREFACTURADOS.clear();
+    }
+
     /**
      * Calcula una etiqueta concisa de tiempo transcurrido (ej. "12m", "1h 15m")
      * a partir de una fecha o timestamp de inicio de comanda.

@@ -126,6 +126,13 @@ public final class ToastNotificacion extends JPanel {
         // Timer para cierre automático
         this.temporizadorAutoCierre = new Timer(duracionMs > 0 ? duracionMs : DURACION_DEFECTO_MS, e -> descartar());
         this.temporizadorAutoCierre.setRepeats(false);
+
+        // Limpieza defensiva si el contenedor se destruye o deja de ser visible
+        addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0 && !isShowing()) {
+                descartar();
+            }
+        });
     }
 
     @Override

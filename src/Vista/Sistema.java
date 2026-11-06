@@ -5509,6 +5509,7 @@ public final class Sistema extends javax.swing.JFrame {
                 boolean mismoPedido = version == versionPedidoPantalla
                         && String.valueOf(idPedido).equals(txtIdPedido.getText());
                 if (finalizado) {
+                    Servicio.ServicioMesa.limpiarPreFactura(idPedido);
                     mostrarResumenCobroExitoso(idPedido, mesaInfo, totalInfo, pagos);
                     if (mismoPedido) {
                         volverAInicioSeleccionSala();
@@ -8747,7 +8748,12 @@ public final class Sistema extends javax.swing.JFrame {
                     ? "Bs. " + String.format(java.util.Locale.US, "%.2f", montoBs) + " ($ " + usdStr + ")"
                     : "$ " + usdStr;
             if (cols > 6) {
-                ob[6] = p.getEstado();
+                String est = p.getEstado();
+                if ("PENDIENTE".equalsIgnoreCase(est) && Servicio.ServicioMesa.tienePreFactura(p.getId())) {
+                    ob[6] = "CUENTA";
+                } else {
+                    ob[6] = est;
+                }
             }
             if (cols > 7) {
                 ob[7] = formatearMetodoPagoUI(p);
@@ -11803,26 +11809,30 @@ public final class Sistema extends javax.swing.JFrame {
 
             String prefijoTexto = esBarra ? "PUESTO " : "MESA ";
             boolean prefactura = verificar > 0 && ServicioMesa.tienePreFactura(verificar);
+            String escCodigoMesa = escapeHtml(codigoMesa);
+            String escPrefijoTexto = escapeHtml(prefijoTexto);
+            String escVisual = visual != null ? escapeHtml(visual) : null;
+
             if (prefactura) {
                 boton.setBackground(Servicio.ServicioMesa.FONDO_MESA_PREFACTURA);
-                boton.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br>"
-                        + "<span style='font-size:11px;'><b>" + prefijoTexto + i + "</b></span><br>"
+                boton.setText("<html><center><font size='+2'><b>" + escCodigoMesa + "</b></font><br>"
+                        + "<span style='font-size:11px;'><b>" + escPrefijoTexto + i + "</b></span><br>"
                         + "<span style='font-size:10px; background-color:#0D47A1; color:#FFFFFF; padding:1px 3px;'><b>[CUENTA]</b></span>"
-                        + (visual != null ? "<br><span style='font-size:10px;'><b>" + visual + "</b></span>" : "")
+                        + (escVisual != null ? "<br><span style='font-size:10px;'><b>" + escVisual + "</b></span>" : "")
                         + "</center></html>");
                 boton.setToolTipText("Cuenta solicitada (" + codigoMesa + ") - Pedido #" + verificar + (nombreMesonero != null ? " (" + nombreMesonero + ")" : ""));
             } else if (verificar > 0) {
                 boton.setBackground(Servicio.ServicioMesa.FONDO_MESA_OCUPADA);
-                if (visual != null && !visual.isBlank()) {
-                    boton.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + prefijoTexto + i + "</b></span><br><span style='font-size:12px;'><b>" + visual + "</b></span></center></html>");
+                if (escVisual != null && !escVisual.isBlank()) {
+                    boton.setText("<html><center><font size='+2'><b>" + escCodigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + escPrefijoTexto + i + "</b></span><br><span style='font-size:12px;'><b>" + escVisual + "</b></span></center></html>");
                     boton.setToolTipText((esBarra ? "Puesto Ocupado (" : "Mesa Ocupada (") + codigoMesa + ") - Atendida por: " + nombreMesonero);
                 } else {
-                    boton.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + prefijoTexto + i + "</b></span></center></html>");
+                    boton.setText("<html><center><font size='+2'><b>" + escCodigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + escPrefijoTexto + i + "</b></span></center></html>");
                     boton.setToolTipText((esBarra ? "Puesto Ocupado (" : "Mesa Ocupada (") + codigoMesa + ") (Sin mesonero asignado)");
                 }
             } else {
                 boton.setBackground(Servicio.ServicioMesa.FONDO_MESA_LIBRE);
-                boton.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + prefijoTexto + i + "</b></span><br><span style='font-size:12px;'><b>LIBRE</b></span></center></html>");
+                boton.setText("<html><center><font size='+2'><b>" + escCodigoMesa + "</b></font><br><span style='font-size:12px;'><b>" + escPrefijoTexto + i + "</b></span><br><span style='font-size:12px;'><b>LIBRE</b></span></center></html>");
                 boton.setToolTipText((esBarra ? "Puesto " : "Mesa ") + i + " (" + codigoMesa + ") Disponible");
             }
             boton.setForeground(Color.WHITE);
@@ -12419,6 +12429,7 @@ public final class Sistema extends javax.swing.JFrame {
                                 this, pedidosControlador, idPedido, pedidoCargado, detallesCargados,
                                 gestorBloqueoCobro, idUser, nomUser, cfg, politicaAcceso, finalizado -> {
                             if (finalizado) {
+                                Servicio.ServicioMesa.limpiarPreFactura(idPedido);
                                 if (alFinalizarExitoso != null) {
                                     alFinalizarExitoso.run();
                                 }
@@ -13822,6 +13833,14 @@ public final class Sistema extends javax.swing.JFrame {
                 ? error.getMessage()
                 : "No se pudo cargar el pedido. El detalle quedó registrado.";
         JOptionPane.showMessageDialog(this, mensaje, "Error al cargar pedido", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
 }

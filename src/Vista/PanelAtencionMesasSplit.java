@@ -875,6 +875,10 @@ public class PanelAtencionMesasSplit extends JPanel {
     }
 
     public void refrescarMesasSalaActual() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::refrescarMesasSalaActual);
+            return;
+        }
         if (idSalaSeleccionada <= 0 || cantMesasSalaSeleccionada <= 0) return;
 
         panelGrillaMesas.removeAll();
@@ -970,31 +974,36 @@ public class PanelAtencionMesasSplit extends JPanel {
                 btnMesa.setVerticalTextPosition(SwingConstants.BOTTOM);
             }
 
+            String escCodigoMesa = escapeHtml(codigoMesa);
+            String escTiempo = escapeHtml(tiempo);
+            String escVisualMesonero = visualMesonero != null ? escapeHtml(visualMesonero) : null;
+            String escTotalFmt = escapeHtml(totalFmt);
+
             if (prefactura) {
                 btnMesa.setBackground(ServicioMesa.FONDO_MESA_PREFACTURA);
                 btnMesa.setForeground(Color.WHITE);
-                btnMesa.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br>"
+                btnMesa.setText("<html><center><font size='+2'><b>" + escCodigoMesa + "</b></font><br>"
                         + "<span style='font-size:11px;'><b>" + (salaSeleccionadaEsBarra ? "Puesto " : "Mesa ") + numMesa + "</b>"
-                        + (!tiempo.isEmpty() ? " • <b>" + tiempo + "</b>" : "") + "</span><br>"
+                        + (!escTiempo.isEmpty() ? " • <b>" + escTiempo + "</b>" : "") + "</span><br>"
                         + "<span style='font-size:10px; background-color:#0D47A1; color:#FFFFFF; padding:1px 3px;'><b>[CUENTA]</b></span> "
-                        + "<span style='font-size:11px; color:#FFE082;'><b>$" + totalFmt + "</b></span>"
-                        + (visualMesonero != null ? "<br><span style='font-size:10px;'>" + visualMesonero + "</span>" : "")
+                        + "<span style='font-size:11px; color:#FFF176;'><b>$" + escTotalFmt + "</b></span>"
+                        + (escVisualMesonero != null ? "<br><span style='font-size:10px;'>" + escVisualMesonero + "</span>" : "")
                         + "</center></html>");
                 btnMesa.setToolTipText("Cuenta pedida (" + codigoMesa + ") - Pedido #" + idPed + " - $" + totalFmt + (nombreMesonero != null ? " (" + nombreMesonero + ")" : ""));
             } else if (ocupada) {
                 btnMesa.setBackground(ServicioMesa.FONDO_MESA_OCUPADA);
                 btnMesa.setForeground(Color.WHITE);
-                btnMesa.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br>"
+                btnMesa.setText("<html><center><font size='+2'><b>" + escCodigoMesa + "</b></font><br>"
                         + "<span style='font-size:11px;'><b>" + (salaSeleccionadaEsBarra ? "Puesto " : "Mesa ") + numMesa + "</b>"
-                        + (!tiempo.isEmpty() ? " • <b>" + tiempo + "</b>" : "") + "</span><br>"
-                        + (totalUsd.compareTo(BigDecimal.ZERO) > 0 ? "<span style='font-size:11px; color:#FFE082;'><b>$" + totalFmt + "</b></span><br>" : "")
-                        + (visualMesonero != null ? "<span style='font-size:11px;'><b>" + visualMesonero + "</b></span>" : "<span style='font-size:10px;'>Activa</span>")
+                        + (!escTiempo.isEmpty() ? " • <b>" + escTiempo + "</b>" : "") + "</span><br>"
+                        + (totalUsd.compareTo(BigDecimal.ZERO) > 0 ? "<span style='font-size:11px; color:#FFF176;'><b>$" + escTotalFmt + "</b></span><br>" : "")
+                        + (escVisualMesonero != null ? "<span style='font-size:11px;'><b>" + escVisualMesonero + "</b></span>" : "<span style='font-size:10px;'>Activa</span>")
                         + "</center></html>");
                 btnMesa.setToolTipText("Ocupada (" + codigoMesa + ") - Pedido #" + idPed + (totalUsd.compareTo(BigDecimal.ZERO) > 0 ? " - $" + totalFmt : "") + (nombreMesonero != null ? " (" + nombreMesonero + ")" : ""));
             } else {
                 btnMesa.setBackground(ServicioMesa.FONDO_MESA_LIBRE);
                 btnMesa.setForeground(Color.WHITE);
-                btnMesa.setText("<html><center><font size='+2'><b>" + codigoMesa + "</b></font><br>"
+                btnMesa.setText("<html><center><font size='+2'><b>" + escCodigoMesa + "</b></font><br>"
                         + "<span style='font-size:12px;'><b>" + (salaSeleccionadaEsBarra ? "Puesto " : "Mesa ") + numMesa + "</b></span><br>"
                         + "<span style='font-size:12px;'><b>LIBRE</b></span></center></html>");
                 btnMesa.setToolTipText("Disponible (" + codigoMesa + ")");
@@ -1787,6 +1796,7 @@ public class PanelAtencionMesasSplit extends JPanel {
                 if (idPedidoActivo > 0) {
                     final int idACobrar = idPedidoActivo;
                     sistema.abrirModalCobroPedido(idACobrar, () -> {
+                        ServicioMesa.limpiarPreFactura(idACobrar);
                         modeloCarrito.setRowCount(0);
                         detallesExistentesCarrito.clear();
                         idPedidoActivo = 0;
@@ -1801,6 +1811,7 @@ public class PanelAtencionMesasSplit extends JPanel {
         } else if (idPedidoActivo > 0) {
             final int idACobrar = idPedidoActivo;
             sistema.abrirModalCobroPedido(idACobrar, () -> {
+                ServicioMesa.limpiarPreFactura(idACobrar);
                 modeloCarrito.setRowCount(0);
                 detallesExistentesCarrito.clear();
                 idPedidoActivo = 0;
@@ -2205,7 +2216,19 @@ public class PanelAtencionMesasSplit extends JPanel {
         return item;
     }
 
+    private static String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
+    }
+
     public void enfocarBuscador() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::enfocarBuscador);
+            return;
+        }
         if (txtBuscarPlato != null) {
             txtBuscarPlato.requestFocusInWindow();
             txtBuscarPlato.selectAll();
@@ -2213,18 +2236,30 @@ public class PanelAtencionMesasSplit extends JPanel {
     }
 
     public void ejecutarAccionEnviarCocina() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::ejecutarAccionEnviarCocina);
+            return;
+        }
         if (btnEnviarCocina != null && btnEnviarCocina.isEnabled() && btnEnviarCocina.isShowing()) {
             enviarPedidoCocina();
         }
     }
 
     public void ejecutarAccionPreFactura() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::ejecutarAccionPreFactura);
+            return;
+        }
         if (btnPreFactura != null && btnPreFactura.isEnabled() && btnPreFactura.isShowing()) {
             emitirPreFacturaDirecta();
         }
     }
 
     public void ejecutarAccionCobrar() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::ejecutarAccionCobrar);
+            return;
+        }
         if (btnCobrar != null && btnCobrar.isEnabled() && btnCobrar.isShowing()) {
             cobrarPedidoDirecto();
         }
@@ -2235,14 +2270,30 @@ public class PanelAtencionMesasSplit extends JPanel {
     }
 
     public void manejarTeclaEscape() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::manejarTeclaEscape);
+            return;
+        }
+        // 1. Si el buscador tiene texto o foco, limpiarlo y restaurar catálogo
         if (txtBuscarPlato != null && (txtBuscarPlato.isFocusOwner() || !txtBuscarPlato.getText().trim().isEmpty())) {
             txtBuscarPlato.setText("");
             filtrarCatalogoPlatos("");
             txtBuscarPlato.requestFocusInWindow();
             return;
         }
-        if (modeloCarrito != null && modeloCarrito.getRowCount() > 0) {
-            limpiarComanda();
+        // 2. Deseleccionar filas sin destruir la comanda (evita borrar comanda por accidente)
+        if (tblCarrito != null && tblCarrito.isFocusOwner()) {
+            tblCarrito.clearSelection();
+            if (txtBuscarPlato != null) {
+                txtBuscarPlato.requestFocusInWindow();
+            }
+            return;
+        }
+        if (tblCatalogoPlatos != null && tblCatalogoPlatos.isFocusOwner()) {
+            tblCatalogoPlatos.clearSelection();
+            if (txtBuscarPlato != null) {
+                txtBuscarPlato.requestFocusInWindow();
+            }
         }
     }
 

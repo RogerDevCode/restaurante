@@ -40,7 +40,7 @@ public class Tables extends DefaultTableCellRenderer {
                 setForeground(Color.WHITE);
                 break;
             default:
-                setBackground(Color.WHITE);
+                setBackground(fila % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
                 setForeground(Color.BLACK);
                 break;
         }
