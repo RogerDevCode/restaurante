@@ -239,10 +239,6 @@ foreach ($lib in $libreriasRuntime) {
 # 4.3 Copiar solo el esquema de instalación nueva. Las actualizaciones usan el migrador JDBC versionado.
 Write-Host "  -> Copiando esquema de instalación nueva..." -ForegroundColor Gray
 Copy-Item -LiteralPath (Join-Path $ProjectRoot "BD.sql") -Destination (Join-Path $OutputDir "BD.sql") -Force
-$sqlCliente = Join-Path $ProjectRoot "BD RESTAURANTE 2026.sql"
-if (Test-Path -LiteralPath $sqlCliente) {
-    Copy-Item -LiteralPath $sqlCliente -Destination (Join-Path $OutputDir "BD RESTAURANTE 2026.sql") -Force
-}
 $sqlLimpiar = Join-Path $ProjectRoot "limpiar_para_comenzar_hoy.sql"
 if (Test-Path -LiteralPath $sqlLimpiar) {
     Copy-Item -LiteralPath $sqlLimpiar -Destination (Join-Path $OutputDir "limpiar_para_comenzar_hoy.sql") -Force
@@ -260,8 +256,6 @@ $scripts = @(
     "icono_restaurante.ico",
     "icono_restaurante.png",
     "actualizar_bd.bat",
-    "actualizar_datos_cliente.bat",
-    "actualizar_datos_cliente.sh",
     "limpiar_para_comenzar_hoy.bat",
     "limpiar_para_comenzar_hoy.sh",
     "instalar_mysql_y_bd.bat",

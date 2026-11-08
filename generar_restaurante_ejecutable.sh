@@ -26,9 +26,8 @@ BIBLIOTECAS=(
     "commons-logging-1.2.jar"
 )
 FILES=(
-    "BD.sql" "actualizar_bd.sql" "BD RESTAURANTE 2026.sql"
+    "BD.sql" "actualizar_bd.sql"
     "limpiar_para_comenzar_hoy.sql" "limpiar_para_comenzar_hoy.bat" "limpiar_para_comenzar_hoy.sh"
-    "actualizar_datos_cliente.bat" "actualizar_datos_cliente.sh"
     "iniciar_restaurante.bat" "iniciar_restaurante.sh" "actualizar_bd.bat"
     "instalar_mysql_y_bd.bat" "instalar_mysql_y_bd.ps1" "configurar_mysql.ps1"
     "instalar_acceso_directo.bat" "instalar_acceso_directo.ps1" "instalacion_completa_un_clic.bat"
@@ -92,7 +91,6 @@ for file in "${FILES[@]}"; do
 done
 [ ! -f "$DIR/.env.example" ] || cp -f "$DIR/.env.example" "$OUTPUT_DIR/.env.example"
 chmod +x "$OUTPUT_DIR/limpiar_para_comenzar_hoy.sh" 2>/dev/null || true
-chmod +x "$OUTPUT_DIR/actualizar_datos_cliente.sh" 2>/dev/null || true
 chmod +x "$OUTPUT_DIR/iniciar_restaurante.sh" 2>/dev/null || true
 
 echo "Normalizando terminaciones de linea Windows (CRLF) para scripts .bat, .cmd, .ps1, .vbs..."

@@ -70,9 +70,8 @@ for library in AbsoluteLayout.jar itextpdf-5.5.13.4.jar mysql-connector-j-8.0.31
     fi
 done
 FILES=(
-    "BD.sql" "actualizar_bd.sql" "BD RESTAURANTE 2026.sql"
+    "BD.sql" "actualizar_bd.sql"
     "limpiar_para_comenzar_hoy.sql" "limpiar_para_comenzar_hoy.bat" "limpiar_para_comenzar_hoy.sh"
-    "actualizar_datos_cliente.bat" "actualizar_datos_cliente.sh"
     "iniciar_restaurante.bat" "iniciar_restaurante.sh" "actualizar_bd.bat"
     "instalar_mysql_y_bd.bat" "instalar_mysql_y_bd.ps1" "configurar_mysql.ps1"
     "instalar_acceso_directo.bat" "instalar_acceso_directo.ps1" "instalacion_completa_un_clic.bat"
