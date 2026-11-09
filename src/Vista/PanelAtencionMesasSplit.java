@@ -1497,7 +1497,11 @@ public class PanelAtencionMesasSplit extends JPanel {
 
         // Feedback visual verde de confirmacion al agregar
         tblCatalogoPlatos.setSelectionBackground(new Color(144, 238, 144));
-        new javax.swing.Timer(300, ev -> tblCatalogoPlatos.setSelectionBackground(javax.swing.UIManager.getColor("Table.selectionBackground"))).start();
+        javax.swing.Timer timerFeedback = new javax.swing.Timer(300, ev -> {
+            tblCatalogoPlatos.setSelectionBackground(javax.swing.UIManager.getColor("Table.selectionBackground"));
+        });
+        timerFeedback.setRepeats(false);
+        timerFeedback.start();
 
         String nombre = (String) Tables.valorModelo(tblCatalogoPlatos, fila, 1);
         String moneda = (platoObj != null && platoObj.getMonedaBase() != null) ? platoObj.getMonedaBase().toUpperCase() : "USD";

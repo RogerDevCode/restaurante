@@ -163,6 +163,11 @@ public final class PedidosControlador {
         return consultas.anularFacturaCobradaConDevolucion(idPedido, motivo, usuario);
     }
 
+    public int anularPedidosPendientesPorFecha(java.time.LocalDate fecha, String motivo, String usuario) {
+        exigirPermiso(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE);
+        return consultas.anularPedidosPendientesPorFecha(fecha, motivo, usuario);
+    }
+
     public List<Modelo.AuditoriaPedido> obtenerAuditoriaPedido(int idPedido) {
         exigirPermiso(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
         return consultas.obtenerAuditoriaPedido(idPedido);

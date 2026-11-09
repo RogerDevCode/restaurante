@@ -138,6 +138,19 @@ public interface PedidosRepositorio {
     }
 
     /**
+     * Anula de forma atómica todas las cuentas o pedidos en estado PENDIENTE correspondientes
+     * a una fecha específica, liberando las mesas y registrando auditoría para cada uno.
+     *
+     * @param fecha   fecha de los pedidos a depurar/anular
+     * @param motivo  justificación de la anulación masiva
+     * @param usuario operador responsable
+     * @return cantidad de pedidos efectivamente anulados
+     */
+    default int anularPedidosPendientesPorFecha(java.time.LocalDate fecha, String motivo, String usuario) {
+        return 0;
+    }
+
+    /**
      * Cierra el servicio de la mesa congelando su cotización (Task 7).
      * @param idPedido identificador del pedido
      * @param versionEsperada versión de cotización esperada (o 0 si no se valida versión previa)

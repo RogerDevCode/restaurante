@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual Operativo & Normativo: Mesas Abiertas y Contingencia Manual SENIAT — Restaurante 2026</title>
+  <style>
+    :root {
+      --color-primary: #0ea5e9;
+      --color-primary-dark: #0284c7;
+      --color-primary-light: #38bdf8;
+      --color-accent: #f59e0b;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+      --color-purple: #8b5cf6;
+      --color-bg-dark: #0b1120;
+      --color-bg-card: rgba(18, 24, 38, 0.9);
+      --color-bg-card-hover: rgba(30, 41, 59, 0.95);
+      --color-border: rgba(255, 255, 255, 0.08);
+      --color-text-main: #f8fafc;
+      --color-text-muted: #94a3b8;
+      --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #8b5cf6 100%);
+      --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+      --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      --gradient-danger: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+      --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--color-bg-dark);
+      color: var(--color-text-main);
+      font-family: var(--font-main);
+      line-height: 1.6;
+      padding: 40px 20px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* Header */
+    .header-box {
+      background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b1120 100%);
+      border: 1px solid var(--color-border);
+      border-radius: 20px;
+      padding: 36px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header-box::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 200px;
+      background: var(--gradient-primary);
+      filter: blur(90px);
+      opacity: 0.18;
+      pointer-events: none;
+    }
+
+    .badge-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-primary { background: rgba(14, 165, 233, 0.15); color: var(--color-primary-light); border: 1px solid rgba(14, 165, 233, 0.3); }
+    .badge-accent { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .lead-text {
+      color: var(--color-text-muted);
+      font-size: 1.05rem;
+      max-width: 950px;
+    }
+
+    /* Grid Sections */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 24px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    /* Card base */
+    .card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 28px;
+      backdrop-filter: blur(12px);
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      background: var(--color-bg-card-hover);
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-desc {
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+      line-height: 1.55;
+    }
+
+    /* Alertas */
+    .alert-box {
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      font-size: 0.92rem;
+    }
+
+    .alert-info { background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.25); color: #e0f2fe; }
+    .alert-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); color: #fef3c7; }
+    .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); color: #d1fae5; }
+    .alert-danger { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #fee2e2; }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--color-border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: rgba(30, 41, 59, 0.8);
+      color: var(--color-text-muted);
+      font-weight: 600;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--color-border);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--color-border);
+      color: #e2e8f0;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    /* Steps */
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      counter-reset: step-counter;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      counter-increment: step-counter;
+      background: var(--gradient-primary);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.9rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .step-title {
+      font-weight: 700;
+      color: #fff;
+      font-size: 0.98rem;
+    }
+
+    .step-desc {
+      color: var(--color-text-muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .key-badge {
+      display: inline-block;
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #f1f5f9;
+      border-radius: 6px;
+      padding: 2px 7px;
+      font-size: 0.82rem;
+      font-family: monospace;
+      font-weight: 700;
+      box-shadow: 0 2px 0 #0f172a;
+    }
+
+    /* Diagrama de flujo visual */
+    .flow-diagram {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 12px;
+      border: 1px dashed var(--color-border);
+      margin: 10px 0;
+    }
+
+    .flow-node {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      text-align: center;
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .flow-node.active {
+      border-color: var(--color-primary);
+      background: rgba(14, 165, 233, 0.12);
+    }
+
+    .flow-arrow {
+      color: var(--color-text-muted);
+      font-size: 1.3rem;
+      font-weight: bold;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      color: var(--color-text-muted);
+      font-size: 0.85rem;
+      padding-top: 20px;
+      border-top: 1px solid var(--color-border);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header Box -->
+    <header class="header-box">
+      <div class="badge-bar">
+        <span class="badge badge-primary">Sistema Restaurante 2026</span>
+        <span class="badge badge-accent">Operación de Turno Matutino</span>
+        <span class="badge badge-danger">SENIAT SNAT/2011/00071</span>
+        <span class="badge badge-success">Auditoría & Invariante F-07</span>
+      </div>
+      <h1>Guía Operativa & Normativa Fiscal</h1>
+      <p class="lead-text">
+        Manual para el manejo de <strong>mesas abiertas al inicio de jornada</strong> y protocolo de cumplimiento obligatorio ante el <strong>SENIAT por fallas eléctricas o caída del sistema</strong> (Operación en Modo Contingencia).
+      </p>
+    </header>
+
+    <!-- SECCIÓN 1: MESAS ABIERTAS AL DÍA SIGUIENTE -->
+    <section class="card" style="border-left: 4px solid var(--color-accent);">
+      <div class="card-title" style="color: #fbbf24;">
+        <span>🌅</span>
+        <h2>1. ¿Qué pasa si el operador inicia el sistema en la mañana y encuentra mesas abiertas?</h2>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <h3 style="margin-bottom: 10px; color: #fff; font-size: 1.05rem;">Diagnóstico del Escenario</h3>
+          <p class="card-desc">
+            Son cuentas que quedaron en estado <code>PENDIENTE</code> al cerrar el servicio nocturno anterior por:
+          </p>
+          <ul style="margin: 10px 0 10px 20px; color: var(--color-text-muted); font-size: 0.92rem;">
+            <li>Clientes que se retiraron sin pagar (fuga / incobrable).</li>
+            <li>Mesas abiertas por error en comanda que nunca se enviaron a cobro.</li>
+            <li>Omisión del cajero o mesonero al no liberar la mesa al final del turno.</li>
+          </ul>
+
+          <div class="alert-box alert-success" style="margin-top: 12px;">
+            <div style="font-size: 1.4rem;">🛡️</div>
+            <div>
+              <strong>Impacto Contable y Caja: CERO impacto negativo</strong><br>
+              Bajo la regla del <strong>Invariante F-07</strong>, una mesa en <code>PENDIENTE</code> es una pre-cuenta informativa de consumo. <strong>No tiene pagos registrados ni afecta el dinero en efectivo del Cierre Z</strong>.
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="margin-bottom: 10px; color: #fff; font-size: 1.05rem;">Impacto en la Operación Matutina</h3>
+          <p class="card-desc">
+            En la interfaz gráfica (Mapa de Mesas / Atención Directa), la mesa figura en <strong>color ROJO (Ocupada)</strong>.
+          </p>
+          <div class="alert-box alert-warning" style="margin-top: 12px;">
+            <div style="font-size: 1.4rem;">⚠️</div>
+            <div>
+              <strong>Bloqueo de asignación:</strong> El operador no puede sentar nuevos comensales de la mañana en esa mesa hasta que se libere el pedido anterior (no se pueden superponer cuentas abiertas en la misma mesa).
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MÉTODOS DE ANULACIÓN -->
+      <h3 style="margin-top: 20px; margin-bottom: 8px; color: #fff; font-size: 1.15rem;">
+        🛠️ Métodos Disponibles para Anular las Mesas (Todas o Algunas)
+      </h3>
+
+      <div class="grid-2">
+
+        <!-- Opción A: Depurar Todas en Bloque -->
+        <div class="card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(245, 158, 11, 0.3);">
+          <div class="card-title" style="color: #fbbf24; font-size: 1.1rem;">
+            <span>⚡</span>
+            <h3>Opción A: Anular TODAS en Bloque (Por Fecha)</h3>
+          </div>
+          <p class="card-desc">
+            Ideal al abrir en la mañana si hay 5, 10 o más mesas colgadas de la noche anterior y se desea limpiar todo el salón en 1 solo clic.
+          </p>
+
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <div class="step-title">Ir a Historial de Pedidos</div>
+                <div class="step-desc">Hacer clic en el botón lateral <strong>Pedidos</strong> (Pestaña 5).</div>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <div class="step-title">Filtro por Fecha del Turno Anterior</div>
+                <div class="step-desc">Seleccionar en <code>Fecha Desde/Hasta</code> el día de ayer.</div>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <div class="step-title">Pulsar botón «Depurar Fecha»</div>
+                <div class="step-desc">El sistema solicita confirmación y motivo formal de auditoría (ej. <em>"Cierre matutino de mesas no pagadas del día anterior"</em>).</div>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">4</div>
+              <div class="step-content">
+                <div class="step-title">Liberación Atómica Total</div>
+                <div class="step-desc">Todas las cuentas <code>PENDIENTE</code> de ese día pasan a <code>ANULADO</code>, liberando instantáneamente todas las mesas físicas.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opción B: Anular Algunas / Individual -->
+        <div class="card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(14, 165, 233, 0.3);">
+          <div class="card-title" style="color: var(--color-primary-light); font-size: 1.1rem;">
+            <span>🎯</span>
+            <h3>Opción B: Anular ALGUNAS (Individualmente)</h3>
+          </div>
+          <p class="card-desc">
+            Cuando solo quedaron 1 o 2 mesas puntuales que se desean revisar una por una:
+          </p>
+
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <div class="step-title">Atajo Rápido <span class="key-badge">F8</span> (Asistente Universal)</div>
+                <div class="step-desc">Presionar <span class="key-badge">F8</span> en cualquier pantalla, ingresar el N° de pedido/mesa, escribir el motivo y presionar <span class="key-badge">ENTER</span>. La mesa queda libre al instante.</div>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <div class="step-title">Clic Derecho en Tabla de Pedidos</div>
+                <div class="step-desc">Sobre la fila de la mesa en Historial, hacer clic secundario y elegir <strong>«Anular Pedido (F8)»</strong>.</div>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <div class="step-title">Botón «No Pagó (Fuga)» en Pantalla de Cobro</div>
+                <div class="step-desc">Si el operador entra a la mesa hacia la Pestaña 4 de Cobro, presiona el botón rojo <strong>«No Pagó (Fuga)»</strong>. El sistema libera la mesa sin registrar dinero en caja.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECCIÓN 2: NORMATIVA SENIAT CAÍDA DE SISTEMA / CORTE ELÉCTRICO -->
+    <section class="card" style="border-left: 4px solid var(--color-danger);">
+      <div class="card-title" style="color: #f87171;">
+        <span>⚖️</span>
+        <h2>2. Normativa SENIAT: Sistema Caído, Sin Electricidad o Inoperante</h2>
+      </div>
+
+      <div class="alert-box alert-danger">
+        <div style="font-size: 1.4rem;">📜</div>
+        <div>
+          <strong>Mandato de la Providencia Administrativa SENIAT N° SNAT/2011/00071 (Artículos 11, 28, 29, 30 y 31):</strong><br>
+          <em>«Cuando por causas no imputables al sujeto pasivo (interrupción del fluido eléctrico, fallas de enlaces o avería del sistema computarizado o máquina fiscal) no fuere posible emitir facturas electrónicas o mecanizadas, el contribuyente está <strong>estrictamente obligado a continuar la facturación mediante formatos elaborados por imprentas autorizadas (Talonario Físico de Facturas de Contingencia con Número de Control Preimpreso)</strong>.»</em>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 10px; color: #fff; font-size: 1.15rem;">
+        🔄 Protocolo de Cumplimiento en Dos Fases: Operación Manual + Regularización en Sistema
+      </h3>
+
+      <div class="flow-diagram">
+        <div class="flow-node active">
+          <div style="font-size: 1.5rem; margin-bottom: 4px;">⚡ 01</div>
+          <strong style="color: #f87171;">Apagón / Caída</strong>
+          <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">Sin luz o sistema off</div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-node">
+          <div style="font-size: 1.5rem; margin-bottom: 4px;">📑 02</div>
+          <strong style="color: #fbbf24;">Talonario Manual</strong>
+          <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">Factura física triplicada</div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-node">
+          <div style="font-size: 1.5rem; margin-bottom: 4px;">🔌 03</div>
+          <strong style="color: #38bdf8;">Retorno de Energía</strong>
+          <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">Arranque seguro MySQL</div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-node active">
+          <div style="font-size: 1.5rem; margin-bottom: 4px;">📊 04</div>
+          <strong style="color: #34d399;">Carga en Sistema</strong>
+          <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">Modo CONTINGENCIA</div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-node">
+          <div style="font-size: 1.5rem; margin-bottom: 4px;">📋 05</div>
+          <strong style="color: #a78bfa;">Libro de Ventas</strong>
+          <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">18 columnas SENIAT</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+
+        <!-- Fase 1: Durante la Caída -->
+        <div class="card" style="background: rgba(15, 23, 42, 0.7);">
+          <div class="card-title" style="color: #f87171; font-size: 1.05rem;">
+            <span>🚨</span>
+            <h3>Fase 1: Durante la Caída (Operación 100% Manual)</h3>
+          </div>
+          <p class="card-desc">
+            No se detiene el servicio del restaurante ni se deja salir clientes sin factura:
+          </p>
+          <ul style="margin: 8px 0 8px 20px; color: var(--color-text-muted); font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px;">
+            <li><strong>Desplegar Talonario Físico de Imprenta:</strong> Cada sucursal debe tener en caja el lote de facturas manuales autorizado con RIF y Número de Control.</li>
+            <li><strong>Llenado por Triplicado:</strong>
+              <br>• Original: Entregado al Cliente.
+              <br>• Duplicado: Para Archivo Fiscal / Contabilidad.
+              <br>• Triplicado: Para Control de Caja del Turno.
+            </li>
+            <li><strong>Comandas en papel:</strong> Cocina y barra preparan mediante block de comandas manual numerado.</li>
+          </ul>
+        </div>
+
+        <!-- Fase 2: Al Regresar el Sistema -->
+        <div class="card" style="background: rgba(15, 23, 42, 0.7);">
+          <div class="card-title" style="color: #34d399; font-size: 1.05rem;">
+            <span>💻</span>
+            <h3>Fase 2: Al Regresar la Electricidad (Regularización)</h3>
+          </div>
+          <p class="card-desc">
+            Cómo el sistema absorbe la operación manual sin duplicar facturación ni violar correlativos:
+          </p>
+          <ul style="margin: 8px 0 8px 20px; color: var(--color-text-muted); font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px;">
+            <li><strong>Prohibición Legal de Refacturar:</strong> Está prohibido re-emitir la factura fiscal digital si el cliente ya se llevó la manual en papel.</li>
+            <li><strong>Registro de Venta por Contingencia:</strong> El cajero carga el consumo total usando la bandera <code>es_contingencia = 1</code> e ingresa el <em>N° de Factura Física</em> y <em>N° de Control de Imprenta</em>.</li>
+            <li><strong>Integración en el Libro de Ventas (18 columnas):</strong> Se computa para la base imponible y el IVA del período clasificándola legalmente como <em>«Contingencia / Factura Manual»</em> sin colisionar con el correlativo automático del sistema.</li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- ARQUITECTURA TÉCNICA DEL SISTEMA -->
+      <h3 style="margin-top: 15px; margin-bottom: 8px; color: #fff; font-size: 1.1rem;">
+        🧱 Preparación Arquitectónica del Sistema Restaurante 2026
+      </h3>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Componente / Variable</th>
+              <th>Propósito Normativo SENIAT</th>
+              <th>Comportamiento en Sistema</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>pedidos.es_contingencia</code></td>
+              <td>Flag booleano exigido por auditoría tributaria</td>
+              <td>Distingue ventas originadas en el sistema vs ventas manuales físicas del talonario.</td>
+            </tr>
+            <tr>
+              <td><code>pedidos.estado_seniat</code></td>
+              <td>Estado fiscal ('TRANSMITIDA', 'CONTINGENCIA', etc.)</td>
+              <td>Evita que el sistema intente transmitir o timbrar contra la impresora fiscal fuera de secuencia.</td>
+            </tr>
+            <tr>
+              <td><code>fiscal_contingencia_talonario_desde / hasta</code></td>
+              <td>Rango del lote de imprenta autorizada</td>
+              <td>Controla que los números de control y factura manual ingresados pertenezcan al lote legal activo.</td>
+            </tr>
+            <tr>
+              <td><code>fiscal_contingencia_autorizacion_seniat</code></td>
+              <td>N° de providencia de la imprenta</td>
+              <td>Almacena la resolución del SENIAT para su impresión en los encabezados del Libro de Ventas.</td>
+            </tr>
+            <tr>
+              <td><strong>MySQL 8.4 InnoDB ACID</strong></td>
+              <td>Tolerancia a fallos por corte súbito de luz</td>
+              <td>El registro WAL (Write-Ahead Logging / Redo Log) previene corrupción de BD ante apagones abruptos.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+    <!-- RESUMEN DE RESPUESTA DIRECTA -->
+    <section class="card" style="border-left: 4px solid var(--color-primary);">
+      <div class="card-title" style="color: var(--color-primary-light);">
+        <span>📌</span>
+        <h2>Resumen Ejecutivo para el Propietario y Operadores</h2>
+      </div>
+
+      <div class="grid-2">
+        <div style="background: rgba(255, 255, 255, 0.02); padding: 18px; border-radius: 12px; border: 1px solid var(--color-border);">
+          <strong style="color: #fbbf24; font-size: 1rem;">1. Mesas Abiertas en la Mañana:</strong>
+          <p style="color: var(--color-text-muted); font-size: 0.92rem; margin-top: 8px;">
+            • No alteran caja ni generan faltantes contables (son solo pedidos pendientes).<br>
+            • Para limpiar todas a la vez: Usar <strong>«Depurar Fecha»</strong> en el Historial de Pedidos.<br>
+            • Para limpiar algunas: Atajo <span class="key-badge">F8</span> o botón rojo <strong>«No Pagó (Fuga)»</strong>.
+          </p>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.02); padding: 18px; border-radius: 12px; border: 1px solid var(--color-border);">
+          <strong style="color: #38bdf8; font-size: 1rem;">2. Caída del Sistema / Corte de Luz (SENIAT):</strong>
+          <p style="color: var(--color-text-muted); font-size: 0.92rem; margin-top: 8px;">
+            • Durante el corte: Se factura en físico con el <strong>Talonario de Contingencia</strong> de imprenta.<br>
+            • Al regresar el sistema: Se carga el resumen de contingencia vinculando el N° de Control para alimentar el <strong>Libro de Ventas Fiscal</strong> sin duplicar cobros.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      Restaurante 2026 — Documentación Oficial de Arquitectura, Operaciones y Cumplimiento SENIAT. Generado en formato HTML interactivo.
+    </footer>
+
+  </div>
+</body>
+</html>

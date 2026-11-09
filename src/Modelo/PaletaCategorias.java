@@ -12,6 +12,9 @@ public final class PaletaCategorias {
 
     public static final String COLOR_CATEGORIA_GENERAL = "#6B7280";
 
+    private static final java.util.concurrent.ConcurrentHashMap<String, java.awt.Color> CACHE_ATENUADOS =
+            new java.util.concurrent.ConcurrentHashMap<>(64);
+
     private static final List<String> PALETA = List.of(
             "#E45A4E", "#E56F1A", "#C78605", "#E9B10C", "#71B314", "#2E9E4F",
             "#0F9D9D", "#558EDD", "#2563EB", "#4F46E5", "#A270DB", "#E1489A",
@@ -35,16 +38,20 @@ public final class PaletaCategorias {
         return new java.awt.Color(r, g, b);
     }
 
-    /** Atenúa un color en hexadecimal ("#RRGGBB"); ante formato inválido, gris tenue. */
+    /** Atenúa un color en hexadecimal ("#RRGGBB"); ante formato inválido, gris tenue. Con caché de asignación cero. */
     public static java.awt.Color atenuar(String hex, double proporcion) {
         if (hex == null) {
             return atenuar(java.awt.Color.GRAY, proporcion);
         }
-        try {
-            return atenuar(java.awt.Color.decode(hex), proporcion);
-        } catch (NumberFormatException ex) {
-            return atenuar(java.awt.Color.GRAY, proporcion);
-        }
+        long propKey = Math.round(proporcion * 1000.0);
+        String clave = hex.trim().toUpperCase(java.util.Locale.ROOT) + "_" + propKey;
+        return CACHE_ATENUADOS.computeIfAbsent(clave, k -> {
+            try {
+                return atenuar(java.awt.Color.decode(hex.trim()), proporcion);
+            } catch (NumberFormatException ex) {
+                return atenuar(java.awt.Color.GRAY, proporcion);
+            }
+        });
     }
 
     public static List<String> paleta() {

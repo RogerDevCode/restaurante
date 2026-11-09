@@ -1,5 +1,15 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 09/11/2026 12:35
+
+## Anulaciones, Contingencia SENIAT y Presentación Ejecutiva con Screenshots Reales E2E
+
+| Comando | Evidencia | Resultado |
+|---|---|---|
+| `./e2e_dia_completo_virtual.sh Vista.AnulacionFacturasCombinatoriaE2EVirtual` | Ejecución E2E 100% por UI en Xvfb :99 sobre BD desechable `restaurante_test` (3307). Probó todas las combinaciones operativas: anulación masiva por fecha en Historial, anulación asistida F8 con búsqueda por N° ticket, menú contextual (clic derecho) en tabla y botón «No Pagó (Fuga)» en Caja. Verificación de invariante F-07 (cero impacto en caja y Cierre Z). | PASS (`E2E_ANULACION_COMBINATORIA_OK`) |
+| `./e2e_dia_completo_virtual.sh Vista.CapturadorScreenshotsPresentacionE2EVirtual` | Generación automática en runtime E2E virtual de 5 capturas de pantalla reales anotadas con flechas y callouts vectoriales en `docs/img/` (`01_mesas_abiertas_manana.png`, `02_depurar_fecha_historial.png`, `03_dialogo_anulacion_f8.png`, `04_menu_contextual_historial.png`, `05_caja_boton_no_pago_fuga.png`). | PASS (`SCREENSHOTS_CAPTURADOS_OK`) |
+| Validación de presentación ejecutiva HTML | `docs/presentacion_anulacion_y_contingencia_seniat.html` validada (0 etiquetas sin cerrar, diseño 16:9, controles de teclado, lightbox modal para zoom y guía específica para el relator). | PASS (`HTML_VALID`) |
+
 snapshot 23/10/2026 19:30
 
 ## Drill corte eléctrico: durabilidad + auto-recuperación de la BD (gate cerrado)

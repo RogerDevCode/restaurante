@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reporte de Pruebas Unitarias, Integración y E2E - a1-actualizada.sql</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #24344d;
+      --border-color: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --accent-rose: #f43f5e;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .title-group h1 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .title-group p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .badge-green { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-amber { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .badge-rose { background: rgba(244, 63, 94, 0.2); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.4); }
+
+    .grid-kpi {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .kpi-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .kpi-title {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-value {
+      font-size: 1.85rem;
+      font-weight: 700;
+      margin: 0.5rem 0 0.25rem 0;
+      color: #ffffff;
+    }
+
+    .kpi-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin: 2rem 0 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    th {
+      background-color: rgba(30, 41, 59, 0.8);
+      color: var(--text-secondary);
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+
+    .code-pill {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.15rem 0.45rem;
+      border-radius: 0.35rem;
+      font-size: 0.82rem;
+      color: #38bdf8;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #334155;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-green);
+    }
+
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+    }
+
+    .check-icon { font-size: 1.1rem; line-height: 1; }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>🧪 Reporte Integral de Pruebas: Unitarias, Integración y E2E</h1>
+        <p>Ejecutado sobre MySQL 8.4 efímero (puerto 3307) con la base homologada <strong>a1-actualizada.sql</strong></p>
+      </div>
+      <div>
+        <span class="badge badge-green">E2E Robot OK</span>
+        <span class="badge badge-blue">796 Unitarios OK</span>
+      </div>
+    </header>
+
+    <!-- Resumen KPIs -->
+    <div class="grid-kpi">
+      <div class="card kpi-card">
+        <span class="kpi-title">Tests Unitarios</span>
+        <span class="kpi-value">796 / 801</span>
+        <span class="kpi-desc"><strong>99.4%</strong> de aprobación directa</span>
+        <div class="progress-bar"><div class="progress-fill" style="width: 99.4%;"></div></div>
+      </div>
+      <div class="card kpi-card">
+        <span class="kpi-title">Suites Integración</span>
+        <span class="kpi-value">11 / 13</span>
+        <span class="kpi-desc"><strong>84.6%</strong> suites íntegras aprobadas</span>
+        <div class="progress-bar"><div class="progress-fill" style="width: 84.6%;"></div></div>
+      </div>
+      <div class="card kpi-card">
+        <span class="kpi-title">Flujos E2E Principales</span>
+        <span class="kpi-value">100% PASS</span>
+        <span class="kpi-desc">E2EVirtual, DashboardTabs, UsuariosCRUD, PedidoRápido</span>
+        <div class="progress-bar"><div class="progress-fill" style="width: 100%;"></div></div>
+      </div>
+      <div class="card kpi-card">
+        <span class="kpi-title">Entorno de Ejecución</span>
+        <span class="kpi-value" style="font-size: 1.2rem;">Xvfb :99 + 3307</span>
+        <span class="kpi-desc">Base: <strong>restaurante_test</strong> (aislada y desechable)</span>
+      </div>
+    </div>
+
+    <!-- Resultados E2E en pantalla virtual -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <h2 class="section-title">🖥️ Pruebas E2E en Pantalla Virtual (Xvfb :99 + Robot UI)</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+        Flujos visuales completos operados exclusivamente a través de la interfaz gráfica (Swing) con mouse y teclado virtuales, sin tocar la base de datos por SQL.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Prueba E2E</th>
+            <th>Flujo Probado</th>
+            <th>Resultado</th>
+            <th>Detalles de Ejecución</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Vista.E2EVirtual</strong></td>
+            <td>Login interactivo ➔ Mapa de Atención Directa ➔ Comanda Ronda 1 (Mesa 1) ➔ Cocina ➔ Mesa Ocupada ➔ Modificar Pedido Ronda 2 (3 pollos) ➔ Cancelación por fuga ➔ Mesa Libre</td>
+            <td><span class="badge badge-green">E2E_OK</span></td>
+            <td>Aprobado al 100%. Operó exitosamente con el catálogo real del cliente (búsqueda de "pollo", mesa 1 libre en SALA PRINCIPAL).</td>
+          </tr>
+          <tr>
+            <td><strong>Vista.DashboardTabsE2EVirtual</strong></td>
+            <td>Login ➔ Maximizado ➔ Ventas y Métricas ➔ Directorio de Clientes con historial ➔ Rendimiento (Top Platos y Mesoneros)</td>
+            <td><span class="badge badge-green">DASHBOARD_E2E_OK</span></td>
+            <td>Aprobado al 100%. Verificó métricas reales: 50 facturas del cliente, platos más vendidos y recaudación histórica de mesoneros.</td>
+          </tr>
+          <tr>
+            <td><strong>Vista.UsuariosCrudE2E</strong></td>
+            <td>Login ➔ Pestaña Usuarios ➔ Validación formulario vacío ➔ Alta de usuario ➔ Cambio de contraseña ➔ Desactivación ➔ Reactivación ➔ Baja por UI</td>
+            <td><span class="badge badge-green">E2E_USUARIOS_OK</span></td>
+            <td>Aprobado al 100%. Validación estricta de formularios y diálogos modales.</td>
+          </tr>
+          <tr>
+            <td><strong>Vista.PedidoRapidoE2EVirtual</strong></td>
+            <td>Login ➔ Pedido Rápido (sin mesa) ➔ Catálogo de productos ➔ Multiplicador de cantidad ➔ Cobro en Caja ➔ Cancelación por UI</td>
+            <td><span class="badge badge-green">E2E_PEDIDO_RAPIDO_OK</span></td>
+            <td>Aprobado al 100%. Verificó el flujo de mostrador / delivery.</td>
+          </tr>
+          <tr>
+            <td><strong>Vista.ProbeVentanasE2E</strong></td>
+            <td>Apertura y detección de diálogos modales y frames en la pantalla virtual</td>
+            <td><span class="badge badge-green">PASS</span></td>
+            <td>Aprobado sin excepciones.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Suites de Integración -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <h2 class="section-title">🔗 Suites de Integración (*IT contra MySQL 3307)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Suite de Integración</th>
+            <th>Tests</th>
+            <th>Estado</th>
+            <th>Observación</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>ActualizacionCatalogoPedidosAbiertosIT</td><td>4 / 4</td><td><span class="badge badge-green">PASS</span></td><td>Sincronización transaccional de platos y precios en pedidos</td></tr>
+          <tr><td>ActualizacionTasaPedidosPendientesIT</td><td>2 / 2</td><td><span class="badge badge-green">PASS</span></td><td>Actualización y recálculo automático de tasa en pedidos</td></tr>
+          <tr><td>AdversarialIntegrationIT</td><td>3 / 3</td><td><span class="badge badge-green">PASS</span></td><td>Pruebas de concurrencia y robustez ante fallos</td></tr>
+          <tr><td>AuditoriaTransaccionalPreciosIT</td><td>3 / 3</td><td><span class="badge badge-green">PASS</span></td><td>Trazabilidad de cambios de precio con idempotencia</td></tr>
+          <tr><td>CenaLifecycleIT</td><td>1 / 1</td><td><span class="badge badge-green">PASS</span></td><td>Ciclo de vida completo del servicio de cena</td></tr>
+          <tr><td>CierreMesaYPagosCongeladosIT</td><td>8 / 8</td><td><span class="badge badge-green">PASS</span></td><td>Inmutabilidad de pagos congelados y cierres de mesa</td></tr>
+          <tr><td>CombinatoriaEndToEndTotalIT</td><td>1 / 1</td><td><span class="badge badge-green">PASS</span></td><td>Combinatoria monetaria USD/VES</td></tr>
+          <tr><td>CombinatoriaUsuarioIT</td><td>1 / 1</td><td><span class="badge badge-green">PASS</span></td><td>Roles y permisos de usuarios concurrentes</td></tr>
+          <tr><td>FavoritosCatalogoIT</td><td>1 / 1</td><td><span class="badge badge-green">PASS</span></td><td>Gestión y persistencia de platos favoritos</td></tr>
+          <tr><td>PreferenciasTablaIT</td><td>1 / 1</td><td><span class="badge badge-green">PASS</span></td><td>Persistencia JSON de anchos y orden de columnas</td></tr>
+          <tr><td>SimulacionUsuarioIT</td><td>1 / 1</td><td><span class="badge badge-green">PASS</span></td><td>Simulación de navegación y flujo de usuario</td></tr>
+          <tr><td>ComandasIncrementalesIT</td><td>5 / 6</td><td><span class="badge badge-amber">PARCIAL</span></td><td>1 fallo menor: asume existencia de pedido pendiente de test sintético</td></tr>
+          <tr><td>MySqlIntegrationIT</td><td>34 / 38</td><td><span class="badge badge-amber">PARCIAL</span></td><td>4 fallos menores: asumen usuario semilla sintético <span class="code-pill">integracion@restaurante.test</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Detalle de Pruebas Unitarias -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <h2 class="section-title">📦 Diagnóstico de la Suite Unitaria (801 Tests)</h2>
+      <ul class="checklist">
+        <li class="checklist-item">
+          <span class="check-icon">✅</span>
+          <div>
+            <strong>796 Tests Aprobados (99.4%):</strong>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">
+              Todos los DAOs (<span class="code-pill">PedidosDao</span>, <span class="code-pill">PlatosDao</span>, <span class="code-pill">ClientesDao</span>, <span class="code-pill">ConfiguracionSistemaDao</span>), controladores, validadores fiscales SENIAT (v18), servicios criptográficos AES-256-GCM y ledger fiscal operan de manera impecable con la base <span class="code-pill">a1-actualizada.sql</span>.
+            </p>
+          </div>
+        </li>
+        <li class="checklist-item">
+          <span class="check-icon">ℹ️</span>
+          <div>
+            <strong>Explicación de las 5 discrepancias aisladas:</strong>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">
+              1. <span class="code-pill">ServidorRestTabletsTest</span>: Requiere el plato sintético <span class="code-pill">#4</span> (el menú real del cliente inicia en id 13).<br>
+              2. <span class="code-pill">EsquemaE2ETest (2 tests)</span>: Comparación estática entre archivos fuente <span class="code-pill">BD.sql</span> y <span class="code-pill">001-esquema.sql</span>.<br>
+              3. <span class="code-pill">AceptacionFallosF29aF36Test</span>: Busca un archivo estático en disco llamado <span class="code-pill">BD RESTAURANTE 2026.sql</span>.<br>
+              4. <span class="code-pill">AdversarialFase2ConcurrenciaYOptimizacionTest</span>: Mock de prueba previo a v18 que no tenía mockeado <span class="code-pill">executeQuery</span> para la lectura fiscal.
+            </p>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <footer>
+      Generado por Antigravity para Restaurante 2026 · Evidencia validada sobre <strong>a1-actualizada.sql</strong>
+    </footer>
+  </div>
+</body>
+</html>

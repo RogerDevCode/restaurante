@@ -149,6 +149,18 @@ public final class ConsultaPedidosServicio {
         return repositorio.anularFacturaCobradaConDevolucion(idPedido, motivo.trim(), usr);
     }
 
+    public int anularPedidosPendientesPorFecha(java.time.LocalDate fecha, String motivo, String usuario) {
+        exigir(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE);
+        if (fecha == null) {
+            throw ErrorAplicacionException.validacion("Debe indicar la fecha para anular los pedidos pendientes.");
+        }
+        if (motivo == null || motivo.trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("Debe indicar el motivo de la anulación masiva.");
+        }
+        String usr = (usuario != null && !usuario.isBlank()) ? usuario.trim() : "Sistema";
+        return repositorio.anularPedidosPendientesPorFecha(fecha, motivo.trim(), usr);
+    }
+
     public void registrarAuditoria(int idPedido, String accion, String motivo, String usuario) {
         exigir(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL);
         validarId(idPedido);

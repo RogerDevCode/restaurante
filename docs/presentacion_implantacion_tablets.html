@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Implantación de Tablets para Mesoneros — Restaurante 2026</title>
+  <!-- Chart.js para visualización de métricas y ROI -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --color-primary: #0ea5e9;
+      --color-primary-dark: #0284c7;
+      --color-primary-light: #38bdf8;
+      --color-accent: #f59e0b;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+      --color-purple: #8b5cf6;
+      --color-bg-dark: #090d16;
+      --color-bg-card: rgba(18, 24, 38, 0.85);
+      --color-bg-card-hover: rgba(30, 41, 59, 0.95);
+      --color-border: rgba(255, 255, 255, 0.08);
+      --color-text-main: #f8fafc;
+      --color-text-muted: #94a3b8;
+      --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #8b5cf6 100%);
+      --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+      --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--color-bg-dark);
+      color: var(--color-text-main);
+      font-family: var(--font-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* Contenedor 16:9 con efecto letterbox en pantallas anchas */
+    .slide-deck {
+      position: absolute;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 20%, #172554 0%, #090d16 80%);
+    }
+
+    @media (min-width: 900px) {
+      .slide-deck {
+        max-width: calc(100vh * 16 / 9);
+        max-height: calc(100vw * 9 / 16);
+        margin: auto;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 60px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: scale(0.97);
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+
+    .slide-content {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      text-align: center;
+    }
+
+    /* Tipografía y Títulos */
+    .tag-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(14, 165, 233, 0.35);
+      border-radius: 9999px;
+      color: var(--color-primary-light);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .tag-badge-accent {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #fbbf24;
+    }
+
+    .tag-badge-success {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: #34d399;
+    }
+
+    .slide-title {
+      font-size: clamp(2rem, 3.8vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.15;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .slide-subtitle {
+      font-size: clamp(0.95rem, 1.4vw, 1.25rem);
+      color: var(--color-text-muted);
+      max-width: 800px;
+      line-height: 1.5;
+    }
+
+    /* Grillas y Tarjetas */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(14, 165, 233, 0.4);
+    }
+
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .card-desc {
+      font-size: 0.95rem;
+      color: var(--color-text-muted);
+      line-height: 1.45;
+    }
+
+    /* Lista concreta tipo guía para el relator */
+    .cue-list {
+      list-style: none;
+      padding: 0;
+      margin: 8px 0 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .cue-list li {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cue-list li::before {
+      content: "•";
+      color: var(--color-primary-light);
+      font-weight: bold;
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+
+    /* Resaltados de métricas */
+    .metric-hero {
+      font-size: 2.8rem;
+      font-weight: 800;
+      line-height: 1;
+      color: #38bdf8;
+      margin-bottom: 6px;
+    }
+
+    .metric-hero.accent { color: #f59e0b; }
+    .metric-hero.success { color: #10b981; }
+
+    /* Diagrama de Arquitectura */
+    .arch-flow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 12px;
+      margin: 10px 0;
+    }
+
+    .arch-node {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 16px 14px;
+      text-align: center;
+      flex: 1;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .arch-node.active-node {
+      border-color: #0ea5e9;
+      background: rgba(14, 165, 233, 0.1);
+    }
+
+    .arch-node-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-top: 6px;
+      color: #ffffff;
+    }
+
+    .arch-node-desc {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      margin-top: 4px;
+    }
+
+    .arch-arrow {
+      color: #38bdf8;
+      font-size: 1.4rem;
+      font-weight: bold;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.95); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+
+    /* Mockup Visual de la Tablet */
+    .tablet-mockup {
+      width: 100%;
+      max-width: 520px;
+      background: #0f172a;
+      border: 10px solid #1e293b;
+      border-radius: 28px;
+      padding: 14px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      text-align: left;
+    }
+
+    .tablet-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+    }
+
+    .tablet-table-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .mock-table {
+      padding: 12px 6px;
+      border-radius: 10px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .mock-table.free { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .mock-table.busy { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .mock-table.order { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+
+    /* Canvas para Charts */
+    .chart-box {
+      width: 100%;
+      height: 280px;
+      position: relative;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    /* Cronograma / Pasos */
+    .timeline-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      width: 100%;
+      text-align: left;
+      position: relative;
+    }
+
+    .step-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 18px 14px;
+      position: relative;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: var(--gradient-primary);
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    /* Barra de Navegación */
+    .progress-bar-top {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 4px;
+      background: var(--gradient-primary);
+      width: 0%;
+      transition: width 0.3s ease;
+      z-index: 9999;
+    }
+
+    .nav-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 18px;
+      border-radius: 9999px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: var(--color-primary);
+      transform: scale(1.08);
+    }
+
+    .nav-counter {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      min-width: 65px;
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .slide { padding: 20px 20px; }
+      .grid-2, .grid-3, .grid-4, .timeline-steps { grid-template-columns: 1fr; }
+      .arch-flow { flex-direction: column; }
+      .arch-arrow { transform: rotate(90deg); }
+      .chart-box { height: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de progreso superior -->
+  <div class="progress-bar-top" id="topProgress"></div>
+
+  <!-- Contenedor Maestro de Presentación -->
+  <div class="slide-deck">
+
+    <!-- SLIDE 1: Portada Concreta -->
+    <div class="slide active" id="slide-1">
+      <div class="slide-content">
+        <span class="tag-badge">🚀 Restaurante 2026</span>
+        <h1 class="slide-title">Comanderas Móviles en Tablet</h1>
+        <p class="slide-subtitle">
+          RESTAURANT LA AVALANCHA 2023, C.A
+        </p>
+        <div class="grid-3" style="margin-top: 15px;">
+          <div class="card" style="text-align: center;">
+            <div class="card-icon">⚡</div>
+            <div class="card-title">1 Segundo</div>
+            <div class="card-desc">Pedido directo en cocina sin traslados.</div>
+          </div>
+          <div class="card" style="text-align: center;">
+            <div class="card-icon">🎯</div>
+            <div class="card-title">Cero Papel</div>
+            <div class="card-desc">Sin errores de escritura ni platos omitidos.</div>
+          </div>
+          <div class="card" style="text-align: center;">
+            <div class="card-icon">📈</div>
+            <div class="card-title">+30% Rotación</div>
+            <div class="card-desc">Más comensales atendidos por turno.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Problemas del Método Manual -->
+    <div class="slide" id="slide-2">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-accent">⚠️ Situación Actual</span>
+        <h2 class="slide-title">Pérdidas con Libreta de Papel</h2>
+        <p class="slide-subtitle">Puntos críticos en el servicio manual</p>
+        <div class="grid-2" style="margin-top: 10px;">
+          <div class="card">
+            <div class="card-title" style="color: #f59e0b;">🚶 Tiempos Muertos en Sala</div>
+            <ul class="cue-list">
+              <li>15 minutos perdidos por mesa en traslados.</li>
+              <li>Fila de mesoneros frente a la caja central.</li>
+              <li>Comensales esperando atención en mesa.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: #ef4444;">❌ Fugas y Errores</div>
+            <ul class="cue-list">
+              <li>Letra ilegible genera platos equivocados.</li>
+              <li>Adicionales y tragos sin cargar a la cuenta.</li>
+              <li>Demoras de comanda en horas pico.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Arquitectura de Red Local -->
+    <div class="slide" id="slide-3">
+      <div class="slide-content">
+        <span class="tag-badge">🌐 Arquitectura</span>
+        <h2 class="slide-title">Operación 100% en Red Local</h2>
+        <p class="slide-subtitle">Independiente de la conexión a internet</p>
+
+        <!-- Diagrama de flujo de red -->
+        <div class="arch-flow">
+          <div class="arch-node active-node">
+            <div style="font-size: 1.8rem;">📱</div>
+            <div class="arch-node-title">Tablets en Sala</div>
+            <div class="arch-node-desc">Comanda en mesa</div>
+          </div>
+
+          <div class="arch-arrow">➔</div>
+
+          <div class="arch-node active-node">
+            <div style="font-size: 1.8rem;">📶</div>
+            <div class="arch-node-title">Wi-Fi Dedicado</div>
+            <div class="arch-node-desc">Red interna (&lt;10ms)</div>
+          </div>
+
+          <div class="arch-arrow">➔</div>
+
+          <div class="arch-node active-node">
+            <div style="font-size: 1.8rem;">🖥️</div>
+            <div class="arch-node-title">PC Caja</div>
+            <div class="arch-node-desc">Servidor central Java 21</div>
+          </div>
+
+          <div class="arch-arrow">➔</div>
+
+          <div class="arch-node active-node">
+            <div style="font-size: 1.8rem;">🖨️ / 🍳</div>
+            <div class="arch-node-title">Cocina y Barra</div>
+            <div class="arch-node-desc">Impresión térmica + KDS</div>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 10px;">
+          <div class="card" style="padding: 16px;">
+            <div class="card-title" style="color: #38bdf8; font-size: 1rem;">🔌 Cero Internet</div>
+            <p class="card-desc">Funciona aunque caiga CANTV o fibra externa.</p>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <div class="card-title" style="color: #10b981; font-size: 1rem;">🔒 Anti-Doble Clic</div>
+            <p class="card-desc">Cero duplicados aunque se pulse dos veces.</p>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <div class="card-title" style="color: #f59e0b; font-size: 1rem;">⚡ Caja Prioritaria</div>
+            <p class="card-desc">Facturación principal nunca se ralentiza.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Flujo Operativo del Mesonero -->
+    <div class="slide" id="slide-4">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-success">📲 Operación</span>
+        <h2 class="slide-title">Uso del Mesonero en 3 Pasos</h2>
+        <p class="slide-subtitle">Flujo simple en pantalla táctil</p>
+
+        <div class="grid-2" style="align-items: center; margin-top: 10px;">
+          <!-- Mockup visual de la tablet -->
+          <div class="tablet-mockup">
+            <div class="tablet-bar">
+              <span>👤 Mesonero: <strong>HÉCTOR</strong></span>
+              <span>📍 Sala: <strong>PRINCIPAL</strong></span>
+              <span>🔋 92%</span>
+            </div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 8px;">MAPA DE MESAS EN VIVO:</div>
+            <div class="tablet-table-grid">
+              <div class="mock-table busy">Mesa 1<br><small>Ocupada</small></div>
+              <div class="mock-table free">Mesa 2<br><small>Libre</small></div>
+              <div class="mock-table order">Mesa 3<br><small>En cocina</small></div>
+              <div class="mock-table free">Mesa 4<br><small>Libre</small></div>
+              <div class="mock-table busy">Mesa 5<br><small>Ocupada</small></div>
+              <div class="mock-table free">Mesa 6<br><small>Libre</small></div>
+              <div class="mock-table free">Mesa 7<br><small>Libre</small></div>
+              <div class="mock-table busy">Mesa 8<br><small>Ocupada</small></div>
+            </div>
+            <div style="margin-top: 12px; padding: 8px 12px; background: rgba(14,165,233,0.15); border-radius: 8px; font-size: 0.8rem; color: #38bdf8;">
+              ✓ Mesa 2: 1 Sopa de Pollo ($7.00), 1 Pollo a la Brasa ($24.00)
+            </div>
+          </div>
+
+          <!-- Pasos para el relator -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="card" style="padding: 16px 20px;">
+              <div class="card-title">1️⃣ Identificación</div>
+              <p class="card-desc">PIN personal de cada mesonero; control de auditoría.</p>
+            </div>
+            <div class="card" style="padding: 16px 20px;">
+              <div class="card-title">2️⃣ Menú y Notas</div>
+              <p class="card-desc">Platos por familias + notas ("sin sal", "término medio").</p>
+            </div>
+            <div class="card" style="padding: 16px 20px;">
+              <div class="card-title">3️⃣ Envío por Rondas</div>
+              <p class="card-desc">Impresión directa; no reimprime lo ya enviado.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Gráfica de Tiempos -->
+    <div class="slide" id="slide-5">
+      <div class="slide-content">
+        <span class="tag-badge">📊 Métricas</span>
+        <h2 class="slide-title">Tiempos de Atención por Mesa</h2>
+        <p class="slide-subtitle">Comparativa directa de servicio</p>
+
+        <div class="grid-2" style="align-items: center; margin-top: 10px;">
+          <!-- Gráfico Chart.js -->
+          <div class="chart-box">
+            <canvas id="tiemposChart"></canvas>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="card">
+              <div class="metric-hero">6.5 min</div>
+              <div class="card-title">Con Tablet</div>
+              <div class="card-desc">Pedido directo y cocina en marcha inmediata.</div>
+            </div>
+            <div class="card">
+              <div class="metric-hero accent" style="font-size: 2rem;">18.5 min</div>
+              <div class="card-title">Con Papel</div>
+              <div class="card-desc">Traslado manual y espera para digitar en caja.</div>
+            </div>
+            <div class="card" style="padding: 12px 20px; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3);">
+              <strong style="color: #34d399; font-size: 1.1rem;">📉 -65% Tiempo de Espera</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Gráfica de Capacidad y Facturación -->
+    <div class="slide" id="slide-6">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-success">💰 Rendimiento</span>
+        <h2 class="slide-title">Capacidad de Mesas y Ventas</h2>
+        <p class="slide-subtitle">Impacto en horas pico y fines de semana</p>
+
+        <div class="grid-2" style="align-items: center; margin-top: 10px;">
+          <div class="chart-box">
+            <canvas id="ventasChart"></canvas>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="card">
+              <div class="metric-hero success">+35%</div>
+              <div class="card-title">Rotación de Mesas</div>
+              <div class="card-desc">Hasta 12 mesas adicionales atendidas por turno.</div>
+            </div>
+            <div class="card">
+              <div class="metric-hero accent" style="font-size: 2.2rem;">+12%</div>
+              <div class="card-title">Ticket Promedio</div>
+              <div class="card-desc">Venta sugerida visible: postres, bebidas y adicionales.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Tolerancia a Fallos -->
+    <div class="slide" id="slide-7">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-accent">🛡️ Respaldo</span>
+        <h2 class="slide-title">Tolerancia a Fallos</h2>
+        <p class="slide-subtitle">El servicio nunca se detiene</p>
+
+        <div class="grid-3" style="margin-top: 15px;">
+          <div class="card">
+            <div class="card-icon">🖨️</div>
+            <div class="card-title">Falla de Impresora</div>
+            <ul class="cue-list">
+              <li>Desvío automático a barra.</li>
+              <li>Aviso sonoro inmediato.</li>
+              <li>Cero comandas perdidas.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">🔌</div>
+            <div class="card-title">Corte de Internet</div>
+            <ul class="cue-list">
+              <li>Red 100% interna del local.</li>
+              <li>Independiente de CANTV o fibra.</li>
+              <li>Tablets y caja siguen operativas.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">🔒</div>
+            <div class="card-title">Control y Auditoría</div>
+            <ul class="cue-list">
+              <li>Registro por mesonero y hora.</li>
+              <li>Trazabilidad total de cada plato.</li>
+              <li>Cierre Z exacto e inmutable.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Hardware Requerido -->
+    <div class="slide" id="slide-8">
+      <div class="slide-content">
+        <span class="tag-badge">🛒 Hardware</span>
+        <h2 class="slide-title">Equipamiento Requerido</h2>
+        <p class="slide-subtitle">Dispositivos estándar y económicos</p>
+
+        <div class="grid-3" style="margin-top: 15px;">
+          <div class="card">
+            <div class="card-icon">📱</div>
+            <div class="card-title">Tablets de Sala</div>
+            <ul class="cue-list">
+              <li>Amazon Fire HD 8 o Samsung A9.</li>
+              <li>Batería continua de 12 horas.</li>
+              <li>Funda de goma de uso rudo.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">📶</div>
+            <div class="card-title">Wi-Fi Dedicado</div>
+            <ul class="cue-list">
+              <li>Router doble banda exclusivo.</li>
+              <li>Aislado del Wi-Fi de clientes.</li>
+              <li>Cobertura total en salón y barra.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">🖨️</div>
+            <div class="card-title">Impresoras Térmicas</div>
+            <ul class="cue-list">
+              <li>80mm con puerto de red LAN.</li>
+              <li>Ubicación en cocina y barra.</li>
+              <li>Auto-corte e impresión en 1 segundo.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Plan de Implantación -->
+    <div class="slide" id="slide-9">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-success">📅 Cronograma</span>
+        <h2 class="slide-title">Plan de Puesta en Marcha</h2>
+        <p class="slide-subtitle">Despliegue sin interrumpir el servicio</p>
+
+        <div class="timeline-steps" style="margin-top: 15px;">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="card-title">Red Wi-Fi</div>
+            <div class="card-desc">Cobertura total en mesas y barra.</div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="card-title">Cocina</div>
+            <div class="card-desc">Impresoras térmicas y pantalla KDS.</div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="card-title">Capacitación</div>
+            <div class="card-desc">45 min prácticos con mesoneros.</div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">4</div>
+            <div class="card-title">En Vivo</div>
+            <div class="card-desc">Acompañamiento en el primer turno.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Activación y Próximo Paso -->
+    <div class="slide" id="slide-10">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-success">🎯 Activación</span>
+        <h2 class="slide-title">Siguiente Paso</h2>
+        <p class="slide-subtitle">Módulo disponible en Restaurante 2026</p>
+
+        <div class="grid-3" style="margin-top: 15px; width: 100%;">
+          <div class="card" style="text-align: center;">
+            <div class="metric-hero">100%</div>
+            <div class="card-title">Software Listo</div>
+            <div class="card-desc">Módulo REST y comandas ya disponible.</div>
+          </div>
+          <div class="card" style="text-align: center;">
+            <div class="metric-hero success">48 h</div>
+            <div class="card-title">Puesta en Marcha</div>
+            <div class="card-desc">Configuración rápida sin traumatismos.</div>
+          </div>
+          <div class="card" style="text-align: center;">
+            <div class="metric-hero accent">Hoy</div>
+            <div class="card-title">Demostración</div>
+            <div class="card-desc">Prueba en vivo en celular o tablet.</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 15px; padding: 12px 24px; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 9999px; font-weight: 700; color: #34d399;">
+          ✨ ¡Iniciemos la prueba piloto con 1 tablet esta misma semana!
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.slide-deck -->
+
+  <!-- Barra de Navegación Inferior -->
+  <div class="nav-bar">
+    <button class="nav-btn" onclick="prevSlide()" title="Diapositiva anterior (Flecha Izquierda)">←</button>
+    <span class="nav-counter"><span id="slideCurrent">1</span> / <span id="slideTotal">10</span></span>
+    <button class="nav-btn" onclick="nextSlide()" title="Siguiente diapositiva (Flecha Derecha o Espacio)">→</button>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    document.getElementById('slideTotal').textContent = totalSlides;
+
+    function showSlide(n) {
+      if (n < 1) n = 1;
+      if (n > totalSlides) n = totalSlides;
+      currentSlide = n;
+
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx === n - 1);
+      });
+
+      document.getElementById('slideCurrent').textContent = n;
+      document.getElementById('topProgress').style.width = ((n / totalSlides) * 100) + '%';
+    }
+
+    function nextSlide() { showSlide(currentSlide + 1); }
+    function prevSlide() { showSlide(currentSlide - 1); }
+
+    // Control de teclado y click
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.nav-bar') && !e.target.closest('button') && !e.target.closest('canvas')) {
+        // avance sutil con click
+      }
+    });
+
+    // Inicializar diapositiva
+    showSlide(1);
+
+    // Inicializar Gráficos con Chart.js si está disponible
+    window.addEventListener('load', () => {
+      if (typeof Chart === 'undefined') {
+        console.warn('Chart.js no cargó desde CDN (modo offline).');
+        return;
+      }
+
+      // Chart 1: Comparativa de Tiempos
+      const ctxTiempos = document.getElementById('tiemposChart');
+      if (ctxTiempos) {
+        new Chart(ctxTiempos, {
+          type: 'bar',
+          data: {
+            labels: ['Toma de Pedido', 'Traslado a Cocina', 'Espera de Fuego', 'Total Espera'],
+            datasets: [
+              {
+                label: 'Método Manual (Papel)',
+                data: [4.5, 5.0, 9.0, 18.5],
+                backgroundColor: 'rgba(239, 68, 68, 0.65)',
+                borderColor: '#ef4444',
+                borderWidth: 2,
+                borderRadius: 6
+              },
+              {
+                label: 'Con Tablet Digital',
+                data: [2.0, 0.2, 4.3, 6.5],
+                backgroundColor: 'rgba(14, 165, 233, 0.8)',
+                borderColor: '#0ea5e9',
+                borderWidth: 2,
+                borderRadius: 6
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: { color: '#f8fafc', font: { size: 12, weight: 'bold' } }
+              },
+              title: {
+                display: true,
+                text: 'Minutos Promedio por Mesa (Menor es Mejor)',
+                color: '#94a3b8',
+                font: { size: 13 }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(255,255,255,0.06)' },
+                ticks: { color: '#94a3b8' }
+              },
+              y: {
+                grid: { color: 'rgba(255,255,255,0.06)' },
+                ticks: { color: '#94a3b8', callback: (v) => v + ' min' }
+              }
+            }
+          }
+        });
+      }
+
+      // Chart 2: Comparativa de Ventas y Rotación
+      const ctxVentas = document.getElementById('ventasChart');
+      if (ctxVentas) {
+        new Chart(ctxVentas, {
+          type: 'line',
+          data: {
+            labels: ['Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'],
+            datasets: [
+              {
+                label: 'Capacidad con Tablets (+35% rotación)',
+                data: [38, 42, 55, 88, 115, 120],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.35,
+                pointBackgroundColor: '#10b981',
+                pointRadius: 5
+              },
+              {
+                label: 'Capacidad Tradicional (Papel)',
+                data: [28, 30, 39, 62, 82, 85],
+                borderColor: '#64748b',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointBackgroundColor: '#64748b',
+                pointRadius: 4
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: { color: '#f8fafc', font: { size: 12, weight: 'bold' } }
+              },
+              title: {
+                display: true,
+                text: 'Mesas Atendidas por Turno',
+                color: '#94a3b8',
+                font: { size: 13 }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(255,255,255,0.06)' },
+                ticks: { color: '#94a3b8' }
+              },
+              y: {
+                grid: { color: 'rgba(255,255,255,0.06)' },
+                ticks: { color: '#94a3b8', callback: (v) => v + ' mesas' }
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

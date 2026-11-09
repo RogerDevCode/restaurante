@@ -28,6 +28,8 @@ dashboard.jpeg
 metodo-pago.jpeg
 plan-tablets.md
 repaso.mp4
+*.mp4
+docs/*.zip
 .kilo/
 proceso/
 propuesta/
@@ -56,5 +58,7 @@ propuesta/
 __pycache__/
 *.pyc
 sermig/*.pdf
-sermig/*.docx
 sermig/*.doc
+a1*.sqlx
+sermig/*.doc
+a1*.sql

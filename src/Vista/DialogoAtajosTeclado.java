@@ -72,6 +72,7 @@ public class DialogoAtajosTeclado extends JDialog {
         });
 
         JPanel secGlobal = crearTarjetaSeccion("Atajos Globales de Navegación", new String[][]{
+                {"F8", "Abrir anulación asistida de facturas y tickets"},
                 {"F11 / Shift+F1", "Abrir esta hoja de atajos (Cheat Sheet)"},
                 {"Tab", "Saltar ordenadamente entre campos de texto y botones"},
                 {"Barra Espacio", "Accionar botón o casilla de verificación enfocada"}

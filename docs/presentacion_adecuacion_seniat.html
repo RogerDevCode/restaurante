@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adecuación Fiscal SENIAT (SNAT/2026/00093) — Restaurante 2026</title>
+  <!-- Chart.js para visualización de métricas de cumplimiento -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --color-primary: #0ea5e9;
+      --color-primary-dark: #0284c7;
+      --color-primary-light: #38bdf8;
+      --color-accent: #f59e0b;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+      --color-purple: #8b5cf6;
+      --color-bg-dark: #090d16;
+      --color-bg-card: rgba(18, 24, 38, 0.85);
+      --color-bg-card-hover: rgba(30, 41, 59, 0.95);
+      --color-border: rgba(255, 255, 255, 0.08);
+      --color-text-main: #f8fafc;
+      --color-text-muted: #94a3b8;
+      --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #8b5cf6 100%);
+      --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+      --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      --gradient-fiscal: linear-gradient(135deg, #f59e0b 0%, #10b981 50%, #0ea5e9 100%);
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--color-bg-dark);
+      color: var(--color-text-main);
+      font-family: var(--font-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* Contenedor 16:9 con efecto letterbox en pantallas anchas */
+    .slide-deck {
+      position: absolute;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #090d16 80%);
+    }
+
+    @media (min-width: 900px) {
+      .slide-deck {
+        max-width: calc(100vh * 16 / 9);
+        max-height: calc(100vw * 9 / 16);
+        margin: auto;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 60px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: scale(0.97);
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+
+    .slide-content {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      text-align: center;
+    }
+
+    /* Tipografía y Títulos */
+    .tag-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(14, 165, 233, 0.35);
+      border-radius: 9999px;
+      color: var(--color-primary-light);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .tag-badge-accent {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #fbbf24;
+    }
+
+    .tag-badge-success {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: #34d399;
+    }
+
+    .slide-title {
+      font-size: clamp(2rem, 3.6vw, 3.1rem);
+      font-weight: 800;
+      line-height: 1.15;
+      background: var(--gradient-fiscal);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .slide-subtitle {
+      font-size: clamp(0.95rem, 1.3vw, 1.2rem);
+      color: var(--color-text-muted);
+      max-width: 800px;
+      line-height: 1.4;
+    }
+
+    /* Grillas y Tarjetas */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(14, 165, 233, 0.4);
+    }
+
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .card-desc {
+      font-size: 0.92rem;
+      color: var(--color-text-muted);
+      line-height: 1.45;
+    }
+
+    /* Lista concreta para el relator */
+    .cue-list {
+      list-style: none;
+      padding: 0;
+      margin: 8px 0 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .cue-list li {
+      font-size: 0.92rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cue-list li::before {
+      content: "•";
+      color: var(--color-primary-light);
+      font-weight: bold;
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+
+    /* Resaltados de métricas */
+    .metric-hero {
+      font-size: 2.8rem;
+      font-weight: 800;
+      line-height: 1;
+      color: #38bdf8;
+      margin-bottom: 6px;
+    }
+
+    .metric-hero.accent { color: #f59e0b; }
+    .metric-hero.success { color: #10b981; }
+
+    /* Diagrama de Arquitectura de Timbrado */
+    .arch-flow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .arch-node {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 14px 10px;
+      text-align: center;
+      flex: 1;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .arch-node.active-node {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .arch-node-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-top: 6px;
+      color: #ffffff;
+    }
+
+    .arch-node-desc {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      margin-top: 4px;
+    }
+
+    .arch-arrow {
+      color: #10b981;
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+
+    /* Tabla semáforo */
+    .traffic-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 8px;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    .traffic-table th {
+      padding: 8px 12px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .traffic-table td {
+      padding: 12px 14px;
+      background: rgba(30, 41, 59, 0.7);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .traffic-table tr td:first-child {
+      border-left: 1px solid rgba(255, 255, 255, 0.05);
+      border-top-left-radius: 10px;
+      border-bottom-left-radius: 10px;
+    }
+
+    .traffic-table tr td:last-child {
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+      border-top-right-radius: 10px;
+      border-bottom-right-radius: 10px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .status-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .status-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+
+    /* Canvas para Charts */
+    .chart-box {
+      width: 100%;
+      height: 280px;
+      position: relative;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    /* Cronograma */
+    .timeline-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .step-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 16px 14px;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: var(--gradient-success);
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    /* Barra de Navegación */
+    .progress-bar-top {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 4px;
+      background: var(--gradient-fiscal);
+      width: 0%;
+      transition: width 0.3s ease;
+      z-index: 9999;
+    }
+
+    .nav-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 18px;
+      border-radius: 9999px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: var(--color-primary);
+      transform: scale(1.08);
+    }
+
+    .nav-counter {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      min-width: 65px;
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .slide { padding: 20px 20px; }
+      .grid-2, .grid-3, .grid-4, .timeline-steps { grid-template-columns: 1fr; }
+      .arch-flow { flex-direction: column; }
+      .chart-box { height: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de progreso superior -->
+  <div class="progress-bar-top" id="topProgress"></div>
+
+  <!-- Contenedor Maestro de Presentación -->
+  <div class="slide-deck">
+
+    <!-- SLIDE 1: Portada Ejecutiva -->
+    <div class="slide active" id="slide-1">
+      <div class="slide-content">
+        <span class="tag-badge">🏛️ Marco Fiscal 2026-2027</span>
+        <h1 class="slide-title">Adecuación Fiscal SENIAT</h1>
+        <p class="slide-subtitle">
+          Providencia Administrativa N° SNAT/2026/00093 · G.O. N° 43.484<br>
+          <strong>RESTAURANT LA AVALANCHA 2023, C.A</strong>
+        </p>
+        <div class="grid-3" style="margin-top: 15px;">
+          <div class="card" style="text-align: center;">
+            <div class="card-icon">📜</div>
+            <div class="card-title">Facturación Digital</div>
+            <div class="card-desc">Nueva exigencia legal de emisión y transmisión electrónica.</div>
+          </div>
+          <div class="card" style="text-align: center;">
+            <div class="card-icon">⏳</div>
+            <div class="card-title">Plazo: Abril 2027</div>
+            <div class="card-desc">180 días continuos fijados por el SENIAT para adecuación.</div>
+          </div>
+          <div class="card" style="text-align: center;">
+            <div class="card-icon">📊</div>
+            <div class="card-title">60% Completado</div>
+            <div class="card-desc">Cimientos de base de datos y ledger fiscal ya implementados.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Pilares de la Nueva Normativa -->
+    <div class="slide" id="slide-2">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-accent">⚖️ Nueva Regulación</span>
+        <h2 class="slide-title">¿Qué Exige la Providencia SNAT/2026/00093?</h2>
+        <p class="slide-subtitle">Transición hacia la fiscalidad digital y control directo</p>
+        <div class="grid-2" style="margin-top: 10px;">
+          <div class="card">
+            <div class="card-title" style="color: #38bdf8;">💻 Facturación Digital Directa</div>
+            <ul class="cue-list">
+              <li>Número de Control fiscal asignado electrónicamente.</li>
+              <li>Sello digital criptográfico devuelto por el Proveedor (PTA).</li>
+              <li>Código QR obligatorio de validación en portal SENIAT.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: #f59e0b;">🔍 Control Tributario Riguroso</div>
+            <ul class="cue-list">
+              <li>Percepción del 3% IGTF en cobros con divisas (efectivo USD).</li>
+              <li>Notas de Crédito digitales obligatorias ante toda anulación.</li>
+              <li>Libro de Ventas formal con las 18 columnas reglamentarias.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Semáforo de Cumplimiento -->
+    <div class="slide" id="slide-3">
+      <div class="slide-content">
+        <span class="tag-badge">📋 Diagnóstico</span>
+        <h2 class="slide-title">Semáforo de Cumplimiento Normativo</h2>
+        <p class="slide-subtitle">Estado actual de las exigencias fiscales en el sistema</p>
+
+        <table class="traffic-table" style="margin-top: 5px;">
+          <thead>
+            <tr>
+              <th>Exigencia SENIAT</th>
+              <th>Estado Actual</th>
+              <th>Detalle Técnico</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Precios Duales y Tasa BCV</strong></td>
+              <td><span class="status-pill status-ok">✓ CUMPLE</span></td>
+              <td>USD y Bs calculados nativamente en cada pedido.</td>
+            </tr>
+            <tr>
+              <td><strong>Base Imponible y Exentos</strong></td>
+              <td><span class="status-pill status-ok">✓ CUMPLE</span></td>
+              <td>Discriminado en cada ítem y almacenado en base de datos.</td>
+            </tr>
+            <tr>
+              <td><strong>Ledger Inmutable (SHA-256)</strong></td>
+              <td><span class="status-pill status-ok">✓ CUMPLE</span></td>
+              <td>Cadena criptográfica contra adulteración de facturas y cierres.</td>
+            </tr>
+            <tr>
+              <td><strong>Esquema BD Migración v18</strong></td>
+              <td><span class="status-pill status-ok">✓ CUMPLE</span></td>
+              <td>Tablas y columnas preparadas para control fiscal y sellos.</td>
+            </tr>
+            <tr>
+              <td><strong>Timbrado Digital con PTA</strong></td>
+              <td><span class="status-pill status-pending">⏳ PENDIENTE</span></td>
+              <td>Conexión REST API al Proveedor Tecnológico Autorizado.</td>
+            </tr>
+            <tr>
+              <td><strong>QR y Notas de Crédito</strong></td>
+              <td><span class="status-pill status-pending">⏳ PENDIENTE</span></td>
+              <td>Impresión en ticket 80mm y contra-asiento formal de anulación.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Lo que YA se ha Adecuado -->
+    <div class="slide" id="slide-4">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-success">✅ Adecuaciones Realizadas</span>
+        <h2 class="slide-title">Avances Ya Implementados en el Sistema</h2>
+        <p class="slide-subtitle">La arquitectura base está 100% construida y auditada</p>
+
+        <div class="grid-3" style="margin-top: 12px;">
+          <div class="card">
+            <div class="card-icon">🗄️</div>
+            <div class="card-title">Base de Datos v18</div>
+            <ul class="cue-list">
+              <li>Campos de Número de Control y Sello.</li>
+              <li>Columnas para desglose de IGTF.</li>
+              <li>Estados fiscales: TRANSMITIDA y CONTINGENCIA.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">🔒</div>
+            <div class="card-title">Ledger Fiscal Inmutable</div>
+            <ul class="cue-list">
+              <li>Cadena de bloques interna HMAC-SHA256.</li>
+              <li>Bloqueo pesimista contra manipulación.</li>
+              <li>Sello de Facturas, Anulaciones y Cierres Z.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">💵</div>
+            <div class="card-title">Motor IGTF y Moneda Dual</div>
+            <ul class="cue-list">
+              <li>Registro inmutable <code>IgtfRecord</code>.</li>
+              <li>Cálculo exacto a 2 decimales sin descuadre.</li>
+              <li>Alícuota legal del 3% en divisas.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Gráfico de Progreso Técnico -->
+    <div class="slide" id="slide-5">
+      <div class="slide-content">
+        <span class="tag-badge">📊 Nivel de Avance</span>
+        <h2 class="slide-title">Progreso Técnico por Módulos</h2>
+        <p class="slide-subtitle">60% de avance integral · 40% pendiente hacia la certificación</p>
+
+        <div class="grid-2" style="align-items: center; margin-top: 8px;">
+          <!-- Gráfico Chart.js -->
+          <div class="chart-box">
+            <canvas id="progresoChart"></canvas>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="card">
+              <div class="metric-hero success">60%</div>
+              <div class="card-title">Avance Estructural Listo</div>
+              <div class="card-desc">La parte más compleja (BD, Ledger y cálculos) está terminada.</div>
+            </div>
+            <div class="card">
+              <div class="metric-hero accent" style="font-size: 2.2rem;">40%</div>
+              <div class="card-title">Brecha Final</div>
+              <div class="card-desc">Conexión con el PTA, QR en tickets y Libro de Ventas.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Arquitectura de Timbrado y Contingencia -->
+    <div class="slide" id="slide-6">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-success">🛡️ Blindaje Operativo</span>
+        <h2 class="slide-title">Timbrado Rápido y Contingencia Falla Cero</h2>
+        <p class="slide-subtitle">La caja nunca se congela ni se detiene la facturación</p>
+
+        <!-- Diagrama interactivo de flujo -->
+        <div class="arch-flow">
+          <div class="arch-node active-node">
+            <div style="font-size: 1.6rem;">💳</div>
+            <div class="arch-node-title">Cobro en Caja</div>
+            <div class="arch-node-desc">Commit inmediato en BD</div>
+          </div>
+
+          <div class="arch-arrow">➔</div>
+
+          <div class="arch-node active-node">
+            <div style="font-size: 1.6rem;">🌐</div>
+            <div class="arch-node-title">Timbrado PTA</div>
+            <div class="arch-node-desc">Timeout estricto de 3 seg</div>
+          </div>
+
+          <div class="arch-arrow">➔</div>
+
+          <div class="arch-node active-node">
+            <div style="font-size: 1.6rem;">🖨️</div>
+            <div class="arch-node-title">Ticket con QR</div>
+            <div class="arch-node-desc">N° Control oficial</div>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 10px;">
+          <div class="card" style="padding: 16px;">
+            <div class="card-title" style="color: #38bdf8; font-size: 1rem;">⚡ Sin Esperas en Fila</div>
+            <p class="card-desc">Si el proveedor tarda más de 3s, la venta no se detiene.</p>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <div class="card-title" style="color: #f59e0b; font-size: 1rem;">📄 Talonario Contingencia</div>
+            <p class="card-desc">Conmutación automática a talonario físico de imprenta.</p>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <div class="card-title" style="color: #10b981; font-size: 1rem;">🔄 Daemon en Fondo</div>
+            <p class="card-desc">Reintenta y sincroniza en segundo plano al volver internet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Lo que Queda Pendiente -->
+    <div class="slide" id="slide-7">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-accent">⏳ Brecha Técnica</span>
+        <h2 class="slide-title">Los 4 Módulos Pendientes para el 100%</h2>
+        <p class="slide-subtitle">Trabajos requeridos para el cumplimiento pleno</p>
+
+        <div class="grid-4" style="margin-top: 12px;">
+          <div class="card">
+            <div class="card-title" style="color: #38bdf8;">1️⃣ Timbrado PTA</div>
+            <ul class="cue-list">
+              <li>Conexión REST API al proveedor tecnológico.</li>
+              <li>Recepción del Sello Digital y N° Control.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: #f59e0b;">2️⃣ Código QR</div>
+            <ul class="cue-list">
+              <li>Generación nativa en ticket térmico de 80mm.</li>
+              <li>URL para verificación en portal fiscal.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: #ef4444;">3️⃣ Notas Crédito</div>
+            <ul class="cue-list">
+              <li>Emisión digital obligatoria en anulaciones.</li>
+              <li>Evita pagar IVA por ventas canceladas.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: #10b981;">4️⃣ Libro Ventas</div>
+            <ul class="cue-list">
+              <li>Exportador mensual en Excel/CSV.</li>
+              <li>18 columnas reglamentarias del SENIAT.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Cierre Z Fiscal y Libro de Ventas -->
+    <div class="slide" id="slide-8">
+      <div class="slide-content">
+        <span class="tag-badge">📑 Auditoría y Contabilidad</span>
+        <h2 class="slide-title">Cierre Z Fiscal y Libro de Ventas</h2>
+        <p class="slide-subtitle">Información consolidada para el contador del restaurante</p>
+
+        <div class="grid-2" style="margin-top: 10px;">
+          <div class="card">
+            <div class="card-title" style="color: #38bdf8;">📊 Cierre Z Diario Discriminado</div>
+            <ul class="cue-list">
+              <li>Total Base Imponible Gravada (16%).</li>
+              <li>Total Ventas Exentas.</li>
+              <li>Débito Fiscal IVA y Total IGTF percibido.</li>
+              <li>Rango de Números de Control emitidos en el día.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: #10b981;">📑 Libro de Ventas Mensual</div>
+            <ul class="cue-list">
+              <li>18 columnas según Art. 76 Reglamento de IVA.</li>
+              <li>Discriminación de comprobantes digitales y contingencia.</li>
+              <li>Exportación directa en formato CSV/Excel en 1 clic.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Plan de Trabajo y Cronograma -->
+    <div class="slide" id="slide-9">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-success">📅 Cronograma</span>
+        <h2 class="slide-title">Hoja de Ruta hacia el 100%</h2>
+        <p class="slide-subtitle">Finalización holgada antes del plazo límite legal (Abril 2027)</p>
+
+        <div class="timeline-steps" style="margin-top: 15px;">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="card-title">Semanas 1-2</div>
+            <div class="card-desc">Conexión con Proveedor (PTA) y modo de contingencia.</div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="card-title">Semana 3</div>
+            <div class="card-desc">Ticket con QR oficial y Notas de Crédito digitales.</div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="card-title">Semana 4</div>
+            <div class="card-desc">Cierre Z fiscal discriminado y Libro de Ventas CSV.</div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">4</div>
+            <div class="card-title">Semana 5</div>
+            <div class="card-desc">Pruebas en sandbox y certificación con el contador.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Próximos Pasos para la Directiva -->
+    <div class="slide" id="slide-10">
+      <div class="slide-content">
+        <span class="tag-badge tag-badge-success">🎯 Decisiones Clave</span>
+        <h2 class="slide-title">Acciones Inmediatas de la Gerencia</h2>
+        <p class="slide-subtitle">Pasos administrativos para activar la fase final</p>
+
+        <div class="grid-3" style="margin-top: 12px; width: 100%;">
+          <div class="card" style="text-align: center;">
+            <div class="card-icon">🤝</div>
+            <div class="card-title">Elegir Proveedor (PTA)</div>
+            <div class="card-desc">Contratar Proveedor Tecnológico Autorizado (The Factory HKA, Gurusoft, etc.).</div>
+          </div>
+
+          <div class="card" style="text-align: center;">
+            <div class="card-icon">📑</div>
+            <div class="card-title">Talonario Contingencia</div>
+            <div class="card-desc">Solicitar lote físico preimpreso a imprenta autorizada por el SENIAT.</div>
+          </div>
+
+          <div class="card" style="text-align: center;">
+            <div class="card-icon">💻</div>
+            <div class="card-title">Cerrar Integración</div>
+            <div class="card-desc">Completar la conexión del timbrado y QR en 4 semanas de desarrollo.</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 15px; padding: 12px 24px; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 9999px; font-weight: 700; color: #34d399;">
+          ✨ ¡El 60% más complejo ya está listo: el negocio está a tiempo y en control!
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.slide-deck -->
+
+  <!-- Barra de Navegación Inferior -->
+  <div class="nav-bar">
+    <button class="nav-btn" onclick="prevSlide()" title="Diapositiva anterior (Flecha Izquierda)">←</button>
+    <span class="nav-counter"><span id="slideCurrent">1</span> / <span id="slideTotal">10</span></span>
+    <button class="nav-btn" onclick="nextSlide()" title="Siguiente diapositiva (Flecha Derecha o Espacio)">→</button>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    document.getElementById('slideTotal').textContent = totalSlides;
+
+    function showSlide(n) {
+      if (n < 1) n = 1;
+      if (n > totalSlides) n = totalSlides;
+      currentSlide = n;
+
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx === n - 1);
+      });
+
+      document.getElementById('slideCurrent').textContent = n;
+      document.getElementById('topProgress').style.width = ((n / totalSlides) * 100) + '%';
+    }
+
+    function nextSlide() { showSlide(currentSlide + 1); }
+    function prevSlide() { showSlide(currentSlide - 1); }
+
+    // Control de teclado y click
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      }
+    });
+
+    // Inicializar diapositiva
+    showSlide(1);
+
+    // Inicializar Gráfico con Chart.js si está disponible
+    window.addEventListener('load', () => {
+      if (typeof Chart === 'undefined') {
+        console.warn('Chart.js no cargó desde CDN (modo offline).');
+        return;
+      }
+
+      // Chart: Avance por Módulo Fiscal
+      const ctxProgreso = document.getElementById('progresoChart');
+      if (ctxProgreso) {
+        new Chart(ctxProgreso, {
+          type: 'bar',
+          data: {
+            labels: [
+              'Base de Datos v18',
+              'Ledger Criptográfico',
+              'Moneda Dual & IVA',
+              'Motor IGTF 3%',
+              'QR en Ticket 80mm',
+              'Timbrado PTA REST',
+              'Notas de Crédito',
+              'Libro de Ventas'
+            ],
+            datasets: [
+              {
+                label: '% Cumplimiento Actual',
+                data: [100, 100, 100, 80, 40, 30, 30, 20],
+                backgroundColor: [
+                  '#10b981', '#10b981', '#10b981', '#34d399',
+                  '#f59e0b', '#f59e0b', '#f59e0b', '#fbbf24'
+                ],
+                borderRadius: 6
+              }
+            ]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              title: {
+                display: true,
+                text: 'Estado por Componente Fiscal (Objetivo: 100%)',
+                color: '#94a3b8',
+                font: { size: 13 }
+              }
+            },
+            scales: {
+              x: {
+                min: 0,
+                max: 100,
+                grid: { color: 'rgba(255,255,255,0.06)' },
+                ticks: { color: '#94a3b8', callback: (v) => v + '%' }
+              },
+              y: {
+                grid: { display: false },
+                ticks: { color: '#f8fafc', font: { size: 11, weight: 'bold' } }
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

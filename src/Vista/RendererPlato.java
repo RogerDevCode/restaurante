@@ -21,6 +21,16 @@ import javax.swing.table.TableCellRenderer;
  */
 public class RendererPlato implements TableCellRenderer {
 
+    /** Proporción de color de categoría para filas pares (más suave, mayor luminosidad). */
+    public static final double ATENUACION_ZEBRA_PAR = 0.22;
+    /** Proporción de color de categoría para filas impares (~20-30% más saturado/contrastado). */
+    public static final double ATENUACION_ZEBRA_IMPAR = 0.32;
+
+    /** Fondo neutro para filas pares sin categoría (blanco). */
+    public static final Color COLOR_ZEBRA_NEUTRO_PAR = Color.WHITE;
+    /** Fondo neutro para filas impares sin categoría (Slate-50 / gris tenue). */
+    public static final Color COLOR_ZEBRA_NEUTRO_IMPAR = new Color(248, 250, 252);
+
     private final Map<Integer, Platos> porId;
     private final JLabel etiqueta;
 
@@ -32,9 +42,24 @@ public class RendererPlato implements TableCellRenderer {
         this.etiqueta.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
     }
 
+    /**
+     * Calcula el fondo cromático de una fila respetando la categoría y aplicando
+     * el paso de cebra (~20% de contraste cromático entre filas de la misma categoría).
+     */
+    public static Color calcularFondoFila(Platos p, int fila) {
+        if (p != null && p.getCategoriaColor() != null && !p.getCategoriaColor().isBlank()) {
+            try {
+                double prop = (fila % 2 == 0) ? ATENUACION_ZEBRA_PAR : ATENUACION_ZEBRA_IMPAR;
+                return Modelo.PaletaCategorias.atenuar(p.getCategoriaColor(), prop);
+            } catch (Exception ignored) {}
+        }
+        return (fila % 2 == 0) ? COLOR_ZEBRA_NEUTRO_PAR : COLOR_ZEBRA_NEUTRO_IMPAR;
+    }
+
     @Override
     public Component getTableCellRendererComponent(JTable tabla, Object valor, boolean seleccionado,
             boolean enfocado, int fila, int columna) {
+        etiqueta.setEnabled(tabla == null || tabla.isEnabled());
         etiqueta.setFont(tabla != null ? tabla.getFont() : etiqueta.getFont());
         String valorStr = valor == null ? "" : valor.toString();
         etiqueta.setText(valorStr);
@@ -62,30 +87,23 @@ public class RendererPlato implements TableCellRenderer {
             etiqueta.setBackground(tabla.getSelectionBackground());
             etiqueta.setForeground(tabla.getSelectionForeground());
         } else {
-            Color fondo = null;
-            if (p != null && p.getCategoriaColor() != null) {
-                try {
-                    fondo = Modelo.PaletaCategorias.atenuar(p.getCategoriaColor(), 0.30);
-                } catch (NumberFormatException ignored) {}
-            }
-            if (fondo != null) {
-                etiqueta.setBackground(fondo);
-                etiqueta.setForeground(colorContraste(fondo));
-            } else if (tabla != null) {
-                etiqueta.setBackground(tabla.getBackground());
-                etiqueta.setForeground(tabla.getForeground());
-            } else {
-                etiqueta.setBackground(Color.WHITE);
-                etiqueta.setForeground(Color.BLACK);
-            }
+            Color fondo = calcularFondoFila(p, fila);
+            etiqueta.setBackground(fondo);
+            etiqueta.setForeground(etiqueta.isEnabled() ? colorContraste(fondo) : javax.swing.UIManager.getColor("Label.disabledForeground"));
         }
 
         int colModelo = (tabla != null) ? tabla.convertColumnIndexToModel(columna) : columna;
         etiqueta.setHorizontalAlignment(colModelo == 2 ? SwingConstants.RIGHT : SwingConstants.LEFT);
         if (colModelo == 1 && p != null) {
-            String texto = valorStr;
-            while (texto.startsWith("★ ") || texto.startsWith("🔥 ")) {
-                texto = texto.substring(2);
+            String texto = (p.getNombre() != null && !p.getNombre().isBlank()) ? p.getNombre() : valorStr;
+            while (true) {
+                if (texto.startsWith("★ ")) {
+                    texto = texto.substring("★ ".length());
+                } else if (texto.startsWith("🔥 ")) {
+                    texto = texto.substring("🔥 ".length());
+                } else {
+                    break;
+                }
             }
             StringBuilder prefijo = new StringBuilder();
             if (p.isFavorito()) {

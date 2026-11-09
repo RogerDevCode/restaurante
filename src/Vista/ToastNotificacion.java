@@ -13,6 +13,9 @@ import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -60,9 +63,11 @@ public final class ToastNotificacion extends JPanel {
     private static final Color FONDO_TOAST = new Color(30, 41, 59, 240); // Slate-800 con ligera transparencia
     private static final Color BORDE_TOAST = new Color(51, 65, 85);
     private static final Color TEXTO_BLANCO = new Color(248, 250, 252);
+    private static final Logger LOGGER = Logger.getLogger(ToastNotificacion.class.getName());
 
     private final Timer temporizadorAutoCierre;
     private final JLayeredPane capaDestino;
+    private final AtomicBoolean descartado = new AtomicBoolean(false);
 
     private ToastNotificacion(JLayeredPane capaDestino, String mensaje, Tipo tipo, int duracionMs) {
         this.capaDestino = capaDestino;
@@ -127,10 +132,12 @@ public final class ToastNotificacion extends JPanel {
         this.temporizadorAutoCierre = new Timer(duracionMs > 0 ? duracionMs : DURACION_DEFECTO_MS, e -> descartar());
         this.temporizadorAutoCierre.setRepeats(false);
 
-        // Limpieza defensiva si el contenedor se destruye o deja de ser visible
+        // Limpieza defensiva si el contenedor deja de ser visible
         addHierarchyListener(e -> {
             if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0 && !isShowing()) {
-                descartar();
+                if (temporizadorAutoCierre != null && temporizadorAutoCierre.isRunning()) {
+                    temporizadorAutoCierre.stop();
+                }
             }
         });
     }
@@ -148,6 +155,9 @@ public final class ToastNotificacion extends JPanel {
     }
 
     public void descartar() {
+        if (!descartado.compareAndSet(false, true)) {
+            return;
+        }
         if (temporizadorAutoCierre != null && temporizadorAutoCierre.isRunning()) {
             temporizadorAutoCierre.stop();
         }
@@ -178,32 +188,36 @@ public final class ToastNotificacion extends JPanel {
             return;
         }
 
-        JLayeredPane layeredPane = resolverLayeredPane(componentePadre);
-        if (layeredPane == null) {
-            return;
-        }
-
-        // Remover toasts previos para no solapar mensajes repetitivos
-        for (Component c : layeredPane.getComponentsInLayer(JLayeredPane.POPUP_LAYER)) {
-            if (c instanceof ToastNotificacion toastViejo) {
-                toastViejo.descartar();
+        try {
+            JLayeredPane layeredPane = resolverLayeredPane(componentePadre);
+            if (layeredPane == null) {
+                return;
             }
+
+            // Remover toasts previos para no solapar mensajes repetitivos
+            for (Component c : layeredPane.getComponentsInLayer(JLayeredPane.POPUP_LAYER)) {
+                if (c instanceof ToastNotificacion toastViejo) {
+                    toastViejo.descartar();
+                }
+            }
+
+            ToastNotificacion toast = new ToastNotificacion(layeredPane, mensaje.trim(), tipo != null ? tipo : Tipo.INFO, duracionMs);
+            Dimension tamPref = toast.getPreferredSize();
+            int ancho = Math.min(tamPref.width, Math.max(260, layeredPane.getWidth() - 40));
+            int alto = Math.max(38, tamPref.height);
+            int x = (layeredPane.getWidth() - ancho) / 2;
+            int y = 20; // Margen superior
+
+            toast.setBounds(x, y, ancho, alto);
+            layeredPane.add(toast, JLayeredPane.POPUP_LAYER);
+            layeredPane.moveToFront(toast);
+            layeredPane.revalidate();
+            layeredPane.repaint();
+
+            toast.temporizadorAutoCierre.start();
+        } catch (Throwable t) {
+            LOGGER.log(Level.WARNING, "No se pudo presentar la notificación flotante: " + t.getMessage(), t);
         }
-
-        ToastNotificacion toast = new ToastNotificacion(layeredPane, mensaje.trim(), tipo != null ? tipo : Tipo.INFO, duracionMs);
-        Dimension tamPref = toast.getPreferredSize();
-        int ancho = Math.min(tamPref.width, Math.max(260, layeredPane.getWidth() - 40));
-        int alto = Math.max(38, tamPref.height);
-        int x = (layeredPane.getWidth() - ancho) / 2;
-        int y = 20; // Margen superior
-
-        toast.setBounds(x, y, ancho, alto);
-        layeredPane.add(toast, JLayeredPane.POPUP_LAYER);
-        layeredPane.moveToFront(toast);
-        layeredPane.revalidate();
-        layeredPane.repaint();
-
-        toast.temporizadorAutoCierre.start();
     }
 
     public static void mostrarExito(Component padre, String mensaje) {

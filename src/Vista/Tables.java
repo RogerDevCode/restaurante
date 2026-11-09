@@ -262,6 +262,24 @@ public class Tables extends DefaultTableCellRenderer {
             setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
             setFont(getFont().deriveFont(java.awt.Font.BOLD));
             setToolTipText("$".equals(m) ? "Dólares (USD)" : "Bs.".equals(m) ? "Bolívares (VES)" : null);
+
+            if (!seleccionado && tabla != null) {
+                try {
+                    int otraCol = (columna > 0) ? columna - 1 : columna + 1;
+                    if (otraCol >= 0 && otraCol < tabla.getColumnCount()) {
+                        javax.swing.table.TableCellRenderer rend = tabla.getCellRenderer(fila, otraCol);
+                        if (rend != null && rend != this) {
+                            Component comp = rend.getTableCellRendererComponent(tabla,
+                                    tabla.getValueAt(fila, otraCol), false, false, fila, otraCol);
+                            if (comp != null && comp.getBackground() != null) {
+                                setBackground(comp.getBackground());
+                                setForeground(comp.getForeground());
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
             return this;
         }
     }

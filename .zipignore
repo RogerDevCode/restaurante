@@ -1,0 +1,90 @@
+# ==============================================================================
+# .zipignore — Reglas de exclusión para empaquetado ZIP limpio
+# Evita incluir archivos .zip anidados en carpetas hijas y archivos innecesarios.
+# ==============================================================================
+
+# 1. Archivos comprimidos (evitar recursión y no incluir otros zips anidados)
+*.zip
+*/*.zip
+*.tar
+*/*.tar
+*.tar.gz
+*/*.tar.gz
+*.tgz
+*/*.tgz
+*.rar
+*/*.rar
+*.7z
+*/*.7z
+
+# 2. Control de versiones y metadatos
+.git/*
+*/.git/*
+
+# 3. Secretos y credenciales sensibles
+.env
+*/.env
+*.env.local
+*/.env.local
+*.pem
+*/*.pem
+*.key
+*/*.key
+*.p12
+*/*.p12
+*.jks
+*/*.jks
+*.hmac
+*/*.hmac
+
+# 4. Volcados y respaldos temporales de base de datos
+*respaldo*.sql
+*/*respaldo*.sql
+*pre_migracion*.sql
+*/*pre_migracion*.sql
+*restaurante_*.sql
+*/*restaurante_*.sql
+*.sql.gz
+*/*.sql.gz
+*.dump
+*/*.dump
+
+# 5. Compilados y artefactos de construcción Java
+*.class
+*/*.class
+build/*
+*/build/*
+dist/*
+*/dist/*
+target/*
+*/target/*
+.gradle/*
+*/.gradle/*
+
+# 6. Metadatos de entornos de desarrollo (IDEs)
+.idea/*
+*/.idea/*
+.vscode/*
+*/.vscode/*
+nbproject/private/*
+*/nbproject/private/*
+*.iml
+*/*.iml
+.settings/*
+*/.settings/*
+
+# 7. Logs y archivos temporales
+*.log
+*/*.log
+logs/*
+*/logs/*
+*.tmp
+*/*.tmp
+*.bak
+*/*.bak
+*~
+*/*~
+.DS_Store
+*/.DS_Store
+Thumbs.db
+*/Thumbs.db

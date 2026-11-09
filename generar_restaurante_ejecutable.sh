@@ -162,7 +162,7 @@ sha256sum "$ZIP_FILE" > "$ZIP_FILE.sha256"
 ZIP_PROYECTO="$(cd "$DIR/.." && pwd)/Restaurante.zip"
 echo "Empaquetando archivo del proyecto: $ZIP_PROYECTO (sin carpeta test/)..."
 rm -f "$ZIP_PROYECTO"
-(cd "$DIR/.." && zip -qr "$ZIP_PROYECTO" "Restaurante" -x "Restaurante/test/*")
+(cd "$DIR/.." && zip -qr "$ZIP_PROYECTO" "Restaurante" -x "Restaurante/test/*" "*.zip")
 echo "  -> ZIP del proyecto generado con éxito."
 
 echo "================================================================================"

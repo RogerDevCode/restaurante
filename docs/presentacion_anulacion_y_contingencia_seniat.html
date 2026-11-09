@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anulación de Cuentas y Contingencia SENIAT — Restaurante 2026</title>
+  <style>
+    :root {
+      --color-primary: #0ea5e9;
+      --color-primary-dark: #0284c7;
+      --color-accent: #f59e0b;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+      --color-purple: #8b5cf6;
+      --color-bg-dark: #070a12;
+      --color-bg-card: rgba(15, 23, 42, 0.88);
+      --color-bg-card-hover: rgba(30, 41, 59, 0.95);
+      --color-border: rgba(255, 255, 255, 0.1);
+      --color-text-main: #f8fafc;
+      --color-text-muted: #94a3b8;
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--color-bg-dark);
+      color: var(--color-text-main);
+      font-family: var(--font-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* Contenedor 16:9 con efecto letterbox */
+    .slide-deck {
+      position: absolute;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 15%, #1e1b4b 0%, #070a12 75%);
+    }
+
+    @media (min-width: 900px) {
+      .slide-deck {
+        max-width: calc(100vh * 16 / 9);
+        max-height: calc(100vw * 9 / 16);
+        margin: auto;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 30px 48px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: scale(0.97);
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+
+    .slide-content {
+      width: 100%;
+      max-width: 1140px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+    }
+
+    /* Badges y Pastillas */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .badge-primary { background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.35); }
+    .badge-danger  { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .badge-amber   { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-purple  { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); }
+
+    h1 {
+      font-size: 2.3rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h2 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      color: var(--color-text-muted);
+      max-width: 820px;
+      line-height: 1.45;
+    }
+
+    /* Grillas y Cajas */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+    }
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.22);
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+      line-height: 1.4;
+    }
+
+    /* Layout con Screenshot y Panel Lateral */
+    .screenshot-layout {
+      display: grid;
+      grid-template-columns: 1.35fr 0.85fr;
+      gap: 20px;
+      width: 100%;
+      align-items: stretch;
+      text-align: left;
+    }
+
+    .screenshot-wrapper {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #000;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+      cursor: zoom-in;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-height: 380px;
+    }
+
+    .screenshot-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.25s ease;
+    }
+    .screenshot-wrapper:hover img {
+      transform: scale(1.02);
+    }
+
+    .screenshot-zoom-hint {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #e2e8f0;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      pointer-events: none;
+    }
+
+    /* Lista de Pasos Rápidos */
+    .steps-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border-left: 3px solid var(--color-primary);
+    }
+    .step-item.step-danger { border-left-color: var(--color-danger); }
+    .step-item.step-amber  { border-left-color: var(--color-accent); }
+    .step-item.step-success{ border-left-color: var(--color-success); }
+
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      color: #fff;
+    }
+
+    .step-text {
+      font-size: 0.82rem;
+      line-height: 1.35;
+      color: #cbd5e1;
+    }
+    .step-text strong {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* Caja de Notas del Relator (Speaker Note) */
+    .speaker-guide {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+      border: 1px dashed rgba(245, 158, 11, 0.45);
+      border-radius: 10px;
+      padding: 10px 14px;
+      text-align: left;
+      margin-top: 4px;
+    }
+
+    .speaker-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #fcd34d;
+      margin-bottom: 4px;
+    }
+
+    .speaker-points {
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      line-height: 1.35;
+      list-style: disc inside;
+    }
+
+    /* Tabla Resumen Operativo */
+    .table-ops {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      text-align: left;
+    }
+    .table-ops th {
+      background: rgba(30, 41, 59, 0.85);
+      color: #94a3b8;
+      padding: 9px 12px;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+    }
+    .table-ops td {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      color: #e2e8f0;
+    }
+    .table-ops tr:hover td {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    /* Controles Inferiores */
+    .deck-controls {
+      position: absolute;
+      bottom: 14px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 32px;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .deck-info {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.4);
+      font-weight: 600;
+      pointer-events: auto;
+    }
+
+    .deck-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .btn-nav {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #f8fafc;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-nav:hover {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .progress-bar-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.06);
+      z-index: 200;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ef4444, #f59e0b, #0ea5e9);
+      transition: width 0.3s ease;
+    }
+
+    /* Lightbox Modal para Zoom */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: blur(10px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s ease;
+    }
+    .lightbox.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .lightbox img {
+      max-width: 95vw;
+      max-height: 92vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .lightbox-caption {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #f8fafc;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Toggle de notas de orador flotante */
+    .notes-pill {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #fcd34d;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de progreso superior -->
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <div class="slide-deck" id="slideDeck">
+
+    <!-- =========================================================================
+         SLIDE 1: PORTADA EJECUTIVA
+         ========================================================================= -->
+    <section class="slide active" data-slide="1">
+      <div class="slide-content">
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-danger">Operación de Cajas y Mesas</span>
+          <span class="badge badge-amber">Normativa SENIAT 2026</span>
+          <span class="badge badge-primary">Guía para el Relator</span>
+        </div>
+
+        <h1 style="margin-top: 10px;">Anulación de Cuentas &amp;<br>Contingencia SENIAT</h1>
+        
+        <p class="subtitle">
+          Manual visual de resolución inmediata para el dueño del restaurante: cómo gestionar mesas abiertas en la mañana y cómo operar legalmente ante cortes eléctricos o caída del sistema.
+        </p>
+
+        <div class="grid-3" style="max-width: 980px; margin-top: 15px;">
+          <div class="card" style="border-top: 3px solid var(--color-danger);">
+            <div class="card-title">
+              <span style="color:var(--color-danger); font-size:1.2rem;">⚡</span>
+              Mesas Abiertas en la Mañana
+            </div>
+            <p class="card-desc">
+              Liberación masiva en 1 clic de mesas colgadas de la noche anterior sin alterar la caja ni perder dinero.
+            </p>
+          </div>
+
+          <div class="card" style="border-top: 3px solid var(--color-primary);">
+            <div class="card-title">
+              <span style="color:var(--color-primary); font-size:1.2rem;">🎯</span>
+              4 Métodos de Anulación
+            </div>
+            <p class="card-desc">
+              Por fecha masiva, atajo directo F8 por número, menú contextual (clic derecho) o botón de fuga en caja.
+            </p>
+          </div>
+
+          <div class="card" style="border-top: 3px solid var(--color-accent);">
+            <div class="card-title">
+              <span style="color:var(--color-accent); font-size:1.2rem;">🏛️</span>
+              Contingencia Legal SENIAT
+            </div>
+            <p class="card-desc">
+              Talonario físico obligatorio (SNAT/2011/00071) y posterior transcripción al sistema sin duplicar correlativos.
+            </p>
+          </div>
+        </div>
+
+        <div style="margin-top: 18px; font-size: 0.8rem; color: var(--color-text-muted);">
+          Usa las flechas <strong style="color:#fff;">← / →</strong> o la barra espaciadora para avanzar · Presiona <strong style="color:#fff;">F</strong> para Pantalla Completa
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SLIDE 2: 3 REGLAS DE ORO (TRANQUILIDAD FINANCIERA)
+         ========================================================================= -->
+    <section class="slide" data-slide="2">
+      <div class="slide-content">
+        <span class="badge badge-success">Blindaje Contable y Fiscal</span>
+        <h2>Las 3 Reglas de Oro del Sistema</h2>
+        <p class="subtitle">Lo que el dueño debe saber en 30 segundos: cero pérdida de dinero y cero descuadre fiscal.</p>
+
+        <div class="grid-3" style="margin-top: 12px;">
+          <div class="card">
+            <div class="badge badge-success" style="margin-bottom:8px;">Regla 1</div>
+            <div class="card-title">Cero Impacto en Caja</div>
+            <p class="card-desc">
+              Una cuenta de mesa (<code style="color:#38bdf8;">PENDIENTE</code>) <strong>nunca es dinero</strong>. Anularla no descuenta de la caja chica ni afecta el Cierre Z.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="badge badge-primary" style="margin-bottom:8px;">Regla 2</div>
+            <div class="card-title">Separación de Estados</div>
+            <p class="card-desc">
+              <strong>Comanda:</strong> orden a cocina (0 impacto).<br>
+              <strong>Pre-cuenta:</strong> total informativo al comensal.<br>
+              <strong>Factura:</strong> documento fiscal definitivo con IVA.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="badge badge-purple" style="margin-bottom:8px;">Regla 3</div>
+            <div class="card-title">Trazabilidad Total</div>
+            <p class="card-desc">
+              Toda anulación queda grabada con fecha, hora, usuario y <strong>motivo obligatorio</strong> en la auditoría del sistema. Nadie borra a ciegas.
+            </p>
+          </div>
+        </div>
+
+        <!-- Guía de Relatoría -->
+        <div class="speaker-guide" style="width: 100%; max-width: 980px;">
+          <div class="speaker-header">
+            <span>🗣️ Guía para el Relator (Explicar en voz alta):</span>
+          </div>
+          <ul class="speaker-points">
+            <li>«Señor dueño: si una mesa amanece abierta y se anula, su dinero está intacto. No hay faltante ni sobrante porque nunca ingresó pago».</li>
+            <li>«Solo las facturas cobradas entran al Cierre Z fiscal. Anular mesas colgadas es un proceso 100% administrativo para liberar el salón».</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SLIDE 3: ESCENARIO MATUTINO - MESAS ABIERTAS
+         ========================================================================= -->
+    <section class="slide" data-slide="3">
+      <div class="slide-content">
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-danger">Caso Real</span>
+          <span class="badge badge-primary">Apertura Matutina</span>
+        </div>
+        <h2>¿Qué pasa si amanecen mesas abiertas?</h2>
+        <p class="subtitle">Diagnóstico visual en sala y alternativas de solución para habilitar el servicio del día.</p>
+
+        <div class="screenshot-layout">
+          <!-- Screenshot interactivo con lightbox -->
+          <div class="screenshot-wrapper" onclick="openLightbox('img/01_mesas_abiertas_manana.png', 'Mesa ocupada en rojo al iniciar la mañana')">
+            <img src="img/01_mesas_abiertas_manana.png" alt="Mesa ocupada en rojo">
+            <span class="screenshot-zoom-hint">🔍 Clic para ampliar</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div class="card" style="padding:12px 14px;">
+              <div class="card-title" style="color:#fca5a5;">¿Por qué ocurre?</div>
+              <p class="card-desc">
+                El turno de la noche cerró apresuradamente, hubo comensales que se fueron sin pagar (fuga) o comandas de prueba sin cobrar.
+              </p>
+            </div>
+
+            <div class="card" style="padding:12px 14px;">
+              <div class="card-title" style="color:#fcd34d;">Consecuencia Operativa</div>
+              <p class="card-desc">
+                La mesa aparece <strong style="color:#ef4444;">ROJA</strong> (bloqueada). El mesonero no puede sentar nuevos clientes hasta que se libere.
+              </p>
+            </div>
+
+            <div class="speaker-guide">
+              <div class="speaker-header">
+                <span>🗣️ Guía para el Relator:</span>
+              </div>
+              <ul class="speaker-points">
+                <li>«Miren la pantalla: la Mesa 1 está roja. Esto impide que los clientes del desayuno o almuerzo sean registrados».</li>
+                <li>«Tenemos 2 caminos: si son muchas mesas, <strong>Depuración Masiva</strong> en 1 clic; si es una sola, <strong>Atajo F8</strong>».</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SLIDE 4: MÉTODO 1 - DEPURACIÓN MASIVA POR FECHA
+         ========================================================================= -->
+    <section class="slide" data-slide="4">
+      <div class="slide-content">
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-danger">Método 1</span>
+          <span class="badge badge-success">Recomendado para Apertura</span>
+        </div>
+        <h2>Depuración Masiva por Fecha (En 1 Clic)</h2>
+        <p class="subtitle">Limpia todas las mesas colgadas del día anterior de forma simultánea.</p>
+
+        <div class="screenshot-layout">
+          <div class="screenshot-wrapper" onclick="openLightbox('img/02_depurar_fecha_historial.png', 'Botón Depurar Fecha en el Historial de Pedidos')">
+            <img src="img/02_depurar_fecha_historial.png" alt="Botón Depurar Fecha">
+            <span class="screenshot-zoom-hint">🔍 Clic para ampliar</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <ul class="steps-list">
+              <li class="step-item step-danger">
+                <span class="step-num">1</span>
+                <div class="step-text">
+                  Ingresa a la pestaña <strong>Historial de Pedidos</strong>.
+                </div>
+              </li>
+              <li class="step-item step-danger">
+                <span class="step-num">2</span>
+                <div class="step-text">
+                  Haz clic en el botón <strong style="color:#ef4444;">«Depurar Fecha»</strong> en la barra superior.
+                </div>
+              </li>
+              <li class="step-item step-danger">
+                <span class="step-num">3</span>
+                <div class="step-text">
+                  Indica la fecha anterior y confirma: <strong>todas las mesas se liberan al instante</strong>.
+                </div>
+              </li>
+            </ul>
+
+            <div class="speaker-guide">
+              <div class="speaker-header">
+                <span>🗣️ Guía para el Relator:</span>
+              </div>
+              <ul class="speaker-points">
+                <li>«La flecha roja muestra el botón exacto. El encargado presiona 'Depurar Fecha', el sistema pide confirmación y listo: el restaurante queda 100% operativo en 5 segundos».</li>
+                <li>«No hace falta ir mesa por mesa ni borrar platos uno a uno».</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SLIDE 5: MÉTODO 2 - ATAJO F8 (ANULACIÓN ASISTIDA)
+         ========================================================================= -->
+    <section class="slide" data-slide="5">
+      <div class="slide-content">
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-primary">Método 2</span>
+          <span class="badge badge-purple">Atajo de Teclado</span>
+        </div>
+        <h2>Anulación Asistida con Tecla F8</h2>
+        <p class="subtitle">Para anular un ticket o cuenta específica conociendo su número.</p>
+
+        <div class="screenshot-layout">
+          <div class="screenshot-wrapper" onclick="openLightbox('img/03_dialogo_anulacion_f8.png', 'Diálogo de Anulación Asistida con F8')">
+            <img src="img/03_dialogo_anulacion_f8.png" alt="Atajo F8 Anulación">
+            <span class="screenshot-zoom-hint">🔍 Clic para ampliar</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <ul class="steps-list">
+              <li class="step-item">
+                <span class="step-num">1</span>
+                <div class="step-text">
+                  Presiona la tecla <strong style="color:#38bdf8;">F8</strong> desde cualquier pantalla del sistema.
+                </div>
+              </li>
+              <li class="step-item">
+                <span class="step-num">2</span>
+                <div class="step-text">
+                  Digita el <strong>N° de Ticket / Pedido</strong>. El sistema trae los datos en vivo (mesa, cliente, monto).
+                </div>
+              </li>
+              <li class="step-item">
+                <span class="step-num">3</span>
+                <div class="step-text">
+                  Escribe el <strong>motivo</strong> (ej: «Cliente canceló») y presiona <strong>Confirmar Anulación</strong>.
+                </div>
+              </li>
+            </ul>
+
+            <div class="speaker-guide">
+              <div class="speaker-header">
+                <span>🗣️ Guía para el Relator:</span>
+              </div>
+              <ul class="speaker-points">
+                <li>«La ventana asistida F8 evita errores humanos: antes de anular, el operador ve en pantalla exactamente qué mesa y qué platos son».</li>
+                <li>«Ideal para el cajero durante el servicio sin tener que salir de su módulo».</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SLIDE 6: MÉTODO 3 - MENÚ CONTEXTUAL (CLIC DERECHO)
+         ========================================================================= -->
+    <section class="slide" data-slide="6">
+      <div class="slide-content">
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-primary">Método 3</span>
+          <span class="badge badge-amber">Uso con Mouse</span>
+        </div>
+        <h2>Menú Contextual (Clic Derecho en Historial)</h2>
+        <p class="subtitle">Flujo natural directo sobre la lista de comandas y pedidos.</p>
+
+        <div class="screenshot-layout">
+          <div class="screenshot-wrapper" onclick="openLightbox('img/04_menu_contextual_historial.png', 'Menú contextual al hacer clic derecho en la tabla')">
+            <img src="img/04_menu_contextual_historial.png" alt="Clic derecho Historial">
+            <span class="screenshot-zoom-hint">🔍 Clic para ampliar</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <ul class="steps-list">
+              <li class="step-item step-amber">
+                <span class="step-num">1</span>
+                <div class="step-text">
+                  Ubica el pedido en la tabla de <strong>Historial de Pedidos</strong>.
+                </div>
+              </li>
+              <li class="step-item step-amber">
+                <span class="step-num">2</span>
+                <div class="step-text">
+                  Haz <strong>clic derecho</strong> sobre la fila del pedido.
+                </div>
+              </li>
+              <li class="step-item step-amber">
+                <span class="step-num">3</span>
+                <div class="step-text">
+                  Selecciona <strong style="color:#ef4444;">«Anular Pedido»</strong> en el menú flotante y confirma el motivo.
+                </div>
+              </li>
+            </ul>
+
+            <div class="speaker-guide">
+              <div class="speaker-header">
+                <span>🗣️ Guía para el Relator:</span>
+              </div>
+              <ul class="speaker-points">
+                <li>«Cualquier operador familiarizado con el mouse puede hacer clic derecho directamente sobre el pedido que desea anular».</li>
+                <li>«Rápido, visual y sin memorizar atajos de teclado».</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SLIDE 7: MÉTODO 4 - BOTÓN «NO PAGÓ (FUGA)» EN CAJA
+         ========================================================================= -->
+    <section class="slide" data-slide="7">
+      <div class="slide-content">
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-danger">Método 4</span>
+          <span class="badge badge-primary">Punto de Cobro</span>
+        </div>
+        <h2>Cancelación por «No Pagó (Fuga)» en Caja</h2>
+        <p class="subtitle">Para resolver deserciones o anulaciones de último minuto frente al cajero.</p>
+
+        <div class="screenshot-layout">
+          <div class="screenshot-wrapper" onclick="openLightbox('img/05_caja_boton_no_pago_fuga.png', 'Botón rojo No Pagó en pantalla de cobro')">
+            <img src="img/05_caja_boton_no_pago_fuga.png" alt="Botón No Pagó en Caja">
+            <span class="screenshot-zoom-hint">🔍 Clic para ampliar</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <ul class="steps-list">
+              <li class="step-item step-danger">
+                <span class="step-num">1</span>
+                <div class="step-text">
+                  Al abrir la cuenta en la pantalla de cobro de caja.
+                </div>
+              </li>
+              <li class="step-item step-danger">
+                <span class="step-num">2</span>
+                <div class="step-text">
+                  Presiona el botón rojo <strong style="color:#ef4444;">«No Pagó (Fuga)»</strong> junto al total.
+                </div>
+              </li>
+              <li class="step-item step-danger">
+                <span class="step-num">3</span>
+                <div class="step-text">
+                  La comanda se archiva como anulada por fuga y <strong>la mesa queda libre inmediatamente</strong>.
+                </div>
+              </li>
+            </ul>
+
+            <div class="speaker-guide">
+              <div class="speaker-header">
+                <span>🗣️ Guía para el Relator:</span>
+              </div>
+              <ul class="speaker-points">
+                <li>«Evita la mala práctica de que el cajero 'invente' un cobro ficticio solo para desocupar la mesa».</li>
+                <li>«Queda registrado el incidente de fuga sin meter dinero falso a la caja chica».</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SLIDE 8: NORMATIVA SENIAT - SISTEMA CAÍDO O SIN LUZ
+         ========================================================================= -->
+    <section class="slide" data-slide="8">
+      <div class="slide-content">
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-amber">Marco Legal SENIAT</span>
+          <span class="badge badge-primary">Providencia SNAT/2011/00071</span>
+        </div>
+        <h2>¿Qué exige el SENIAT si no hay luz o falla el sistema?</h2>
+        <p class="subtitle">Obligación legal de continuidad del servicio mediante factura manual en papel.</p>
+
+        <div class="grid-3" style="margin-top: 10px;">
+          <div class="card" style="border-top: 3px solid var(--color-accent);">
+            <div class="badge badge-amber" style="margin-bottom:8px;">Obligación Legal</div>
+            <div class="card-title">Talonario de Contingencia</div>
+            <p class="card-desc">
+              Todo negocio debe poseer talonarios preimpresos por imprenta autorizada con <strong>Número de Control SENIAT</strong>.
+            </p>
+          </div>
+
+          <div class="card" style="border-top: 3px solid var(--color-success);">
+            <div class="badge badge-success" style="margin-bottom:8px;">Operación Continua</div>
+            <div class="card-title">El Negocio No se Detiene</div>
+            <p class="card-desc">
+              Si se corta la luz, se emite factura manual del talonario. El restaurante sigue cobrando sin detener el servicio.
+            </p>
+          </div>
+
+          <div class="card" style="border-top: 3px solid var(--color-danger);">
+            <div class="badge badge-danger" style="margin-bottom:8px;">Regla Estricta</div>
+            <div class="card-title">Prohibido Duplicar Tickets</div>
+            <p class="card-desc">
+              El SENIAT <strong>prohíbe expresamente</strong> reimprimir una factura digital una vez entregada la física manual.
+            </p>
+          </div>
+        </div>
+
+        <div class="speaker-guide" style="width: 100%; max-width: 980px; margin-top: 10px;">
+          <div class="speaker-header">
+            <span>🗣️ Guía para el Relator:</span>
+          </div>
+          <ul class="speaker-points">
+            <li>«En Venezuela los cortes eléctricos o fallas de internet son una realidad. La ley tributaria no permite cerrar el local ni cobrar sin factura».</li>
+            <li>«El talonario manual es el respaldo legal del restaurante. Con él, estamos 100% blindados ante cualquier fiscalización».</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SLIDE 9: RESTABLECIMIENTO SENIAT - TRANSCRIPCIÓN
+         ========================================================================= -->
+    <section class="slide" data-slide="9">
+      <div class="slide-content">
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-success">Flujo de Retorno</span>
+          <span class="badge badge-primary">Conciliación Fiscal</span>
+        </div>
+        <h2>¿Cómo se transcribe al volver el sistema?</h2>
+        <p class="subtitle">Conciliación automática entre las facturas físicas de contingencia y el libro digital.</p>
+
+        <div class="grid-4" style="margin-top: 10px;">
+          <div class="card">
+            <div class="step-num" style="background:#0284c7; margin-bottom:8px;">1</div>
+            <div class="card-title" style="font-size:0.9rem;">Transcripción</div>
+            <p class="card-desc">
+              El cajero ingresa las notas del talonario físico manual al sistema.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="step-num" style="background:#d97706; margin-bottom:8px;">2</div>
+            <div class="card-title" style="font-size:0.9rem;">Marca Contingencia</div>
+            <p class="card-desc">
+              Se marca la casilla <code style="color:#fcd34d;">es_contingencia = 1</code>.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="step-num" style="background:#8b5cf6; margin-bottom:8px;">3</div>
+            <div class="card-title" style="font-size:0.9rem;">N° de Control</div>
+            <p class="card-desc">
+              Se asocia el N° de factura manual y N° de control físico del talonario.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="step-num" style="background:#059669; margin-bottom:8px;">4</div>
+            <div class="card-title" style="font-size:0.9rem;">Libro de Ventas</div>
+            <p class="card-desc">
+              Aparece en las 18 columnas oficiales sin duplicar correlativos digitales.
+            </p>
+          </div>
+        </div>
+
+        <div class="speaker-guide" style="width: 100%; max-width: 980px; margin-top: 10px;">
+          <div class="speaker-header">
+            <span>🗣️ Guía para el Relator:</span>
+          </div>
+          <ul class="speaker-points">
+            <li>«Cuando vuelve la luz, el cajero pasa las notas manuales al sistema marcando 'Factura de Contingencia'».</li>
+            <li>«El software NO gasta números electrónicos duplicados: vincula el número del papel preimpreso directamente al Libro de Ventas SENIAT».</li>
+            <li>«El cierre de caja y el Libro de Ventas cuadran al centavo».</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         SLIDE 10: MATRIZ DE DECISIÓN RÁPIDA (CHULETA DEL RELATOR)
+         ========================================================================= -->
+    <section class="slide" data-slide="10">
+      <div class="slide-content">
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-purple">Resumen Ejecutivo</span>
+          <span class="badge badge-success">Chuleta Operativa</span>
+        </div>
+        <h2>Matriz de Decisión Rápida para el Operador</h2>
+        <p class="subtitle">Guía de bolsillo: qué método usar según la situación del salón.</p>
+
+        <div class="card" style="width: 100%; padding: 12px 16px;">
+          <table class="table-ops">
+            <thead>
+              <tr>
+                <th>Situación Operativa</th>
+                <th>Método Óptimo</th>
+                <th>Acceso Rápido</th>
+                <th>Efecto en Mesa</th>
+                <th>Efecto en Caja / Cierre Z</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Apertura matutina</strong> con varias mesas colgadas de ayer</td>
+                <td><span class="badge badge-danger">Depurar por Fecha</span></td>
+                <td>Botón en Historial</td>
+                <td>Libera todas las mesas</td>
+                <td><span style="color:#10b981; font-weight:700;">$0.00 (Sin impacto)</span></td>
+              </tr>
+              <tr>
+                <td>Se tiene el <strong>ticket en mano</strong> o N° de comanda específico</td>
+                <td><span class="badge badge-primary">Atajo F8 Asistido</span></td>
+                <td>Tecla F8</td>
+                <td>Libera la mesa puntual</td>
+                <td><span style="color:#10b981; font-weight:700;">$0.00 (Sin impacto)</span></td>
+              </tr>
+              <tr>
+                <td>Supervisión visual en la <strong>tabla de historial</strong></td>
+                <td><span class="badge badge-amber">Menú Contextual</span></td>
+                <td>Clic derecho en fila</td>
+                <td>Libera la mesa puntual</td>
+                <td><span style="color:#10b981; font-weight:700;">$0.00 (Sin impacto)</span></td>
+              </tr>
+              <tr>
+                <td>Cliente se <strong>fue sin pagar</strong> frente a la caja</td>
+                <td><span class="badge badge-danger">Botón No Pagó</span></td>
+                <td>Pantalla de Cobro</td>
+                <td>Libera la mesa</td>
+                <td><span style="color:#10b981; font-weight:700;">$0.00 (Registra Fuga)</span></td>
+              </tr>
+              <tr>
+                <td><strong>Corte eléctrico</strong> o sistema inoperante</td>
+                <td><span class="badge badge-purple">Talonario Físico</span></td>
+                <td>Factura manual papel</td>
+                <td>Servicio manual</td>
+                <td>Transcripción posterior como contingencia</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="speaker-guide" style="width: 100%; max-width: 980px;">
+          <div class="speaker-header">
+            <span>🗣️ Conclusión Final para el Dueño:</span>
+          </div>
+          <ul class="speaker-points">
+            <li>«El sistema le da 4 herramientas para que sus mesas nunca se queden trabadas y sus meseros puedan vender siempre».</li>
+            <li>«Y ante fallas eléctricas, el restaurante opera con total tranquilidad bajo el amparo de la providencia del SENIAT».</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Controles inferiores de navegación -->
+  <footer class="deck-controls">
+    <div class="deck-info">
+      <span id="slideCounter">1 / 10</span> · <span style="color:var(--color-text-muted);">Restaurante 2026</span>
+    </div>
+    <div class="deck-nav">
+      <button class="btn-nav" id="btnPrev" title="Anterior (←)">
+        <span>◀</span> Anterior
+      </button>
+      <button class="btn-nav" id="btnNext" title="Siguiente (→)">
+        Siguiente <span>▶</span>
+      </button>
+      <button class="btn-nav" id="btnFullscreen" title="Pantalla Completa (F)">
+        <span>⛶</span> Pantalla Completa
+      </button>
+    </div>
+  </footer>
+
+  <!-- Lightbox Modal para ampliar capturas -->
+  <div class="lightbox" id="lightboxModal" onclick="closeLightbox(event)">
+    <button class="lightbox-close" onclick="closeLightbox(event)">&times;</button>
+    <img id="lightboxImg" src="" alt="Captura ampliada">
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+  </div>
+
+  <script>
+    // Gestor de navegación entre diapositivas
+    document.addEventListener('DOMContentLoaded', () => {
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const totalSlides = slides.length;
+      let currentSlide = 1;
+
+      const progressBar = document.getElementById('progressBar');
+      const slideCounter = document.getElementById('slideCounter');
+      const btnPrev = document.getElementById('btnPrev');
+      const btnNext = document.getElementById('btnNext');
+      const btnFullscreen = document.getElementById('btnFullscreen');
+
+      function updateSlide(targetIndex) {
+        if (targetIndex < 1) targetIndex = 1;
+        if (targetIndex > totalSlides) targetIndex = totalSlides;
+
+        slides.forEach((s, idx) => {
+          if (idx + 1 === targetIndex) {
+            s.classList.add('active');
+          } else {
+            s.classList.remove('active');
+          }
+        });
+
+        currentSlide = targetIndex;
+        slideCounter.textContent = `${currentSlide} / ${totalSlides}`;
+        progressBar.style.width = `${(currentSlide / totalSlides) * 100}%`;
+
+        btnPrev.disabled = currentSlide === 1;
+        btnNext.disabled = currentSlide === totalSlides;
+      }
+
+      function nextSlide() {
+        if (currentSlide < totalSlides) updateSlide(currentSlide + 1);
+      }
+
+      function prevSlide() {
+        if (currentSlide > 1) updateSlide(currentSlide - 1);
+      }
+
+      btnNext.addEventListener('click', nextSlide);
+      btnPrev.addEventListener('click', prevSlide);
+
+      // Teclado
+      document.addEventListener('keydown', (e) => {
+        // Si el lightbox está activo, Escape lo cierra
+        const lightbox = document.getElementById('lightboxModal');
+        if (lightbox && lightbox.classList.contains('active')) {
+          if (e.key === 'Escape') closeLightbox();
+          return;
+        }
+
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+          e.preventDefault();
+          nextSlide();
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
+          e.preventDefault();
+          prevSlide();
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          updateSlide(1);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          updateSlide(totalSlides);
+        } else if (e.key === 'f' || e.key === 'F') {
+          toggleFullscreen();
+        }
+      });
+
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+        }
+      }
+
+      btnFullscreen.addEventListener('click', toggleFullscreen);
+
+      // Inicializar
+      updateSlide(1);
+    });
+
+    // Funciones del Lightbox Modal
+    function openLightbox(src, caption) {
+      const modal = document.getElementById('lightboxModal');
+      const img = document.getElementById('lightboxImg');
+      const cap = document.getElementById('lightboxCaption');
+      img.src = src;
+      cap.textContent = caption || '';
+      modal.classList.add('active');
+    }
+
+    function closeLightbox(e) {
+      if (e && e.target && e.target.tagName === 'IMG') return;
+      const modal = document.getElementById('lightboxModal');
+      modal.classList.remove('active');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reporte de Estandarización de Base de Datos - a1-actualizada.sql</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #24344d;
+      --border-color: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --accent-rose: #f43f5e;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .title-group h1 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .title-group p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .badge-green { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-amber { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .badge-purple { background: rgba(139, 92, 246, 0.2); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.4); }
+
+    .grid-kpi {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .kpi-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .kpi-title {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-value {
+      font-size: 1.85rem;
+      font-weight: 700;
+      margin: 0.5rem 0 0.25rem 0;
+      color: #ffffff;
+    }
+
+    .kpi-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin: 2rem 0 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    th {
+      background-color: rgba(30, 41, 59, 0.8);
+      color: var(--text-secondary);
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .code-pill {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.15rem 0.45rem;
+      border-radius: 0.35rem;
+      font-size: 0.82rem;
+      color: #38bdf8;
+    }
+
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+    }
+
+    .check-icon {
+      color: var(--accent-green);
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>✅ Estandarización Exitosa: a1-actualizada.sql</h1>
+        <p>Migración y homologación del esquema v13 a <strong>v18 canónico</strong> (MySQL 8.4)</p>
+      </div>
+      <div>
+        <span class="badge badge-green">Esquema v18 Homologado</span>
+        <span class="badge badge-blue">26 Tablas Canónicas</span>
+      </div>
+    </header>
+
+    <!-- Resumen KPIs -->
+    <div class="grid-kpi">
+      <div class="card kpi-card">
+        <span class="kpi-title">Empresa Cliente</span>
+        <span class="kpi-value" style="font-size: 1.2rem;">RESTAURANT LA AVALANCHA</span>
+        <span class="kpi-desc">RIF: J-504542725 · Rio Chico, Miranda</span>
+      </div>
+      <div class="card kpi-card">
+        <span class="kpi-title">Pedidos Totales</span>
+        <span class="kpi-value">869</span>
+        <span class="kpi-desc">850 Finalizados · 19 Anulados · 0 Pendientes</span>
+      </div>
+      <div class="card kpi-card">
+        <span class="kpi-title">Detalles y Pagos</span>
+        <span class="kpi-value">1,851 / 850</span>
+        <span class="kpi-desc">1,851 Ítems vendidos · 850 Liquidaciones/Pagos</span>
+      </div>
+      <div class="card kpi-card">
+        <span class="kpi-title">Menú & Salas</span>
+        <span class="kpi-value">140 Platos</span>
+        <span class="kpi-desc">14 Categorías (activo=1) · 2 Salas (30 mesas)</span>
+      </div>
+    </div>
+
+    <!-- Acciones Ejecutadas -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <h2 class="section-title">🛠️ Decisiones y Transformaciones Aplicadas</h2>
+      <ul class="checklist">
+        <li class="checklist-item">
+          <span class="check-icon">✓</span>
+          <div>
+            <strong>Anulación Administrativa de 4 Pedidos Pendientes:</strong>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">
+              Los pedidos 865 (Mesa 7), 868 (Mesa 13), 871 (Mesa 16) y 872 (Mesa 5) del 07/11/2026 fueron pasados al estado <span class="code-pill">ANULADO</span> con <span class="code-pill">cerrada_en = fecha</span>, liberando todas las mesas y registrando sus 4 entradas correspondientes en <span class="code-pill">auditoria_pedidos</span> (IDs 16, 17, 18 y 19).
+            </p>
+          </div>
+        </li>
+        <li class="checklist-item">
+          <span class="check-icon">✓</span>
+          <div>
+            <strong>Preservación de Usuarios y Credenciales Originales:</strong>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">
+              Se mantuvieron intactos los usuarios <span class="code-pill">xavier</span> (correo de login <span class="code-pill">admin</span>, rol Administrador) y <span class="code-pill">NEGRO</span> (correo <span class="code-pill">negro@avalanche.com</span>, rol Asistente) con sus contraseñas en hash PBKDF2.
+            </p>
+          </div>
+        </li>
+        <li class="checklist-item">
+          <span class="check-icon">✓</span>
+          <div>
+            <strong>Homologación Fiscal SENIAT (Providencia SNAT/2026/00093 - v18):</strong>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">
+              En <span class="code-pill">pedidos</span> se agregaron las 11 columnas fiscales e índices requeridos. Los 850 pedidos históricos finalizados fueron fijados con <span class="code-pill">estado_fiscal = 'NO_APLICA'</span> y montos IGTF en <span class="code-pill">0.00</span>. En <span class="code-pill">pedido_pagos</span> se agregaron las 3 columnas de IGTF (<span class="code-pill">igtf_porcentaje</span>, <span class="code-pill">igtf_monto_usd</span>, <span class="code-pill">igtf_monto_bs</span>) en <span class="code-pill">0.00</span>.
+            </p>
+          </div>
+        </li>
+        <li class="checklist-item">
+          <span class="check-icon">✓</span>
+          <div>
+            <strong>Nuevas Tablas y Auditoría Criptográfica:</strong>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">
+              Se incorporaron las tablas canónicas faltantes: <span class="code-pill">comandas_marchas</span>, <span class="code-pill">comandas_marchas_detalle</span>, <span class="code-pill">ledger_fiscal</span> y <span class="code-pill">ledger_fiscal_ancla</span>, esta última inicializada con el hash génesis oficial <span class="code-pill">0000000000000000000000000000000000000000000000000000000000000000</span>.
+            </p>
+          </div>
+        </li>
+        <li class="checklist-item">
+          <span class="check-icon">✓</span>
+          <div>
+            <strong>Historial de Migraciones y Bootstrap del Sistema:</strong>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">
+              Se registraron en <span class="code-pill">schema_migrations</span> las versiones 14 a 18 con sus checksums criptográficos SHA-256 canónicos en estado <span class="code-pill">APLICADA</span>. En <span class="code-pill">configuracion_sistema</span> se fijó <span class="code-pill">bootstrap_inicial_completado = '1'</span> para acceso directo al sistema operativo.
+            </p>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Comparativa de Conteos -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <h2 class="section-title">📊 Verificación de Filas & Tablas</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Tabla</th>
+            <th>Filas a1.sql</th>
+            <th>Filas a1-actualizada.sql</th>
+            <th>Diferencia / Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>pedidos</strong></td>
+            <td>869</td>
+            <td>869</td>
+            <td><span class="badge badge-green">Exacto</span> (4 pendientes anulados)</td>
+          </tr>
+          <tr>
+            <td><strong>detalle_pedidos</strong></td>
+            <td>1,851</td>
+            <td>1,851</td>
+            <td><span class="badge badge-green">Exacto</span></td>
+          </tr>
+          <tr>
+            <td><strong>pedido_pagos</strong></td>
+            <td>850</td>
+            <td>850</td>
+            <td><span class="badge badge-green">Exacto</span> (+3 columnas IGTF)</td>
+          </tr>
+          <tr>
+            <td><strong>pedido_liquidaciones</strong></td>
+            <td>850</td>
+            <td>850</td>
+            <td><span class="badge badge-green">Exacto</span></td>
+          </tr>
+          <tr>
+            <td><strong>auditoria_pedidos</strong></td>
+            <td>15</td>
+            <td>19</td>
+            <td><span class="badge badge-blue">+4</span> (Trazabilidad de anulación de 4 mesas)</td>
+          </tr>
+          <tr>
+            <td><strong>categorias</strong></td>
+            <td>14</td>
+            <td>14</td>
+            <td><span class="badge badge-green">Exacto</span> (+columna activo=1)</td>
+          </tr>
+          <tr>
+            <td><strong>platos</strong></td>
+            <td>140</td>
+            <td>140</td>
+            <td><span class="badge badge-green">Exacto</span></td>
+          </tr>
+          <tr>
+            <td><strong>plato_categoria</strong></td>
+            <td>136</td>
+            <td>136</td>
+            <td><span class="badge badge-green">Exacto</span></td>
+          </tr>
+          <tr>
+            <td><strong>configuracion_sistema</strong></td>
+            <td>11</td>
+            <td>12</td>
+            <td><span class="badge badge-blue">+1</span> (bootstrap_inicial_completado = '1')</td>
+          </tr>
+          <tr>
+            <td><strong>ledger_fiscal_ancla</strong></td>
+            <td>0</td>
+            <td>1</td>
+            <td><span class="badge badge-blue">+1</span> (Ancla génesis v17)</td>
+          </tr>
+          <tr>
+            <td><strong>schema_migrations</strong></td>
+            <td>3</td>
+            <td>8</td>
+            <td><span class="badge badge-blue">+5</span> (Migraciones v14 a v18 aplicadas)</td>
+          </tr>
+          <tr>
+            <td><strong>salas / mesoneros / cierres_caja</strong></td>
+            <td>2 / 3 / 7</td>
+            <td>2 / 3 / 7</td>
+            <td><span class="badge badge-green">Exacto</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      Generado por Antigravity para Restaurante 2026 · Archivo validado: <strong>a1-actualizada.sql</strong>
+    </footer>
+  </div>
+</body>
+</html>

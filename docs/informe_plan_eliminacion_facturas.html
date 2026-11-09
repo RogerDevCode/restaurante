@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Informe y Plan: Eliminación y Anulación de Facturas / Tickets — Restaurante 2026</title>
+  <style>
+    :root {
+      --color-primary: #0ea5e9;
+      --color-primary-dark: #0284c7;
+      --color-primary-light: #38bdf8;
+      --color-accent: #f59e0b;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+      --color-purple: #8b5cf6;
+      --color-bg-dark: #0b1120;
+      --color-bg-card: rgba(18, 24, 38, 0.9);
+      --color-bg-card-hover: rgba(30, 41, 59, 0.95);
+      --color-border: rgba(255, 255, 255, 0.08);
+      --color-text-main: #f8fafc;
+      --color-text-muted: #94a3b8;
+      --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #8b5cf6 100%);
+      --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+      --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      --gradient-danger: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--color-bg-dark);
+      color: var(--color-text-main);
+      font-family: var(--font-main);
+      line-height: 1.6;
+      padding: 40px 20px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* Encabezado */
+    .header-box {
+      background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b1120 100%);
+      border: 1px solid var(--color-border);
+      border-radius: 20px;
+      padding: 36px 40px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .header-box::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--gradient-accent);
+    }
+
+    .tag-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 9999px;
+      color: #fbbf24;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .header-title {
+      font-size: clamp(2rem, 3.2vw, 2.8rem);
+      font-weight: 800;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+
+    .header-subtitle {
+      font-size: 1.1rem;
+      color: var(--color-text-muted);
+      max-width: 900px;
+    }
+
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+    }
+
+    .meta-item strong {
+      color: #f8fafc;
+    }
+
+    /* Secciones */
+    .section-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 18px;
+      padding: 30px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .section-desc {
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+
+    /* Grillas */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+
+    .card-inner {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .card-inner:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(14, 165, 233, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .card-inner-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Tablas Estilizadas */
+    .styled-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 6px;
+      text-align: left;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+
+    .styled-table th {
+      padding: 10px 14px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .styled-table td {
+      padding: 14px 14px;
+      background: rgba(30, 41, 59, 0.6);
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .styled-table tr td:first-child {
+      border-left: 1px solid rgba(255, 255, 255, 0.04);
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px;
+    }
+
+    .styled-table tr td:last-child {
+      border-right: 1px solid rgba(255, 255, 255, 0.04);
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-finalizado { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-pendiente { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-anulado { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-critico { background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
+
+    /* Mockup Visual de UI */
+    .mockup-box {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 18px;
+      margin-top: 15px;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .mockup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #38bdf8;
+    }
+
+    .mockup-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .mockup-input-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .mockup-input {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #ffffff;
+      font-size: 0.9rem;
+      flex: 1;
+    }
+
+    .mockup-btn {
+      background: var(--gradient-danger);
+      border: none;
+      border-radius: 8px;
+      color: #ffffff;
+      padding: 8px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .mockup-card-preview {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(14, 165, 233, 0.3);
+      border-radius: 10px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      font-size: 0.85rem;
+    }
+
+    .preview-col strong {
+      display: block;
+      color: var(--color-text-muted);
+      font-size: 0.75rem;
+      margin-bottom: 2px;
+    }
+
+    .alert-box {
+      padding: 16px 20px;
+      border-radius: 12px;
+      font-size: 0.92rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .alert-warning {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #fbbf24;
+    }
+
+    .alert-info {
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(14, 165, 233, 0.35);
+      color: #38bdf8;
+    }
+
+    /* Lista numerada de pasos */
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 10px;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      background: rgba(30, 41, 59, 0.4);
+      padding: 16px;
+      border-radius: 12px;
+      border-left: 4px solid var(--color-primary);
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      background: var(--gradient-primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .step-content strong {
+      display: block;
+      color: #ffffff;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      color: var(--color-text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- Encabezado Principal -->
+    <header class="header-box">
+      <span class="tag-badge">🛡️ Análisis y Plan de Ingeniería Pre-Modificación</span>
+      <h1 class="header-title">Eliminación y Anulación de Facturas / Tickets</h1>
+      <p class="header-subtitle">
+        Matriz combinatoria de pruebas E2E para el operador, diseño de interfaz rápida por número y fecha, y salvaguardas de integridad contable y fiscal para <strong>RESTAURANT LA AVALANCHA 2023, C.A</strong>.
+      </p>
+      <div class="meta-bar">
+        <div class="meta-item">Sistema: <strong>Restaurante 2026 (Java 21 + Swing + MySQL 8.4)</strong></div>
+        <div class="meta-item">Fecha: <strong>09/11/2026</strong></div>
+        <div class="meta-item">Estado: <strong>PROPUESTA Y PLAN (SIN MODIFICACIONES EN CÓDIGO)</strong></div>
+        <div class="meta-item">Normativa: <strong>AGENTS.md · Cierre Z · Invariante F-07</strong></div>
+      </div>
+    </header>
+
+    <!-- Sección 1: Vocabulario Estricto y Reglas Contables -->
+    <section class="section-card">
+      <h2 class="section-title">1. Vocabulario de Dominio y Reglas Contables Obligatorias</h2>
+      <p class="section-desc">
+        Según las reglas del proyecto (<code>AGENTS.md</code>), una "eliminación" no puede ser un borrado ciego en base de datos. Existen 3 niveles con consecuencias jurídicas y contables distintas:
+      </p>
+
+      <div class="grid-3">
+        <div class="card-inner">
+          <div class="card-inner-title">
+            <span class="badge-status badge-critico">Nivel 1</span>
+            Ítem / Comanda
+          </div>
+          <p style="font-size: 0.88rem; color: var(--color-text-muted);">
+            Se envía a cocina o barra. <strong>Cero impacto contable</strong>. Si se cancela un plato antes de servir, se genera un ticket de anulación para el cocinero para evitar mermas.
+          </p>
+        </div>
+
+        <div class="card-inner">
+          <div class="card-inner-title">
+            <span class="badge-status badge-pendiente">Nivel 2</span>
+            Cuenta Pendiente (Fuga)
+          </div>
+          <p style="font-size: 0.88rem; color: var(--color-text-muted);">
+            Pedido en estado <code>PENDIENTE</code>. El cliente se retiró sin pagar. <strong>Libera la mesa</strong>, marca el pedido como <code>ANULADO</code>, sin movimientos de dinero en caja ni afectación del Cierre Z.
+          </p>
+        </div>
+
+        <div class="card-inner">
+          <div class="card-inner-title">
+            <span class="badge-status badge-finalizado">Nivel 3</span>
+            Factura Cobrada
+          </div>
+          <p style="font-size: 0.88rem; color: var(--color-text-muted);">
+            Pedido en <code>FINALIZADO</code>. Exige <strong>contra-asiento obligatorio</strong> en <code>pedido_saldos_movimientos</code>, resta el dinero de la caja para cuadrar el Cierre Z y se sella en el Ledger Fiscal SHA-256.
+          </p>
+        </div>
+      </div>
+
+      <div class="alert-box alert-warning">
+        <span>⚠️</span>
+        <div>
+          <strong>Invariante F-07 (Protección de Caja):</strong> Jamás se debe permitir que un botón o función borre físicamente un registro de la tabla <code>pedidos</code> (con <code>DELETE FROM</code>) si ya tuvo cobros. Toda anulación de factura cobrada debe ser atómica mediante reversión contable, o el Cierre Z de la jornada quedará descuadrado.
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección 2: Diagnóstico de la UI Actual -->
+    <section class="section-card">
+      <h2 class="section-title">2. Diagnóstico del Flujo Actual del Operador (Fricciones Detectadas)</h2>
+      <p class="section-desc">
+        Actualmente, para anular un ticket o factura, el operador dispone de los siguientes mecanismos en <code>Sistema.java</code>:
+      </p>
+
+      <div class="grid-2">
+        <div class="card-inner">
+          <div class="card-inner-title">Flujo Actual en Pestaña "Historial Pedidos"</div>
+          <ul style="font-size: 0.88rem; color: var(--color-text-muted); padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
+            <li>El operador va a la pestaña <em>Historial</em> y busca visualmente la fila en la tabla.</li>
+            <li>Si no la ve, pulsa el botón rojo <strong>"Anular Pedido"</strong> sin seleccionar nada.</li>
+            <li>Aparece un primer popup (<code>JOptionPane.showInputDialog</code>) pidiendo el número a ciegas.</li>
+            <li>Si lo ingresa, aparece un segundo popup de confirmación con los datos.</li>
+            <li>Si confirma, aparece un tercer diálogo solicitando el motivo de anulación.</li>
+            <li><strong>Problema:</strong> 3 ventanas emergentes sucesivas. Lento y frustrante para el operador.</li>
+          </ul>
+        </div>
+
+        <div class="card-inner">
+          <div class="card-inner-title">Carencias de la Interfaz Actual</div>
+          <ul style="font-size: 0.88rem; color: var(--color-text-muted); padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
+            <li><strong>Sin anulación por fecha:</strong> Si quedaron 5 pedidos pendientes del día anterior, hay que anularlos uno por uno con 3 diálogos cada uno (15 popups).</li>
+            <li><strong>Sin menú contextual:</strong> Hacer clic derecho sobre la tabla no abre un menú de "Anular".</li>
+            <li><strong>Sin atajo de teclado:</strong> No existe tecla rápida (ej. <code>F8</code> o <code>Ctrl+Del</code>).</li>
+            <li><strong>Sin vista previa instantánea:</strong> El operador no ve qué está anulando hasta el segundo diálogo.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección 3: Matriz Completa de Pruebas E2E -->
+    <section class="section-card">
+      <h2 class="section-title">3. Matriz Combinatoria E2E: Todas las Acciones del Operador</h2>
+      <p class="section-desc">
+        Esta matriz define todos los escenarios posibles que un cajero o administrador puede realizar en la interfaz y cómo debe responder el sistema:
+      </p>
+
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Caso</th>
+            <th>Tipo Documento</th>
+            <th>Acción del Operador</th>
+            <th>Validación / Regla</th>
+            <th>Efecto en Caja / BD</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>TC-01</strong></td>
+            <td><span class="badge-status badge-finalizado">Factura Cobrada</span></td>
+            <td>Selecciona fila en tabla Historial ➔ Pulsa "Anular" ➔ Confirma con motivo.</td>
+            <td>Exige rol Administrador (permiso <code>ANULAR_FACTURA_COBRADA</code>).</td>
+            <td>Genera contra-asiento en saldos, descuenta de caja, estado <code>ANULADO</code>, sella en Ledger.</td>
+          </tr>
+          <tr>
+            <td><strong>TC-02</strong></td>
+            <td><span class="badge-status badge-finalizado">Factura Cobrada</span></td>
+            <td>Sin seleccionar fila ➔ Digita número <code>#00000028</code> o <code>28</code> directamente.</td>
+            <td>Normaliza prefijos (#, espacios, ceros). Muestra datos del cliente y montos.</td>
+            <td>Idéntico a TC-01; reversión atómica de pagos en Bs y USD.</td>
+          </tr>
+          <tr>
+            <td><strong>TC-03</strong></td>
+            <td><span class="badge-status badge-pendiente">Cuenta de Mesa</span></td>
+            <td>Mesa 2 con pedido activo ➔ Pulsa botón "Fuga / No pagó" en panel de atención.</td>
+            <td>Exige motivo (ej. "Cliente se retiró"). Libera la mesa inmediatamente.</td>
+            <td>Estado <code>ANULADO</code>. Mesa pasa a LIBRE. Cero impacto en dinero de caja.</td>
+          </tr>
+          <tr>
+            <td><strong>TC-04</strong></td>
+            <td><span class="badge-status badge-pendiente">Pedido Rápido</span></td>
+            <td>Pedido para llevar en espera de cobro ➔ Anulación desde historial o modal cobro.</td>
+            <td>Permite anular cuenta sin mesa asociada.</td>
+            <td>Estado <code>ANULADO</code>, registro en auditoría con usuario responsable.</td>
+          </tr>
+          <tr>
+            <td><strong>TC-05</strong></td>
+            <td><span class="badge-status badge-anulado">Factura Anulada</span></td>
+            <td>Operador intenta anular una factura que ya fue anulada previamente.</td>
+            <td><strong>Detección de idempotencia:</strong> Deshabilita botón o avisa "Ya se encuentra anulada".</td>
+            <td>Bloquea la acción. No duplica contra-asientos ni altera saldos.</td>
+          </tr>
+          <tr>
+            <td><strong>TC-06</strong></td>
+            <td><span class="badge-status badge-critico">Entrada Inválida</span></td>
+            <td>Operador ingresa texto (<code>"abc"</code>), negativos (<code>-5</code>) o factura inexistente (<code>999999</code>).</td>
+            <td>Manejo defensivo con mensaje claro: "Número inválido" o "Factura no encontrada".</td>
+            <td>Sin efectos colaterales; retorna el foco a la interfaz sin lanzar excepciones.</td>
+          </tr>
+          <tr>
+            <td><strong>TC-07</strong></td>
+            <td><span class="badge-status badge-critico">Aborto Voluntario</span></td>
+            <td>Operador pulsa "Cancelar" en el diálogo de confirmación o deja el motivo en blanco.</td>
+            <td>Motivo obligatorio no vacío. Si cancela, se aborta la transacción limpiamente.</td>
+            <td>Rollback total; el pedido permanece intacto en su estado original.</td>
+          </tr>
+          <tr>
+            <td><strong>TC-08</strong></td>
+            <td><span class="badge-status badge-finalizado">Jornada Cerrada</span></td>
+            <td>Intenta anular una factura de un día anterior cuyo Cierre Z ya fue cerrado.</td>
+            <td><strong>Intangibilidad Fiscal:</strong> El Cierre Z cerrado es inalterable.</td>
+            <td>Se registra la reversión como Nota de Crédito en la jornada abierta actual.</td>
+          </tr>
+          <tr>
+            <td><strong>TC-09</strong></td>
+            <td><span class="badge-status badge-critico">Sin Permisos</span></td>
+            <td>Usuario con rol "Mesonero" o "Asistente" intenta anular una factura cobrada.</td>
+            <td>Política de seguridad <code>exigir(ANULAR_FACTURA_COBRADA)</code> activa.</td>
+            <td>Solicita elevación con credenciales de Administrador o rechaza la acción.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Sección 4: Solución Propuesta (Anulación Fácil por Número y por Fecha) -->
+    <section class="section-card">
+      <h2 class="section-title">4. Propuesta de Usabilidad: Eliminación / Anulación Rápida</h2>
+      <p class="section-desc">
+        Para solucionar las fricciones del operador, se diseñan dos mecanismos fluidos y seguros:
+      </p>
+
+      <!-- Propuesta A: Anulación por Número -->
+      <div style="margin-bottom: 25px;">
+        <h3 style="color: #38bdf8; font-size: 1.15rem; margin-bottom: 8px;">A. Anulación Rápida por Número (Unificado en 1 Sola Ventana)</h3>
+        <p style="font-size: 0.9rem; color: var(--color-text-muted);">
+          Reemplazar los 3 diálogos anidados por una ventana asistida moderna (invocada con el botón o con la tecla rápida <code>F8</code>):
+        </p>
+
+        <div class="mockup-box">
+          <div class="mockup-header">
+            <span>🗑️ Anulación Asistida de Facturas y Comprobantes [F8]</span>
+            <span style="font-size: 0.8rem; color: #94a3b8;">ESC para Cancelar</span>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-input-row">
+              <label style="font-weight: 700; font-size: 0.9rem; width: 140px;">N° de Factura / Ticket:</label>
+              <input class="mockup-input" type="text" value="28" style="max-width: 140px; font-weight: bold; color: #38bdf8;" />
+              <span style="color: #10b981; font-size: 0.85rem; font-weight: 600;">✓ Documento Encontrado (Mesa 1)</span>
+            </div>
+
+            <!-- Vista previa automática al tipear -->
+            <div class="mockup-card-preview">
+              <div class="preview-col">
+                <strong>CLIENTE:</strong>
+                Consumidor Final (V-00000000)
+              </div>
+              <div class="preview-col">
+                <strong>FECHA Y HORA:</strong>
+                24/10/2026 18:30
+              </div>
+              <div class="preview-col">
+                <strong>TOTAL COBRADO:</strong>
+                <span style="color: #38bdf8; font-weight: bold;">$ 85.84 (Bs. 3,845.63)</span>
+              </div>
+              <div class="preview-col">
+                <strong>ESTADO ACTUAL:</strong>
+                <span class="badge-status badge-finalizado">FINALIZADO</span>
+              </div>
+            </div>
+
+            <div class="mockup-input-row" style="margin-top: 5px;">
+              <label style="font-weight: 700; font-size: 0.9rem; width: 140px;">Motivo Obligatorio:</label>
+              <input class="mockup-input" type="text" placeholder="Ej: Error de digitación / Reversión autorizada" />
+              <button class="mockup-btn">Confirmar Anulación y Revertir Caja</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Propuesta B: Anulación / Depuración por Fecha -->
+      <div>
+        <h3 style="color: #f59e0b; font-size: 1.15rem; margin-bottom: 8px;">B. Anulación y Depuración Asistida por Fecha</h3>
+        <p style="font-size: 0.9rem; color: var(--color-text-muted);">
+          Para resolver el problema de tickets acumulados de días anteriores o pruebas de una jornada:
+        </p>
+
+        <div class="grid-2" style="margin-top: 10px;">
+          <div class="card-inner">
+            <div class="card-inner-title" style="color: #f59e0b;">
+              🧹 Depuración de Cuentas Pendientes por Fecha
+            </div>
+            <p style="font-size: 0.88rem; color: var(--color-text-muted); margin-bottom: 10px;">
+              Permite al Administrador seleccionar una fecha (ej. "Ayer" o fecha pasada) y presionar <strong>"Anular Pendientes de Esta Fecha"</strong>.
+            </p>
+            <ul style="font-size: 0.85rem; color: #cbd5e1; padding-left: 18px; display: flex; flex-direction: column; gap: 4px;">
+              <li>Libera mesas que quedaron trabadas por olvido.</li>
+              <li>No afecta dinero en caja (no tenían pagos).</li>
+              <li>Aplica un motivo común de auditoría (ej. "Cierre administrativo de cuentas abandonadas").</li>
+            </ul>
+          </div>
+
+          <div class="card-inner">
+            <div class="card-inner-title" style="color: #ef4444;">
+              🔄 Reversión Guiada de Facturas del Día
+            </div>
+            <p style="font-size: 0.88rem; color: var(--color-text-muted); margin-bottom: 10px;">
+              Filtro por fecha con checkboxes para anulación guiada de facturas cobradas:
+            </p>
+            <ul style="font-size: 0.85rem; color: #cbd5e1; padding-left: 18px; display: flex; flex-direction: column; gap: 4px;">
+              <li>Muestra la sumatoria total de dinero a revertir antes de proceder.</li>
+              <li>Exige confirmación explícita con contraseña de Administrador.</li>
+              <li>Genera los contra-asientos formales uno por uno de forma atómica.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección 5: Plan Quirúrgico de Implementación -->
+    <section class="section-card">
+      <h2 class="section-title">5. Plan Quirúrgico de Ejecución (Paso a Paso)</h2>
+      <p class="section-desc">
+        Ruta técnica a seguir una vez aprobado este plan, sin riesgo de regresiones contables:
+      </p>
+
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <strong>Fase 1: Creación de la Suite de Pruebas E2E Virtual</strong>
+            <p>
+              Crear <code>test/Vista/AnulacionFacturasCombinatoriaE2EVirtual.java</code> corriendo en Xvfb <code>:99</code> sobre la base de datos desechable <code>restaurante_test</code> en puerto 3307. Simula todos los 9 casos combinatorios del operador usando <code>DiaE2ERobot</code> exclusivamente por interfaz gráfica.
+            </p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <strong>Fase 2: Implementación de la Ventana de Anulación Asistida (F8)</strong>
+            <p>
+              Diseñar en Swing el diálogo no modal/modal <code>DialogoAnulacionAsistida</code> con búsqueda en vivo, vista previa de datos del pedido y confirmación en 1 solo paso con motivo obligatorio.
+            </p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <strong>Fase 3: Menú Contextual (Clic Derecho) en Historial</strong>
+            <p>
+              Agregar <code>JPopupMenu</code> a <code>TablePedidos</code> en la pestaña Historial para que el operador pueda hacer clic derecho en cualquier factura y elegir "Anular Documento".
+            </p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <strong>Fase 4: Función de Depuración de Cuentas Pendientes por Fecha</strong>
+            <p>
+              Agregar en <code>ConsultaPedidosServicio</code> y <code>PedidosDao</code> el método transaccional <code>anularPedidosPendientesPorFecha(LocalDate fecha, String motivo, String usuario)</code> con verificación de permisos y auditoría completa.
+            </p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <strong>Fase 5: Verificación Integral y Ejecución E2E</strong>
+            <p>
+              Ejecutar <code>./e2e_virtual.sh AnulacionFacturasCombinatoriaE2EVirtual</code> y <code>ant test</code> para confirmar 0 fallos, código limpio y apego a las reglas de <code>AGENTS.md</code>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección 6: Conclusiones y Próximo Paso -->
+    <section class="section-card" style="text-align: center; border-color: rgba(16, 185, 129, 0.4);">
+      <h2 style="font-size: 1.4rem; color: #34d399; margin-bottom: 8px;">Conclusión y Espera de Confirmación</h2>
+      <p style="color: var(--color-text-muted); max-width: 800px; margin: 0 auto 16px auto; font-size: 0.95rem;">
+        Este informe detalla las combinaciones operativas, las fallas de usabilidad actuales y la propuesta de modernización rápida por número y fecha sin alterar las reglas de caja ni la normativa SENIAT.
+      </p>
+      <div style="display: inline-flex; padding: 10px 24px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 9999px; font-weight: 700; color: #34d399; font-size: 0.9rem;">
+        🛑 No se ha modificado ningún archivo de código. Listo para ejecutar una vez aprobado.
+      </div>
+    </section>
+
+  </div>
+
+</body>
+</html>

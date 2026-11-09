@@ -1832,6 +1832,43 @@ public class PedidosDao implements PedidosRepositorio {
     }
 
     @Override
+    public int anularPedidosPendientesPorFecha(java.time.LocalDate fecha, String motivo, String usuario) {
+        if (fecha == null) {
+            throw ErrorAplicacionException.validacion("Debe especificar la fecha para anular pedidos pendientes.");
+        }
+        if (motivo == null || motivo.trim().isEmpty()) {
+            throw ErrorAplicacionException.validacion("Debe indicar el motivo de la anulación por fecha.");
+        }
+        String usr = (usuario != null && !usuario.isBlank()) ? usuario.trim() : "Sistema";
+
+        String sqlSelect = "SELECT id FROM pedidos WHERE estado = 'PENDIENTE' AND DATE(fecha) = ? ORDER BY id";
+        List<Integer> ids = new ArrayList<>();
+        try (Connection con = conexiones.getConnection();
+             PreparedStatement ps = con.prepareStatement(sqlSelect)) {
+            ps.setDate(1, java.sql.Date.valueOf(fecha));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(rs.getInt("id"));
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataAccessException("Error al consultar pedidos pendientes de la fecha: " + ex.getMessage(), ex);
+        }
+
+        int anulados = 0;
+        for (int id : ids) {
+            try {
+                if (anularPedidoConAuditoria(id, motivo.trim(), usr)) {
+                    anulados++;
+                }
+            } catch (Exception ex) {
+                LOGGER.log(Level.WARNING, "No se pudo anular pedido pendiente #" + id + " por fecha: " + ex.getMessage(), ex);
+            }
+        }
+        return anulados;
+    }
+
+    @Override
     public boolean cerrarMesa(int idPedido, int versionEsperada) {
         if (idPedido <= 0) {
             throw ErrorAplicacionException.validacion("El identificador del pedido debe ser válido para cerrar la mesa.");
