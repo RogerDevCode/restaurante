@@ -127,6 +127,7 @@ public final class Sistema extends javax.swing.JFrame {
     private long versionFacturasCliente;
     BigDecimal Totalpagar = BigDecimal.ZERO.setScale(2);
     private javax.swing.JTextField txtBuscarHistorial;
+    private javax.swing.JTextField txtFiltroMesa;
     private javax.swing.JButton btnFiltroHoy;
     private javax.swing.JButton btnFiltroPendientes;
     private javax.swing.JButton btnFiltroFinalizados;
@@ -223,6 +224,8 @@ public final class Sistema extends javax.swing.JFrame {
     private final Servicio.ConfiguracionServicio configServicio = new Servicio.ConfiguracionServicio();
     private javax.swing.JButton btnAnularPedido;
     private javax.swing.JButton btnDepurarPendientesFecha;
+    private javax.swing.JButton btnReporteAnulados;
+    private final Modelo.AuditoriaPedidosDao auditoriaPedidosDao = new Modelo.AuditoriaPedidosDao();
     private javax.swing.JButton btnCobrarHistorialModal;
     private javax.swing.JButton btnCobrarModalTab4;
     private javax.swing.JButton btnAuditoriaPedido;
@@ -492,7 +495,11 @@ public final class Sistema extends javax.swing.JFrame {
         btnAnularPedido.setContentAreaFilled(true);
         btnAnularPedido.setOpaque(true);
         btnAnularPedido.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 12, 6, 12));
-        btnAnularPedido.setToolTipText("Anulación asistida de facturas/comprobantes por número (F8) o selección");
+        btnAnularPedido.setToolTipText("<html><body style='width: 260px; padding: 3px;'>"
+                + "<b style='color:#c0392b;'>Anulación Asistida (Atajo F8)</b><br>"
+                + "Anula el comprobante seleccionado en la tabla o presione <b>F8</b> para buscar por número de ticket.<br>"
+                + "Muestra en vivo la mesa, cliente y total para <i>doble verificación</i> antes de confirmar la anulación."
+                + "</body></html>");
         btnAnularPedido.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnAnularPedido.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE)
                 || politicaAcceso.permite(PoliticaAcceso.Accion.ANULAR_FACTURA_COBRADA));
@@ -504,7 +511,11 @@ public final class Sistema extends javax.swing.JFrame {
         btnDepurarPendientesFecha.setForeground(new java.awt.Color(192, 57, 43));
         btnDepurarPendientesFecha.setBackground(new java.awt.Color(254, 242, 242));
         btnDepurarPendientesFecha.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(252, 165, 165), 1));
-        btnDepurarPendientesFecha.setToolTipText("Anular en lote todas las cuentas pendientes de la fecha indicada");
+        btnDepurarPendientesFecha.setToolTipText("<html><body style='width: 260px; padding: 3px;'>"
+                + "<b style='color:#c0392b;'>Depuración Masiva por Fecha</b><br>"
+                + "Anula en un solo clic todas las cuentas pendientes de la fecha indicada y libera las mesas colgadas.<br>"
+                + "<i>Cero impacto en caja:</i> No modifica el dinero de caja chica ni altera el Cierre Z fiscal."
+                + "</body></html>");
         btnDepurarPendientesFecha.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnDepurarPendientesFecha.setEnabled(politicaAcceso.permite(PoliticaAcceso.Accion.CANCELAR_CUENTA_PENDIENTE));
         btnDepurarPendientesFecha.addActionListener(e -> depurarPendientesPorFechaSeleccionada());
@@ -535,6 +546,18 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
         jPanel6.add(btnCobrarHistorialModal, new org.netbeans.lib.awtextra.AbsoluteConstraints(925, 10, 110, 32));
+
+        btnReporteAnulados = new javax.swing.JButton("📊 Reporte Anulados");
+        btnReporteAnulados.setName("btnReporteAnulados");
+        btnReporteAnulados.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnReporteAnulados.setToolTipText("<html><body style='width: 260px; padding: 3px;'>"
+                + "<b style='color:#0284c7;'>Reporte de Tickets y Facturas Anuladas</b><br>"
+                + "Abre el reporte detallado con filtros por fecha, mes actual, mesa y usuario.<br>"
+                + "Permite impresión física en impresora o exportación a PDF y HTML."
+                + "</body></html>");
+        btnReporteAnulados.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnReporteAnulados.addActionListener(e -> abrirReporteTicketsAnulados());
+        jPanel6.add(btnReporteAnulados, new org.netbeans.lib.awtextra.AbsoluteConstraints(1040, 10, 140, 32));
 
         javax.swing.JLabel lblModoHistorial = new javax.swing.JLabel("Salida:");
         lblModoHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
@@ -573,69 +596,116 @@ public final class Sistema extends javax.swing.JFrame {
 
         javax.swing.JLabel lblBuscarHistorial = new javax.swing.JLabel("Buscar:");
         lblBuscarHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        lblBuscarHistorial.setToolTipText("Búsqueda general por texto libre en todas las columnas");
         txtBuscarHistorial = new javax.swing.JTextField();
-        txtBuscarHistorial.setToolTipText("Búsqueda libre por texto (ID, sala, atendido, etc.)");
+        txtBuscarHistorial.setName("txtBuscarHistorial");
+        txtBuscarHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        txtBuscarHistorial.setToolTipText("<html><body style='width: 250px; padding: 3px;'>"
+                + "<b style='color:#0284c7;'>Búsqueda General Libre</b><br>"
+                + "Busca en todas las columnas: ID de ticket, cliente, nombre de sala, atendido por, etc."
+                + "</body></html>");
         txtBuscarHistorial.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 aplicarFiltroHistorial();
             }
         });
-        jPanel6.add(lblBuscarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 48, 48, 30));
-        jPanel6.add(txtBuscarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(90, 48, 120, 30));
+        jPanel6.add(lblBuscarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 48, 46, 30));
+        jPanel6.add(txtBuscarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(88, 48, 90, 30));
+
+        javax.swing.JLabel lblFiltroMesa = new javax.swing.JLabel("Mesa:");
+        lblFiltroMesa.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        lblFiltroMesa.setToolTipText("Filtro exclusivo por número de mesa para ubicar tickets y verificar antes de anular");
+        txtFiltroMesa = new javax.swing.JTextField();
+        txtFiltroMesa.setName("txtFiltroMesaHistorial");
+        txtFiltroMesa.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        txtFiltroMesa.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtFiltroMesa.setToolTipText("<html><body style='width: 260px; padding: 3px;'>"
+                + "<b style='color:#0284c7;'>Filtro Exclusivo por N° de Mesa</b><br>"
+                + "Escriba el número de mesa (ej. <b>1</b>, <b>2</b>, <b>5</b>) para aislar únicamente sus comprobantes en la lista.<br>"
+                + "<hr style='border: 0; border-top: 1px solid #cbd5e1; margin: 4px 0;'>"
+                + "<b>Doble verificación:</b> Compruebe en la tabla que la mesa, el cliente y el monto coincidan exactamente antes de anular o cobrar.<br>"
+                + "<i>Consejo: Use 'Limpiar' o borre el campo para restaurar todas las mesas.</i>"
+                + "</body></html>");
+        txtFiltroMesa.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                aplicarFiltroHistorial();
+            }
+        });
+        txtFiltroMesa.addActionListener(e -> aplicarFiltroHistorial());
+        jPanel6.add(lblFiltroMesa, new org.netbeans.lib.awtextra.AbsoluteConstraints(182, 48, 40, 30));
+        jPanel6.add(txtFiltroMesa, new org.netbeans.lib.awtextra.AbsoluteConstraints(224, 48, 46, 30));
 
         btnFiltroHoy = new javax.swing.JButton("Hoy");
         btnFiltroHoy.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        btnFiltroHoy.setToolTipText("Mostrar sólo pedidos realizados hoy");
+        btnFiltroHoy.setToolTipText("<html><body style='width: 220px; padding: 2px;'>"
+                + "<b style='color:#0284c7;'>Filtro Solo Hoy</b><br>"
+                + "Muestra únicamente los pedidos y tickets registrados durante la fecha actual."
+                + "</body></html>");
         btnFiltroHoy.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnFiltroHoy.addActionListener(e -> filtrarHistorialHoy());
-        jPanel6.add(btnFiltroHoy, new org.netbeans.lib.awtextra.AbsoluteConstraints(215, 48, 65, 30));
+        jPanel6.add(btnFiltroHoy, new org.netbeans.lib.awtextra.AbsoluteConstraints(274, 48, 56, 30));
 
         btnFiltroPendientes = new javax.swing.JButton("Pendientes");
         btnFiltroPendientes.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        btnFiltroPendientes.setToolTipText("Mostrar sólo pedidos en estado PENDIENTE");
+        btnFiltroPendientes.setToolTipText("<html><body style='width: 230px; padding: 2px;'>"
+                + "<b style='color:#d97706;'>Filtro Cuentas Pendientes</b><br>"
+                + "Muestra solo las cuentas activas en mesa aún no cobradas (candidatas a cobro o anulación por fuga)."
+                + "</body></html>");
         btnFiltroPendientes.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnFiltroPendientes.addActionListener(e -> filtrarHistorialPendientes());
-        jPanel6.add(btnFiltroPendientes, new org.netbeans.lib.awtextra.AbsoluteConstraints(288, 48, 105, 30));
+        jPanel6.add(btnFiltroPendientes, new org.netbeans.lib.awtextra.AbsoluteConstraints(334, 48, 92, 30));
 
         btnFiltroFinalizados = new javax.swing.JButton("Finalizados");
         btnFiltroFinalizados.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        btnFiltroFinalizados.setToolTipText("Mostrar sólo pedidos en estado FINALIZADO");
+        btnFiltroFinalizados.setToolTipText("<html><body style='width: 230px; padding: 2px;'>"
+                + "<b style='color:#059669;'>Filtro Facturas Cobradas</b><br>"
+                + "Muestra solo las ventas cobradas y finalizadas (anulables únicamente con reversión en caja chica)."
+                + "</body></html>");
         btnFiltroFinalizados.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnFiltroFinalizados.addActionListener(e -> filtrarHistorialFinalizados());
-        jPanel6.add(btnFiltroFinalizados, new org.netbeans.lib.awtextra.AbsoluteConstraints(401, 48, 105, 30));
+        jPanel6.add(btnFiltroFinalizados, new org.netbeans.lib.awtextra.AbsoluteConstraints(430, 48, 92, 30));
 
         javax.swing.JLabel lblDesde = new javax.swing.JLabel("Desde:");
         lblDesde.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        jPanel6.add(lblDesde, new org.netbeans.lib.awtextra.AbsoluteConstraints(514, 48, 40, 30));
+        lblDesde.setToolTipText("Fecha inicial del rango de búsqueda (AAAA-MM-DD)");
+        jPanel6.add(lblDesde, new org.netbeans.lib.awtextra.AbsoluteConstraints(526, 48, 40, 30));
 
         txtFiltroFechaDesde = new javax.swing.JTextField();
         txtFiltroFechaDesde.setToolTipText("Fecha inicial (AAAA-MM-DD)");
         txtFiltroFechaDesde.addActionListener(e -> { filtroSoloHoyActivo = false; aplicarFiltroHistorial(); });
-        jPanel6.add(txtFiltroFechaDesde, new org.netbeans.lib.awtextra.AbsoluteConstraints(557, 48, 75, 30));
+        jPanel6.add(txtFiltroFechaDesde, new org.netbeans.lib.awtextra.AbsoluteConstraints(568, 48, 72, 30));
 
         javax.swing.JLabel lblHasta = new javax.swing.JLabel("Hasta:");
         lblHasta.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        jPanel6.add(lblHasta, new org.netbeans.lib.awtextra.AbsoluteConstraints(640, 48, 38, 30));
+        lblHasta.setToolTipText("Fecha final del rango de búsqueda (AAAA-MM-DD)");
+        jPanel6.add(lblHasta, new org.netbeans.lib.awtextra.AbsoluteConstraints(644, 48, 38, 30));
 
         txtFiltroFechaHasta = new javax.swing.JTextField();
         txtFiltroFechaHasta.setToolTipText("Fecha final (AAAA-MM-DD)");
         txtFiltroFechaHasta.addActionListener(e -> { filtroSoloHoyActivo = false; aplicarFiltroHistorial(); });
-        jPanel6.add(txtFiltroFechaHasta, new org.netbeans.lib.awtextra.AbsoluteConstraints(680, 48, 75, 30));
+        jPanel6.add(txtFiltroFechaHasta, new org.netbeans.lib.awtextra.AbsoluteConstraints(684, 48, 72, 30));
 
         btnFiltroRangoFecha = new javax.swing.JButton("Rango");
         btnFiltroRangoFecha.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        btnFiltroRangoFecha.setToolTipText("Aplicar filtro de rango de fechas");
+        btnFiltroRangoFecha.setToolTipText("<html><body style='width: 220px; padding: 2px;'>"
+                + "<b style='color:#0284c7;'>Aplicar Rango de Fechas</b><br>"
+                + "Filtra los comprobantes registrados entre la fecha 'Desde' y 'Hasta'."
+                + "</body></html>");
         btnFiltroRangoFecha.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnFiltroRangoFecha.addActionListener(e -> { filtroSoloHoyActivo = false; aplicarFiltroHistorial(); });
-        jPanel6.add(btnFiltroRangoFecha, new org.netbeans.lib.awtextra.AbsoluteConstraints(763, 48, 72, 30));
+        jPanel6.add(btnFiltroRangoFecha, new org.netbeans.lib.awtextra.AbsoluteConstraints(760, 48, 68, 30));
 
         btnLimpiarFiltrosHistorial = new javax.swing.JButton("Limpiar");
         btnLimpiarFiltrosHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        btnLimpiarFiltrosHistorial.setToolTipText("Limpiar todos los filtros y restaurar historial completo");
+        btnLimpiarFiltrosHistorial.setToolTipText("<html><body style='width: 220px; padding: 2px;'>"
+                + "<b style='color:#0284c7;'>Restaurar Vista Completa</b><br>"
+                + "Limpia los filtros de mesa, búsqueda general, estado y fechas para ver el historial completo."
+                + "</body></html>");
         btnLimpiarFiltrosHistorial.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnLimpiarFiltrosHistorial.addActionListener(e -> limpiarFiltrosHistorial());
-        jPanel6.add(btnLimpiarFiltrosHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(843, 48, 78, 30));
+        jPanel6.add(btnLimpiarFiltrosHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(832, 48, 74, 30));
 
         btnPdfPedido.setToolTipText("Ver / Reimprimir factura del pedido seleccionado");
 
@@ -667,7 +737,7 @@ public final class Sistema extends javax.swing.JFrame {
             }
 
         });
-        jPanel6.add(btnReimprimirHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(929, 48, 120, 30));
+        jPanel6.add(btnReimprimirHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(910, 48, 115, 30));
 
         btnPrevisualizarHistorial = new javax.swing.JButton("Previsualizar");
         btnPrevisualizarHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
@@ -692,7 +762,7 @@ public final class Sistema extends javax.swing.JFrame {
                         "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
-        jPanel6.add(btnPrevisualizarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(1057, 48, 130, 30));
+        jPanel6.add(btnPrevisualizarHistorial, new org.netbeans.lib.awtextra.AbsoluteConstraints(1030, 48, 125, 30));
 
         btnReimprimirComandaHistorial = new javax.swing.JButton("Comanda");
         btnReimprimirComandaHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
@@ -3865,6 +3935,11 @@ public final class Sistema extends javax.swing.JFrame {
             }
         });
         menuCtxHistorial.add(itmCtxAuditoria);
+
+        menuCtxHistorial.addSeparator();
+        javax.swing.JMenuItem itmCtxReporteAnulados = new javax.swing.JMenuItem("📊 Reporte de Tickets Anulados");
+        itmCtxReporteAnulados.addActionListener(e -> abrirReporteTicketsAnulados());
+        menuCtxHistorial.add(itmCtxReporteAnulados);
         TablePedidos.setComponentPopupMenu(menuCtxHistorial);
         if (TablePedidos.getColumnModel().getColumnCount() > 0) {
             TablePedidos.getColumnModel().getColumn(0).setMinWidth(80);
@@ -6754,6 +6829,7 @@ public final class Sistema extends javax.swing.JFrame {
         filtroSoloHoyActivo = false;
         if (txtFiltroFechaDesde != null) txtFiltroFechaDesde.setText("");
         if (txtFiltroFechaHasta != null) txtFiltroFechaHasta.setText("");
+        if (txtFiltroMesa != null) txtFiltroMesa.setText("");
         if (txtBuscarHistorial != null) txtBuscarHistorial.setText(String.valueOf(idPedido));
         int indiceHistorial = jTabbedPane1.indexOfComponent(jPanel6);
         if (indiceHistorial >= 0) jTabbedPane1.setSelectedIndex(indiceHistorial);
@@ -9006,10 +9082,22 @@ public final class Sistema extends javax.swing.JFrame {
         aplicarFiltroHistorial();
     }
 
+    public void filtrarHistorialPorMesa(int numMesa) {
+        filtrarHistorialPorMesa(String.valueOf(numMesa));
+    }
+
+    public void filtrarHistorialPorMesa(String mesaStr) {
+        if (txtFiltroMesa != null) {
+            txtFiltroMesa.setText(mesaStr != null ? mesaStr.trim() : "");
+            aplicarFiltroHistorial();
+        }
+    }
+
     public void limpiarFiltrosHistorial() {
         filtroEstadoSeleccionado = null;
         filtroSoloHoyActivo = false;
         if (txtBuscarHistorial != null) txtBuscarHistorial.setText("");
+        if (txtFiltroMesa != null) txtFiltroMesa.setText("");
         if (txtFiltroFechaDesde != null) txtFiltroFechaDesde.setText("");
         if (txtFiltroFechaHasta != null) txtFiltroFechaHasta.setText("");
         aplicarFiltroHistorial();
@@ -9023,11 +9111,26 @@ public final class Sistema extends javax.swing.JFrame {
 
         List<javax.swing.RowFilter<Object, Object>> filtros = new ArrayList<>();
 
-        // 1. Filtro libre de texto
+        // 1. Filtro libre de texto general
         if (txtBuscarHistorial != null) {
             String texto = txtBuscarHistorial.getText().trim();
             if (!texto.isEmpty()) {
                 filtros.add(javax.swing.RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(texto)));
+            }
+        }
+
+        // 1.1. Filtro exclusivo por número de mesa (Columna 3: N° Mesa) para doble verificación
+        if (txtFiltroMesa != null) {
+            String rawMesa = txtFiltroMesa.getText().trim();
+            if (!rawMesa.isEmpty()) {
+                String limpio = rawMesa.replaceAll("(?i)[^0-9—]", "").trim();
+                if (limpio.isEmpty()) {
+                    limpio = rawMesa;
+                }
+                if (rawMesa.equalsIgnoreCase("rapido") || rawMesa.equalsIgnoreCase("barra") || rawMesa.equals("0")) {
+                    limpio = "—";
+                }
+                filtros.add(javax.swing.RowFilter.regexFilter("(?i)^" + java.util.regex.Pattern.quote(limpio) + "$", 3));
             }
         }
 
@@ -9185,6 +9288,9 @@ public final class Sistema extends javax.swing.JFrame {
     public javax.swing.JButton getBtnProbarImpresion() { return btnProbarImpresion; }
     public javax.swing.JButton getBtnAnularPedido() { return btnAnularPedido; }
     public javax.swing.JButton getBtnDepurarPendientesFecha() { return btnDepurarPendientesFecha; }
+    public javax.swing.JButton getBtnReporteAnulados() { return btnReporteAnulados; }
+    public javax.swing.JTextField getTxtBuscarHistorial() { return txtBuscarHistorial; }
+    public javax.swing.JTextField getTxtFiltroMesa() { return txtFiltroMesa; }
     public javax.swing.JButton getBtnAuditoriaPedido() { return btnAuditoriaPedido; }
     public javax.swing.JButton getBtnCobrarHistorialModal() { return btnCobrarHistorialModal; }
     public javax.swing.JButton getBtnCobrarModalTab4() { return btnCobrarModalTab4; }
@@ -10337,7 +10443,7 @@ public final class Sistema extends javax.swing.JFrame {
         }
 
         String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
-        DialogoAnulacionAsistida dialogo = new DialogoAnulacionAsistida(this, pedidosControlador, politicaAcceso, usr, idInicial);
+        DialogoAnulacionAsistida dialogo = new DialogoAnulacionAsistida(this, pedidosControlador, politicaAcceso, usr, idInicial, conf != null ? conf : lgDao.datosEmpresa());
         dialogo.setVisible(true);
 
         if (dialogo.isAnulacionExitosa()) {
@@ -10347,6 +10453,14 @@ public final class Sistema extends javax.swing.JFrame {
             RefrescoVistas.notificar(RefrescoVistas.HISTORIAL);
             RefrescoVistas.notificar(RefrescoVistas.PEDIDOS);
         }
+    }
+
+    public void abrirReporteTicketsAnulados() {
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
+        Config cfg = conf != null ? conf : lgDao.datosEmpresa();
+        String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
+        DialogoReporteAnulados dlg = new DialogoReporteAnulados(this, auditoriaPedidosDao, cfg, usr);
+        dlg.setVisible(true);
     }
 
     void depurarPendientesPorFechaSeleccionada() {

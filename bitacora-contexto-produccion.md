@@ -1,5 +1,24 @@
 # Bitácora de continuidad — preparación para producción
 
+snapshot 11/11/2026 20:42
+
+## Reporte Completo de Tickets Anulados (Filtros Multicriterio, Impresión Directa y PDF/HTML)
+
+| Comando | Evidencia | Resultado |
+|---|---|---|
+| `ant test-single -Dtest.class=Vista.ReporteTicketsAnuladosTest` | 5 tests ejecutados con 0 errores y 0 fallos (`build/test/results/TEST-Vista.ReporteTicketsAnuladosTest.xml`). Cobertura integral: construcción de filtros rápidos (`paraHoy`, `paraMesActual`, por mesa, por usuario, categoría y texto libre), formateo riguroso de DTO con em-dash y tipo de pedido, generación de documento PDF A4 horizontal con cabecera y tarjetas KPI, generación interactiva de reporte HTML responsivo con impresión CSS (`@media print`) y badges de estado, y verificación de presencia, activación y tooltip enriquecido del botón `btnReporteAnulados` en `Sistema`. | PASS |
+| `ant test-single -Dtest.class=Vista.FiltrosHistorialTest` | 10 tests pasados con 0 errores y 0 fallos (`build/test/results/TEST-Vista.FiltrosHistorialTest.xml`). Cobertura de regresión: filtros por mesa, por fecha, combinados y tooltips de doble verificación. | PASS |
+| `ant -q compile jar && cp -f dist/Restaurante.jar Restaurante_Ejecutable/Restaurante.jar` | Compilación limpia sin advertencias de bloqueo ni errores sintácticos. Despliegue sincronizado del artefacto `Restaurante.jar`. | PASS |
+
+snapshot 11/11/2026 20:25
+
+## Filtro exclusivo por número de mesa en Historial y Tooltips explicativos de doble verificación
+
+| Comando | Evidencia | Resultado |
+|---|---|---|
+| `ant test-single -Dtest.class=Vista.FiltrosHistorialTest` | 10 tests pasados con 0 errores y 0 fallos (`build/test/results/TEST-Vista.FiltrosHistorialTest.xml`). Cobertura: filtro exclusivo por número de mesa (`testFiltroMesaExclusivoMuestraSoloPedidosDeEsaMesa`), filtro con prefijo textual tipo 'Mesa 4' (`testFiltroMesaConTextoPrefijoOMesaTexto`), filtro combinado mesa + pendientes (`testFiltroMesaCombinadoConPendientes`), restauración completa al limpiar (`testLimpiarFiltrosRestauraFiltroMesa`), y validación de tooltips explicativos HTML con énfasis en doble verificación antes de anular (`testTooltipsExplicativosFiltroMesaYAnulacion`). | PASS |
+| `ant -q compile jar && cp -f dist/Restaurante.jar Restaurante_Ejecutable/Restaurante.jar` | Compilación limpia de `Sistema.java` y `DialogoAnulacionAsistida.java` y despliegue del JAR en `Restaurante_Ejecutable/`. | PASS |
+
 snapshot 09/11/2026 12:35
 
 ## Anulaciones, Contingencia SENIAT y Presentación Ejecutiva con Screenshots Reales E2E

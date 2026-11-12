@@ -37,6 +37,7 @@ public class DialogoAnulacionAsistida extends JDialog {
     private final PedidosControlador controlador;
     private final PoliticaAcceso politica;
     private final String usuarioActual;
+    private final Modelo.Config configEmpresa;
 
     private JTextField txtIdDocumento;
     private JLabel lblEstadoBusqueda;
@@ -58,10 +59,15 @@ public class DialogoAnulacionAsistida extends JDialog {
     private final Timer timerBusquedaDebounce;
 
     public DialogoAnulacionAsistida(Frame owner, PedidosControlador controlador, PoliticaAcceso politica, String usuarioActual, Integer idInicial) {
+        this(owner, controlador, politica, usuarioActual, idInicial, null);
+    }
+
+    public DialogoAnulacionAsistida(Frame owner, PedidosControlador controlador, PoliticaAcceso politica, String usuarioActual, Integer idInicial, Modelo.Config configEmpresa) {
         super(owner, "Anulación Asistida de Facturas y Comprobantes (F8)", true);
         this.controlador = controlador;
         this.politica = politica;
         this.usuarioActual = (usuarioActual != null && !usuarioActual.isBlank()) ? usuarioActual.trim() : "Sistema";
+        this.configEmpresa = configEmpresa != null ? configEmpresa : new Modelo.LoginDao().datosEmpresa();
 
         this.timerBusquedaDebounce = new Timer(180, e -> ejecutarBusquedaDocumento());
         this.timerBusquedaDebounce.setRepeats(false);
@@ -123,7 +129,10 @@ public class DialogoAnulacionAsistida extends JDialog {
         txtIdDocumento.setFont(new Font("Segoe UI", Font.BOLD, 15));
         txtIdDocumento.setForeground(new Color(15, 23, 42));
         txtIdDocumento.setPreferredSize(new Dimension(140, 36));
-        txtIdDocumento.setToolTipText("Digite el número del pedido o factura (ej. 28 o #00000028)");
+        txtIdDocumento.setToolTipText("<html><body style='width: 250px; padding: 3px;'>"
+                + "<b style='color:#0284c7;'>N° de Ticket o Factura a Anular</b><br>"
+                + "Digite el número del comprobante. El sistema cargará en vivo la <b>Mesa</b>, cliente y montos para su <i>doble verificación</i> visual antes de proceder."
+                + "</body></html>");
 
         lblEstadoBusqueda = new JLabel(" ");
         lblEstadoBusqueda.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -131,6 +140,7 @@ public class DialogoAnulacionAsistida extends JDialog {
         JButton btnBuscar = new JButton("Buscar");
         btnBuscar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnBuscar.setBackground(new Color(241, 245, 249));
+        btnBuscar.setToolTipText("Consultar datos del comprobante para verificar mesa, total y estado");
         btnBuscar.addActionListener(e -> ejecutarBusquedaDocumento());
 
         JPanel pnlInputWrap = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
@@ -155,6 +165,10 @@ public class DialogoAnulacionAsistida extends JDialog {
         lblValorFecha = agregarFilaDetalle(pnlTarjetaDetalle, "Fecha y Hora:", "—");
         lblValorCliente = agregarFilaDetalle(pnlTarjetaDetalle, "Cliente / Documento:", "—");
         lblValorUbicacion = agregarFilaDetalle(pnlTarjetaDetalle, "Ubicación / Mesa:", "—");
+        lblValorUbicacion.setToolTipText("<html><body style='width: 240px; padding: 2px;'>"
+                + "<b style='color:#0284c7;'>Doble Verificación de Mesa</b><br>"
+                + "Compruebe que la sala y el número de mesa mostrados aquí coincidan con la cuenta física a anular."
+                + "</body></html>");
         lblValorTotales = agregarFilaDetalle(pnlTarjetaDetalle, "Total Facturado:", "—");
         lblValorEstado = agregarFilaDetalle(pnlTarjetaDetalle, "Estado del Documento:", "—");
 
@@ -170,7 +184,11 @@ public class DialogoAnulacionAsistida extends JDialog {
         txtMotivo = new JTextField();
         txtMotivo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         txtMotivo.setPreferredSize(new Dimension(100, 34));
-        txtMotivo.setToolTipText("Indique la justificación formal de la anulación");
+        txtMotivo.setToolTipText("<html><body style='width: 250px; padding: 2px;'>"
+                + "<b style='color:#c0392b;'>Motivo Formal Obligatorio</b><br>"
+                + "Indique la causa de anulación (ej. 'Cliente se retiró', 'Error de tipeo de mesa', 'Plato devuelto').<br>"
+                + "Quedará grabado en la auditoría inmutable del sistema."
+                + "</body></html>");
 
         pnlMotivo.add(lblMotivoPrompt, BorderLayout.NORTH);
         pnlMotivo.add(txtMotivo, BorderLayout.CENTER);
@@ -179,8 +197,23 @@ public class DialogoAnulacionAsistida extends JDialog {
         content.add(pnlCentro, BorderLayout.CENTER);
 
         // 3. Botonera Inferior
-        JPanel pnlBotonera = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        JPanel pnlBotonera = new JPanel(new BorderLayout(10, 0));
         pnlBotonera.setOpaque(false);
+
+        JButton btnVerReporte = new JButton("📊 Reporte Anulados");
+        btnVerReporte.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnVerReporte.setToolTipText("<html><body style='width: 250px; padding: 2px;'>"
+                + "<b style='color:#0284c7;'>Reporte de Tickets Anulados</b><br>"
+                + "Abre el reporte general con filtros por fecha, mes, mesa y usuario para imprimir o exportar a PDF/HTML."
+                + "</body></html>");
+        btnVerReporte.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnVerReporte.addActionListener(e -> {
+            DialogoReporteAnulados rep = new DialogoReporteAnulados(this, new Modelo.AuditoriaPedidosDao(), configEmpresa, usuarioActual);
+            rep.setVisible(true);
+        });
+
+        JPanel pnlAcciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        pnlAcciones.setOpaque(false);
 
         btnCancelar = new JButton("Cancelar (ESC)");
         btnCancelar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -193,12 +226,19 @@ public class DialogoAnulacionAsistida extends JDialog {
         btnConfirmarAnular.setOpaque(true);
         btnConfirmarAnular.setContentAreaFilled(true);
         btnConfirmarAnular.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        btnConfirmarAnular.setToolTipText("<html><body style='width: 250px; padding: 2px;'>"
+                + "<b style='color:#c0392b;'>Confirmar Anulación</b><br>"
+                + "Ejecuta la anulación con el motivo indicado, liberando la mesa y registrando la auditoría completa."
+                + "</body></html>");
         btnConfirmarAnular.setEnabled(false);
         btnConfirmarAnular.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnConfirmarAnular.addActionListener(e -> confirmarYEjecutarAnulacion());
 
-        pnlBotonera.add(btnCancelar);
-        pnlBotonera.add(btnConfirmarAnular);
+        pnlAcciones.add(btnCancelar);
+        pnlAcciones.add(btnConfirmarAnular);
+
+        pnlBotonera.add(btnVerReporte, BorderLayout.WEST);
+        pnlBotonera.add(pnlAcciones, BorderLayout.EAST);
         content.add(pnlBotonera, BorderLayout.SOUTH);
 
         setContentPane(content);
