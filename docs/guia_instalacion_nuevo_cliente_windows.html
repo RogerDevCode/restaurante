@@ -596,6 +596,74 @@
     </table>
   </div>
 
+  <!-- SECCIÓN ESPECIAL: ¿QUÉ PASA SI INSTALO CON EL .LIC ACTUAL EN OTRO CLIENTE? -->
+  <div class="card" style="border-color: rgba(245, 158, 11, 0.4);">
+    <div class="card-title">
+      <span class="step-badge" style="background: var(--accent-amber); color: #0b1120;">⚠️</span>
+      ¿Qué pasa si instalo el programa con el licencia.lic actual en otro cliente?
+    </div>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 14px;">
+      Si copias la carpeta tal cual está hoy y la instalas en un cliente nuevo (usando la licencia emitida para <em>Restaurant La Avalancha 2023, C.A.</em>), <strong>el sistema va a operar y va a facturar</strong>, pero se generarán <strong>4 desajustes técnicos y legales por dentro</strong>:
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 18px;">
+      <div style="background: var(--surface-card); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 10px; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="color: var(--accent-green); font-size: 1.2rem;">✔</span>
+          <strong style="color: #ffffff; font-size: 0.98rem;">Lo que SÍ funcionará en pantalla:</strong>
+        </div>
+        <ul style="list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; color: var(--text-muted);">
+          <li>• El sistema arranca sin bloqueos porque la firma ECDSA de CAPIP es válida.</li>
+          <li>• El cliente puede escribir su RIF, nombre y logo en <em>⚙️ Configuración</em>.</li>
+          <li>• Las facturas y comandas impresas saldrán con su nombre y RIF.</li>
+        </ul>
+      </div>
+
+      <div style="background: var(--surface-card); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="color: var(--accent-amber); font-size: 1.2rem;">⚠️</span>
+          <strong style="color: #ffffff; font-size: 0.98rem;">Los 4 desajustes que ocurren por dentro:</strong>
+        </div>
+        <ul style="list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; color: var(--text-muted);">
+          <li>• <strong>1. Identidad alterada:</strong> En la firma digital y en tablets reportará como titular a <em>La Avalancha</em> (RIF J-12345678-0).</li>
+          <li>• <strong>2. Trazabilidad SENIAT:</strong> El libro fiscal digital sellará las ventas con el ID de licencia ajeno.</li>
+          <li>• <strong>3. Cero control de cobro:</strong> Tiene mesas ilimitadas y caducidad perpetua; no podrás limitarle mesas ni cobrar mensualidad.</li>
+          <li>• <strong>4. Riesgo de cifrado futuro:</strong> Si cambias el <code>.lic</code> después, dará error de lectura en sus datos fiscales.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Comparativa Visual -->
+    <div class="diagram-wrap" style="padding: 16px;">
+      <svg viewBox="0 0 880 150" xmlns="http://www.w3.org/2000/svg">
+        <rect width="880" height="150" rx="10" fill="#090e17"/>
+        
+        <!-- Opción A: Reusar .lic -->
+        <g transform="translate(20, 20)">
+          <rect width="410" height="110" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+          <text x="205" y="24" fill="#fbbf24" font-size="12" font-weight="bold" text-anchor="middle">❌ REUTILIZAR EL .LIC ACTUAL EN OTRO CLIENTE</text>
+          <text x="20" y="52" fill="#94a3b8" font-size="11">• Funciona la interfaz, pero el software está legalmente a nombre de otro.</text>
+          <text x="20" y="72" fill="#94a3b8" font-size="11">• El cliente tiene mesas ilimitadas y licencia perpetua gratis sin tu control.</text>
+          <text x="20" y="92" fill="#f87171" font-size="11">• Si cambias la licencia en el futuro, se corrompe el descifrado del RIF.</text>
+        </g>
+
+        <!-- Opción B: Emitir nuevo .lic -->
+        <g transform="translate(450, 20)">
+          <rect width="410" height="110" rx="8" fill="#1e293b" stroke="#22c55e" stroke-width="1.5"/>
+          <text x="205" y="24" fill="#4ade80" font-size="12" font-weight="bold" text-anchor="middle">✔ EMITIR SU LICENCIA PROPIA (30 SEGUNDOS)</text>
+          <text x="20" y="52" fill="#f8fafc" font-size="11">• Criptografía limpia: RIF y Razón Social coinciden al 100% ante el SENIAT.</text>
+          <text x="20" y="72" fill="#f8fafc" font-size="11">• Tú decides si su licencia es Perpetua o si vence por mes/año.</text>
+          <text x="20" y="92" fill="#4ade80" font-size="11">• Clave AES exclusiva: Máxima seguridad e independencia total entre clientes.</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="callout callout-success" style="margin-top: 14px;">
+      <h4>Regla de oro de distribución</h4>
+      <p>Por los <strong>30 segundos</strong> que toma ejecutar <code>emitir_licencia_cliente.bat</code> en tu oficina, genera siempre una licencia con el RIF y nombre del nuevo cliente. Te evitarás incompatibilidades futuras de descifrado y mantendrás el control comercial de mesas y vencimientos.</p>
+    </div>
+  </div>
+
   <!-- CHECKLIST RÁPIDO PARA LLEVAR A LA INSTALACIÓN -->
   <div class="card">
     <div class="card-title">
