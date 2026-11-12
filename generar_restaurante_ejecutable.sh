@@ -28,6 +28,8 @@ BIBLIOTECAS=(
 FILES=(
     "BD.sql" "actualizar_bd.sql"
     "limpiar_para_comenzar_hoy.sql" "limpiar_para_comenzar_hoy.bat" "limpiar_para_comenzar_hoy.sh"
+    "eliminar_ventas_y_tickets.sql" "eliminar_ventas_y_tickets.bat" "eliminar_ventas_y_tickets.sh"
+    "limpiar_sql_ventas.py"
     "iniciar_restaurante.bat" "iniciar_restaurante.sh" "actualizar_bd.bat"
     "instalar_mysql_y_bd.bat" "instalar_mysql_y_bd.ps1" "configurar_mysql.ps1"
     "instalar_acceso_directo.bat" "instalar_acceso_directo.ps1" "instalacion_completa_un_clic.bat"
