@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan de Migración — Restaurante 2026 → Go</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --bg2: #161822;
+  --bg3: #1c1f2e;
+  --card: #1e2030;
+  --border: #2a2d42;
+  --text: #c8cdd8;
+  --text2: #8f95a8;
+  --accent: #00d4aa;
+  --accent2: #00b894;
+  --blue: #4da6ff;
+  --purple: #a78bfa;
+  --orange: #f59e42;
+  --red: #ef4444;
+  --yellow: #fbbf24;
+  --green: #22c55e;
+  --pink: #f472b6;
+  --cyan: #22d3ee;
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 15px;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* NAV */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  background: rgba(15,17,23,.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+  padding: 0 2rem;
+  display: flex; align-items: center; gap: 1.5rem;
+  height: 56px;
+}
+.nav-logo { font-weight: 700; font-size: 1.1rem; color: var(--accent); white-space: nowrap; }
+.nav-links { display: flex; gap: .5rem; flex-wrap: wrap; overflow-x: auto; }
+.nav-links a {
+  color: var(--text2); font-size: .82rem; padding: 4px 10px;
+  border-radius: 6px; transition: all .2s; white-space: nowrap;
+}
+.nav-links a:hover { color: var(--accent); background: var(--bg3); text-decoration: none; }
+
+/* LAYOUT */
+.container { max-width: 1100px; margin: 0 auto; padding: 80px 2rem 4rem; }
+.hero {
+  text-align: center; padding: 4rem 0 3rem;
+  background: linear-gradient(135deg, rgba(0,212,170,.08), rgba(77,166,255,.06));
+  border-radius: var(--radius); margin-bottom: 3rem;
+  border: 1px solid var(--border);
+}
+.hero h1 { font-size: 2.6rem; font-weight: 800; color: #fff; margin-bottom: .5rem; }
+.hero h1 span { color: var(--accent); }
+.hero .sub { color: var(--text2); font-size: 1.1rem; }
+.hero .badges { margin-top: 1.2rem; display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 12px; border-radius: 20px; font-size: .78rem; font-weight: 600;
+  background: var(--bg3); border: 1px solid var(--border);
+}
+.badge.go { color: var(--cyan); border-color: rgba(34,211,238,.3); }
+.badge.java { color: var(--orange); border-color: rgba(245,158,66,.3); }
+.badge.lines { color: var(--purple); border-color: rgba(167,139,250,.3); }
+.badge.db { color: var(--blue); border-color: rgba(77,166,255,.3); }
+
+/* SECTIONS */
+section { margin-bottom: 3rem; }
+h2 {
+  font-size: 1.6rem; font-weight: 700; color: #fff;
+  padding-bottom: .5rem; margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--accent);
+  display: flex; align-items: center; gap: .6rem;
+}
+h2 .num {
+  background: var(--accent); color: var(--bg); font-size: .85rem;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; flex-shrink: 0;
+}
+h3 {
+  font-size: 1.15rem; font-weight: 700; color: var(--blue);
+  margin: 1.5rem 0 .8rem;
+}
+h4 { font-size: 1rem; font-weight: 600; color: var(--purple); margin: 1rem 0 .5rem; }
+
+/* CARDS */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.2rem;
+}
+.card-header {
+  display: flex; align-items: center; gap: .6rem;
+  font-weight: 700; font-size: 1.05rem; color: #fff; margin-bottom: .8rem;
+}
+.card-header .icon { font-size: 1.3rem; }
+
+/* TABLES */
+table {
+  width: 100%; border-collapse: collapse;
+  margin: 1rem 0; font-size: .88rem;
+}
+thead th {
+  background: var(--bg3); color: var(--accent);
+  padding: 10px 14px; text-align: left; font-weight: 700;
+  border-bottom: 2px solid var(--accent);
+  position: sticky; top: 56px;
+}
+tbody td {
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+tbody tr:hover { background: rgba(0,212,170,.04); }
+td code, th code {
+  background: var(--bg); padding: 2px 6px; border-radius: 4px;
+  font-family: var(--mono); font-size: .82rem; color: var(--cyan);
+}
+
+/* CODE */
+pre {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1rem; overflow-x: auto;
+  font-family: var(--mono); font-size: .85rem; line-height: 1.6;
+  margin: .8rem 0;
+}
+code { font-family: var(--mono); }
+.inline-code {
+  background: var(--bg); padding: 2px 6px; border-radius: 4px;
+  font-size: .85rem; color: var(--cyan);
+}
+
+/* DIAGRAM */
+.diagram {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.5rem;
+  margin: 1.5rem 0; overflow-x: auto;
+  text-align: center;
+}
+.diagram svg { max-width: 100%; height: auto; }
+
+/* PHASE TIMELINE */
+.timeline { position: relative; padding-left: 2.5rem; margin: 1.5rem 0; }
+.timeline::before {
+  content: ''; position: absolute; left: 12px; top: 0; bottom: 0;
+  width: 3px; background: linear-gradient(to bottom, var(--accent), var(--blue), var(--purple), var(--orange));
+  border-radius: 2px;
+}
+.timeline-item { position: relative; margin-bottom: 1.5rem; }
+.timeline-item::before {
+  content: ''; position: absolute; left: -2.5rem; top: 6px;
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 3px solid var(--accent); background: var(--bg);
+}
+.timeline-item:nth-child(2)::before { border-color: var(--blue); }
+.timeline-item:nth-child(3)::before { border-color: var(--purple); }
+.timeline-item:nth-child(4)::before { border-color: var(--orange); }
+.timeline-item:nth-child(5)::before { border-color: var(--green); }
+.timeline-item:nth-child(6)::before { border-color: var(--pink); }
+.timeline-item:nth-child(7)::before { border-color: var(--yellow); }
+.timeline-item .phase-title { font-weight: 700; font-size: 1.05rem; color: #fff; }
+.timeline-item .phase-desc { color: var(--text2); font-size: .9rem; margin-top: .3rem; }
+.timeline-item .phase-files { color: var(--text2); font-size: .82rem; margin-top: .2rem; }
+
+/* ALERTS */
+.alert {
+  border-radius: 8px; padding: 1rem 1.2rem; margin: 1rem 0;
+  border-left: 4px solid; font-size: .9rem;
+}
+.alert-warn { border-color: var(--yellow); background: rgba(251,191,36,.06); }
+.alert-danger { border-color: var(--red); background: rgba(239,68,68,.06); }
+.alert-info { border-color: var(--blue); background: rgba(77,166,255,.06); }
+.alert-tip { border-color: var(--green); background: rgba(34,197,94,.06); }
+.alert-title { font-weight: 700; margin-bottom: .3rem; }
+
+/* CHECKLIST */
+.checklist { list-style: none; margin: .8rem 0; }
+.checklist li {
+  padding: 6px 0 6px 2rem; position: relative;
+  border-bottom: 1px solid rgba(42,45,66,.5);
+}
+.checklist li::before {
+  content: '☐'; position: absolute; left: 0; color: var(--accent);
+  font-size: 1.1rem; top: 5px;
+}
+.checklist li.done::before { content: '☑'; color: var(--green); }
+
+/* GRID */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+@media (max-width: 768px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+  .hero h1 { font-size: 1.8rem; }
+}
+
+/* METRIC */
+.metric {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.2rem; text-align: center;
+}
+.metric .value { font-size: 2rem; font-weight: 800; color: var(--accent); }
+.metric .label { color: var(--text2); font-size: .82rem; margin-top: .3rem; }
+
+/* TAG */
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: .75rem; font-weight: 600;
+}
+.tag-go { background: rgba(34,211,238,.15); color: var(--cyan); }
+.tag-java { background: rgba(245,158,66,.15); color: var(--orange); }
+.tag-critical { background: rgba(239,68,68,.15); color: var(--red); }
+.tag-easy { background: rgba(34,197,94,.15); color: var(--green); }
+.tag-medium { background: rgba(251,191,36,.15); color: var(--yellow); }
+.tag-hard { background: rgba(167,139,250,.15); color: var(--purple); }
+
+/* COLLAPSE */
+details {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; margin: .8rem 0;
+}
+details summary {
+  padding: 1rem 1.2rem; cursor: pointer;
+  font-weight: 600; color: #fff; list-style: none;
+}
+details summary::before { content: '▸ '; color: var(--accent); }
+details[open] summary::before { content: '▾ '; }
+details > div { padding: 0 1.2rem 1rem; }
+
+/* FOOTER */
+footer {
+  text-align: center; padding: 2rem; color: var(--text2);
+  font-size: .82rem; border-top: 1px solid var(--border); margin-top: 3rem;
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">🔄 Migración Go</div>
+  <div class="nav-links">
+    <a href="#radiografia">Radiografía</a>
+    <a href="#arquitectura">Arquitectura</a>
+    <a href="#principios">Principios</a>
+    <a href="#fases">Fases</a>
+    <a href="#fase1">F1: Cimientos</a>
+    <a href="#fase2">F2: Dominio</a>
+    <a href="#fase3">F3: Servicios</a>
+    <a href="#fase4">F4: API</a>
+    <a href="#fase5">F5: Frontend</a>
+    <a href="#fase6">F6: Infra</a>
+    <a href="#fase7">F7: Integración</a>
+    <a href="#mapeo">Mapeo</a>
+    <a href="#librerias">Librerías</a>
+    <a href="#riesgos">Riesgos</a>
+    <a href="#llm">Guía LLM</a>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- ════════════════════════════ HERO ════════════════════════════ -->
+<div class="hero">
+  <h1>Restaurante 2026 → <span>Go</span></h1>
+  <p class="sub">Plan maestro de migración — Java 21 Swing a Go idiomático</p>
+  <div class="badges">
+    <span class="badge java">☕ Java 21 · Swing · Ant</span>
+    <span class="badge go">🐹 Go 1.22+ · Web · Docker</span>
+    <span class="badge lines">📊 139 archivos · 51,850 LOC</span>
+    <span class="badge db">🗄️ MySQL 8.4 · 26 tablas</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════ 1. RADIOGRAFÍA ════════════════════════════ -->
+<section id="radiografia">
+<h2><span class="num">1</span> Radiografía del Proyecto Actual</h2>
+
+<div class="grid-3">
+  <div class="metric"><div class="value">139</div><div class="label">Archivos fuente Java</div></div>
+  <div class="metric"><div class="value">51,850</div><div class="label">Líneas de código fuente</div></div>
+  <div class="metric"><div class="value">183</div><div class="label">Archivos de test (43,725 LOC)</div></div>
+</div>
+<div class="grid-3" style="margin-top:1rem">
+  <div class="metric"><div class="value">26</div><div class="label">Tablas MySQL</div></div>
+  <div class="metric"><div class="value">679</div><div class="label">Tests unitarios</div></div>
+  <div class="metric"><div class="value">7</div><div class="label">Librerías externas</div></div>
+</div>
+
+<h3>Estructura de paquetes Java</h3>
+<div class="card">
+<pre>src/
+├── Controlador/          6 archivos ·    529 LOC  → Controladores MVC (thin)
+│   ├── CategoriaControlador, FavoritoControlador, LoginControlador
+│   ├── PedidosControlador, PlatosControlador, SalasControlador
+├── Modelo/              41 archivos · 10,103 LOC  → Entidades + DAOs + Repositorios
+│   ├── Entidades: Pedidos, Platos, Categoria, Salas, Mesonero, Cliente,
+│   │              CierreCaja, Config, Usuario, DetallePedido…
+│   ├── DAOs:      PedidosDao (2618), LoginDao (1233), CierreCajaDao (1052),
+│   │              PlatosDao (753), ClienteDao (550), PreciosPedidosDao (480)…
+│   ├── Records:   CalculoFiscalRecord, IgtfRecord, PagoPedido, ComandaMarcha…
+│   └── Interfaces: PedidosRepositorio, PlatosRepositorio, SalasRepositorio,
+│                    CategoriaRepositorio, ClienteRepositorio, ConfiguracionRepositorio…
+├── Servicio/            22 archivos ·  5,558 LOC  → Lógica de negocio
+│   ├── CalculoMonetarioPedido (385), ServicioRespaldoBaseDatos (1446),
+│   │   GeneradorPdfPedido (1180), ServicioImpresionTicket (710),
+│   │   ServicioComandaCocina (255), PlanPagosCobro (335)…
+├── Vista/               23 archivos · 21,281 LOC  → UI Swing
+│   ├── Sistema.java (14,148) — EL MONOLITO PRINCIPAL
+│   ├── PanelAtencionMesasSplit (2531), DialogoCobroPedido (1054),
+│   │   DialogoReporteAnulados (696), FrmLogin (504)…
+│   └── SwingWorkers: Autenticacion, Dashboard, ListaPedidos, ListaPlatos…
+├── infraestructura/     12 archivos ·  5,823 LOC  → Corte transversal
+│   ├── ProveedorConexionJdbc (654), MigradorEsquemaJdbc (1439),
+│   │   ServidorRestTablets (2355), ValidadorLicencia (325)…
+│   ├── impresion/ → ESC/POS, CircuitBreaker, SpoolerCocina
+│   ├── seguridad/ → LedgerFiscal, ValidadorLicencia, IntegridadLogs
+│   └── red/ → ServicioTunelSsh
+└── restaurante/          2 archivos ·    525 LOC  → Entry point + simulador
+    └── Restaurante.java (294) — Composición raíz (DI manual)</pre>
+</div>
+
+<h3>Dependencias externas</h3>
+<table>
+<thead><tr><th>Librería Java</th><th>Uso</th><th>Equivalente Go</th></tr></thead>
+<tbody>
+<tr><td><code>mysql-connector-j-8.0.31</code></td><td>Driver JDBC MySQL</td><td><code>go-sql-driver/mysql</code></td></tr>
+<tr><td><code>itextpdf-5.5.13.4</code></td><td>Generación PDF facturas</td><td><code>jung-kurt/gofpdf</code> / <code>unidoc/unipdf</code></td></tr>
+<tr><td><code>pdfbox-2.0.31</code> + <code>fontbox</code></td><td>Lectura/manipulación PDF</td><td><code>pdfcpu/pdfcpu</code></td></tr>
+<tr><td><code>commons-logging-1.2</code></td><td>Logging (dep. de PDFBox)</td><td><code>log/slog</code> (stdlib)</td></tr>
+<tr><td><code>AbsoluteLayout.jar</code></td><td>Layout Swing (Matisse)</td><td>No aplica (web UI)</td></tr>
+<tr><td><code>junit-4.13.2</code> + <code>hamcrest</code></td><td>Testing</td><td><code>testing</code> (stdlib) + <code>stretchr/testify</code></td></tr>
+</tbody>
+</table>
+
+<h3>Esquema de Base de Datos (26 tablas)</h3>
+<div class="grid-2">
+<div>
+<h4>Dominio transaccional</h4>
+<table>
+<thead><tr><th>Tabla</th><th>Función</th></tr></thead>
+<tbody>
+<tr><td><code>pedidos</code></td><td>Cabecera de cuenta/factura</td></tr>
+<tr><td><code>detalle_pedidos</code></td><td>Ítems por pedido</td></tr>
+<tr><td><code>pedido_pagos</code></td><td>Métodos de pago aplicados</td></tr>
+<tr><td><code>pedido_saldos_movimientos</code></td><td>Contra-asientos de anulación</td></tr>
+<tr><td><code>pedido_liquidaciones</code></td><td>Liquidaciones de pedidos</td></tr>
+<tr><td><code>comandas_marchas</code></td><td>Comandas enviadas a cocina</td></tr>
+<tr><td><code>comandas_marchas_detalle</code></td><td>Ítems por comanda</td></tr>
+<tr><td><code>cierres_caja</code></td><td>Cierres Z fiscales</td></tr>
+<tr><td><code>ledger_fiscal</code></td><td>Cadena blockchain fiscal</td></tr>
+<tr><td><code>ledger_fiscal_ancla</code></td><td>Anclas de integridad</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<h4>Maestros y sistema</h4>
+<table>
+<thead><tr><th>Tabla</th><th>Función</th></tr></thead>
+<tbody>
+<tr><td><code>platos</code></td><td>Catálogo de productos</td></tr>
+<tr><td><code>categorias</code></td><td>Categorías de platos</td></tr>
+<tr><td><code>plato_categoria</code></td><td>Relación plato-categoría</td></tr>
+<tr><td><code>plato_favorito</code></td><td>Favoritos por usuario</td></tr>
+<tr><td><code>salas</code></td><td>Salas del restaurante</td></tr>
+<tr><td><code>mesoneros</code></td><td>Personal de servicio</td></tr>
+<tr><td><code>clientes</code></td><td>Clientes registrados</td></tr>
+<tr><td><code>usuarios</code></td><td>Usuarios del sistema</td></tr>
+<tr><td><code>config</code></td><td>Config fiscal (nombre, RIF…)</td></tr>
+<tr><td><code>configuracion_sistema</code></td><td>Clave/valor flexible</td></tr>
+<tr><td><code>login_intentos</code></td><td>Control de acceso</td></tr>
+<tr><td><code>preferencias_tabla</code></td><td>Anchos de columna UI</td></tr>
+<tr><td><code>auditoria_pedidos</code></td><td>Auditoría de pedidos</td></tr>
+<tr><td><code>auditoria_cambios_precio</code></td><td>Historial de precios</td></tr>
+<tr><td><code>schema_migrations</code></td><td>Versionado de esquema</td></tr>
+<tr><td><code>restaurante_control</code></td><td>Control operativo</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- ════════════════════════════ 2. ARQUITECTURA TARGET ════════════════════════════ -->
+<section id="arquitectura">
+<h2><span class="num">2</span> Arquitectura Target en Go</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" style="max-width:860px">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e2030"/>
+      <stop offset="100%" style="stop-color:#161822"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="520" rx="16" fill="url(#g1)" stroke="#2a2d42"/>
+
+  <!-- Title -->
+  <text x="450" y="35" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">Arquitectura Hexagonal — Restaurante Go</text>
+
+  <!-- Browser layer -->
+  <rect x="30" y="55" width="840" height="55" rx="8" fill="none" stroke="#22d3ee" stroke-dasharray="6,3" opacity=".6"/>
+  <text x="450" y="75" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">CAPA PRESENTACIÓN (Browser)</text>
+  <rect x="100" y="82" width="120" height="22" rx="4" fill="rgba(34,211,238,.15)"/>
+  <text x="160" y="97" text-anchor="middle" fill="#22d3ee" font-size="10">HTMX + Templ</text>
+  <rect x="240" y="82" width="120" height="22" rx="4" fill="rgba(34,211,238,.15)"/>
+  <text x="300" y="97" text-anchor="middle" fill="#22d3ee" font-size="10">Alpine.js (mínimo)</text>
+  <rect x="380" y="82" width="120" height="22" rx="4" fill="rgba(34,211,238,.15)"/>
+  <text x="440" y="97" text-anchor="middle" fill="#22d3ee" font-size="10">Tailwind CSS</text>
+  <rect x="520" y="82" width="140" height="22" rx="4" fill="rgba(34,211,238,.15)"/>
+  <text x="590" y="97" text-anchor="middle" fill="#22d3ee" font-size="10">WebSocket (tiempo real)</text>
+  <rect x="680" y="82" width="140" height="22" rx="4" fill="rgba(34,211,238,.15)"/>
+  <text x="750" y="97" text-anchor="middle" fill="#22d3ee" font-size="10">PWA (tablets)</text>
+
+  <!-- HTTP / API layer -->
+  <rect x="30" y="120" width="840" height="70" rx="8" fill="none" stroke="#4da6ff" stroke-dasharray="6,3" opacity=".6"/>
+  <text x="450" y="140" text-anchor="middle" fill="#4da6ff" font-size="12" font-weight="bold">CAPA ADAPTADORES PRIMARIOS (HTTP)</text>
+  <rect x="60" y="150" width="150" height="28" rx="6" fill="rgba(77,166,255,.15)" stroke="rgba(77,166,255,.3)"/>
+  <text x="135" y="169" text-anchor="middle" fill="#4da6ff" font-size="10">chi Router + middleware</text>
+  <rect x="230" y="150" width="130" height="28" rx="6" fill="rgba(77,166,255,.15)" stroke="rgba(77,166,255,.3)"/>
+  <text x="295" y="169" text-anchor="middle" fill="#4da6ff" font-size="10">Handlers HTTP</text>
+  <rect x="380" y="150" width="150" height="28" rx="6" fill="rgba(77,166,255,.15)" stroke="rgba(77,166,255,.3)"/>
+  <text x="455" y="169" text-anchor="middle" fill="#4da6ff" font-size="10">WebSocket Hub</text>
+  <rect x="550" y="150" width="140" height="28" rx="6" fill="rgba(77,166,255,.15)" stroke="rgba(77,166,255,.3)"/>
+  <text x="620" y="169" text-anchor="middle" fill="#4da6ff" font-size="10">REST API (tablets)</text>
+  <rect x="710" y="150" width="130" height="28" rx="6" fill="rgba(77,166,255,.15)" stroke="rgba(77,166,255,.3)"/>
+  <text x="775" y="169" text-anchor="middle" fill="#4da6ff" font-size="10">Auth Middleware</text>
+
+  <!-- Domain / Core -->
+  <rect x="120" y="205" width="660" height="130" rx="12" fill="rgba(0,212,170,.06)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="450" y="225" text-anchor="middle" fill="#00d4aa" font-size="13" font-weight="bold">NÚCLEO DE DOMINIO (internal/domain + internal/service)</text>
+
+  <rect x="145" y="238" width="125" height="40" rx="6" fill="rgba(0,212,170,.12)" stroke="rgba(0,212,170,.3)"/>
+  <text x="207" y="255" text-anchor="middle" fill="#00d4aa" font-size="9" font-weight="bold">Entidades</text>
+  <text x="207" y="268" text-anchor="middle" fill="#8f95a8" font-size="8">Pedido, Plato, Mesa</text>
+
+  <rect x="285" y="238" width="125" height="40" rx="6" fill="rgba(0,212,170,.12)" stroke="rgba(0,212,170,.3)"/>
+  <text x="347" y="255" text-anchor="middle" fill="#00d4aa" font-size="9" font-weight="bold">Servicios</text>
+  <text x="347" y="268" text-anchor="middle" fill="#8f95a8" font-size="8">Cobro, Cierre, Comanda</text>
+
+  <rect x="425" y="238" width="125" height="40" rx="6" fill="rgba(0,212,170,.12)" stroke="rgba(0,212,170,.3)"/>
+  <text x="487" y="255" text-anchor="middle" fill="#00d4aa" font-size="9" font-weight="bold">Cálculos</text>
+  <text x="487" y="268" text-anchor="middle" fill="#8f95a8" font-size="8">Monetario, IVA, IGTF</text>
+
+  <rect x="565" y="238" width="125" height="40" rx="6" fill="rgba(0,212,170,.12)" stroke="rgba(0,212,170,.3)"/>
+  <text x="627" y="255" text-anchor="middle" fill="#00d4aa" font-size="9" font-weight="bold">Puertos (interfaces)</text>
+  <text x="627" y="268" text-anchor="middle" fill="#8f95a8" font-size="8">Repository, Printer…</text>
+
+  <rect x="145" y="288" width="190" height="35" rx="6" fill="rgba(167,139,250,.12)" stroke="rgba(167,139,250,.3)"/>
+  <text x="240" y="310" text-anchor="middle" fill="#a78bfa" font-size="9">Vocabulario fiscal: Comanda · Factura · Cierre Z</text>
+
+  <rect x="355" y="288" width="190" height="35" rx="6" fill="rgba(244,114,182,.12)" stroke="rgba(244,114,182,.3)"/>
+  <text x="450" y="310" text-anchor="middle" fill="#f472b6" font-size="9">Regla: 2 decimales · HALF_UP · scale 8 intermedio</text>
+
+  <rect x="560" y="288" width="130" height="35" rx="6" fill="rgba(251,191,36,.12)" stroke="rgba(251,191,36,.3)"/>
+  <text x="625" y="310" text-anchor="middle" fill="#fbbf24" font-size="9">Ledger fiscal (blockchain)</text>
+
+  <!-- Adapters layer -->
+  <rect x="30" y="350" width="840" height="75" rx="8" fill="none" stroke="#f59e42" stroke-dasharray="6,3" opacity=".6"/>
+  <text x="450" y="370" text-anchor="middle" fill="#f59e42" font-size="12" font-weight="bold">CAPA ADAPTADORES SECUNDARIOS (Infraestructura)</text>
+  <rect x="50" y="380" width="115" height="32" rx="6" fill="rgba(245,158,66,.12)" stroke="rgba(245,158,66,.3)"/>
+  <text x="107" y="400" text-anchor="middle" fill="#f59e42" font-size="9">MySQL (sqlx)</text>
+  <rect x="180" y="380" width="115" height="32" rx="6" fill="rgba(245,158,66,.12)" stroke="rgba(245,158,66,.3)"/>
+  <text x="237" y="400" text-anchor="middle" fill="#f59e42" font-size="9">PDF (gofpdf)</text>
+  <rect x="310" y="380" width="115" height="32" rx="6" fill="rgba(245,158,66,.12)" stroke="rgba(245,158,66,.3)"/>
+  <text x="367" y="400" text-anchor="middle" fill="#f59e42" font-size="9">ESC/POS TCP</text>
+  <rect x="440" y="380" width="115" height="32" rx="6" fill="rgba(245,158,66,.12)" stroke="rgba(245,158,66,.3)"/>
+  <text x="497" y="400" text-anchor="middle" fill="#f59e42" font-size="9">ECDSA + AES-GCM</text>
+  <rect x="570" y="380" width="115" height="32" rx="6" fill="rgba(245,158,66,.12)" stroke="rgba(245,158,66,.3)"/>
+  <text x="627" y="400" text-anchor="middle" fill="#f59e42" font-size="9">goose (migraciones)</text>
+  <rect x="700" y="380" width="135" height="32" rx="6" fill="rgba(245,158,66,.12)" stroke="rgba(245,158,66,.3)"/>
+  <text x="767" y="400" text-anchor="middle" fill="#f59e42" font-size="9">Respaldo (mysqldump)</text>
+
+  <!-- Cross-cutting -->
+  <rect x="30" y="440" width="840" height="60" rx="8" fill="none" stroke="#a78bfa" stroke-dasharray="6,3" opacity=".6"/>
+  <text x="450" y="460" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">TRANSVERSALES</text>
+  <rect x="60" y="468" width="110" height="24" rx="4" fill="rgba(167,139,250,.12)"/>
+  <text x="115" y="484" text-anchor="middle" fill="#a78bfa" font-size="9">slog (logging)</text>
+  <rect x="185" y="468" width="110" height="24" rx="4" fill="rgba(167,139,250,.12)"/>
+  <text x="240" y="484" text-anchor="middle" fill="#a78bfa" font-size="9">Config (.env)</text>
+  <rect x="310" y="468" width="130" height="24" rx="4" fill="rgba(167,139,250,.12)"/>
+  <text x="375" y="484" text-anchor="middle" fill="#a78bfa" font-size="9">Graceful Shutdown</text>
+  <rect x="455" y="468" width="120" height="24" rx="4" fill="rgba(167,139,250,.12)"/>
+  <text x="515" y="484" text-anchor="middle" fill="#a78bfa" font-size="9">context.Context</text>
+  <rect x="590" y="468" width="120" height="24" rx="4" fill="rgba(167,139,250,.12)"/>
+  <text x="650" y="484" text-anchor="middle" fill="#a78bfa" font-size="9">Embed (assets)</text>
+  <rect x="725" y="468" width="120" height="24" rx="4" fill="rgba(167,139,250,.12)"/>
+  <text x="785" y="484" text-anchor="middle" fill="#a78bfa" font-size="9">Docker deploy</text>
+
+  <!-- Arrows -->
+  <defs><marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#4da6ff"/></marker></defs>
+  <line x1="450" y1="108" x2="450" y2="120" stroke="#4da6ff" marker-end="url(#arr)" opacity=".5"/>
+  <line x1="450" y1="190" x2="450" y2="205" stroke="#00d4aa" marker-end="url(#arr)" opacity=".5"/>
+  <line x1="450" y1="335" x2="450" y2="350" stroke="#f59e42" marker-end="url(#arr)" opacity=".5"/>
+</svg>
+</div>
+
+<h3>Estructura de directorios Go</h3>
+<div class="card">
+<pre>restaurante-go/
+├── cmd/
+│   └── restaurante/
+│       └── main.go                    ← entry point, DI, servidor HTTP
+├── internal/
+│   ├── domain/                        ← entidades puras (sin dependencias externas)
+│   │   ├── pedido.go                  ← Pedido, DetallePedido, EstadoPedido
+│   │   ├── plato.go                   ← Plato, Categoria
+│   │   ├── mesa.go                    ← Sala, Mesa
+│   │   ├── usuario.go                 ← Usuario, Rol, NombreUsuario
+│   │   ├── cliente.go                 ← Cliente
+│   │   ├── mesonero.go                ← Mesonero
+│   │   ├── cierre.go                  ← CierreCaja
+│   │   ├── config.go                  ← Config fiscal, ConfigClaves
+│   │   ├── comanda.go                 ← ComandaMarcha, MovimientoComanda
+│   │   ├── pago.go                    ← PagoPedido, PlanPagos
+│   │   ├── fiscal.go                  ← CalculoFiscal, IgtfRecord, LedgerEntry
+│   │   ├── auditoria.go              ← AuditoriaPedido, AuditoriaPrecio
+│   │   ├── money.go                   ← tipo Money (2 dec, HALF_UP, scale 8)
+│   │   └── errors.go                  ← errores de dominio tipados
+│   ├── port/                          ← interfaces (puertos hexagonales)
+│   │   ├── repository.go             ← PedidoRepo, PlatoRepo, SalaRepo…
+│   │   ├── printer.go                ← TicketPrinter, ComandaPrinter
+│   │   ├── pdf.go                    ← PdfGenerator
+│   │   ├── backup.go                 ← BackupService
+│   │   └── license.go                ← LicenseValidator
+│   ├── service/                       ← lógica de negocio (usa port interfaces)
+│   │   ├── pedido_service.go
+│   │   ├── cobro_service.go          ← PlanPagosCobro, GestorBloqueoCobro
+│   │   ├── calculo_monetario.go      ← CalculoMonetarioPedido
+│   │   ├── cierre_service.go
+│   │   ├── comanda_service.go
+│   │   ├── autenticacion_service.go
+│   │   ├── platos_service.go
+│   │   ├── salas_service.go
+│   │   ├── configuracion_service.go
+│   │   ├── mesa_service.go
+│   │   ├── mesonero_service.go
+│   │   ├── consulta_pedidos.go
+│   │   ├── favorito_service.go
+│   │   ├── politica_acceso.go
+│   │   └── categoria_service.go
+│   ├── adapter/                       ← implementaciones concretas
+│   │   ├── mysql/                     ← repositorios MySQL (sqlx)
+│   │   │   ├── pedido_repo.go
+│   │   │   ├── plato_repo.go
+│   │   │   ├── sala_repo.go
+│   │   │   ├── usuario_repo.go
+│   │   │   ├── cliente_repo.go
+│   │   │   ├── cierre_repo.go
+│   │   │   ├── config_repo.go
+│   │   │   ├── auditoria_repo.go
+│   │   │   ├── ledger_repo.go
+│   │   │   ├── mesonero_repo.go
+│   │   │   └── tx.go                 ← transacciones con closure pattern
+│   │   ├── printer/                   ← impresión ESC/POS + thermal
+│   │   │   ├── escpos.go
+│   │   │   ├── spooler_cocina.go
+│   │   │   └── circuit_breaker.go
+│   │   ├── pdf/                       ← generación PDF
+│   │   │   ├── factura_pdf.go
+│   │   │   ├── cierre_pdf.go
+│   │   │   └── reporte_anulados_pdf.go
+│   │   ├── security/                  ← licencia, HMAC, ledger
+│   │   │   ├── license_validator.go
+│   │   │   ├── ledger_fiscal.go
+│   │   │   ├── password_hasher.go
+│   │   │   └── log_integrity.go
+│   │   ├── backup/                    ← respaldo/restauración
+│   │   │   └── mysqldump_backup.go
+│   │   └── migration/                 ← migraciones de esquema
+│   │       └── goose_migrator.go
+│   └── handler/                       ← HTTP handlers (adaptadores primarios)
+│       ├── pedido_handler.go
+│       ├── plato_handler.go
+│       ├── sala_handler.go
+│       ├── cierre_handler.go
+│       ├── cobro_handler.go
+│       ├── comanda_handler.go
+│       ├── config_handler.go
+│       ├── auth_handler.go
+│       ├── dashboard_handler.go
+│       ├── api_tablet_handler.go
+│       ├── backup_handler.go
+│       ├── ws_hub.go                  ← WebSocket para tiempo real
+│       └── middleware.go              ← auth, logging, recovery, CORS
+├── web/                               ← frontend assets
+│   ├── templates/                     ← plantillas Templ (.templ)
+│   │   ├── layout.templ
+│   │   ├── login.templ
+│   │   ├── dashboard.templ
+│   │   ├── mesas.templ
+│   │   ├── pedido.templ
+│   │   ├── cobro.templ
+│   │   ├── platos.templ
+│   │   ├── cierres.templ
+│   │   ├── config.templ
+│   │   └── reportes.templ
+│   ├── static/
+│   │   ├── css/                       ← Tailwind compilado
+│   │   ├── js/                        ← HTMX + Alpine.js + custom
+│   │   └── img/                       ← íconos, logos
+│   └── embed.go                       ← go:embed para binario único
+├── db/
+│   └── migrations/                    ← SQL migrations (goose)
+│       ├── 001_initial_schema.sql
+│       └── ...
+├── config/
+│   └── config.go                      ← carga .env, env vars, defaults
+├── scripts/                           ← scripts operativos (sh/bat)
+├── Dockerfile
+├── docker-compose.yml
+├── go.mod
+├── go.sum
+├── .env.example
+└── Makefile</pre>
+</div>
+
+<div class="alert alert-info">
+  <div class="alert-title">💡 Decisión de UI: HTMX + Templ (no SPA)</div>
+  <p>El proyecto actual usa Swing (desktop). La migración a Go convierte la app en <strong>web</strong>, accesible desde cualquier navegador — tablets incluidas. La combinación <strong>HTMX + Templ + Tailwind</strong> es ideal porque:</p>
+  <ul style="margin-top:.5rem">
+    <li>Sin framework JavaScript pesado (React, Vue) — menos complejidad, menos dependencias</li>
+    <li>Templates compilados en Go (Templ) — type-safe, rendimiento nativo</li>
+    <li>HTMX da interactividad SPA-like con atributos HTML — el servidor controla todo</li>
+    <li>WebSocket nativo para actualizaciones en tiempo real (mesas, comandas)</li>
+    <li>PWA para que tablets funcionen como app nativa (offline-first con service worker)</li>
+    <li>Un solo binario Go contiene todo: backend + frontend + assets (go:embed)</li>
+  </ul>
+</div>
+</section>
+
+<!-- ════════════════════════════ 3. PRINCIPIOS ════════════════════════════ -->
+<section id="principios">
+<h2><span class="num">3</span> Principios de Diseño en Go</h2>
+
+<div class="grid-2">
+<div class="card">
+  <div class="card-header"><span class="icon">🎯</span> SOLID en Go</div>
+  <table>
+  <thead><tr><th>Principio</th><th>Implementación Go</th></tr></thead>
+  <tbody>
+  <tr><td><strong>S</strong> — Responsabilidad Única</td><td>Un paquete = una responsabilidad. <code>service/pedido_service.go</code> solo orquesta pedidos, <code>adapter/mysql/pedido_repo.go</code> solo persiste.</td></tr>
+  <tr><td><strong>O</strong> — Abierto/Cerrado</td><td>Interfaces en <code>port/</code>. Agregar nuevo tipo de impresora = implementar <code>TicketPrinter</code>, sin tocar servicios.</td></tr>
+  <tr><td><strong>L</strong> — Liskov</td><td>Todas las implementaciones de <code>PedidoRepo</code> cumplen el contrato. Tests contra la interfaz, no la implementación.</td></tr>
+  <tr><td><strong>I</strong> — Segregación</td><td>Interfaces pequeñas: <code>PedidoReader</code>, <code>PedidoWriter</code> separados. El consumidor depende solo de lo que necesita.</td></tr>
+  <tr><td><strong>D</strong> — Inversión</td><td>Servicios reciben interfaces por constructor. <code>main.go</code> ensambla el grafo de dependencias completo.</td></tr>
+  </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="icon">🔧</span> Patrones de Diseño</div>
+  <table>
+  <thead><tr><th>Patrón</th><th>Uso</th></tr></thead>
+  <tbody>
+  <tr><td><strong>Repository</strong></td><td>Toda persistencia detrás de interfaz en <code>port/</code></td></tr>
+  <tr><td><strong>Service Layer</strong></td><td>Lógica de negocio en <code>service/</code>, orquesta repos + reglas</td></tr>
+  <tr><td><strong>Functional Options</strong></td><td>Configuración flexible: <code>NewPedidoService(repo, WithIVA(16), WithPrinter(p))</code></td></tr>
+  <tr><td><strong>Result Type</strong></td><td>Patrón <code>(T, error)</code> de Go reemplaza el <code>ResultadoOperacion&lt;T&gt;</code> Java</td></tr>
+  <tr><td><strong>Middleware Chain</strong></td><td>HTTP: logging → auth → recovery → handler</td></tr>
+  <tr><td><strong>Unit of Work</strong></td><td>Transacciones con closure: <code>repo.WithTx(ctx, func(tx Tx) error { ... })</code></td></tr>
+  <tr><td><strong>Strategy</strong></td><td>Diferentes modos de impresión: <code>TicketPrinter</code> interface, impl ESC/POS, PDF, visor</td></tr>
+  <tr><td><strong>Observer</strong></td><td>WebSocket hub para notificar cambios en mesas a todos los clientes</td></tr>
+  <tr><td><strong>Builder</strong></td><td>Construcción de PDFs complejos: <code>FacturaPdfBuilder</code></td></tr>
+  <tr><td><strong>Circuit Breaker</strong></td><td>Impresoras de red: ya existe en Java, se porta directamente</td></tr>
+  </tbody>
+  </table>
+</div>
+</div>
+
+<h3>Convenciones Go Idiomáticas</h3>
+<div class="card">
+<table>
+<thead><tr><th>Regla</th><th>Aplicación</th></tr></thead>
+<tbody>
+<tr><td>Errores como valores</td><td><code>errors.New()</code>, <code>fmt.Errorf("...: %w", err)</code>, errores centinela para dominio (<code>ErrPedidoNoEncontrado</code>)</td></tr>
+<tr><td><code>context.Context</code> primero</td><td>Todo método que haga I/O recibe <code>ctx context.Context</code> como primer argumento</td></tr>
+<tr><td>Interfaces implícitas</td><td>Se definen donde se usan (consumer-side), no donde se implementan</td></tr>
+<tr><td>Composición sobre herencia</td><td>Embedding de structs y interfaces para reusar comportamiento</td></tr>
+<tr><td>Paquetes por dominio</td><td>No por capa técnica. <code>internal/domain</code> no importa <code>internal/adapter</code> — jamás.</td></tr>
+<tr><td>Zero values útiles</td><td>Structs que funcionan con valores por defecto cuando tiene sentido</td></tr>
+<tr><td><code>go:embed</code> para assets</td><td>Templates, CSS, JS, imágenes — todo dentro del binario</td></tr>
+<tr><td>Table-driven tests</td><td>Todos los tests con subtests <code>t.Run(name, func(t *testing.T) { ... })</code></td></tr>
+<tr><td>Graceful shutdown</td><td><code>signal.NotifyContext</code> → esperar conexiones en vuelo → cerrar DB pool</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Manejo de Dinero — Tipo Money</h3>
+<div class="alert alert-warn">
+  <div class="alert-title">⚠️ Regla fiscal inquebrantable</div>
+  <p>2 decimales de punta a punta. Aritmética intermedia con 8 decimales. Redondeo único HALF_UP al límite de línea/pedido. <code>Σ desglose == cabecera</code>.</p>
+</div>
+<div class="card">
+<pre>// internal/domain/money.go
+package domain
+
+import "github.com/shopspring/decimal"
+
+// Money representa un monto monetario con 2 decimales exactos.
+// Aritmética intermedia usa 8 decimales; redondeo HALF_UP solo al materializar.
+type Money struct {
+    amount decimal.Decimal
+}
+
+const (
+    ScaleFinal       = 2
+    ScalaIntermedia   = 8
+)
+
+func NewMoney(v decimal.Decimal) Money {
+    return Money{amount: v.Round(ScaleFinal)}
+}
+
+func (m Money) Mul(rate decimal.Decimal) Money {
+    // Intermedio a 8 decimales, redondeo final a 2
+    return Money{amount: m.amount.Mul(rate).Round(ScaleFinal)}
+}
+
+func (m Money) Add(other Money) Money {
+    return Money{amount: m.amount.Add(other.amount)}
+}
+
+func (m Money) Decimal() decimal.Decimal { return m.amount }
+func (m Money) String() string           { return m.amount.StringFixed(ScaleFinal) }</pre>
+</div>
+
+<h3>Inyección de Dependencias — Manual en main.go</h3>
+<div class="card">
+<pre>// cmd/restaurante/main.go (composición raíz — equivale a restaurante.Restaurante.java)
+func main() {
+    cfg := config.Load()
+
+    // Adaptadores secundarios
+    db := mysql.NewPool(cfg.DatabaseURL)
+    defer db.Close()
+
+    pedidoRepo   := mysql.NewPedidoRepo(db)
+    platoRepo    := mysql.NewPlatoRepo(db)
+    salaRepo     := mysql.NewSalaRepo(db)
+    configRepo   := mysql.NewConfigRepo(db)
+    cierreRepo   := mysql.NewCierreRepo(db)
+    // ...más repos...
+
+    printer      := printer.NewEscPos(cfg.PrinterAddr)
+    pdfGen       := pdf.NewFacturaGenerator()
+    licValidator := security.NewLicenseValidator(cfg.LicensePath)
+
+    // Servicios de dominio
+    calcMon    := service.NewCalculoMonetario()
+    pedidoSvc  := service.NewPedidoService(pedidoRepo, calcMon)
+    cobroSvc   := service.NewCobroService(pedidoRepo, configRepo, printer, pdfGen)
+    cierreSvc  := service.NewCierreService(cierreRepo, pedidoRepo, configRepo)
+    comandaSvc := service.NewComandaService(pedidoRepo, printer)
+    authSvc    := service.NewAutenticacionService(usuarioRepo, licValidator)
+    // ...más servicios...
+
+    // Adaptadores primarios (HTTP handlers)
+    r := chi.NewRouter()
+    r.Use(middleware.Logger, middleware.Recoverer)
+    handler.RegisterRoutes(r, pedidoSvc, cobroSvc, cierreSvc, comandaSvc, authSvc)
+
+    // Servidor
+    srv := &http.Server{Addr: cfg.ListenAddr, Handler: r}
+    go gracefulShutdown(srv, db)
+    srv.ListenAndServe()
+}</pre>
+</div>
+</section>
+
+<!-- ════════════════════════════ 4. FASES ════════════════════════════ -->
+<section id="fases">
+<h2><span class="num">4</span> Fases de Migración</h2>
+
+<p>La migración sigue un enfoque <strong>bottom-up</strong>: primero las capas sin dependencias UI, último el frontend. Cada fase es independientemente deployable y testeable.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" style="max-width:860px">
+  <rect width="900" height="200" rx="12" fill="#161822" stroke="#2a2d42"/>
+  <text x="450" y="25" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">Timeline de Migración (7 Fases)</text>
+
+  <!-- Phase boxes -->
+  <rect x="20" y="50" width="110" height="50" rx="8" fill="rgba(0,212,170,.15)" stroke="#00d4aa"/>
+  <text x="75" y="72" text-anchor="middle" fill="#00d4aa" font-size="10" font-weight="bold">FASE 1</text>
+  <text x="75" y="88" text-anchor="middle" fill="#8f95a8" font-size="8">Cimientos</text>
+
+  <rect x="145" y="50" width="110" height="50" rx="8" fill="rgba(77,166,255,.15)" stroke="#4da6ff"/>
+  <text x="200" y="72" text-anchor="middle" fill="#4da6ff" font-size="10" font-weight="bold">FASE 2</text>
+  <text x="200" y="88" text-anchor="middle" fill="#8f95a8" font-size="8">Dominio</text>
+
+  <rect x="270" y="50" width="110" height="50" rx="8" fill="rgba(167,139,250,.15)" stroke="#a78bfa"/>
+  <text x="325" y="72" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="bold">FASE 3</text>
+  <text x="325" y="88" text-anchor="middle" fill="#8f95a8" font-size="8">Servicios</text>
+
+  <rect x="395" y="50" width="110" height="50" rx="8" fill="rgba(245,158,66,.15)" stroke="#f59e42"/>
+  <text x="450" y="72" text-anchor="middle" fill="#f59e42" font-size="10" font-weight="bold">FASE 4</text>
+  <text x="450" y="88" text-anchor="middle" fill="#8f95a8" font-size="8">API HTTP</text>
+
+  <rect x="520" y="50" width="110" height="50" rx="8" fill="rgba(244,114,182,.15)" stroke="#f472b6"/>
+  <text x="575" y="72" text-anchor="middle" fill="#f472b6" font-size="10" font-weight="bold">FASE 5</text>
+  <text x="575" y="88" text-anchor="middle" fill="#8f95a8" font-size="8">Frontend Web</text>
+
+  <rect x="645" y="50" width="110" height="50" rx="8" fill="rgba(34,211,238,.15)" stroke="#22d3ee"/>
+  <text x="700" y="72" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="bold">FASE 6</text>
+  <text x="700" y="88" text-anchor="middle" fill="#8f95a8" font-size="8">Infra</text>
+
+  <rect x="770" y="50" width="110" height="50" rx="8" fill="rgba(251,191,36,.15)" stroke="#fbbf24"/>
+  <text x="825" y="72" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="bold">FASE 7</text>
+  <text x="825" y="88" text-anchor="middle" fill="#8f95a8" font-size="8">Integración</text>
+
+  <!-- Arrows -->
+  <defs><marker id="a2" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto"><path d="M0,0 L6,2.5 L0,5" fill="#4da6ff"/></marker></defs>
+  <line x1="130" y1="75" x2="145" y2="75" stroke="#4da6ff" marker-end="url(#a2)"/>
+  <line x1="255" y1="75" x2="270" y2="75" stroke="#4da6ff" marker-end="url(#a2)"/>
+  <line x1="380" y1="75" x2="395" y2="75" stroke="#4da6ff" marker-end="url(#a2)"/>
+  <line x1="505" y1="75" x2="520" y2="75" stroke="#4da6ff" marker-end="url(#a2)"/>
+  <line x1="630" y1="75" x2="645" y2="75" stroke="#4da6ff" marker-end="url(#a2)"/>
+  <line x1="755" y1="75" x2="770" y2="75" stroke="#4da6ff" marker-end="url(#a2)"/>
+
+  <!-- Estimated LOC -->
+  <text x="75" y="125" text-anchor="middle" fill="#00d4aa" font-size="9">~800 LOC</text>
+  <text x="200" y="125" text-anchor="middle" fill="#4da6ff" font-size="9">~2,500 LOC</text>
+  <text x="325" y="125" text-anchor="middle" fill="#a78bfa" font-size="9">~4,000 LOC</text>
+  <text x="450" y="125" text-anchor="middle" fill="#f59e42" font-size="9">~3,000 LOC</text>
+  <text x="575" y="125" text-anchor="middle" fill="#f472b6" font-size="9">~5,000 LOC</text>
+  <text x="700" y="125" text-anchor="middle" fill="#22d3ee" font-size="9">~2,500 LOC</text>
+  <text x="825" y="125" text-anchor="middle" fill="#fbbf24" font-size="9">~2,000 LOC</text>
+
+  <!-- Difficulty -->
+  <text x="75" y="145" text-anchor="middle" fill="#22c55e" font-size="8">■ Fácil</text>
+  <text x="200" y="145" text-anchor="middle" fill="#22c55e" font-size="8">■ Fácil</text>
+  <text x="325" y="145" text-anchor="middle" fill="#fbbf24" font-size="8">■ Media</text>
+  <text x="450" y="145" text-anchor="middle" fill="#fbbf24" font-size="8">■ Media</text>
+  <text x="575" y="145" text-anchor="middle" fill="#ef4444" font-size="8">■ Difícil</text>
+  <text x="700" y="145" text-anchor="middle" fill="#fbbf24" font-size="8">■ Media</text>
+  <text x="825" y="145" text-anchor="middle" fill="#fbbf24" font-size="8">■ Media</text>
+
+  <!-- Total -->
+  <rect x="300" y="165" width="300" height="25" rx="6" fill="rgba(0,212,170,.1)" stroke="rgba(0,212,170,.3)"/>
+  <text x="450" y="183" text-anchor="middle" fill="#00d4aa" font-size="11" font-weight="bold">Total estimado: ~19,800 LOC Go (38% del Java original)</text>
+</svg>
+</div>
+</section>
+
+<!-- ════════════════════════════ FASE 1 ════════════════════════════ -->
+<section id="fase1">
+<h2><span class="num">F1</span> Fase 1 — Cimientos del Proyecto</h2>
+<p>Inicializar el módulo Go, configuración, conexión a BD, migraciones y estructura base.</p>
+
+<h3>Tareas</h3>
+<ul class="checklist">
+  <li><code>go mod init github.com/capip/restaurante</code> — módulo Go</li>
+  <li>Crear estructura de directorios (<code>cmd/</code>, <code>internal/</code>, <code>web/</code>, <code>db/</code>, <code>config/</code>)</li>
+  <li><code>config/config.go</code> — cargar <code>.env</code> con <code>joho/godotenv</code> + env vars + defaults</li>
+  <li><code>internal/adapter/mysql/pool.go</code> — pool de conexiones <code>sqlx</code> con <code>go-sql-driver/mysql</code></li>
+  <li><code>internal/adapter/mysql/tx.go</code> — patrón transaccional con closure</li>
+  <li><code>db/migrations/001_initial_schema.sql</code> — copiar <code>BD.sql</code> como migración inicial goose</li>
+  <li><code>internal/adapter/migration/goose_migrator.go</code> — ejecutar migraciones al iniciar</li>
+  <li><code>cmd/restaurante/main.go</code> — esqueleto: config → pool → migrator → health check HTTP</li>
+  <li><code>Makefile</code> — targets: <code>build</code>, <code>run</code>, <code>test</code>, <code>migrate</code>, <code>lint</code></li>
+  <li><code>Dockerfile</code> + <code>docker-compose.yml</code> — app Go + MySQL 8.4</li>
+  <li><code>.env.example</code> — igual que el Java, mismas variables</li>
+</ul>
+
+<h3>Mapeo Java → Go</h3>
+<table>
+<thead><tr><th>Java</th><th>Go</th><th>Notas</th></tr></thead>
+<tbody>
+<tr><td><code>ProveedorConexionJdbc.java</code> (654 LOC)</td><td><code>internal/adapter/mysql/pool.go</code> (~80 LOC)</td><td><code>sqlx.NewDb()</code> con <code>SetMaxOpenConns</code>, <code>SetConnMaxLifetime</code></td></tr>
+<tr><td><code>MigradorEsquemaJdbc.java</code> (1439 LOC)</td><td><code>internal/adapter/migration/goose_migrator.go</code> (~50 LOC) + archivos SQL</td><td>goose maneja todo; las 1439 LOC Java son innecesarias</td></tr>
+<tr><td><code>ConfiguracionLogs.java</code> (37 LOC)</td><td><code>slog</code> configurado en <code>main.go</code> (~15 LOC)</td><td><code>slog.SetDefault()</code> con handler JSON</td></tr>
+<tr><td><code>.env</code> → <code>System.getenv()</code></td><td><code>godotenv.Load()</code> + <code>os.Getenv()</code></td><td>Mismas variables, mismo formato</td></tr>
+</tbody>
+</table>
+
+<h3>Validación de Fase</h3>
+<div class="alert alert-tip">
+  <div class="alert-title">✅ Criterio de aceptación</div>
+  <ul>
+    <li><code>go build ./...</code> compila sin errores</li>
+    <li><code>go test ./...</code> pasa (al menos health check)</li>
+    <li><code>docker compose up</code> levanta app + MySQL, aplica migraciones, responde <code>GET /health</code> → 200</li>
+    <li>Pool se conecta a MySQL con las mismas credenciales del <code>.env</code> Java</li>
+  </ul>
+</div>
+</section>
+
+<!-- ════════════════════════════ FASE 2 ════════════════════════════ -->
+<section id="fase2">
+<h2><span class="num">F2</span> Fase 2 — Entidades de Dominio y Puertos</h2>
+<p>Definir todas las entidades, value objects, errores de dominio e interfaces (puertos). Cero dependencias externas en <code>internal/domain</code>.</p>
+
+<h3>Entidades a migrar</h3>
+<table>
+<thead><tr><th>Java</th><th>LOC</th><th>Go</th><th>Dificultad</th></tr></thead>
+<tbody>
+<tr><td><code>Pedidos.java</code></td><td>321</td><td><code>domain/pedido.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>DetallePedido.java</code></td><td>162</td><td><code>domain/pedido.go</code> (mismo archivo)</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>Platos.java</code></td><td>181</td><td><code>domain/plato.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>Categoria.java</code></td><td>90</td><td><code>domain/plato.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>Salas.java</code></td><td>78</td><td><code>domain/mesa.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>Mesonero.java</code></td><td>98</td><td><code>domain/mesonero.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>Cliente.java</code></td><td>103</td><td><code>domain/cliente.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>Usuario.java</code></td><td>75</td><td><code>domain/usuario.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>CierreCaja.java</code></td><td>523</td><td><code>domain/cierre.go</code></td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>Config.java</code></td><td>241</td><td><code>domain/config.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>ConfigClaves.java</code></td><td>54</td><td><code>domain/config.go</code> (constantes)</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>PagoPedido.java</code> (record)</td><td>91</td><td><code>domain/pago.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>CalculoFiscalRecord.java</code></td><td>176</td><td><code>domain/fiscal.go</code></td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>IgtfRecord.java</code></td><td>135</td><td><code>domain/fiscal.go</code></td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>ComandaMarcha.java</code></td><td>116</td><td><code>domain/comanda.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>MovimientoComanda.java</code></td><td>53</td><td><code>domain/comanda.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>AuditoriaPedido.java</code></td><td>102</td><td><code>domain/auditoria.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>EstadisticasDashboard.java</code></td><td>174</td><td><code>domain/dashboard.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>TicketAnuladoReporte.java</code></td><td>137</td><td><code>domain/reporte.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>FiltroReporteAnulados.java</code></td><td>118</td><td><code>domain/reporte.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>ModoSalidaTicket.java</code> (enum)</td><td>43</td><td><code>domain/ticket.go</code> (iota)</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>NombreUsuario.java</code></td><td>34</td><td><code>domain/usuario.go</code> (value object)</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>PaletaCategorias.java</code></td><td>67</td><td><code>domain/plato.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>MovimientoSaldoPedido.java</code></td><td>77</td><td><code>domain/pago.go</code></td><td><span class="tag tag-easy">Fácil</span></td></tr>
+</tbody>
+</table>
+
+<h3>Puertos (interfaces) a definir</h3>
+<div class="card">
+<pre>// internal/port/repository.go
+package port
+
+type PedidoRepo interface {
+    FindByID(ctx context.Context, id int64) (*domain.Pedido, error)
+    FindPendientes(ctx context.Context) ([]domain.Pedido, error)
+    FindByMesa(ctx context.Context, salaID, mesa int) (*domain.Pedido, error)
+    Save(ctx context.Context, p *domain.Pedido) error
+    UpdateEstado(ctx context.Context, id int64, estado domain.EstadoPedido) error
+    FindHistorial(ctx context.Context, filtro domain.FiltroPedidos) ([]domain.Pedido, error)
+    // ... según PedidosRepositorio.java (182 LOC)
+}
+
+type PlatoRepo interface { /* según PlatosRepositorio.java (55 LOC) */ }
+type SalaRepo interface { /* según SalasRepositorio.java (14 LOC) */ }
+type CategoriaRepo interface { /* según CategoriaRepositorio.java (52 LOC) */ }
+type ClienteRepo interface { /* según ClienteRepositorio.java (14 LOC) */ }
+type MesoneroRepo interface { /* según MesoneroRepositorio.java (13 LOC) */ }
+type ConfigRepo interface { /* según ConfiguracionRepositorio.java (55 LOC) */ }
+type CierreRepo interface { /* nuevo — extraído de CierreCajaDao */ }
+type AuditoriaRepo interface { /* nuevo — extraído de AuditoriaPedidosDao */ }
+type LedgerRepo interface { /* nuevo — extraído de ServicioLedgerFiscal */ }
+type UsuarioRepo interface { /* nuevo — extraído de LoginDao */ }
+type FavoritoRepo interface { /* según FavoritoRepositorio.java (7 LOC) */ }
+
+// internal/port/printer.go
+type TicketPrinter interface {
+    PrintTicket(ctx context.Context, pedido *domain.Pedido, config *domain.Config) error
+    PrintPreCuenta(ctx context.Context, pedido *domain.Pedido) error
+}
+type ComandaPrinter interface {
+    PrintComanda(ctx context.Context, comanda *domain.ComandaMarcha) error
+}
+
+// internal/port/pdf.go
+type PdfGenerator interface {
+    GenerateFactura(ctx context.Context, pedido *domain.Pedido, config *domain.Config) ([]byte, error)
+    GenerateCierre(ctx context.Context, cierre *domain.CierreCaja, config *domain.Config) ([]byte, error)
+}
+
+// internal/port/backup.go
+type BackupService interface {
+    CreateBackup(ctx context.Context, dir string) (string, error)
+    RestoreBackup(ctx context.Context, file string) error
+    ValidateBackup(ctx context.Context, file string) error
+}
+
+// internal/port/license.go
+type LicenseValidator interface {
+    Validate(ctx context.Context) (*domain.License, error)
+    DecryptData(ctx context.Context, encrypted []byte) ([]byte, error)
+}</pre>
+</div>
+
+<h3>Traducción de conceptos Java → Go</h3>
+<table>
+<thead><tr><th>Java</th><th>Go idiomático</th></tr></thead>
+<tbody>
+<tr><td><code>class Pedidos { private int id; ... getters/setters }</code></td><td><code>type Pedido struct { ID int64; ... }</code> — campos exportados, sin getters</td></tr>
+<tr><td><code>record CalculoFiscalRecord(...)</code></td><td><code>type CalculoFiscal struct { ... }</code> — Go no tiene records, usar struct</td></tr>
+<tr><td><code>enum ModoSalidaTicket { IMPRIMIR, PDF, VISOR }</code></td><td><code>type ModoSalida int; const (Imprimir ModoSalida = iota; PDF; Visor)</code></td></tr>
+<tr><td><code>sealed interface ResultadoOperacion&lt;T&gt;</code></td><td><code>(T, error)</code> — el patrón nativo de Go</td></tr>
+<tr><td><code>Optional&lt;Pedido&gt;</code></td><td><code>(*Pedido, error)</code> — nil pointer = not found</td></tr>
+<tr><td><code>BigDecimal</code></td><td><code>shopspring/decimal.Decimal</code> (o tipo <code>Money</code> wrapper)</td></tr>
+<tr><td><code>LocalDateTime</code></td><td><code>time.Time</code></td></tr>
+<tr><td><code>List&lt;DetallePedido&gt;</code></td><td><code>[]DetallePedido</code></td></tr>
+<tr><td><code>Map&lt;String, Object&gt;</code></td><td><code>map[string]any</code></td></tr>
+<tr><td>Excepciones checked/unchecked</td><td>Errores como valores: <code>var ErrPedidoNoEncontrado = errors.New("pedido no encontrado")</code></td></tr>
+</tbody>
+</table>
+
+<h3>Validación de Fase</h3>
+<div class="alert alert-tip">
+  <div class="alert-title">✅ Criterio de aceptación</div>
+  <ul>
+    <li>Todas las entidades compilan: <code>go build ./internal/domain/...</code></li>
+    <li>Tests unitarios del tipo <code>Money</code>: aritmética, redondeo HALF_UP, serialización</li>
+    <li>Tests unitarios de errores centinela y constantes de enums</li>
+    <li>El paquete <code>domain</code> tiene CERO imports de paquetes externos (excepto <code>shopspring/decimal</code>)</li>
+    <li>Las interfaces en <code>port/</code> cubren todos los métodos de los repositorios Java</li>
+  </ul>
+</div>
+</section>
+
+<!-- ════════════════════════════ FASE 3 ════════════════════════════ -->
+<section id="fase3">
+<h2><span class="num">F3</span> Fase 3 — Servicios de Negocio y Repositorios MySQL</h2>
+<p>Implementar la lógica de negocio y la persistencia. Es la fase más densa: 22 servicios Java → Go + 10 DAOs → repositorios sqlx.</p>
+
+<h3>3.1 — Repositorios MySQL (adaptadores secundarios)</h3>
+<table>
+<thead><tr><th>DAO Java</th><th>LOC</th><th>Repositorio Go</th><th>LOC est.</th><th>Dificultad</th></tr></thead>
+<tbody>
+<tr><td><code>PedidosDao.java</code></td><td>2,618</td><td><code>adapter/mysql/pedido_repo.go</code></td><td>~900</td><td><span class="tag tag-hard">Difícil</span></td></tr>
+<tr><td><code>LoginDao.java</code></td><td>1,233</td><td><code>adapter/mysql/usuario_repo.go</code></td><td>~400</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>CierreCajaDao.java</code></td><td>1,052</td><td><code>adapter/mysql/cierre_repo.go</code></td><td>~350</td><td><span class="tag tag-hard">Difícil</span></td></tr>
+<tr><td><code>PlatosDao.java</code></td><td>753</td><td><code>adapter/mysql/plato_repo.go</code></td><td>~250</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>ClienteDao.java</code></td><td>550</td><td><code>adapter/mysql/cliente_repo.go</code></td><td>~180</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>PreciosPedidosDao.java</code></td><td>480</td><td><code>adapter/mysql/precio_repo.go</code></td><td>~160</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>ActualizacionTasaDao.java</code></td><td>425</td><td><code>adapter/mysql/tasa_repo.go</code></td><td>~140</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>CategoriaDao.java</code></td><td>370</td><td><code>adapter/mysql/categoria_repo.go</code></td><td>~120</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>AuditoriaPedidosDao.java</code></td><td>266</td><td><code>adapter/mysql/auditoria_repo.go</code></td><td>~90</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>ConfiguracionSistemaDao.java</code></td><td>223</td><td><code>adapter/mysql/config_repo.go</code></td><td>~80</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>SalasDao.java</code></td><td>211</td><td><code>adapter/mysql/sala_repo.go</code></td><td>~70</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>MesoneroDao.java</code></td><td>193</td><td><code>adapter/mysql/mesonero_repo.go</code></td><td>~65</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>PreferenciasTablaDao.java</code></td><td>129</td><td><code>adapter/mysql/preferencias_repo.go</code></td><td>~45</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>MovimientoSaldoPedidoDao.java</code></td><td>110</td><td><code>adapter/mysql/movimiento_repo.go</code></td><td>~40</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>AuditoriaPreciosDao.java</code></td><td>85</td><td><code>adapter/mysql/auditoria_repo.go</code> (mismo)</td><td>~30</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>FavoritoDao.java</code></td><td>52</td><td><code>adapter/mysql/favorito_repo.go</code></td><td>~20</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+</tbody>
+</table>
+
+<h4>Patrón de transacciones en Go</h4>
+<div class="card">
+<pre>// internal/adapter/mysql/tx.go
+type TxFunc func(ctx context.Context, tx *sqlx.Tx) error
+
+func (db *DB) WithTx(ctx context.Context, fn TxFunc) error {
+    tx, err := db.BeginTxx(ctx, nil)
+    if err != nil {
+        return fmt.Errorf("begin tx: %w", err)
+    }
+    defer func() {
+        if p := recover(); p != nil {
+            _ = tx.Rollback()
+            panic(p) // re-throw después de rollback
+        }
+    }()
+    if err := fn(ctx, tx); err != nil {
+        _ = tx.Rollback()
+        return err
+    }
+    return tx.Commit()
+}</pre>
+</div>
+
+<h3>3.2 — Servicios de negocio</h3>
+<table>
+<thead><tr><th>Servicio Java</th><th>LOC</th><th>Servicio Go</th><th>LOC est.</th><th>Dificultad</th></tr></thead>
+<tbody>
+<tr><td><code>ServicioRespaldoBaseDatos.java</code></td><td>1,446</td><td><code>adapter/backup/mysqldump_backup.go</code></td><td>~500</td><td><span class="tag tag-hard">Difícil</span></td></tr>
+<tr><td><code>GeneradorPdfPedido.java</code></td><td>1,180</td><td><code>adapter/pdf/factura_pdf.go</code></td><td>~400</td><td><span class="tag tag-hard">Difícil</span></td></tr>
+<tr><td><code>ServicioImpresionTicket.java</code></td><td>710</td><td><code>adapter/printer/ticket_printer.go</code></td><td>~250</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>GeneradorPdfCierre.java</code></td><td>424</td><td><code>adapter/pdf/cierre_pdf.go</code></td><td>~150</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>CalculoMonetarioPedido.java</code></td><td>385</td><td><code>service/calculo_monetario.go</code></td><td>~200</td><td><span class="tag tag-critical">Crítico</span></td></tr>
+<tr><td><code>ServicioMesa.java</code></td><td>363</td><td><code>service/mesa_service.go</code></td><td>~130</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>PlanPagosCobro.java</code></td><td>335</td><td><code>service/cobro_service.go</code></td><td>~140</td><td><span class="tag tag-hard">Difícil</span></td></tr>
+<tr><td><code>GeneradorPdfReporteAnulados.java</code></td><td>312</td><td><code>adapter/pdf/reporte_anulados_pdf.go</code></td><td>~120</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>ServicioComandaCocina.java</code></td><td>255</td><td><code>service/comanda_service.go</code></td><td>~100</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>PlatosServicio.java</code></td><td>247</td><td><code>service/platos_service.go</code></td><td>~100</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>PedidoPdfServicio.java</code></td><td>226</td><td><code>service/pedido_pdf_service.go</code></td><td>~90</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>ConsultaPedidosServicio.java</code></td><td>221</td><td><code>service/consulta_pedidos.go</code></td><td>~90</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>ConfiguracionServicio.java</code></td><td>214</td><td><code>service/configuracion_service.go</code></td><td>~80</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>CierreCajaServicio.java</code></td><td>210</td><td><code>service/cierre_service.go</code></td><td>~100</td><td><span class="tag tag-hard">Difícil</span></td></tr>
+<tr><td><code>CategoriaServicio.java</code></td><td>200</td><td><code>service/categoria_service.go</code></td><td>~80</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>GeneradorHtmlReporteAnulados.java</code></td><td>196</td><td><code>handler/reporte_handler.go</code> (templ)</td><td>~80</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>PedidoServicio.java</code></td><td>183</td><td><code>service/pedido_service.go</code></td><td>~80</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>ServicioMesoneroNombre.java</code></td><td>180</td><td><code>service/mesonero_service.go</code></td><td>~70</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>ServicioBootstrapInicial.java</code></td><td>173</td><td><code>service/bootstrap_service.go</code></td><td>~70</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>GestorBloqueoCobro.java</code></td><td>150</td><td><code>service/cobro_service.go</code> (integrado)</td><td>~60</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>ConfiguracionAccesosServicio.java</code></td><td>145</td><td><code>service/politica_acceso.go</code></td><td>~60</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>AutenticacionServicio.java</code></td><td>107</td><td><code>service/autenticacion_service.go</code></td><td>~50</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>PoliticaAcceso.java</code></td><td>104</td><td><code>service/politica_acceso.go</code></td><td>~50</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>SalasServicio.java</code></td><td>71</td><td><code>service/salas_service.go</code></td><td>~30</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>ConcurrenciaServicio.java</code></td><td>72</td><td><code>service/concurrencia.go</code></td><td>~30</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>FavoritoServicio.java</code></td><td>32</td><td><code>service/favorito_service.go</code></td><td>~15</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>RolesSistema.java</code></td><td>35</td><td><code>domain/usuario.go</code> (constantes)</td><td>~15</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+</tbody>
+</table>
+
+<h3>3.3 — Infraestructura de seguridad</h3>
+<table>
+<thead><tr><th>Java</th><th>LOC</th><th>Go</th><th>Notas</th></tr></thead>
+<tbody>
+<tr><td><code>ValidadorLicencia.java</code></td><td>325</td><td><code>adapter/security/license_validator.go</code></td><td><code>crypto/ecdsa</code> + <code>crypto/aes</code> + <code>crypto/cipher</code> (stdlib)</td></tr>
+<tr><td><code>ServicioLedgerFiscal.java</code></td><td>355</td><td><code>adapter/security/ledger_fiscal.go</code></td><td><code>crypto/sha256</code> — cadena hash idéntica al Java</td></tr>
+<tr><td><code>PasswordHasher.java</code></td><td>103</td><td><code>adapter/security/password_hasher.go</code></td><td><code>golang.org/x/crypto/bcrypt</code></td></tr>
+<tr><td><code>VerificadorIntegridadLogs.java</code></td><td>129</td><td><code>adapter/security/log_integrity.go</code></td><td>HMAC-SHA256 con <code>crypto/hmac</code></td></tr>
+<tr><td><code>GestorTokensApi.java</code></td><td>256</td><td><code>handler/middleware.go</code> (JWT)</td><td><code>golang-jwt/jwt/v5</code></td></tr>
+</tbody>
+</table>
+
+<h3>Validación de Fase</h3>
+<div class="alert alert-tip">
+  <div class="alert-title">✅ Criterio de aceptación</div>
+  <ul>
+    <li>Tests unitarios de <code>CalculoMonetarioPedido</code> portados 1:1 desde Java — mismos valores esperados</li>
+    <li>Tests de integración contra MySQL ephemeral (testcontainers-go) para todos los repos</li>
+    <li>Tests del ledger fiscal: hash chain produce mismos resultados que la versión Java</li>
+    <li>Tests de licencia: ECDSA verify + AES-GCM decrypt con datos de test conocidos</li>
+    <li><code>go test ./internal/... -count=1 -race</code> → 0 failures, 0 data races</li>
+  </ul>
+</div>
+</section>
+
+<!-- ════════════════════════════ FASE 4 ════════════════════════════ -->
+<section id="fase4">
+<h2><span class="num">F4</span> Fase 4 — Capa HTTP y API REST</h2>
+<p>Exponer toda la lógica de negocio via HTTP. Router chi, middleware, handlers, WebSocket para tiempo real, y API REST para tablets.</p>
+
+<h3>Rutas principales</h3>
+<div class="card">
+<pre>// Rutas del sistema — equivalente a lo que hace Sistema.java + ServidorRestTablets.java
+
+POST   /auth/login                    → authHandler.Login
+POST   /auth/logout                   → authHandler.Logout
+
+GET    /dashboard                     → dashboardHandler.Index        (página HTML)
+GET    /dashboard/stats               → dashboardHandler.Stats        (HTMX partial)
+
+GET    /mesas                         → mesaHandler.ListSalas         (vista de salas)
+GET    /mesas/{salaID}                → mesaHandler.ListMesas         (mesas de sala)
+GET    /mesas/{salaID}/{mesa}         → mesaHandler.DetalleMesa       (pedido activo)
+
+GET    /pedidos                       → pedidoHandler.List            (historial)
+GET    /pedidos/{id}                  → pedidoHandler.Detail
+POST   /pedidos                       → pedidoHandler.Create
+PUT    /pedidos/{id}/items            → pedidoHandler.UpdateItems
+DELETE /pedidos/{id}/items/{itemID}   → pedidoHandler.RemoveItem
+POST   /pedidos/{id}/comanda          → comandaHandler.EnviarComanda
+POST   /pedidos/{id}/cobro            → cobroHandler.Cobrar
+POST   /pedidos/{id}/anular           → pedidoHandler.Anular
+GET    /pedidos/{id}/precuenta        → pedidoHandler.PreCuenta
+GET    /pedidos/{id}/pdf              → pdfHandler.FacturaPdf
+
+GET    /platos                        → platoHandler.List
+POST   /platos                        → platoHandler.Create
+PUT    /platos/{id}                   → platoHandler.Update
+DELETE /platos/{id}                   → platoHandler.Delete
+GET    /platos/categorias             → categoriaHandler.List
+
+GET    /cierres                       → cierreHandler.List
+POST   /cierres                       → cierreHandler.GenerarCierre
+GET    /cierres/{id}/pdf              → cierreHandler.CierrePdf
+
+GET    /config                        → configHandler.Show
+PUT    /config                        → configHandler.Update
+GET    /config/fiscal                 → configHandler.Fiscal
+
+GET    /usuarios                      → usuarioHandler.List
+POST   /usuarios                      → usuarioHandler.Create
+PUT    /usuarios/{id}                 → usuarioHandler.Update
+
+GET    /reportes/anulados             → reporteHandler.Anulados
+GET    /reportes/anulados/pdf         → reporteHandler.AnuladosPdf
+
+POST   /backup                        → backupHandler.Create
+POST   /backup/restore                → backupHandler.Restore
+
+GET    /ws                            → wsHub.HandleWebSocket         (tiempo real)
+
+// API REST para tablets (equivale a ServidorRestTablets.java)
+POST   /api/v1/auth/token             → apiHandler.Token
+GET    /api/v1/salas                   → apiHandler.Salas
+GET    /api/v1/platos                  → apiHandler.Platos
+POST   /api/v1/pedidos                 → apiHandler.CrearPedido
+POST   /api/v1/pedidos/{id}/comanda    → apiHandler.EnviarComanda
+GET    /api/v1/pedidos/{id}            → apiHandler.ConsultarPedido</pre>
+</div>
+
+<h3>Middleware Chain</h3>
+<div class="card">
+<pre>r := chi.NewRouter()
+
+// Global
+r.Use(middleware.RequestID)
+r.Use(middleware.RealIP)
+r.Use(slogMiddleware)           // logging con slog
+r.Use(middleware.Recoverer)     // panic recovery
+r.Use(middleware.Timeout(30 * time.Second))
+r.Use(corsMiddleware)           // CORS para tablets
+
+// Grupo autenticado
+r.Group(func(r chi.Router) {
+    r.Use(authMiddleware)       // verificar sesión/JWT
+    r.Use(accessPolicyMiddleware) // políticas de acceso por rol
+    // ... rutas protegidas
+})
+
+// Público
+r.Post("/auth/login", authHandler.Login)
+r.Get("/health", healthHandler.Health)</pre>
+</div>
+
+<h3>WebSocket Hub (tiempo real)</h3>
+<div class="card">
+<pre>// internal/handler/ws_hub.go
+// Reemplaza el polling de SwingWorkers en Java.
+// Cuando un pedido cambia, la mesa se actualiza, o una comanda se envía,
+// el hub notifica a todos los clientes conectados.
+
+type Hub struct {
+    clients    map[*Client]bool
+    broadcast  chan Message
+    register   chan *Client
+    unregister chan *Client
+}
+
+type Message struct {
+    Type    string `json:"type"`    // "mesa_update", "comanda_enviada", "pedido_cobrado"
+    Payload any    `json:"payload"`
+}
+
+// Los servicios emiten eventos al hub:
+// hub.Broadcast(Message{Type: "mesa_update", Payload: mesaData})</pre>
+</div>
+
+<h3>Mapeo Java Vista → Go Handler</h3>
+<table>
+<thead><tr><th>Componente Swing Java</th><th>LOC</th><th>Handler Go</th><th>Notas</th></tr></thead>
+<tbody>
+<tr><td><code>Sistema.java</code> (monolito)</td><td>14,148</td><td>Distribuido en ~12 handlers</td><td>14K LOC → ~2,500 LOC total en handlers</td></tr>
+<tr><td><code>PanelAtencionMesasSplit.java</code></td><td>2,531</td><td><code>mesa_handler.go</code> + <code>pedido_handler.go</code></td><td>Lógica de UI se convierte en endpoints + templates</td></tr>
+<tr><td><code>DialogoCobroPedido.java</code></td><td>1,054</td><td><code>cobro_handler.go</code></td><td>Formulario → partial HTMX</td></tr>
+<tr><td><code>DialogoReporteAnulados.java</code></td><td>696</td><td><code>reporte_handler.go</code></td><td>Filtros + tabla → HTMX</td></tr>
+<tr><td><code>FrmLogin.java</code></td><td>504</td><td><code>auth_handler.go</code></td><td>Login form → POST</td></tr>
+<tr><td><code>DialogoAnulacionAsistida.java</code></td><td>475</td><td><code>pedido_handler.go</code> (método Anular)</td><td>Wizard → pasos HTMX</td></tr>
+<tr><td><code>ServidorRestTablets.java</code></td><td>2,355</td><td><code>api_tablet_handler.go</code></td><td>Se porta casi directamente (ya es HTTP)</td></tr>
+</tbody>
+</table>
+
+<h3>Validación de Fase</h3>
+<div class="alert alert-tip">
+  <div class="alert-title">✅ Criterio de aceptación</div>
+  <ul>
+    <li>Todos los endpoints responden correctamente con <code>httptest.NewServer</code></li>
+    <li>Tests de integración HTTP: login → crear pedido → agregar items → cobrar → cierre</li>
+    <li>API tablets: compatible con el protocolo actual (mismos JSON request/response)</li>
+    <li>WebSocket: test de conexión + broadcast de eventos</li>
+    <li><code>curl localhost:8080/health</code> → <code>{"status": "ok"}</code></li>
+  </ul>
+</div>
+</section>
+
+<!-- ════════════════════════════ FASE 5 ════════════════════════════ -->
+<section id="fase5">
+<h2><span class="num">F5</span> Fase 5 — Frontend Web (HTMX + Templ + Tailwind)</h2>
+<p>Esta es la fase más laboriosa. Recrear toda la UI de Swing como interfaz web moderna, manteniendo la misma experiencia de usuario.</p>
+
+<div class="alert alert-danger">
+  <div class="alert-title">🔴 Zona de mayor riesgo</div>
+  <p><code>Sistema.java</code> tiene <strong>14,148 líneas</strong> con UI, eventos y lógica entrelazados. Se descompone en ~10 páginas web independientes. Cada página es un template Templ con interactividad HTMX.</p>
+</div>
+
+<h3>Páginas a construir</h3>
+<table>
+<thead><tr><th>Página</th><th>Origen Java</th><th>Funcionalidad</th><th>Complejidad</th></tr></thead>
+<tbody>
+<tr><td><code>login.templ</code></td><td>FrmLogin (504)</td><td>Autenticación, visibilidad password, intentos</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>dashboard.templ</code></td><td>Sistema pestaña Dashboard</td><td>Gráficos, resumen ventas, KPIs del día</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>mesas.templ</code></td><td>PanelAtencionMesasSplit (2531)</td><td>Grid de mesas por sala, estado visual, drag-and-drop</td><td><span class="tag tag-hard">Difícil</span></td></tr>
+<tr><td><code>pedido.templ</code></td><td>Sistema pestaña Pedidos + Panel</td><td>Detalle de pedido, agregar/quitar ítems, cantidades</td><td><span class="tag tag-hard">Difícil</span></td></tr>
+<tr><td><code>cobro.templ</code></td><td>DialogoCobroPedido (1054)</td><td>Plan de pagos, métodos, IGTF, pre-cuenta</td><td><span class="tag tag-hard">Difícil</span></td></tr>
+<tr><td><code>platos.templ</code></td><td>Sistema pestaña Platos</td><td>CRUD, categorías, precios, favoritos</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>cierres.templ</code></td><td>Sistema pestaña Cierres</td><td>Generar cierre Z, historial, PDF</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>config.templ</code></td><td>Sistema pestaña Config</td><td>Datos fiscales, impresoras, accesos, respaldos</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>usuarios.templ</code></td><td>Sistema pestaña Usuarios</td><td>CRUD usuarios, roles, permisos</td><td><span class="tag tag-easy">Fácil</span></td></tr>
+<tr><td><code>reportes.templ</code></td><td>DialogoReporteAnulados (696)</td><td>Filtros, tabla, exportar PDF</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>anulacion.templ</code></td><td>DialogoAnulacionAsistida (475)</td><td>Wizard 3 pasos de anulación</td><td><span class="tag tag-medium">Media</span></td></tr>
+<tr><td><code>layout.templ</code></td><td>Marco general de Sistema</td><td>Sidebar, nav, notificaciones toast</td><td><span class="tag tag-medium">Media</span></td></tr>
+</tbody>
+</table>
+
+<h3>Stack Frontend</h3>
+<div class="grid-2">
+<div class="card">
+  <div class="card-header"><span class="icon">📐</span> Templ (templates Go)</div>
+  <pre>// web/templates/mesas.templ
+templ MesasPage(salas []domain.Sala) {
+    @Layout("Mesas") {
+        for _, sala := range salas {
+            &lt;div class="grid grid-cols-4 gap-4"
+                 hx-get={ "/mesas/" + sala.ID }
+                 hx-trigger="every 5s"
+                 hx-swap="innerHTML"&gt;
+                for _, mesa := range sala.Mesas {
+                    @MesaCard(mesa)
+                }
+            &lt;/div&gt;
+        }
+    }
+}</pre>
+</div>
+<div class="card">
+  <div class="card-header"><span class="icon">⚡</span> HTMX (interactividad)</div>
+  <pre>&lt;!-- Agregar ítem al pedido sin recargar --&gt;
+&lt;button
+    hx-post="/pedidos/42/items"
+    hx-vals='{"plato_id": 15, "cantidad": 1}'
+    hx-target="#detalle-pedido"
+    hx-swap="innerHTML"
+    class="btn btn-primary"&gt;
+    Agregar
+&lt;/button&gt;
+
+&lt;!-- WebSocket para actualizaciones en tiempo real --&gt;
+&lt;div hx-ext="ws" ws-connect="/ws"&gt;
+    &lt;div id="mesas-grid" hx-swap-oob="true"&gt;
+        &lt;!-- Se actualiza automáticamente --&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</pre>
+</div>
+</div>
+
+<h3>PWA para Tablets</h3>
+<div class="card">
+  <p>Las tablets actualmente usan la API REST de <code>ServidorRestTablets.java</code>. En Go, además de mantener esa API, la app web se convierte en <strong>PWA</strong>:</p>
+  <ul>
+    <li><code>manifest.json</code> — ícono, nombre, modo standalone</li>
+    <li><code>service-worker.js</code> — cache de assets estáticos, offline-first para catálogo</li>
+    <li>Responsive design con Tailwind — misma app funciona en desktop, tablet y móvil</li>
+    <li>Instalar como "app" en tablets Android/iOS desde el navegador</li>
+  </ul>
+</div>
+
+<h3>Validación de Fase</h3>
+<div class="alert alert-tip">
+  <div class="alert-title">✅ Criterio de aceptación</div>
+  <ul>
+    <li>Flujo completo en browser: login → ver mesas → crear pedido → agregar ítems → enviar comanda → cobrar → generar cierre Z</li>
+    <li>Responsive: funciona en 1920px (desktop), 768px (tablet), 375px (móvil)</li>
+    <li>Tiempo real: abrir 2 navegadores, cambiar estado de mesa en uno → se refleja en el otro</li>
+    <li>Lighthouse PWA score ≥ 90</li>
+    <li>Tests E2E con Playwright Go</li>
+  </ul>
+</div>
+</section>
+
+<!-- ════════════════════════════ FASE 6 ════════════════════════════ -->
+<section id="fase6">
+<h2><span class="num">F6</span> Fase 6 — Infraestructura Transversal</h2>
+
+<h3>6.1 — Impresión ESC/POS</h3>
+<table>
+<thead><tr><th>Java</th><th>LOC</th><th>Go</th></tr></thead>
+<tbody>
+<tr><td><code>GeneradorEscPosComanda.java</code></td><td>200</td><td><code>adapter/printer/escpos.go</code></td></tr>
+<tr><td><code>ProtocoloEscPosDleEot.java</code></td><td>130</td><td><code>adapter/printer/escpos.go</code> (mismo)</td></tr>
+<tr><td><code>SpoolerCocinaTcp.java</code></td><td>251</td><td><code>adapter/printer/spooler_cocina.go</code></td></tr>
+<tr><td><code>CircuitBreakerImpresora.java</code></td><td>124</td><td><code>adapter/printer/circuit_breaker.go</code></td></tr>
+</tbody>
+</table>
+<p>Go maneja TCP nativamente con <code>net.Dial("tcp", addr)</code>. El protocolo ESC/POS son bytes crudos — la traducción es directa. El circuit breaker se implementa con goroutines + timers.</p>
+
+<h3>6.2 — Logging y auditoría</h3>
+<table>
+<thead><tr><th>Java</th><th>Go</th></tr></thead>
+<tbody>
+<tr><td><code>ArchivoLogDiario.java</code> (381)</td><td><code>slog</code> con handler rotativo (lumberjack)</td></tr>
+<tr><td><code>ConfiguracionLogs.java</code> (37)</td><td>Configuración en <code>main.go</code></td></tr>
+<tr><td><code>ControlMantenimientoBD.java</code> (367)</td><td><code>adapter/maintenance/db_control.go</code></td></tr>
+<tr><td><code>DiarioRecuperacionBD.java</code> (92)</td><td><code>adapter/backup/recovery_journal.go</code></td></tr>
+</tbody>
+</table>
+
+<h3>6.3 — SSH Tunnel</h3>
+<table>
+<thead><tr><th>Java</th><th>Go</th></tr></thead>
+<tbody>
+<tr><td><code>ServicioTunelSsh.java</code> (309)</td><td><code>adapter/tunnel/ssh_tunnel.go</code> — <code>golang.org/x/crypto/ssh</code></td></tr>
+</tbody>
+</table>
+
+<h3>6.4 — Binario único con go:embed</h3>
+<div class="card">
+<pre>// web/embed.go
+package web
+
+import "embed"
+
+//go:embed templates static
+var Assets embed.FS
+
+// En main.go:
+// http.Handle("/static/", http.FileServer(http.FS(web.Assets)))
+
+// RESULTADO: un solo binario `restaurante` contiene:
+// - Backend Go completo
+// - Templates HTML compilados
+// - CSS (Tailwind compilado)
+// - JavaScript (HTMX + Alpine.js)
+// - Imágenes y assets
+// - Migraciones SQL
+// No necesita carpetas externas. Se ejecuta con: ./restaurante</pre>
+</div>
+
+<h3>6.5 — Deploy Docker</h3>
+<div class="card">
+<pre># Dockerfile — multi-stage build
+FROM golang:1.22-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o restaurante ./cmd/restaurante
+
+FROM alpine:3.19
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=builder /app/restaurante /usr/local/bin/
+EXPOSE 8080
+CMD ["restaurante"]
+
+# docker-compose.yml
+# services:
+#   app:
+#     build: .
+#     ports: ["8080:8080"]
+#     env_file: .env
+#     depends_on: [db]
+#   db:
+#     image: mysql:8.4
+#     volumes: [db-data:/var/lib/mysql]</pre>
+</div>
+</section>
+
+<!-- ════════════════════════════ FASE 7 ════════════════════════════ -->
+<section id="fase7">
+<h2><span class="num">F7</span> Fase 7 — Integración, Testing y Producción</h2>
+
+<h3>7.1 — Testing</h3>
+<div class="grid-2">
+<div class="card">
+  <div class="card-header"><span class="icon">🧪</span> Unitarios</div>
+  <ul>
+    <li>Table-driven tests para toda la lógica de cálculo monetario</li>
+    <li>Mocks de interfaces con <code>mockery</code> o manual</li>
+    <li><code>go test -race ./internal/...</code> en cada CI run</li>
+    <li>Cobertura mínima: 80% en <code>service/</code> y <code>domain/</code></li>
+  </ul>
+</div>
+<div class="card">
+  <div class="card-header"><span class="icon">🔗</span> Integración</div>
+  <ul>
+    <li><code>testcontainers-go</code> con MySQL 8.4 ephemeral</li>
+    <li>Tests de repositorio contra BD real</li>
+    <li>Tests HTTP con <code>httptest.NewServer</code></li>
+    <li>Equivalentes a <code>MySqlIntegrationIT.java</code> (1773 LOC)</li>
+  </ul>
+</div>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="icon">🎭</span> E2E</div>
+  <ul>
+    <li><code>playwright-go</code> para tests E2E en browser headless</li>
+    <li>Equivalentes a <code>DiaCompletoFiscalE2EVirtual.java</code> (909 LOC)</li>
+    <li>Flujo completo: login → pedidos → comandas → cobros → cierre Z → verificar ledger</li>
+    <li>Docker Compose ephemeral para entorno aislado</li>
+  </ul>
+</div>
+
+<h3>7.2 — Migración de datos</h3>
+<div class="alert alert-info">
+  <div class="alert-title">💡 Compatibilidad total de BD</div>
+  <p>El esquema MySQL es <strong>idéntico</strong>. La migración Go usa las mismas 26 tablas, mismas columnas, mismos tipos. Los datos existentes se preservan. No se necesita migración de datos — solo asegurarse de que las queries Go produzcan los mismos resultados que las Java.</p>
+</div>
+
+<h3>7.3 — Paridad funcional: checklist de validación cruzada</h3>
+<ul class="checklist">
+  <li>Crear pedido → detalles → enviar comanda → ticket impreso idéntico</li>
+  <li>Cobrar con múltiples métodos (efectivo + punto + Zelle) → factura PDF idéntica</li>
+  <li>IGTF calculado correctamente para pagos divisas</li>
+  <li>Cierre Z genera mismo formato, mismos totales</li>
+  <li>Ledger fiscal produce mismos hashes SHA-256</li>
+  <li>Anulación de factura: contra-asiento correcto en <code>pedido_saldos_movimientos</code></li>
+  <li>Anulación de comanda: solo ítems no servidos</li>
+  <li>Anulación de cuenta no pagada: sin movimientos de caja</li>
+  <li>Tasa BCV actualizada correctamente</li>
+  <li>Respaldo con HMAC verificable</li>
+  <li>Restauración de respaldo completa</li>
+  <li>Licencia ECDSA validada</li>
+  <li>Encriptación AES-GCM de datos fiscales</li>
+  <li>API REST tablets: mismos endpoints, mismos JSON</li>
+  <li>Instancia única: solo un servidor por puerto</li>
+  <li>Bootstrap inicial (primer uso) funcional</li>
+</ul>
+
+<h3>7.4 — Scripts operativos</h3>
+<p>Los scripts <code>.sh</code> y <code>.bat</code> existentes se adaptan para el nuevo binario Go. La mayoría solo necesitan cambiar la invocación:</p>
+<table>
+<thead><tr><th>Script actual</th><th>Cambio</th></tr></thead>
+<tbody>
+<tr><td><code>java -jar Restaurante.jar</code></td><td><code>./restaurante</code> (binario único)</td></tr>
+<tr><td><code>java -jar Restaurante.jar --respaldar</code></td><td><code>./restaurante --respaldar</code></td></tr>
+<tr><td><code>java -jar Restaurante.jar --migrate-db</code></td><td><code>./restaurante --migrate-db</code></td></tr>
+<tr><td><code>inicio_fresco.sh</code></td><td>Misma lógica, cambiar JAR por binario</td></tr>
+</tbody>
+</table>
+
+<h3>Validación de Fase</h3>
+<div class="alert alert-tip">
+  <div class="alert-title">✅ Criterio de aceptación FINAL</div>
+  <ul>
+    <li><code>go test ./... -count=1 -race</code> → 100% pass, 0 races</li>
+    <li>E2E completo: día de operación simulado (DiaCompletoFiscal equivalente)</li>
+    <li>Paridad con Java: mismos cálculos monetarios, mismos PDFs, mismos tickets</li>
+    <li>Docker deploy: <code>docker compose up</code> → sistema operativo</li>
+    <li>Binario único &lt; 30 MB</li>
+    <li>Startup time &lt; 2 segundos</li>
+    <li>Consumo de memoria &lt; 50 MB en reposo</li>
+  </ul>
+</div>
+</section>
+
+<!-- ════════════════════════════ MAPEO COMPLETO ════════════════════════════ -->
+<section id="mapeo">
+<h2><span class="num">5</span> Mapeo Completo de Archivos</h2>
+<p>Cada archivo Java y su destino exacto en Go.</p>
+
+<details>
+<summary>Controladores (6 archivos → distribuidos en handlers)</summary>
+<div>
+<table>
+<thead><tr><th>Java</th><th>LOC</th><th>Go</th><th>LOC est.</th></tr></thead>
+<tbody>
+<tr><td><code>CategoriaControlador.java</code></td><td>70</td><td><code>handler/categoria_handler.go</code></td><td>~30</td></tr>
+<tr><td><code>FavoritoControlador.java</code></td><td>20</td><td><code>handler/plato_handler.go</code> (método)</td><td>~10</td></tr>
+<tr><td><code>LoginControlador.java</code></td><td>32</td><td><code>handler/auth_handler.go</code></td><td>~15</td></tr>
+<tr><td><code>PedidosControlador.java</code></td><td>302</td><td><code>handler/pedido_handler.go</code></td><td>~120</td></tr>
+<tr><td><code>PlatosControlador.java</code></td><td>71</td><td><code>handler/plato_handler.go</code></td><td>~30</td></tr>
+<tr><td><code>SalasControlador.java</code></td><td>34</td><td><code>handler/sala_handler.go</code></td><td>~15</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+
+<details>
+<summary>Vista — Swing (23 archivos → templates + handlers)</summary>
+<div>
+<table>
+<thead><tr><th>Java</th><th>LOC</th><th>Go (template + handler)</th><th>LOC est.</th></tr></thead>
+<tbody>
+<tr><td><code>Sistema.java</code></td><td>14,148</td><td>Distribuido en todas las páginas + <code>layout.templ</code></td><td>~2,000</td></tr>
+<tr><td><code>PanelAtencionMesasSplit.java</code></td><td>2,531</td><td><code>mesas.templ</code> + <code>pedido.templ</code></td><td>~500</td></tr>
+<tr><td><code>DialogoCobroPedido.java</code></td><td>1,054</td><td><code>cobro.templ</code></td><td>~300</td></tr>
+<tr><td><code>DialogoReporteAnulados.java</code></td><td>696</td><td><code>reportes.templ</code></td><td>~200</td></tr>
+<tr><td><code>FrmLogin.java</code></td><td>504</td><td><code>login.templ</code></td><td>~80</td></tr>
+<tr><td><code>DialogoAnulacionAsistida.java</code></td><td>475</td><td><code>anulacion.templ</code></td><td>~150</td></tr>
+<tr><td><code>DialogoAlertaLicenciaBroma.java</code></td><td>305</td><td><code>layout.templ</code> (modal)</td><td>~40</td></tr>
+<tr><td><code>FrmBootstrapInicial.java</code></td><td>255</td><td><code>bootstrap.templ</code></td><td>~80</td></tr>
+<tr><td><code>ToastNotificacion.java</code></td><td>256</td><td>Alpine.js component</td><td>~30</td></tr>
+<tr><td><code>DialogoGuiaCobro.java</code></td><td>243</td><td><code>cobro.templ</code> (integrado)</td><td>~60</td></tr>
+<tr><td><code>DialogoAtajosTeclado.java</code></td><td>162</td><td>JS keyboard shortcuts</td><td>~30</td></tr>
+<tr><td><code>GestorAnchosTabla.java</code></td><td>155</td><td>CSS/localStorage</td><td>~20</td></tr>
+<tr><td><code>ControlVisibilidadPassword.java</code></td><td>147</td><td>Alpine.js toggle</td><td>~10</td></tr>
+<tr><td><code>RendererPlato.java</code></td><td>141</td><td><code>platos.templ</code> (componente)</td><td>~30</td></tr>
+<tr><td><code>Tables.java</code></td><td>325</td><td>Tailwind table components</td><td>~50</td></tr>
+<tr><td><code>RefrescoVistas.java</code></td><td>120</td><td>WebSocket auto-refresh</td><td>~20</td></tr>
+<tr><td><code>ManejadorErroresSwing.java</code></td><td>118</td><td>HTTP error middleware</td><td>~30</td></tr>
+<tr><td><code>Eventos.java</code></td><td>63</td><td>WebSocket events</td><td>~15</td></tr>
+<tr><td>8× SwingWorkers</td><td>~510</td><td>Eliminados (HTMX async nativo)</td><td>0</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+
+<details>
+<summary>Infraestructura (12 archivos → adapters)</summary>
+<div>
+<table>
+<thead><tr><th>Java</th><th>LOC</th><th>Go</th><th>LOC est.</th></tr></thead>
+<tbody>
+<tr><td><code>ServidorRestTablets.java</code></td><td>2,355</td><td><code>handler/api_tablet_handler.go</code></td><td>~600</td></tr>
+<tr><td><code>MigradorEsquemaJdbc.java</code></td><td>1,439</td><td><code>adapter/migration/goose_migrator.go</code> + SQL files</td><td>~50</td></tr>
+<tr><td><code>ProveedorConexionJdbc.java</code></td><td>654</td><td><code>adapter/mysql/pool.go</code></td><td>~80</td></tr>
+<tr><td><code>ArchivoLogDiario.java</code></td><td>381</td><td><code>slog</code> + <code>lumberjack</code></td><td>~40</td></tr>
+<tr><td><code>ControlMantenimientoBD.java</code></td><td>367</td><td><code>adapter/maintenance/db_control.go</code></td><td>~120</td></tr>
+<tr><td><code>ValidadorLicencia.java</code></td><td>325</td><td><code>adapter/security/license_validator.go</code></td><td>~150</td></tr>
+<tr><td><code>ServicioLedgerFiscal.java</code></td><td>355</td><td><code>adapter/security/ledger_fiscal.go</code></td><td>~150</td></tr>
+<tr><td><code>ServicioTunelSsh.java</code></td><td>309</td><td><code>adapter/tunnel/ssh_tunnel.go</code></td><td>~120</td></tr>
+<tr><td><code>GestorTokensApi.java</code></td><td>256</td><td><code>handler/middleware.go</code></td><td>~80</td></tr>
+<tr><td><code>SpoolerCocinaTcp.java</code></td><td>251</td><td><code>adapter/printer/spooler_cocina.go</code></td><td>~100</td></tr>
+<tr><td><code>GeneradorEscPosComanda.java</code></td><td>200</td><td><code>adapter/printer/escpos.go</code></td><td>~80</td></tr>
+<tr><td><code>ProtocoloEscPosDleEot.java</code></td><td>130</td><td><code>adapter/printer/escpos.go</code> (integrado)</td><td>~50</td></tr>
+<tr><td><code>CircuitBreakerImpresora.java</code></td><td>124</td><td><code>adapter/printer/circuit_breaker.go</code></td><td>~50</td></tr>
+<tr><td><code>PasswordHasher.java</code></td><td>103</td><td><code>adapter/security/password_hasher.go</code></td><td>~30</td></tr>
+<tr><td><code>DiarioRecuperacionBD.java</code></td><td>92</td><td><code>adapter/backup/recovery_journal.go</code></td><td>~40</td></tr>
+<tr><td><code>VerificadorIntegridadLogs.java</code></td><td>129</td><td><code>adapter/security/log_integrity.go</code></td><td>~50</td></tr>
+<tr><td><code>ConfiguracionLogs.java</code></td><td>37</td><td>Inline en <code>main.go</code></td><td>~10</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</section>
+
+<!-- ════════════════════════════ LIBRERÍAS ════════════════════════════ -->
+<section id="librerias">
+<h2><span class="num">6</span> Librerías Go Recomendadas</h2>
+
+<table>
+<thead><tr><th>Categoría</th><th>Librería</th><th>Justificación</th></tr></thead>
+<tbody>
+<tr><td><strong>Router HTTP</strong></td><td><code>go-chi/chi/v5</code></td><td>Ligero, stdlib-compatible, middleware first-class. Mejor que gin para proyectos idiomáticos.</td></tr>
+<tr><td><strong>MySQL driver</strong></td><td><code>go-sql-driver/mysql</code></td><td>Driver oficial MySQL para Go. Usa <code>database/sql</code> stdlib.</td></tr>
+<tr><td><strong>SQL helpers</strong></td><td><code>jmoiron/sqlx</code></td><td>Extiende <code>database/sql</code> con <code>StructScan</code>, <code>NamedExec</code>. Evita boilerplate sin ser ORM.</td></tr>
+<tr><td><strong>Decimales</strong></td><td><code>shopspring/decimal</code></td><td>Reemplaza <code>BigDecimal</code>. Aritmética exacta, configurable precision y rounding.</td></tr>
+<tr><td><strong>Templates</strong></td><td><code>a-h/templ</code></td><td>Templates type-safe compilados. Mejor que <code>html/template</code> para proyectos grandes.</td></tr>
+<tr><td><strong>PDF</strong></td><td><code>jung-kurt/gofpdf</code></td><td>Genera PDFs sin dependencias externas. Reemplaza iTextPDF.</td></tr>
+<tr><td><strong>Env vars</strong></td><td><code>joho/godotenv</code></td><td>Carga <code>.env</code> files. Compatible con formato actual del proyecto.</td></tr>
+<tr><td><strong>Migraciones</strong></td><td><code>pressly/goose/v3</code></td><td>Migraciones SQL versionadas. Más maduro que golang-migrate.</td></tr>
+<tr><td><strong>JWT</strong></td><td><code>golang-jwt/jwt/v5</code></td><td>Reemplaza <code>GestorTokensApi</code> para auth de API tablets.</td></tr>
+<tr><td><strong>Bcrypt</strong></td><td><code>golang.org/x/crypto/bcrypt</code></td><td>Password hashing. Paquete oficial x/crypto.</td></tr>
+<tr><td><strong>SSH</strong></td><td><code>golang.org/x/crypto/ssh</code></td><td>Reemplaza JSch para túneles SSH.</td></tr>
+<tr><td><strong>WebSocket</strong></td><td><code>coder/websocket</code></td><td>WebSocket ligero stdlib-friendly (ex nhooyr/websocket).</td></tr>
+<tr><td><strong>Testing</strong></td><td><code>stretchr/testify</code></td><td>Assertions + mocks. <code>testing</code> stdlib para estructura.</td></tr>
+<tr><td><strong>Testcontainers</strong></td><td><code>testcontainers/testcontainers-go</code></td><td>MySQL ephemeral para tests de integración.</td></tr>
+<tr><td><strong>E2E</strong></td><td><code>playwright-community/playwright-go</code></td><td>Tests E2E en browser headless.</td></tr>
+<tr><td><strong>Log rotation</strong></td><td><code>natefinch/lumberjack</code></td><td>Rotación de archivos de log. Se integra con <code>slog</code>.</td></tr>
+<tr><td><strong>CLI flags</strong></td><td><code>flag</code> (stdlib)</td><td>Para <code>--respaldar</code>, <code>--migrate-db</code>, etc.</td></tr>
+<tr><td><strong>Crypto</strong></td><td><code>crypto/*</code> (stdlib)</td><td>ECDSA, AES-GCM, SHA-256, HMAC — todo en stdlib.</td></tr>
+<tr><td><strong>Logging</strong></td><td><code>log/slog</code> (stdlib)</td><td>Structured logging nativo desde Go 1.21.</td></tr>
+</tbody>
+</table>
+
+<div class="alert alert-info">
+  <div class="alert-title">💡 Filosofía de dependencias</div>
+  <p>Go favorece <strong>pocas dependencias</strong>. La stdlib cubre: HTTP, crypto, JSON, XML, testing, logging, encoding, compression, templates. Solo agregar externas cuando aporten valor claro (sqlx para DB, shopspring para decimales, templ para templates type-safe).</p>
+</div>
+</section>
+
+<!-- ════════════════════════════ RIESGOS ════════════════════════════ -->
+<section id="riesgos">
+<h2><span class="num">7</span> Riesgos y Mitigaciones</h2>
+
+<table>
+<thead><tr><th>Riesgo</th><th>Impacto</th><th>Probabilidad</th><th>Mitigación</th></tr></thead>
+<tbody>
+<tr>
+  <td><span class="tag tag-critical">Crítico</span> <strong>Sistema.java (14K LOC)</strong> — decomposición incorrecta</td>
+  <td>Alto</td><td>Alta</td>
+  <td>Descomponer metódicamente: primero extraer todos los event handlers, luego mapear cada tab a un handler HTTP. No migrar Sistema.java completo de una vez — hacerlo tab por tab.</td>
+</tr>
+<tr>
+  <td><span class="tag tag-critical">Crítico</span> <strong>Cálculos monetarios</strong> — diferencias de centavos</td>
+  <td>Alto</td><td>Media</td>
+  <td>Tests de paridad: ejecutar mismos cálculos en Java y Go con datos de producción, comparar resultado byte por byte. Usar <code>shopspring/decimal</code> con misma configuración de escala y redondeo que el Java.</td>
+</tr>
+<tr>
+  <td><span class="tag tag-hard">Alto</span> <strong>Ledger fiscal</strong> — hashes incompatibles</td>
+  <td>Alto</td><td>Baja</td>
+  <td>Tests de hash chain con datos conocidos. El algoritmo SHA-256 produce mismos resultados en ambos lenguajes — solo verificar que la serialización del payload sea byte-idéntica.</td>
+</tr>
+<tr>
+  <td><span class="tag tag-medium">Medio</span> <strong>PDF output</strong> — diferencias visuales</td>
+  <td>Medio</td><td>Alta</td>
+  <td>Los PDFs serán diferentes en formato exacto (gofpdf vs iText). Aceptable si contienen misma información con formato profesional. Comparar datos, no píxeles.</td>
+</tr>
+<tr>
+  <td><span class="tag tag-medium">Medio</span> <strong>ESC/POS tickets</strong> — diferencias de bytes</td>
+  <td>Medio</td><td>Baja</td>
+  <td>Portar los bytes ESC/POS exactos del Java. El protocolo es estándar — mismos bytes = mismo output.</td>
+</tr>
+<tr>
+  <td><span class="tag tag-medium">Medio</span> <strong>API tablets retrocompatibilidad</strong></td>
+  <td>Medio</td><td>Baja</td>
+  <td>Tests de contrato: mismas requests HTTP → mismas responses JSON. Los tablets no necesitan cambios.</td>
+</tr>
+<tr>
+  <td><span class="tag tag-easy">Bajo</span> <strong>Licencia ECDSA</strong> — key format</td>
+  <td>Bajo</td><td>Baja</td>
+  <td>Go stdlib <code>crypto/ecdsa</code> lee mismos formatos PEM/DER que Java.</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<!-- ════════════════════════════ GUÍA LLM ════════════════════════════ -->
+<section id="llm">
+<h2><span class="num">8</span> Guía para el Agente LLM</h2>
+<p>Instrucciones específicas para que un agente AI (Claude, Gemini, GPT) ejecute la migración fase por fase.</p>
+
+<h3>8.1 — Contexto a proporcionar al agente</h3>
+<div class="card">
+<pre>// PROMPT BASE para cada sesión de migración:
+"Estás migrando un sistema de restaurante de Java 21 (Swing + MySQL + Ant) a Go.
+El proyecto Go se llama 'restaurante-go'.
+
+Reglas inquebrantables:
+1. Dinero: tipo Money con shopspring/decimal, 2 decimales finales, 8 intermedios, HALF_UP
+2. Vocabulario: Comanda (ronda cocina), Cuenta de Mesa (pedido pendiente), 
+   Factura (venta fiscal), Cierre Z (corte de caja inmutable)
+3. 3 tipos de anulación: ítem/comanda, cuenta no pagada, factura cobrada
+4. Errores como valores (no panic), context.Context en primer argumento
+5. Interfaces en port/ (consumer-side), implementaciones en adapter/
+6. DI manual por constructor en main.go
+7. Zero external dependencies cuando stdlib alcanza
+8. Table-driven tests con t.Run()
+9. go:embed para assets — binario único
+10. Commits directos a main, sin PRs"</pre>
+</div>
+
+<h3>8.2 — Prompt por fase</h3>
+<details>
+<summary><strong>Fase 1 — Cimientos</strong></summary>
+<div>
+<pre>"Inicializa el proyecto Go:
+1. go mod init github.com/capip/restaurante
+2. Crea config/config.go que lea .env (godotenv) con: DB_URL, DB_USER, DB_PASSWORD, 
+   DB_NAME, LISTEN_ADDR, LICENSE_PATH
+3. Crea internal/adapter/mysql/pool.go con sqlx pool (MaxOpenConns=25, MaxLifetime=5min)
+4. Crea internal/adapter/mysql/tx.go con patrón WithTx(ctx, func(tx) error)
+5. Crea adapter/migration/goose_migrator.go que ejecute migraciones de db/migrations/
+6. Copia BD.sql como db/migrations/001_initial_schema.sql
+7. Crea cmd/restaurante/main.go: config → pool → migrator → GET /health → listen
+8. Crea Makefile con: build, run, test, migrate
+9. Crea Dockerfile (multi-stage) y docker-compose.yml (app + MySQL 8.4)
+10. Verifica: go build, go test, docker compose up → GET /health → 200"</pre>
+</div>
+</details>
+
+<details>
+<summary><strong>Fase 2 — Dominio</strong></summary>
+<div>
+<pre>"Migra las entidades de dominio:
+1. Lee cada .java en src/Modelo/ y crea el equivalente Go en internal/domain/
+2. Java getters/setters → campos exportados en Go
+3. Java records → structs Go
+4. Java enums → iota + String() method
+5. BigDecimal → Money type (domain/money.go) con shopspring/decimal
+6. Crea domain/errors.go con errores centinela: ErrPedidoNoEncontrado, ErrMesaOcupada, etc.
+7. Crea internal/port/repository.go con todas las interfaces de repositorio
+   (leer las interfaces Java: PedidosRepositorio, PlatosRepositorio, etc.)
+8. Crea internal/port/printer.go, pdf.go, backup.go, license.go
+9. Tests: Money arithmetic, enum String(), error wrapping
+10. Verificar: domain/ NO importa ningún paquete de adapter/, service/ o handler/"</pre>
+</div>
+</details>
+
+<details>
+<summary><strong>Fase 3 — Servicios y Repos</strong></summary>
+<div>
+<pre>"Migra DAOs y servicios:
+1. Para cada DAO Java (PedidosDao, LoginDao, etc.), crea el repo Go equivalente en 
+   adapter/mysql/. Usa sqlx.Select, sqlx.Get, sqlx.NamedExec.
+2. Migra CADA query SQL del Java — no reescribir, copiar y adaptar placeholders (? en Go)
+3. Para cada Servicio Java, crea el servicio Go en service/. Recibe interfaces por constructor.
+4. PRIORIZAR: CalculoMonetarioPedido — es el más crítico. Tests exhaustivos con los mismos
+   valores que CalculoMonetarioPedidoTest.java
+5. ServicioRespaldoBaseDatos → adapter/backup/ — usar exec.Command('mysqldump')
+6. Licencia y crypto → adapter/security/ — crypto/ecdsa, crypto/aes, crypto/cipher
+7. Tests de integración con testcontainers-go para cada repositorio
+8. go test -race ./internal/... → 0 failures"</pre>
+</div>
+</details>
+
+<details>
+<summary><strong>Fase 4 — API HTTP</strong></summary>
+<div>
+<pre>"Crea la capa HTTP:
+1. Router chi con middleware chain: RequestID, RealIP, Logger, Recoverer, Timeout
+2. Grupo autenticado con sesiones (cookie-based para web, JWT para API tablets)
+3. Handler por recurso: pedido, plato, sala, cierre, cobro, config, usuario, reporte
+4. Portar ServidorRestTablets.java → handler/api_tablet_handler.go (mismos endpoints/JSON)
+5. WebSocket hub en handler/ws_hub.go para notificar cambios de mesas en tiempo real
+6. Middleware de políticas de acceso basado en rol del usuario
+7. Tests HTTP con httptest.NewServer + requests de integración
+8. Documentar todas las rutas en un comentario en handler/routes.go"</pre>
+</div>
+</details>
+
+<details>
+<summary><strong>Fase 5 — Frontend</strong></summary>
+<div>
+<pre>"Construye el frontend web:
+1. Instalar templ CLI y crear web/templates/ con .templ files
+2. Layout base: sidebar con navegación, header con usuario, zona de notificaciones
+3. Página login: formulario POST, visibilidad password, mensajes de error
+4. Página mesas: grid por sala, color por estado, click abre pedido, HTMX polling
+5. Página pedido: lista de ítems, buscador de platos, agregar/quitar, enviar comanda
+6. Página cobro: formulario de pago múltiple, cálculo IGTF, pre-cuenta, confirmar
+7. Página platos: CRUD con categorías, filtros, precios en Bs y USD
+8. Página cierres: generar cierre Z, historial, descargar PDF
+9. Página config: datos fiscales, impresoras, accesos, respaldos
+10. Alpine.js para interacciones locales (modales, toggles, toasts)
+11. Tailwind CSS compilado con @tailwindcss/cli
+12. go:embed para empaquetar todo en el binario
+13. PWA: manifest.json + service-worker.js
+14. Responsive: desktop → tablet → móvil"</pre>
+</div>
+</details>
+
+<details>
+<summary><strong>Fase 6 — Infraestructura</strong></summary>
+<div>
+<pre>"Portar infraestructura transversal:
+1. ESC/POS printing: portar bytes exactos de GeneradorEscPosComanda.java + protocolo DLE/EOT
+2. Spooler cocina TCP: goroutine con reconexión automática
+3. Circuit breaker: mismo patrón que CircuitBreakerImpresora.java
+4. SSH tunnel: golang.org/x/crypto/ssh — mismo comportamiento que ServicioTunelSsh.java
+5. Logging: slog con handler JSON + lumberjack para rotación
+6. Log integrity: HMAC-SHA256 con crypto/hmac
+7. CLI flags: --respaldar, --restaurar-respaldo, --verificar-respaldo, --migrate-db, --api
+8. Graceful shutdown: signal.NotifyContext, srv.Shutdown(ctx), db.Close()
+9. Instancia única: net.Listen('tcp', ':49200') — como el Java con ServerSocket"</pre>
+</div>
+</details>
+
+<details>
+<summary><strong>Fase 7 — Integración final</strong></summary>
+<div>
+<pre>"Validación final:
+1. Todos los tests pasan: go test ./... -count=1 -race
+2. E2E con playwright-go: login → crear pedido → comanda → cobro → cierre Z
+3. Paridad monetaria: mismos cálculos que Java con datos reales
+4. Paridad ledger: mismos hashes SHA-256
+5. API tablets: mismos JSON request/response
+6. Respaldo/restauración funcional con HMAC
+7. Licencia ECDSA validada
+8. Docker deploy funcional
+9. Binario < 30 MB, startup < 2s, memoria < 50 MB
+10. README.md con instrucciones de instalación, desarrollo y producción"</pre>
+</div>
+</details>
+
+<h3>8.3 — Errores comunes a evitar</h3>
+<div class="alert alert-danger">
+  <div class="alert-title">🚫 Anti-patrones</div>
+  <ul>
+    <li><strong>No crear un ORM</strong> — usar sqlx con queries explícitas, como el Java actual</li>
+    <li><strong>No usar gorilla/mux</strong> — está archivado, usar chi</li>
+    <li><strong>No poner lógica de negocio en handlers</strong> — handlers solo: parsear request → llamar servicio → formatear response</li>
+    <li><strong>No usar panic para control de flujo</strong> — siempre <code>return err</code></li>
+    <li><strong>No usar init()</strong> — DI explícita en main.go</li>
+    <li><strong>No usar float64 para dinero</strong> — solo <code>shopspring/decimal</code></li>
+    <li><strong>No migrar SwingWorkers</strong> — HTMX maneja asincronía nativamente</li>
+    <li><strong>No crear getters/setters</strong> — campos exportados directamente</li>
+    <li><strong>No usar herencia</strong> — composición con embedding</li>
+    <li><strong>No ignorar context.Context</strong> — propagar siempre</li>
+  </ul>
+</div>
+
+<h3>8.4 — Orden de archivos a leer del proyecto Java</h3>
+<div class="card">
+  <p>Cuando el agente necesite entender el comportamiento actual, leer en este orden:</p>
+  <ol>
+    <li><code>AGENTS.md</code> — reglas del proyecto</li>
+    <li><code>BD.sql</code> — esquema de base de datos</li>
+    <li><code>restaurante/Restaurante.java</code> — composición raíz (DI)</li>
+    <li><code>Modelo/*.java</code> — entidades y repositorios (interfaces)</li>
+    <li><code>Servicio/CalculoMonetarioPedido.java</code> — lógica monetaria (crítica)</li>
+    <li><code>Modelo/PedidosDao.java</code> — DAO principal (queries SQL)</li>
+    <li><code>Servicio/PlanPagosCobro.java</code> — lógica de cobro</li>
+    <li><code>Modelo/CierreCajaDao.java</code> — cierre Z</li>
+    <li><code>infraestructura/seguridad/</code> — licencia, ledger, HMAC</li>
+    <li><code>infraestructura/api/ServidorRestTablets.java</code> — API REST existente</li>
+    <li><code>Vista/Sistema.java</code> — la UI completa (leer por secciones/tabs)</li>
+  </ol>
+</div>
+</section>
+
+<!-- ════════════════════════════ RESUMEN EJECUTIVO ════════════════════════════ -->
+<section id="resumen">
+<h2><span class="num">9</span> Resumen Ejecutivo</h2>
+
+<div class="grid-2">
+<div class="card">
+  <div class="card-header"><span class="icon">☕</span> Java Actual</div>
+  <ul>
+    <li>139 archivos, 51,850 LOC</li>
+    <li>183 tests, 43,725 LOC de tests</li>
+    <li>Desktop (Swing) — un solo PC</li>
+    <li>7 dependencias externas</li>
+    <li>JAR + carpeta de libs</li>
+    <li>Ant build system</li>
+    <li>Requiere JRE 21 instalado</li>
+  </ul>
+</div>
+<div class="card">
+  <div class="card-header"><span class="icon">🐹</span> Go Target</div>
+  <ul>
+    <li>~70 archivos, ~19,800 LOC (62% menos)</li>
+    <li>Tests equivalentes, table-driven</li>
+    <li>Web — cualquier dispositivo con browser</li>
+    <li>~15 dependencias (stdlib cubre mucho)</li>
+    <li>Un solo binario (~20 MB)</li>
+    <li>Go build / Makefile</li>
+    <li>Cero runtime externo necesario</li>
+  </ul>
+</div>
+</div>
+
+<div class="card" style="border-color: var(--accent);">
+  <div class="card-header"><span class="icon">🎯</span> Beneficios clave de la migración</div>
+  <div class="grid-3">
+    <div style="text-align:center">
+      <div style="font-size:2rem">📦</div>
+      <strong>Binario único</strong>
+      <p style="font-size:.85rem;color:var(--text2)">Sin JRE, sin carpeta de libs. Un archivo ejecutable contiene todo.</p>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:2rem">🌐</div>
+      <strong>Acceso web</strong>
+      <p style="font-size:.85rem;color:var(--text2)">Usar desde tablets, celulares, PCs. No más Swing.</p>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:2rem">⚡</div>
+      <strong>Rendimiento</strong>
+      <p style="font-size:.85rem;color:var(--text2)">Startup en milisegundos, ~50 MB RAM. Sin JVM overhead.</p>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:2rem">🐳</div>
+      <strong>Docker nativo</strong>
+      <p style="font-size:.85rem;color:var(--text2)">Imagen Alpine de 30 MB. Deploy con docker compose up.</p>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:2rem">🔄</div>
+      <strong>Tiempo real</strong>
+      <p style="font-size:.85rem;color:var(--text2)">WebSocket para actualización instantánea de mesas y comandas.</p>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:2rem">📱</div>
+      <strong>PWA</strong>
+      <p style="font-size:.85rem;color:var(--text2)">Instalar como app en tablets Android/iOS desde el navegador.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+</div>
+
+<footer>
+  <p><strong>CAPIP Sistemas C.A.</strong> — Plan de Migración Restaurante 2026 → Go</p>
+  <p>Generado: Noviembre 2026 · Documento de planificación · No es código ejecutable</p>
+</footer>
+
+</body>
+</html>
