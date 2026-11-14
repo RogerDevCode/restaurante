@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Módulos Pendientes para Cumplimiento Fiscal SENIAT en Facturas · Restaurante 2026</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --surface: #131c2e;
+      --surface-card: #1a263d;
+      --surface-hover: #233454;
+      --border: #2e3e5c;
+      --primary: #38bdf8;
+      --primary-dark: #0284c7;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+      --radius: 12px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 32px 16px;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .badge-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    header h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 880px;
+    }
+
+    .header-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .pill {
+      font-size: 0.82rem;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .pill strong { color: var(--text); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .stat-card .label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .stat-card .val {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 6px 0;
+    }
+
+    .stat-card .sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .stat-card.green .val { color: var(--accent-green); }
+    .stat-card.amber .val { color: var(--accent-amber); }
+    .stat-card.blue .val { color: var(--primary); }
+
+    section { margin-bottom: 32px; }
+
+    h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    h2 .num {
+      background: var(--primary);
+      color: #090d16;
+      font-size: 0.85rem;
+      font-weight: 800;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 860px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin-top: 8px;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+    }
+
+    th {
+      background: var(--surface-card);
+      color: var(--primary);
+      border-bottom: 2px solid var(--border);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:hover td {
+      background: var(--surface-hover);
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .tag-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .tag-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .tag-blue { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+    .tag-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+    .feature-box {
+      background: var(--surface-card);
+      border-left: 4px solid var(--primary);
+      border-radius: 0 8px 8px 0;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .feature-box.pending {
+      border-left-color: var(--accent-amber);
+    }
+
+    .feature-box h3 {
+      font-size: 1.05rem;
+      color: #fff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .feature-box p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    .feature-box ul {
+      padding-left: 20px;
+      color: var(--text);
+      font-size: 0.85rem;
+    }
+
+    .feature-box ul li {
+      margin-bottom: 4px;
+    }
+
+    code {
+      background: #0d1524;
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    footer {
+      text-align: center;
+      padding: 28px 0;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="badge-top">⚖️ Diagnóstico Tributario SENIAT · Venezuela</div>
+    <h1>Módulos Pendientes para Cumplir la Nueva Normativa Fiscal en Facturas</h1>
+    <p>
+      Análisis técnico y normativo de las características pendientes en el módulo de facturación del Restaurante 2026,
+      conforme a las Providencias Administrativas SNAT/2011/00071, SNAT/2022/000013 (IGTF), SNAT/2024 (Facturación Electrónica/Digital) y Ley del IVA.
+    </p>
+
+    <div class="header-pills">
+      <div class="pill">Normativa: <strong>Providencias 00071 / 00013 / Digital</strong></div>
+      <div class="pill">Moneda Legal: <strong>Bolívar (VES) + Divisa Referencial (USD)</strong></div>
+      <div class="pill">Alícuotas: <strong>IVA 16% + IGTF 3% Divisas</strong></div>
+      <div class="pill">Tasa Obligatoria: <strong>Tasa Oficial BCV</strong></div>
+    </div>
+  </header>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card green">
+      <div class="label">Exigencias Fiscales Ya Cumplidas</div>
+      <div class="val">6 Módulos</div>
+      <div class="sub">Precios duales, IVA/Exento, Cierre Z, Ledger, BD v18, Libro Ventas</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="label">Características Pendientes en Factura</div>
+      <div class="val">5 Módulos</div>
+      <div class="sub">Número Control, Cobro IGTF 3%, QR/Sello, Notas Crédito, Timbrado API</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="label">Esquema en Base de Datos</div>
+      <div class="val">100% Preparado</div>
+      <div class="sub">Columnas y tablas listas en migración v18</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 1: MATRIZ DE SEMÁFORO NORMATIVO -->
+  <section>
+    <h2><span class="num">1</span> Matriz de Estado de Cumplimiento SENIAT</h2>
+    <div class="card" style="padding: 0; overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Requisito Normativo SENIAT</th>
+            <th>Base Legal</th>
+            <th>Estado en el Sistema</th>
+            <th>Situación Actual y Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Expresión Bimonetaria y Tasa Oficial BCV</strong></td>
+            <td>Ley del BCV / Providencia 00071</td>
+            <td><span class="tag tag-ok">✓ CUMPLIDO</span></td>
+            <td>Cálculo nativo en USD y Bolívares con tasa configurable persistida por pedido.</td>
+          </tr>
+          <tr>
+            <td><strong>Discriminación de IVA (16%) y Exentos</strong></td>
+            <td>Art. 13 Prov. 00071 / Ley IVA</td>
+            <td><span class="tag tag-ok">✓ CUMPLIDO</span></td>
+            <td>Separación estricta de Base Imponible Gravada y Monto Exento por plato.</td>
+          </tr>
+          <tr>
+            <td><strong>Libro de Ventas Fiscal (22 Columnas)</strong></td>
+            <td>Art. 76 Reg. IVA / Prov. 00071</td>
+            <td><span class="tag tag-ok">✓ CUMPLIDO</span></td>
+            <td>Generador en PDF, CSV/Excel y HTML con resumen para Forma 30.</td>
+          </tr>
+          <tr>
+            <td><strong>Inmutabilidad y Cierre Z Diario</strong></td>
+            <td>Prov. 00071 / Auditoría SENIAT</td>
+            <td><span class="tag tag-ok">✓ CUMPLIDO</span></td>
+            <td>Ledger fiscal con Hash Chaining SHA-256 acumulativo en base de datos.</td>
+          </tr>
+          <tr>
+            <td><strong>Número de Control Fiscal Independiente</strong></td>
+            <td>Art. 13 Num. 3 Prov. 00071</td>
+            <td><span class="tag tag-pending">⏳ PENDIENTE</span></td>
+            <td>Actualmente usa <code>#ID_PEDIDO</code>. Falta generador o correlativo asignado formal.</td>
+          </tr>
+          <tr>
+            <td><strong>Cobro y Percepción del IGTF (3%) en Caja</strong></td>
+            <td>Ley IGTF / Prov. SNAT/2022/000013</td>
+            <td><span class="tag tag-pending">⏳ PENDIENTE</span></td>
+            <td>Modelo <code>IgtfRecord</code> y columnas BD existen, pero falta aplicarlo en la ventana de cobro y ticket.</td>
+          </tr>
+          <tr>
+            <td><strong>Código QR y Sello Digital en el Ticket</strong></td>
+            <td>Providencia Facturación Digital</td>
+            <td><span class="tag tag-pending">⏳ PENDIENTE</span></td>
+            <td>Falta generar e imprimir el QR bidimensional en el ticket térmico de 80mm.</td>
+          </tr>
+          <tr>
+            <td><strong>Emisión Formal de Notas de Crédito</strong></td>
+            <td>Art. 20, 21 Prov. 00071</td>
+            <td><span class="tag tag-pending">⏳ PENDIENTE</span></td>
+            <td>La anulación reversa en BD, pero no emite el documento fiscal "Nota de Crédito" con factura afectada.</td>
+          </tr>
+          <tr>
+            <td><strong>Integración con PAC / PTA o Máquina Fiscal</strong></td>
+            <td>Prov. Facturación Electrónica / 00141</td>
+            <td><span class="tag tag-pending">⏳ PENDIENTE</span></td>
+            <td>Conexión REST API para timbrado digital o driver para impresora fiscal física.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 2: DETALLE DE LAS 5 CARACTERÍSTICAS PENDIENTES -->
+  <section>
+    <h2><span class="num">2</span> Desglose Técnico de lo que Queda Pendiente en la Factura</h2>
+
+    <!-- PENDIENTE 1 -->
+    <div class="feature-box pending">
+      <h3>
+        <span>1. Asignación Formal del "Número de Control" Fiscal</span>
+        <span class="tag tag-pending">Obligatorio</span>
+      </h3>
+      <p>
+        El Artículo 13 de la Providencia 00071 estipula que toda factura debe portar un <strong>Número de Factura</strong> y un <strong>Número de Control</strong> pre-impreso o generado consecutivamente de forma ininterrumpida.
+      </p>
+      <ul>
+        <li><strong>Situación Actual:</strong> El ticket impreso actualmente titula <code>TICKET / FACTURA N°: #00000001</code> usando el identificador autoincremental de la tabla <code>pedidos</code>. Aunque la columna <code>pedidos.numero_control</code> ya fue creada en la migración v18, se almacena en <code>NULL</code>.</li>
+        <li><strong>Qué falta:</strong> Implementar un correlativo fiscal configurable con serie (ej. <code>00-000001</code> a <code>00-099999</code>) para formas libres o recibir el número de control devuelto por el Proveedor Tecnológico Autorizado (PTA).</li>
+      </ul>
+    </div>
+
+    <!-- PENDIENTE 2 -->
+    <div class="feature-box pending">
+      <h3>
+        <span>2. Percepción y Discriminación del 3% IGTF en la Ventana de Cobro y Ticket</span>
+        <span class="tag tag-pending">Obligatorio (Sujetos Pasivos Especiales)</span>
+      </h3>
+      <p>
+        Conforme a la Ley de Reforma de las Grandes Transacciones Financieras y Providencia SNAT/2022/000013, cuando un cliente paga en <strong>moneda extranjera (efectivo USD, Zelle, tarjeta internacional)</strong>, el establecimiento (si es Sujeto Pasivo Especial) debe percibir el 3% de IGTF sobre dicho importe.
+      </p>
+      <ul>
+        <li><strong>Situación Actual:</strong> La clase de dominio <code>Modelo/IgtfRecord.java</code> y las columnas <code>igtf_total_usd</code>, <code>igtf_total_bs</code> ya están programadas y testeadas. Sin embargo, en la pantalla de cobro (<code>DialogoCobroPedido.java</code>), cuando el cajero selecciona pago en USD, no se añade el 3% al total a cobrar ni se discrimina en el ticket físico de 80mm.</li>
+        <li><strong>Qué falta:</strong> Activar el cálculo del 3% en <code>DialogoCobroPedido</code> cuando el método de pago contenga divisas, guardar el desglose en <code>pedido_pagos</code>, e imprimir en el cierre del ticket:
+          <code>Base IGTF: $X.XX · IGTF (3%): $Y.YY (Bs. Z.ZZ) · Total con IGTF: $W.WW (Bs. T.TT)</code>.
+        </li>
+      </ul>
+    </div>
+
+    <!-- PENDIENTE 3 -->
+    <div class="feature-box pending">
+      <h3>
+        <span>3. Generación del Código QR Fiscal Bidimensional y Sello Digital</span>
+        <span class="tag tag-pending">Facturación Digital / Electrónica</span>
+      </h3>
+      <p>
+        Bajo el régimen de facturación digital, el ticket impreso entregado al comensal debe incluir un <strong>código QR de 80mm</strong> que permita al cliente o fiscal del SENIAT escanear con la cámara y validar la autenticidad del documento en el portal tributario.
+      </p>
+      <ul>
+        <li><strong>Situación Actual:</strong> La tabla <code>pedidos</code> ya tiene los campos <code>sello_digital</code> y <code>url_validacion</code>, pero en <code>GeneradorPdfPedido.java</code> no se genera la matriz de imagen del código QR mediante biblioteca (ZXing o iText barcode).</li>
+        <li><strong>Qué falta:</strong> Incorporar la generación del QR al final del ticket con los metadatos reglamentarios: RIF Emisor, RIF/Cédula Receptor, N° Factura, N° Control, Fecha, Base Imponible, IVA, IGTF, Total y URL de validación.</li>
+      </ul>
+    </div>
+
+    <!-- PENDIENTE 4 -->
+    <div class="feature-box pending">
+      <h3>
+        <span>4. Emisión de Notas de Crédito Fiscales Digitales (Anulaciones Formales)</span>
+        <span class="tag tag-pending">Obligatorio</span>
+      </h3>
+      <p>
+        Los Artículos 20 y 21 de la Providencia 00071 prohíben "eliminar" facturas cobradas. Toda anulación debe respaldarse formalmente con una <strong>Nota de Crédito Fiscal</strong> que referencie expresamente el número de factura y número de control afectado.
+      </p>
+      <ul>
+        <li><strong>Situación Actual:</strong> El sistema cuenta con <code>DialogoAnulacionAsistida.java</code>, asienta contra-asiento en el ledger inmutable y reporta en <code>auditoria_pedidos</code> y Libro de Ventas. No obstante, no emite el documento impreso / PDF formal que titule <code>NOTA DE CRÉDITO FISCAL N° NC-XXXXXX</code> con el recuadro de "Factura Afectada".</li>
+        <li><strong>Qué falta:</strong> Crear la rutina de generación de ticket de Nota de Crédito en <code>GeneradorPdfPedido</code> e integrarla al flujo de anulación con clave de supervisor/gerente.</li>
+      </ul>
+    </div>
+
+    <!-- PENDIENTE 5 -->
+    <div class="feature-box pending">
+      <h3>
+        <span>5. Cliente de Conexión REST API al Proveedor Tecnológico Autorizado (PTA / PAC)</span>
+        <span class="tag tag-pending">Facturación Digital en Línea</span>
+      </h3>
+      <p>
+        Para facturación digital directa en la nube, el sistema debe enviar el JSON de la factura al Web Service del proveedor autorizado por el SENIAT (ej. The Factory HKA, Gurusoft, Megasoft, Facturawid, etc.) para su timbrado inmediato.
+      </p>
+      <ul>
+        <li><strong>Situación Actual:</strong> Las claves de configuración existen en <code>ConfigClaves.java</code> (<code>FISCAL_PROVEEDOR_URL</code>, <code>FISCAL_PROVEEDOR_TOKEN</code>, <code>FISCAL_MODO_TRANSMISION</code>).</li>
+        <li><strong>Qué falta:</strong> Implementar la clase de servicio <code>ServicioFacturaDigitalSeniat.java</code> que realice el POST HTTPS del documento, maneje timeout y active el modo contingencia (guardar localmente con serie de contingencia autorizada si no hay internet) según la Providencia.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 3: HOJA DE RUTA DE IMPLANTACIÓN SUGERIDA -->
+  <section>
+    <h2><span class="num">3</span> Hoja de Ruta de Desarrollo Recomendada</h2>
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <h3 style="color: var(--primary); margin-bottom: 8px;">Fase Inmediata (Lógica Interna del POS)</h3>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">Se puede implementar de inmediato sin esperar contratación de proveedor externo:</p>
+          <ul style="padding-left: 20px; font-size: 0.85rem; color: var(--text);">
+            <li>Activar cálculo de IGTF (3%) en <code>DialogoCobroPedido</code> para pagos en divisas.</li>
+            <li>Imprimir desglose de IGTF y Tasa BCV en el cierre del ticket térmico de 80mm.</li>
+            <li>Generar correlativo local de Número de Control fiscal configurable en <code>configuracion_sistema</code>.</li>
+            <li>Generación del documento impreso "Nota de Crédito" en <code>GeneradorPdfPedido</code>.</li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="color: var(--accent-amber); margin-bottom: 8px;">Fase de Homologación (Proveedor SENIAT)</h3>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">Depende del modelo de emisión fiscal que escoja el cliente:</p>
+          <ul style="padding-left: 20px; font-size: 0.85rem; color: var(--text);">
+            <li><strong>Opción Digital:</strong> Conectar con el endpoint REST del PTA contratado (recibe sello digital y URL para el QR).</li>
+            <li><strong>Opción Máquina Fiscal:</strong> Instalar spooler de comandos fiscales para impresora homologada (Bixolon / The Factory / Custom) si el local tiene máquina física tradicional.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p><strong>CAPIP Sistemas C.A.</strong> · Sistema Restaurante 2026</p>
+  <p>Informe Técnico de Cumplimiento Tributario SENIAT · República Bolivariana de Venezuela</p>
+</footer>
+
+</body>
+</html>
