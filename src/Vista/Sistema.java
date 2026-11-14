@@ -225,6 +225,7 @@ public final class Sistema extends javax.swing.JFrame {
     private javax.swing.JButton btnAnularPedido;
     private javax.swing.JButton btnDepurarPendientesFecha;
     private javax.swing.JButton btnReporteAnulados;
+    private javax.swing.JButton btnLibroVentasSeniat;
     private final Modelo.AuditoriaPedidosDao auditoriaPedidosDao = new Modelo.AuditoriaPedidosDao();
     private javax.swing.JButton btnCobrarHistorialModal;
     private javax.swing.JButton btnCobrarModalTab4;
@@ -558,6 +559,18 @@ public final class Sistema extends javax.swing.JFrame {
         btnReporteAnulados.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         btnReporteAnulados.addActionListener(e -> abrirReporteTicketsAnulados());
         jPanel6.add(btnReporteAnulados, new org.netbeans.lib.awtextra.AbsoluteConstraints(1040, 10, 140, 32));
+
+        btnLibroVentasSeniat = new javax.swing.JButton("📑 Libro de Ventas");
+        btnLibroVentasSeniat.setName("btnLibroVentasSeniat");
+        btnLibroVentasSeniat.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        btnLibroVentasSeniat.setToolTipText("<html><body style='width: 280px; padding: 3px;'>"
+                + "<b style='color:#0284c7;'>Libro de Ventas Fiscal SENIAT</b><br>"
+                + "Genera y exporta el Libro de Ventas reglamentario según Ley del IVA.<br>"
+                + "Consultas mensuales o quincenales y exportación a HTML, Excel/CSV y PDF oficial."
+                + "</body></html>");
+        btnLibroVentasSeniat.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnLibroVentasSeniat.addActionListener(e -> abrirLibroVentasSeniat());
+        jPanel6.add(btnLibroVentasSeniat, new org.netbeans.lib.awtextra.AbsoluteConstraints(1185, 10, 140, 32));
 
         javax.swing.JLabel lblModoHistorial = new javax.swing.JLabel("Salida:");
         lblModoHistorial.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
@@ -9289,6 +9302,7 @@ public final class Sistema extends javax.swing.JFrame {
     public javax.swing.JButton getBtnAnularPedido() { return btnAnularPedido; }
     public javax.swing.JButton getBtnDepurarPendientesFecha() { return btnDepurarPendientesFecha; }
     public javax.swing.JButton getBtnReporteAnulados() { return btnReporteAnulados; }
+    public javax.swing.JButton getBtnLibroVentasSeniat() { return btnLibroVentasSeniat; }
     public javax.swing.JTextField getTxtBuscarHistorial() { return txtBuscarHistorial; }
     public javax.swing.JTextField getTxtFiltroMesa() { return txtFiltroMesa; }
     public javax.swing.JButton getBtnAuditoriaPedido() { return btnAuditoriaPedido; }
@@ -10460,6 +10474,14 @@ public final class Sistema extends javax.swing.JFrame {
         Config cfg = conf != null ? conf : lgDao.datosEmpresa();
         String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
         DialogoReporteAnulados dlg = new DialogoReporteAnulados(this, auditoriaPedidosDao, cfg, usr);
+        dlg.setVisible(true);
+    }
+
+    public void abrirLibroVentasSeniat() {
+        if (!autorizar(PoliticaAcceso.Accion.CONSULTAR_HISTORIAL)) return;
+        Config cfg = conf != null ? conf : lgDao.datosEmpresa();
+        String usr = (LabelVendedor != null && !LabelVendedor.getText().isBlank()) ? LabelVendedor.getText().trim() : "Sistema";
+        DialogoLibroVentas dlg = new DialogoLibroVentas(this, cfg, usr);
         dlg.setVisible(true);
     }
 

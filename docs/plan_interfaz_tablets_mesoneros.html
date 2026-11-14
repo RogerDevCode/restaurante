@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plan de Diseño e Implementación: Interfaz Móvil para Tablets de Mesoneros · Restaurante 2026</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --surface: #1e293b;
+      --surface-card: #151f32;
+      --surface-hover: #27354f;
+      --border: #334155;
+      --primary: #38bdf8;
+      --primary-dark: #0284c7;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+      --accent-rose: #f43f5e;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-family);
+      line-height: 1.6;
+      padding: 32px 16px;
+    }
+
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      margin-bottom: 28px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .badge-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 840px;
+    }
+
+    .header-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .pill {
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .pill strong { color: var(--text); }
+
+    section { margin-bottom: 32px; }
+
+    h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    h2 .num {
+      background: var(--primary);
+      color: #0b1120;
+      font-size: 0.85rem;
+      font-weight: 800;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      color: var(--primary);
+      margin: 20px 0 10px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+    @media (max-width: 768px) {
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    }
+
+    /* MOCKUPS UI TABLETS */
+    .tablet-frame {
+      background: #0f172a;
+      border: 3px solid #334155;
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      margin: 16px 0;
+    }
+    .tablet-screen {
+      background: #111827;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #1f2937;
+    }
+    .tablet-topbar {
+      background: #1f2937;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #374151;
+      font-size: 0.85rem;
+    }
+    .tablet-body {
+      padding: 16px;
+      min-height: 260px;
+    }
+
+    /* MESAS UI */
+    .mesa-box {
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.15s;
+      border: 1px solid transparent;
+    }
+    .mesa-box:hover { transform: scale(1.03); }
+    .mesa-libre { background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.4); color: #4ade80; }
+    .mesa-ocupada { background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.4); color: #fb7185; }
+    .mesa-precuenta { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24; }
+
+    /* CHECKLIST */
+    .checklist { list-style: none; margin: 12px 0; }
+    .checklist li {
+      padding: 8px 0 8px 28px;
+      position: relative;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+      font-size: 0.92rem;
+    }
+    .checklist li::before {
+      content: "✔";
+      position: absolute;
+      left: 0;
+      top: 8px;
+      color: var(--accent-green);
+      font-weight: 800;
+    }
+
+    .alert {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      border-left: 4px solid;
+      font-size: 0.92rem;
+    }
+    .alert-info { border-color: var(--primary); background: rgba(56, 189, 248, 0.08); }
+    .alert-warn { border-color: var(--accent-amber); background: rgba(245, 158, 11, 0.08); }
+    .alert-green { border-color: var(--accent-green); background: rgba(34, 197, 94, 0.08); }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .tag-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+    .tag-green { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+    .tag-amber { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+    footer {
+      text-align: center;
+      padding: 32px 0 16px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="badge-top">Comandero Digital · Restaurante 2026</div>
+    <h1>Plan Maestro: Interfaz Táctil para Tablets de Mesoneros</h1>
+    <p>Diseño funcional, ergonómico y tecnológico para la comanda móvil de salón en tablets de 7" a 10", operando sobre la API REST local existente con tolerancia a caídas de Wi-Fi y despacho directo a impresoras de cocina y barra.</p>
+    
+    <div class="header-badges">
+      <div class="pill">Arquitectura: <strong>PWA Offline-First</strong></div>
+      <div class="pill">Plataformas: <strong>Android / iPadOS / Web</strong></div>
+      <div class="pill">Backend: <strong>ServidorRestTablets (Puerto 8080)</strong></div>
+      <div class="pill">Protocolo de Impresión: <strong>Solo Incrementos de Comanda</strong></div>
+      <div class="pill">Seguridad: <strong>Login PIN · Sin Acceso a Caja</strong></div>
+    </div>
+  </header>
+
+  <!-- 1. OBJETIVOS Y BENEFICIOS -->
+  <section>
+    <h2><span class="num">1</span> Objetivos y Beneficios Operativos</h2>
+    
+    <div class="grid-3">
+      <div class="card">
+        <h3 style="margin-top: 0;">⏱️ Reducción de Tiempos</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted);">
+          El mesonero no se desplaza hasta el punto de caja para anotar el pedido. La comanda viaja instantáneamente a la comandera térmica de cocina y barra en el mismo segundo en que el cliente termina de ordenar.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top: 0;">🎯 Cero Errores de Comanda</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted);">
+          Eliminación de letras ilegibles en libretas de papel. Los modificadores ("término medio", "sin sal", "aderezo aparte") se seleccionan con un toque, garantizando que cocina prepare exactamente lo solicitado.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top: 0;">💵 Precios y Tasa BCV al Día</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted);">
+          El mesonero siempre visualiza la tasa oficial y los precios vigentes en USD y Bolívares. No hay dudas ni discrepancias cuando el comensal consulta cuánto cuesta un plato antes de pedirlo.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. ARQUITECTURA TÉCNICA -->
+  <section>
+    <h2><span class="num">2</span> Arquitectura Tecnológica del Frontend</h2>
+
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <h3 style="margin-top: 0;">Tecnología: PWA Web Nativa</h3>
+          <ul class="checklist">
+            <li><strong>Sin Tiendas de Aplicaciones:</strong> El mesonero o encargado solo abre <code>http://192.168.1.X:8080/</code> en el navegador de la tablet y presiona <em>"Instalar Comandera"</em>. Queda un ícono en el escritorio que abre en pantalla completa.</li>
+            <li><strong>Actualización Instantánea:</strong> Al reiniciar el backend en el servidor principal, todas las tablets reciben la última versión del frontend sin necesidad de reinstalar APKs.</li>
+            <li><strong>Bajo Consumo de Batería:</strong> Renderizado ligero con HTML5, Tailwind CSS optimizado y Vanilla JS/Alpine, maximizando la autonomía de la tablet durante el turno completo de 8-12 horas.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 style="margin-top: 0;">Tolerancia a Caídas de Wi-Fi (Offline-First)</h3>
+          <ul class="checklist">
+            <li><strong>Cache Local con Service Worker:</strong> Los catálogos de platos, salas, mesoneros y fotos se almacenan localmente en la memoria de la tablet (Cache API + IndexedDB).</li>
+            <li><strong>Cola Local de Pedidos:</strong> Si un mesonero toma la orden en un rincón donde la señal Wi-Fi decae, el pedido no se pierde. Se almacena localmente y la interfaz muestra una señal de <code>🟡 Guardado local (esperando señal)</code>.</li>
+            <li><strong>Despacho Automático:</strong> En cuanto la tablet vuelve al rango del router Wi-Fi, la cola se vacía automáticamente y se imprime la comanda en cocina.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. FLUJO DE USUARIO Y UX TÁCTIL -->
+  <section>
+    <h2><span class="num">3</span> Flujo de Usuario y Pantallas Principales</h2>
+
+    <!-- WIREFRAME 1: SELECCIÓN DE MESAS -->
+    <div class="card">
+      <h3 style="margin-top: 0;">Pantalla 1: Mapa Visual de Mesas y Salas</h3>
+      <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">Selector táctil con código de colores según el estado operativo de cada mesa:</p>
+
+      <div class="tablet-frame">
+        <div class="tablet-screen">
+          <div class="tablet-topbar">
+            <div><strong>🍽️ SALÓN PRINCIPAL</strong> <span style="font-size: 0.75rem; color: #94a3b8;">· Mesonero: José M.</span></div>
+            <div><span class="tag tag-green">Wi-Fi OK</span> <span style="margin-left: 8px; font-weight: bold;">Tasa: 44,80 Bs.</span></div>
+          </div>
+          <div class="tablet-body">
+            <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+              <button style="background: #0284c7; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 0.8rem;">Salón Principal (12)</button>
+              <button style="background: #1f2937; color: #94a3b8; border: 1px solid #374151; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem;">Terraza (8)</button>
+              <button style="background: #1f2937; color: #94a3b8; border: 1px solid #374151; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem;">Área VIP (4)</button>
+              <button style="background: #1f2937; color: #94a3b8; border: 1px solid #374151; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem;">Barra</button>
+            </div>
+
+            <div class="grid-4">
+              <div class="mesa-box mesa-libre">
+                <div style="font-size: 1.2rem; font-weight: bold;">MESA 1</div>
+                <div style="font-size: 0.75rem;">Libre</div>
+                <div style="font-size: 0.7rem; margin-top: 4px;">4 Puestos</div>
+              </div>
+
+              <div class="mesa-box mesa-ocupada">
+                <div style="font-size: 1.2rem; font-weight: bold;">MESA 2</div>
+                <div style="font-size: 0.75rem;">Ocupada (35 min)</div>
+                <div style="font-size: 0.75rem; font-weight: bold; margin-top: 4px;">$48.50 · 2.172 Bs.</div>
+              </div>
+
+              <div class="mesa-box mesa-precuenta">
+                <div style="font-size: 1.2rem; font-weight: bold;">MESA 3</div>
+                <div style="font-size: 0.75rem;">Pre-cuenta pedida</div>
+                <div style="font-size: 0.75rem; font-weight: bold; margin-top: 4px;">$92.00 · 4.121 Bs.</div>
+              </div>
+
+              <div class="mesa-box mesa-ocupada">
+                <div style="font-size: 1.2rem; font-weight: bold;">MESA 4</div>
+                <div style="font-size: 0.75rem;">Ocupada (10 min)</div>
+                <div style="font-size: 0.75rem; font-weight: bold; margin-top: 4px;">$15.00 · 672 Bs.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WIREFRAME 2: TOMA DE COMANDA -->
+    <div class="card">
+      <h3 style="margin-top: 0;">Pantalla 2: Catálogo Táctil y Carrito de Comanda</h3>
+      <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">División en 2 columnas: Menú a la izquierda y Ronda actual a la derecha:</p>
+
+      <div class="tablet-frame">
+        <div class="tablet-screen">
+          <div class="tablet-topbar">
+            <div><strong>📝 MESA 2 · SALÓN</strong> <span style="font-size: 0.75rem; color: #94a3b8;">· Comanda #3 de la mesa</span></div>
+            <div><button style="background: #374151; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem;">Volver a Mesas</button></div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1.6fr 1.2fr; min-height: 320px;">
+            <!-- Izquierda: Menú -->
+            <div style="padding: 12px; border-right: 1px solid #1f2937;">
+              <input type="text" placeholder="🔍 Buscar plato o bebida..." style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 6px; padding: 6px 10px; color: #fff; font-size: 0.8rem; margin-bottom: 10px;">
+              
+              <div style="display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto;">
+                <span class="tag tag-blue" style="cursor: pointer;">⭐ Favoritos</span>
+                <span class="tag tag-amber" style="cursor: pointer;">Carnes</span>
+                <span class="tag tag-green" style="cursor: pointer;">Bebidas</span>
+                <span class="tag" style="background:#374151; cursor: pointer;">Postres</span>
+              </div>
+
+              <div class="grid-2">
+                <div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; cursor: pointer;">
+                  <div style="font-weight: bold; font-size: 0.85rem;">Parrilla Mar y Tierra</div>
+                  <div style="color: #38bdf8; font-weight: bold; font-size: 0.8rem;">$18.00 · 806,40 Bs.</div>
+                </div>
+                <div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; cursor: pointer;">
+                  <div style="font-weight: bold; font-size: 0.85rem;">Cerveza Polar 1/3</div>
+                  <div style="color: #38bdf8; font-weight: bold; font-size: 0.8rem;">$2.00 · 89,60 Bs.</div>
+                </div>
+                <div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; cursor: pointer;">
+                  <div style="font-weight: bold; font-size: 0.85rem;">Tequeños Tradicionales (6)</div>
+                  <div style="color: #38bdf8; font-weight: bold; font-size: 0.8rem;">$6.50 · 291,20 Bs.</div>
+                </div>
+                <div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; cursor: pointer;">
+                  <div style="font-weight: bold; font-size: 0.85rem;">Refresco Lata</div>
+                  <div style="color: #38bdf8; font-weight: bold; font-size: 0.8rem;">$1.50 · 67,20 Bs.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Derecha: Carrito / Ronda de Comanda -->
+            <div style="padding: 12px; background: rgba(15, 23, 42, 0.4); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="font-weight: bold; font-size: 0.85rem; margin-bottom: 8px; border-bottom: 1px solid #374151; padding-bottom: 4px;">
+                  NUEVA RONDA A COCINA (Incremento)
+                </div>
+
+                <div style="font-size: 0.8rem; margin-bottom: 8px;">
+                  <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                    <span>2x Cerveza Polar</span>
+                    <span>$4.00</span>
+                  </div>
+                  <div style="color: #94a3b8; font-size: 0.72rem;">Nota: Bien frías</div>
+                </div>
+
+                <div style="font-size: 0.8rem; margin-bottom: 8px;">
+                  <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                    <span>1x Parrilla Mar y Tierra</span>
+                    <span>$18.00</span>
+                  </div>
+                  <div style="color: #94a3b8; font-size: 0.72rem;">Nota: Término medio, papas fritas</div>
+                </div>
+              </div>
+
+              <div>
+                <div style="border-top: 1px solid #374151; padding-top: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; font-weight: bold;">
+                  <span>Total Ronda:</span>
+                  <span style="color: #38bdf8;">$22.00 · 985,60 Bs.</span>
+                </div>
+                <button style="width: 100%; background: #22c55e; color: #0b1120; border: none; padding: 12px; border-radius: 8px; font-weight: 800; font-size: 0.95rem; cursor: pointer;">
+                  🚀 ENVIAR COMANDA A COCINA
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. REGLAS DE NEGOCIO Y SEGURIDAD -->
+  <section>
+    <h2><span class="num">4</span> Reglas de Dominio y Seguridad en la Tablet</h2>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="margin-top: 0;">🛡️ Restricciones Estrictas de Seguridad</h3>
+        <ul class="checklist">
+          <li><strong>Prohibido Cobrar:</strong> El mesonero no tiene acceso a registrar pagos ni ingresar métodos de pago. El cobro fiscal se realiza exclusivamente en la caja física.</li>
+          <li><strong>Prohibido Anular Facturas Cobradas:</strong> La anulación de facturas con contra-asientos contables requiere permisos de Gerente/Administrador en el equipo principal.</li>
+          <li><strong>Auditoría de Pedidos:</strong> Cada comanda despachada registra el nombre del mesonero emisor en <code>auditoria_pedidos</code> para control de servicio.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top: 0;">🖨️ Regla Inviolable de Comandas</h3>
+        <ul class="checklist">
+          <li><strong>Impresión Única de Incremento:</strong> Solo se envía a las impresoras de cocina y barra los platos nuevos agregados en esa ronda. Jamás se reimprimen los platos de rondas anteriores.</li>
+          <li><strong>División Automática por Estación:</strong> Si el pedido contiene bebidas y platos calientes, el backend envía los cócteles a la barra y las carnes a la cocina.</li>
+          <li><strong>Pre-cuenta en Sala:</strong> El botón "Pedir Cuenta" imprime un ticket preliminar no fiscal en la impresora de sala para que el cliente revise su consumo antes de pagar.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. FASES DE DESARROLLO -->
+  <section>
+    <h2><span class="num">5</span> Fases de Desarrollo e Implantación</h2>
+
+    <div class="card">
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+          <thead>
+            <tr style="background: #151f32; color: #38bdf8; border-bottom: 2px solid #334155;">
+              <th style="padding: 10px; text-align: left;">Fase</th>
+              <th style="padding: 10px; text-align: left;">Actividades / Entregables</th>
+              <th style="padding: 10px; text-align: left;">Plazo Estimado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid #334155;">
+              <td style="padding: 10px;"><strong>Fase 1: Enriquecimiento API</strong></td>
+              <td style="padding: 10px;">Completar endpoints en <code>ServidorRestTablets.java</code> para consulta de mesas con estado y tiempo transcurrido, y soporte de modificadores.</td>
+              <td style="padding: 10px;">Día 1 - 2</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #334155;">
+              <td style="padding: 10px;"><strong>Fase 2: UI PWA Táctil</strong></td>
+              <td style="padding: 10px;">Desarrollar la interfaz responsiva PWA con Tailwind CSS, mapa de salas, buscador rápido de platos y carrito de ronda.</td>
+              <td style="padding: 10px;">Día 3 - 5</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #334155;">
+              <td style="padding: 10px;"><strong>Fase 3: Modo Offline y Resiliencia</strong></td>
+              <td style="padding: 10px;">Implementar Service Worker y almacenamiento IndexedDB para retención y reintento automático de comandas ante micro-cortes Wi-Fi.</td>
+              <td style="padding: 10px;">Día 6 - 7</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px;"><strong>Fase 4: Pruebas de Campo en Salón</strong></td>
+              <td style="padding: 10px;">Simulacro con 2 tablets simultáneas enviando comandas en vivo, verificando que los tickets salgan en la comandera correcta.</td>
+              <td style="padding: 10px;">Día 8</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p><strong>CAPIP Sistemas C.A.</strong> · Proyecto Restaurante 2026</p>
+  <p>Plan de Ingeniería de Software · Comandero Móvil en Tablets para Salón</p>
+</footer>
+
+</body>
+</html>
