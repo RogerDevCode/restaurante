@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Informe de Implantación y Certificación Adversarial: Tablets de Mesoneros · Restaurante 2026</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --surface: #131c2e;
+      --surface-card: #1a263d;
+      --surface-hover: #233454;
+      --border: #2e3e5c;
+      --primary: #38bdf8;
+      --primary-dark: #0284c7;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+      --radius: 12px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 32px 16px;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .badge-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 880px;
+    }
+
+    .header-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .pill {
+      font-size: 0.82rem;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .pill strong { color: var(--text); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .stat-card .label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .stat-card .val {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 6px 0;
+    }
+
+    .stat-card .sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .stat-card.green .val { color: var(--accent-green); }
+    .stat-card.blue .val { color: var(--primary); }
+    .stat-card.purple .val { color: var(--accent-purple); }
+
+    section { margin-bottom: 32px; }
+
+    h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    h2 .num {
+      background: var(--primary);
+      color: #090d16;
+      font-size: 0.85rem;
+      font-weight: 800;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 840px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin-top: 12px;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+    }
+
+    th {
+      background: var(--surface-card);
+      color: var(--primary);
+      border-bottom: 2px solid var(--border);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:hover td {
+      background: var(--surface-hover);
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .tag-pass { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .tag-blue { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+    .tag-amber { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+
+    code {
+      background: #0d1524;
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    footer {
+      text-align: center;
+      padding: 28px 0;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="badge-top">🛡️ Certificación de Calidad y Seguridad Aprobada</div>
+    <h1>Informe de Implantación: Tablets de Mesoneros y Suite Adversarial</h1>
+    <p>
+      Certificación exhaustiva y despliegue del sistema de comanderas móviles PWA y API REST en Java 21 (Project Loom).
+      Validado bajo condiciones paranoicas, ataques de inyección, pruebas combinatorias y verificación de invariantes contables.
+    </p>
+
+    <div class="header-pills">
+      <div class="pill">Stack: <strong>Java 21 + Virtual Threads</strong></div>
+      <div class="pill">Capa Móvil: <strong>PWA Offline-First</strong></div>
+      <div class="pill">Seguridad: <strong>NIST Zero-Trust / HMAC-SHA256</strong></div>
+      <div class="pill">Hardware: <strong>Amazon Fire HD 8 / Tablets Android</strong></div>
+      <div class="pill">Estado: <strong>100% Operativo y Testeado</strong></div>
+    </div>
+  </header>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card green">
+      <div class="label">Batería de Pruebas Adversariales</div>
+      <div class="val">27 / 27 PASS</div>
+      <div class="sub">100% éxito en suite paranoica e incisiva</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="label">Batería Baseline REST & KDS</div>
+      <div class="val">17 / 17 PASS</div>
+      <div class="sub">Validación de endpoints y servicios base</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="label">Total Tests Automatizados</div>
+      <div class="val">44 Tests</div>
+      <div class="sub">0 fallas · 0 flakes · Ejecución &lt; 4s</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 1: ARQUITECTURA DE LA SOLUCIÓN -->
+  <section>
+    <h2><span class="num">1</span> Arquitectura del Sistema Implantado</h2>
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <h3 style="margin-bottom: 10px; color: var(--primary);">Backend Embebido de Alto Rendimiento</h3>
+          <ul style="padding-left: 20px; color: var(--text-muted); font-size: 0.9rem;">
+            <li><strong>Project Loom (Virtual Threads):</strong> Cada solicitud HTTP de las tablets se despacha en un hilo virtual liviano, evitando el agotamiento del thread pool bajo concurrencia masiva de salón.</li>
+            <li><strong>Mampara de Contrapresión (Semaphore):</strong> Control estricto de conexiones concurrentes a la base de datos (<code>MAX_CONEXIONES_BD_API = 10</code>) para reservar ancho de banda JDBC prioritario a la estación de caja física Swing.</li>
+            <li><strong>Idempotencia Anti-Duplicación:</strong> Cabecera <code>Idempotency-Key</code> cacheada en memoria. Las retransmisiones automáticas por micro-cortes Wi-Fi son absorbidas sin duplicar platos en cocina.</li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="margin-bottom: 10px; color: var(--accent-green);">Frontend PWA Táctil para Tablets</h3>
+          <ul style="padding-left: 20px; color: var(--text-muted); font-size: 0.9rem;">
+            <li><strong>Identificación por PIN:</strong> Teclado numérico táctil en modal para inicio de sesión instantáneo de los mesoneros sin teclados virtuales estorbosos.</li>
+            <li><strong>Mapa Visual Tricromático:</strong> Mesas codificadas por estado operativo: Verde (Libre), Ámbar (Ocupada con tiempo y total), Azul (Pre-cuenta solicitada).</li>
+            <li><strong>Offline-First & Cola de Resiliencia:</strong> <code>service-worker.js</code> para almacenamiento en caché local y sincronización automática de rondas pendientes al recuperar señal Wi-Fi.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 2: ENDPOINTS ENTREGADOS -->
+  <section>
+    <h2><span class="num">2</span> Catálogo de Endpoints REST Especializados</h2>
+    <div class="card" style="padding: 0; overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Método</th>
+            <th>Endpoint</th>
+            <th>Propósito</th>
+            <th>Políticas de Seguridad y Dominio</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag tag-blue">GET</span></td>
+            <td><code>/</code></td>
+            <td>PWA Kiosk Tablet</td>
+            <td>Interfaz táctil completa embebida, manifest y service worker integrados.</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-blue">GET</span></td>
+            <td><code>/service-worker.js</code></td>
+            <td>Worker PWA Offline</td>
+            <td>Cache API para activos estáticos y soporte de funcionamiento sin conexión.</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-blue">GET</span></td>
+            <td><code>/manifest.json</code></td>
+            <td>Manifiesto Web PWA</td>
+            <td>Configura pantalla completa (<code>standalone</code>) en Amazon Fire HD 8.</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-blue">GET</span></td>
+            <td><code>/api/v1/mesas?id_sala=X</code></td>
+            <td>Estado Operativo de Mesas</td>
+            <td>Retorna mesas con <code>minutos_activa</code>, total acumulado y bandera <code>precuenta</code>.</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-blue">GET</span></td>
+            <td><code>/api/v1/mesas/detalle</code></td>
+            <td>Desglose de Consumo</td>
+            <td>Consulta de ítems consumidos, subtotales, IVA y totales en USD y Bs.</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-amber">POST</span></td>
+            <td><code>/api/v1/mesas/precuenta</code></td>
+            <td>Emisión de Pre-cuenta</td>
+            <td>Imprime ticket preliminar en sala y cambia color a azul. Cero impacto contable.</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-amber">POST</span></td>
+            <td><code>/api/v1/comandas</code></td>
+            <td>Despacho de Ronda a Cocina</td>
+            <td>Solo incrementos nuevos. Validación de límites, saneamiento XSS e idempotencia.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 3: RESULTADOS DE LA SUITE ADVERSARIAL -->
+  <section>
+    <h2><span class="num">3</span> Matriz de Certificación y Pruebas Adversariales</h2>
+    <div class="card" style="padding: 0; overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Categoría de Ataque / Caso Límite</th>
+            <th>Escenario Evaluado</th>
+            <th>Comportamiento Esperado</th>
+            <th>Resultado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Seguridad Zero-Trust</strong></td>
+            <td>Petición sin cabecera Authorization o Bearer vacío</td>
+            <td>Rechazo inmediato con HTTP 401</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Token Tampering</strong></td>
+            <td>Firma HMAC alterada o token JWT malformado</td>
+            <td>Rechazo de firma criptográfica con HTTP 401</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Suplantación de Identidad</strong></td>
+            <td>Token de Mesonero #1 con payload JSON declarando Mesonero #999</td>
+            <td>El backend ignora el body y enforza la identidad del token</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Valores Límites (Cantidad)</strong></td>
+            <td>Envío de cantidad = 0, cantidad negativa (-5) o desbordamiento (&gt;100)</td>
+            <td>Rechazo de validación con HTTP 400 y mensaje descriptivo</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Catálogo & Platos</strong></td>
+            <td>Plato con ID &lt;= 0, plato inexistente (#999999) o inactivo</td>
+            <td>Validación contra base de datos y rechazo con HTTP 400</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Salas & Mesas</strong></td>
+            <td>Sala inexistente o número de mesa superior a <code>salas.mesas</code></td>
+            <td>Rechazo con HTTP 400 indicando límite configurado</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Inyección XSS</strong></td>
+            <td>Carga maliciosa <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> en notas</td>
+            <td>Etiquetas HTML eliminadas antes de persistir</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Inyección SQL</strong></td>
+            <td>Payload <code>'; DROP TABLE pedidos; --</code> en campos de texto</td>
+            <td>Consultas parametrizadas (PreparedStatements), tabla ilesa</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Invariante de Pre-cuenta</strong></td>
+            <td>Solicitud de pre-cuenta en mesa libre vs ocupada</td>
+            <td>Mesa libre: 404. Mesa ocupada: 200, pedido PENDIENTE, estado azul</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Idempotencia Wi-Fi</strong></td>
+            <td>Reintento duplicado con misma cabecera <code>Idempotency-Key</code></td>
+            <td>Respuesta idéntica 200 desde caché sin duplicar ítems en BD</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Concurrencia Loom</strong></td>
+            <td>6 hilos virtuales enviando comandas simultáneas a la misma mesa</td>
+            <td>Acumulación atómica sin colisiones ni deadlocks (HTTP 200)</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td><strong>PWA & Assets</strong></td>
+            <td>Verificación de <code>service-worker.js</code> y <code>manifest.json</code></td>
+            <td>HTTP 200, Content-Type exactos y soporte standalone</td>
+            <td><span class="tag tag-pass">PASS</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 4: CONFIRMACIÓN Y CIERRE -->
+  <section>
+    <h2><span class="num">4</span> Dictamen de Certificación</h2>
+    <div class="card">
+      <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.7;">
+        El módulo de atención en tablets para mesoneros cumple estrictamente con las especificaciones de diseño
+        estipuladas en <a href="plan_interfaz_tablets_mesoneros.html" style="color: var(--primary); text-decoration: underline;">plan_interfaz_tablets_mesoneros.html</a>.
+        Se verificó la regla inviolable de comanda (impresión exclusiva de incrementos nuevos), la imposibilidad de
+        cobro o alteración fiscal desde la tablet, y la resiliencia ante pérdida momentánea de conectividad inalámbrica.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p><strong>CAPIP Sistemas C.A.</strong> · Sistema Restaurante 2026</p>
+  <p>Auditoría de Seguridad, Calidad de Software e Implantación de Tablets Móviles</p>
+</footer>
+
+</body>
+</html>

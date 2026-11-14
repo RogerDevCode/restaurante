@@ -86,6 +86,8 @@ public final class ServidorRestTablets {
             servidorHttp.createContext("/api/v1/auth/login", new LoginHandler());
             servidorHttp.createContext("/api/v1/mesoneros", new MesonerosHandler());
             servidorHttp.createContext("/api/v1/salas", new SalasHandler());
+            servidorHttp.createContext("/api/v1/mesas/detalle", new MesaDetalleHandler());
+            servidorHttp.createContext("/api/v1/mesas/precuenta", new MesaPrecuentaHandler());
             servidorHttp.createContext("/api/v1/mesas", new MesasHandler());
             servidorHttp.createContext("/api/v1/platos", new PlatosHandler());
             servidorHttp.createContext("/api/v1/comandas", new ComandasHandler());
@@ -94,6 +96,7 @@ public final class ServidorRestTablets {
             servidorHttp.createContext("/api/v1/cocina/despachar", new CocinaDespacharHandler());
             servidorHttp.createContext("/gerencia", new DashboardGerencialHandler());
             servidorHttp.createContext("/cocina", new CocinaKdsHandler());
+            servidorHttp.createContext("/service-worker.js", new ServiceWorkerHandler());
 
             // Servir la aplicación web PWA para tablets en la raíz
             servidorHttp.createContext("/", new PwaWebHandler());
@@ -330,13 +333,7 @@ public final class ServidorRestTablets {
                 return;
             }
             String query = exchange.getRequestURI().getQuery();
-            int idSala = 0;
-            if (query != null && query.contains("id_sala=")) {
-                try {
-                    idSala = Integer.parseInt(query.replaceAll(".*id_sala=([0-9]+).*", "$1"));
-                } catch (Exception ignored) {
-                }
-            }
+            int idSala = extraerQueryInt(query, "id_sala");
 
             try {
                 if (!DB_THROTTLE.tryAcquire(5, TimeUnit.SECONDS)) {
@@ -345,7 +342,8 @@ public final class ServidorRestTablets {
                 }
                 try (Connection con = new ProveedorConexionJdbc().getConnection()) {
                     String sql = """
-                        SELECT p.id, p.id_sala, p.num_mesa, p.total, p.total_bs, p.fecha, p.id_mesonero, p.mesonero_nombre
+                        SELECT p.id, p.id_sala, p.num_mesa, p.total, p.total_bs, p.fecha, p.id_mesonero, p.mesonero_nombre,
+                               TIMESTAMPDIFF(MINUTE, p.fecha, NOW()) AS minutos_activa
                         FROM pedidos p
                         WHERE p.estado = 'PENDIENTE' AND p.cerrada_en IS NULL
                         """ + (idSala > 0 ? " AND p.id_sala = ?" : "") + " ORDER BY p.num_mesa ASC";
@@ -365,6 +363,8 @@ public final class ServidorRestTablets {
                                   .append(",\"total_bs\":").append(rs.getBigDecimal("total_bs"))
                                   .append(",\"id_mesonero\":").append(rs.getInt("id_mesonero"))
                                   .append(",\"mesonero\":\"").append(escaparJson(rs.getString("mesonero_nombre"))).append("\"")
+                                  .append(",\"minutos_activa\":").append(rs.getInt("minutos_activa"))
+                                  .append(",\"precuenta\":").append(Servicio.ServicioMesa.tienePreFactura(rs.getInt("id")))
                                   .append(",\"fecha\":\"").append(rs.getString("fecha")).append("\"}");
                             }
                             sb.append("]");
@@ -376,6 +376,223 @@ public final class ServidorRestTablets {
                 }
             } catch (Exception ex) {
                 enviarError(exchange, 500, "Error consultando mesas: " + ex.getMessage());
+            }
+        }
+    }
+
+    private static class MesaDetalleHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                enviarCorsOk(exchange);
+                return;
+            }
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                enviarError(exchange, 405, "Método no permitido. Use GET.");
+                return;
+            }
+
+            GestorTokensApi.SesionMesonero sesion = autenticarMesonero(exchange);
+            if (sesion == null) {
+                enviarError(exchange, 401, "No autorizado. Token de mesonero requerido.");
+                return;
+            }
+
+            String query = exchange.getRequestURI().getQuery();
+            int idSala = extraerQueryInt(query, "id_sala");
+            int numMesa = extraerQueryInt(query, "num_mesa");
+            int idPedido = extraerQueryInt(query, "id_pedido");
+
+            try {
+                if (!DB_THROTTLE.tryAcquire(5, TimeUnit.SECONDS)) {
+                    enviarError(exchange, 503, "Servidor ocupado.");
+                    return;
+                }
+                try (Connection con = new ProveedorConexionJdbc().getConnection()) {
+                    String sqlPedido;
+                    if (idPedido > 0) {
+                        sqlPedido = "SELECT p.id, p.id_sala, p.num_mesa, p.total, p.total_bs, p.subtotal, p.iva_monto, p.fecha, p.id_mesonero, p.mesonero_nombre, "
+                                  + "TIMESTAMPDIFF(MINUTE, p.fecha, NOW()) AS minutos_activa, s.nombre AS sala_nombre "
+                                  + "FROM pedidos p LEFT JOIN salas s ON s.id = p.id_sala "
+                                  + "WHERE p.id = ? AND p.estado = 'PENDIENTE'";
+                    } else if (idSala > 0 && numMesa > 0) {
+                        sqlPedido = "SELECT p.id, p.id_sala, p.num_mesa, p.total, p.total_bs, p.subtotal, p.iva_monto, p.fecha, p.id_mesonero, p.mesonero_nombre, "
+                                  + "TIMESTAMPDIFF(MINUTE, p.fecha, NOW()) AS minutos_activa, s.nombre AS sala_nombre "
+                                  + "FROM pedidos p LEFT JOIN salas s ON s.id = p.id_sala "
+                                  + "WHERE p.id_sala = ? AND p.num_mesa = ? AND p.estado = 'PENDIENTE' AND p.cerrada_en IS NULL";
+                    } else {
+                        enviarError(exchange, 400, "Parámetros insuficientes. Especifique id_pedido o (id_sala y num_mesa).");
+                        return;
+                    }
+
+                    try (PreparedStatement ps = con.prepareStatement(sqlPedido)) {
+                        if (idPedido > 0) {
+                            ps.setInt(1, idPedido);
+                        } else {
+                            ps.setInt(1, idSala);
+                            ps.setInt(2, numMesa);
+                        }
+
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (!rs.next()) {
+                                enviarJson(exchange, 200, "{\"ok\":true,\"ocupada\":false,\"mensaje\":\"Mesa libre sin consumo pendiente\"}");
+                                return;
+                            }
+
+                            int pedidoId = rs.getInt("id");
+                            int salaId = rs.getInt("id_sala");
+                            int mesaNum = rs.getInt("num_mesa");
+                            String salaNom = rs.getString("sala_nombre");
+                            String mesNom = rs.getString("mesonero_nombre");
+                            int mesId = rs.getInt("id_mesonero");
+                            int minutos = rs.getInt("minutos_activa");
+                            BigDecimal totalUsd = rs.getBigDecimal("total");
+                            BigDecimal totalBs = rs.getBigDecimal("total_bs");
+                            BigDecimal subtotalUsd = rs.getBigDecimal("subtotal");
+                            BigDecimal ivaUsd = rs.getBigDecimal("iva_monto");
+                            String fecha = rs.getString("fecha");
+
+                            // Consultar detalles
+                            StringBuilder sbItems = new StringBuilder("[");
+                            String sqlDet = "SELECT id, id_plato, nombre, cantidad, precio, comentario FROM detalle_pedidos WHERE id_pedido = ? ORDER BY id ASC";
+                            try (PreparedStatement psDet = con.prepareStatement(sqlDet)) {
+                                psDet.setInt(1, pedidoId);
+                                try (ResultSet rsDet = psDet.executeQuery()) {
+                                    boolean first = true;
+                                    while (rsDet.next()) {
+                                        if (!first) sbItems.append(",");
+                                        first = false;
+                                        sbItems.append("{\"id\":").append(rsDet.getInt("id"))
+                                               .append(",\"id_plato\":").append(rsDet.getInt("id_plato"))
+                                               .append(",\"nombre\":\"").append(escaparJson(rsDet.getString("nombre"))).append("\"")
+                                               .append(",\"cantidad\":").append(rsDet.getInt("cantidad"))
+                                               .append(",\"precio_usd\":").append(rsDet.getBigDecimal("precio"))
+                                               .append(",\"comentario\":\"").append(escaparJson(rsDet.getString("comentario"))).append("\"}");
+                                    }
+                                }
+                            }
+                            sbItems.append("]");
+
+                            String resp = String.format(java.util.Locale.US,
+                                "{\"ok\":true,\"ocupada\":true,\"id_pedido\":%d,\"id_sala\":%d,\"num_mesa\":%d,"
+                                + "\"sala\":\"%s\",\"id_mesonero\":%d,\"mesonero\":\"%s\",\"fecha\":\"%s\","
+                                + "\"minutos_activa\":%d,\"subtotal_usd\":%.2f,\"iva_usd\":%.2f,\"total_usd\":%.2f,\"total_ves\":%.2f,"
+                                + "\"items\":%s}",
+                                pedidoId, salaId, mesaNum,
+                                escaparJson(salaNom != null ? salaNom : "Sala " + salaId),
+                                mesId, escaparJson(mesNom != null ? mesNom : "Mesonero"),
+                                fecha != null ? fecha : "", minutos,
+                                subtotalUsd != null ? subtotalUsd.doubleValue() : 0.0,
+                                ivaUsd != null ? ivaUsd.doubleValue() : 0.0,
+                                totalUsd != null ? totalUsd.doubleValue() : 0.0,
+                                totalBs != null ? totalBs.doubleValue() : 0.0,
+                                sbItems.toString());
+
+                            enviarJson(exchange, 200, resp);
+                        }
+                    }
+                } finally {
+                    DB_THROTTLE.release();
+                }
+            } catch (Exception ex) {
+                enviarError(exchange, 500, "Error consultando detalle de mesa: " + ex.getMessage());
+            }
+        }
+    }
+
+    private static class MesaPrecuentaHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                enviarCorsOk(exchange);
+                return;
+            }
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                enviarError(exchange, 405, "Método no permitido. Use POST.");
+                return;
+            }
+
+            GestorTokensApi.SesionMesonero sesion = autenticarMesonero(exchange);
+            if (sesion == null) {
+                enviarError(exchange, 401, "No autorizado. Token de mesonero requerido.");
+                return;
+            }
+
+            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            int idSala = extraerInt(body, "id_sala");
+            int numMesa = extraerInt(body, "num_mesa");
+            int idPedido = extraerInt(body, "id_pedido");
+
+            try {
+                if (!DB_THROTTLE.tryAcquire(5, TimeUnit.SECONDS)) {
+                    enviarError(exchange, 503, "Servidor ocupado.");
+                    return;
+                }
+                try (Connection con = new ProveedorConexionJdbc().getConnection()) {
+                    String sql = (idPedido > 0)
+                            ? "SELECT id, id_sala, num_mesa, total, total_bs FROM pedidos WHERE id = ? AND estado = 'PENDIENTE'"
+                            : "SELECT id, id_sala, num_mesa, total, total_bs FROM pedidos WHERE id_sala = ? AND num_mesa = ? AND estado = 'PENDIENTE' AND cerrada_en IS NULL";
+
+                    try (PreparedStatement ps = con.prepareStatement(sql)) {
+                        if (idPedido > 0) {
+                            ps.setInt(1, idPedido);
+                        } else {
+                            if (idSala <= 0 || numMesa <= 0) {
+                                enviarError(exchange, 400, "Debe especificar id_pedido o (id_sala y num_mesa).");
+                                return;
+                            }
+                            ps.setInt(1, idSala);
+                            ps.setInt(2, numMesa);
+                        }
+
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (!rs.next()) {
+                                enviarError(exchange, 404, "No existe consumo pendiente para emitir pre-cuenta en la mesa indicada.");
+                                return;
+                            }
+                            int pedidoId = rs.getInt("id");
+                            int salaId = rs.getInt("id_sala");
+                            int mesaNum = rs.getInt("num_mesa");
+                            BigDecimal totalUsd = rs.getBigDecimal("total");
+                            BigDecimal totalBs = rs.getBigDecimal("total_bs");
+
+                            // Marcar inmediatamente en el servicio de mesas el estado de pre-factura (cambio visual azul)
+                            Servicio.ServicioMesa.marcarPreFactura(pedidoId);
+
+                            // Solicitar emisión física/asíncrona de pre-factura en la impresora de sala
+                            Executors.newVirtualThreadPerTaskExecutor().submit(() -> {
+                                try {
+                                    PedidosDao pedidosDao = new PedidosDao();
+                                    LoginDao empresaDao = new LoginDao();
+                                    Servicio.PedidoPdfServicio serv = new Servicio.PedidoPdfServicio(
+                                            pedidosDao::verPedido,
+                                            pedidosDao::verPedidoDetalle,
+                                            empresaDao::datosEmpresa,
+                                            Servicio.GeneradorPdfPedido.conEstructuraMensual(
+                                                    Servicio.GeneradorPdfPedido.resolverDirectorioFacturasPorDefecto()),
+                                            Servicio.PedidoPdfServicio.AbridorPdf.porDefecto());
+                                    serv.emitirPreFactura(pedidoId);
+                                } catch (Exception exImp) {
+                                    LOGGER.log(Level.WARNING, "Aviso de emisión física de pre-cuenta: " + exImp.getMessage());
+                                }
+                            });
+
+                            String resp = String.format(java.util.Locale.US,
+                                "{\"ok\":true,\"id_pedido\":%d,\"id_sala\":%d,\"num_mesa\":%d,\"total_usd\":%.2f,\"total_ves\":%.2f,"
+                                + "\"mensaje\":\"Pre-cuenta de Mesa #%d solicitada e impresa exitosamente\"}",
+                                pedidoId, salaId, mesaNum,
+                                totalUsd != null ? totalUsd.doubleValue() : 0.0,
+                                totalBs != null ? totalBs.doubleValue() : 0.0,
+                                mesaNum);
+
+                            enviarJson(exchange, 200, resp);
+                        }
+                    }
+                } finally {
+                    DB_THROTTLE.release();
+                }
+            } catch (Exception ex) {
+                enviarError(exchange, 500, "Error al procesar pre-cuenta: " + ex.getMessage());
             }
         }
     }
@@ -483,17 +700,56 @@ public final class ServidorRestTablets {
                     // Parsear comanda
                     ComandaPayload comanda = parsearComandaJson(body);
                     if (comanda.idSala <= 0 || comanda.numMesa <= 0) {
-                        enviarError(exchange, 400, "Sala y número de mesa son obligatorios.");
+                        enviarError(exchange, 400, "Sala y número de mesa son obligatorios y deben ser mayores a cero.");
                         return;
                     }
                     if (comanda.items.isEmpty()) {
-                        enviarError(exchange, 400, "Debe agregar al menos un ítem a la comanda.");
+                        enviarError(exchange, 400, "Debe agregar al menos un ítem válido a la comanda.");
                         return;
                     }
 
                     // Enforzar identidad criptográfica autenticada (elimina suplantación OWASP A01)
                     comanda.idMesonero = sesion.idMesonero();
                     comanda.mesoneroNombre = sesion.nombre();
+
+                    // Validación paranoica de sala y número de mesa contra base de datos
+                    try (Connection conVal = proveedor.getConnection();
+                         PreparedStatement psSala = conVal.prepareStatement("SELECT mesas FROM salas WHERE id = ?")) {
+                        psSala.setInt(1, comanda.idSala);
+                        try (ResultSet rsSala = psSala.executeQuery()) {
+                            if (!rsSala.next()) {
+                                enviarError(exchange, 400, "La sala #" + comanda.idSala + " no existe en el sistema.");
+                                return;
+                            }
+                            int maxMesas = rsSala.getInt("mesas");
+                            if (comanda.numMesa > maxMesas) {
+                                enviarError(exchange, 400, "La mesa #" + comanda.numMesa + " no existe en la sala (máximo configurado: " + maxMesas + ").");
+                                return;
+                            }
+                        }
+                    }
+
+                    // Validación paranoica de límites por ítem y sanitización contra inyecciones
+                    for (ItemComandaDto it : comanda.items) {
+                        if (it.idPlato <= 0) {
+                            enviarError(exchange, 400, "Identificador de plato inválido (" + it.idPlato + ").");
+                            return;
+                        }
+                        if (it.cantidad <= 0) {
+                            enviarError(exchange, 400, "La cantidad del plato #" + it.idPlato + " debe ser mayor a cero.");
+                            return;
+                        }
+                        if (it.cantidad > 100) {
+                            enviarError(exchange, 400, "La cantidad del plato #" + it.idPlato + " excede el límite permitido por comanda (100).");
+                            return;
+                        }
+                        if (it.notas != null) {
+                            it.notas = it.notas.replaceAll("<[^>]*>", "").trim();
+                            if (it.notas.length() > 250) {
+                                it.notas = it.notas.substring(0, 250);
+                            }
+                        }
+                    }
 
                     // Cargar parámetros de configuración del sistema (Tasa e IVA)
                     ConfiguracionServicio configServicio = new ConfiguracionServicio();
@@ -1605,6 +1861,65 @@ public final class ServidorRestTablets {
     // Servidor de PWA / Web App para Mesoneros (Modo Kiosco Amazon Fire HD 8)
     // --------------------------------------------------------------------------
 
+    private static class ServiceWorkerHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            agregarCabecerasCors(exchange);
+            String sw = generarServiceWorkerJs();
+            exchange.getResponseHeaders().set("Content-Type", "application/javascript; charset=UTF-8");
+            byte[] bytes = sw.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        }
+    }
+
+    private static String generarServiceWorkerJs() {
+        return """
+            const CACHE_NAME = 'comandera-v2-offline-cache';
+            const ASSETS = [
+              '/',
+              '/manifest.json'
+            ];
+
+            self.addEventListener('install', (e) => {
+              e.waitUntil(
+                caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+              );
+              self.skipWaiting();
+            });
+
+            self.addEventListener('activate', (e) => {
+              e.waitUntil(
+                caches.keys().then((keys) => {
+                  return Promise.all(
+                    keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+                  );
+                })
+              );
+              self.clients.claim();
+            });
+
+            self.addEventListener('fetch', (e) => {
+              if (e.request.url.includes('/api/')) {
+                e.respondWith(
+                  fetch(e.request).catch(() => {
+                    return new Response(JSON.stringify({ ok: false, error: 'Sin conexión Wi-Fi', offline: true }), {
+                      headers: { 'Content-Type': 'application/json' }
+                    });
+                  })
+                );
+                return;
+              }
+
+              e.respondWith(
+                caches.match(e.request).then((res) => res || fetch(e.request))
+              );
+            });
+            """;
+    }
+
     private static class PwaWebHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -1635,6 +1950,15 @@ public final class ServidorRestTablets {
                 return;
             }
 
+            if (path.equals("/service-worker.js")) {
+                String sw = generarServiceWorkerJs();
+                exchange.getResponseHeaders().set("Content-Type", "application/javascript; charset=UTF-8");
+                byte[] bytes = sw.getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, bytes.length);
+                try (OutputStream os = exchange.getResponseBody()) { os.write(bytes); }
+                return;
+            }
+
             // HTML5 PWA Kiosk
             String html = generarPwaHtml();
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
@@ -1658,7 +1982,7 @@ public final class ServidorRestTablets {
               <link rel="manifest" href="/manifest.json">
               <style>
                 :root {
-                  --bg: #0f172a;
+                  --bg: #0b1120;
                   --card: #1e293b;
                   --text: #f8fafc;
                   --muted: #94a3b8;
@@ -1666,112 +1990,204 @@ public final class ServidorRestTablets {
                   --primary-hover: #0369a1;
                   --accent: #10b981;
                   --danger: #ef4444;
+                  --amber: #f59e0b;
                   --border: #334155;
                 }
-                * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-                body { background: var(--bg); color: var(--text); padding-bottom: 90px; -webkit-tap-highlight-color: transparent; }
-                header { background: #0b1120; border-bottom: 1px solid var(--border); padding: 12px 16px; position: sticky; top: 0; z-index: 50; display: flex; justify-content: space-between; align-items: center; }
-                .brand { font-size: 1.15rem; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
-                .badge { background: #0369a1; color: white; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; }
-                .container { max-width: 900px; margin: 0 auto; padding: 16px; }
+                * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; touch-action: manipulation; }
+                body { background: var(--bg); color: var(--text); padding-bottom: 95px; -webkit-tap-highlight-color: transparent; }
+                header { background: #0b1120; border-bottom: 1px solid var(--border); padding: 10px 16px; position: sticky; top: 0; z-index: 50; display: flex; justify-content: space-between; align-items: center; }
+                .brand { font-size: 1.1rem; font-weight: 800; color: #38bdf8; display: flex; align-items: center; gap: 6px; }
+                .status-badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 9999px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+                .status-online { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+                .status-offline { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+                .btn-user { background: #1e293b; border: 1px solid var(--border); color: #f8fafc; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
                 
-                /* Grid de Salas y Mesas */
-                .section-title { font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; font-weight: 600; }
-                .salas-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 14px; }
-                .tab-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; white-space: nowrap; cursor: pointer; }
+                .offline-banner { display: none; background: #b45309; color: #fef3c7; padding: 8px 16px; font-size: 0.82rem; font-weight: 700; text-align: center; justify-content: center; align-items: center; gap: 8px; position: sticky; top: 48px; z-index: 49; }
+                
+                .container { max-width: 960px; margin: 0 auto; padding: 12px 16px; }
+                .section-title { font-size: 0.9rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 12px 0 8px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+                
+                /* Salas y Mesas */
+                .salas-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none; }
+                .salas-nav::-webkit-scrollbar { display: none; }
+                .tab-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; white-space: nowrap; cursor: pointer; }
                 .tab-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
                 
-                .mesas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 12px; margin-bottom: 24px; }
-                .mesa-btn { background: var(--card); border: 2px solid var(--border); border-radius: 12px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.15s ease; min-height: 85px; display: flex; flex-direction: column; justify-content: center; }
-                .mesa-btn:active { transform: scale(0.96); }
-                .mesa-btn.ocupada { border-color: #f59e0b; background: rgba(245, 158, 11, 0.15); }
-                .mesa-btn.seleccionada { border-color: var(--accent); background: rgba(16, 185, 129, 0.2); }
-                .mesa-num { font-size: 1.35rem; font-weight: 800; }
-                .mesa-sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+                .mesas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-bottom: 18px; }
+                .mesa-card { background: var(--card); border: 2px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; cursor: pointer; transition: all 0.15s ease; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
+                .mesa-card:active { transform: scale(0.96); }
+                .mesa-card.libre { border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08); color: #34d399; }
+                .mesa-card.ocupada { border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.08); color: #f87171; }
+                .mesa-card.precuenta { border-color: rgba(59, 130, 246, 0.7); background: rgba(21, 101, 192, 0.25); color: #60a5fa; }
+                .mesa-card.seleccionada { border-color: #38bdf8; box-shadow: 0 0 0 2px #38bdf8; }
+                .mesa-num { font-size: 1.25rem; font-weight: 800; color: #fff; }
+                .mesa-sub { font-size: 0.72rem; margin-top: 2px; }
+                .mesa-monto { font-size: 0.75rem; font-weight: 700; color: #38bdf8; margin-top: 3px; }
                 
-                /* Buscador y Catálogo */
-                .search-box { width: 100%; background: var(--card); border: 1px solid var(--border); color: white; padding: 12px 16px; border-radius: 10px; font-size: 1rem; margin-bottom: 16px; outline: none; }
+                /* Categorias y Platos */
+                .cat-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none; }
+                .cat-chip { background: #1e293b; border: 1px solid var(--border); color: #94a3b8; font-size: 0.8rem; font-weight: 600; padding: 6px 12px; border-radius: 20px; white-space: nowrap; cursor: pointer; }
+                .cat-chip.active { background: #0369a1; color: #fff; border-color: #38bdf8; }
+                
+                .search-box { width: 100%; background: var(--card); border: 1px solid var(--border); color: white; padding: 10px 14px; border-radius: 10px; font-size: 0.95rem; margin-bottom: 12px; outline: none; }
                 .search-box:focus { border-color: var(--primary); }
                 
-                .platos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-                .plato-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; justify-content: space-between; align-items: center; }
-                .plato-info { flex: 1; padding-right: 12px; }
-                .plato-nombre { font-weight: 600; font-size: 0.95rem; line-height: 1.3; }
-                .plato-precio { color: #38bdf8; font-weight: 700; margin-top: 4px; font-size: 0.9rem; }
-                .btn-add { background: var(--primary); color: white; border: none; width: 44px; height: 44px; border-radius: 10px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-                .btn-add:active { background: var(--primary-hover); transform: scale(0.94); }
+                .platos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+                .plato-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+                .plato-info { flex: 1; padding-right: 10px; }
+                .plato-nombre { font-weight: 700; font-size: 0.9rem; line-height: 1.2; color: #f8fafc; }
+                .plato-cat { font-size: 0.72rem; color: #64748b; margin-top: 2px; }
+                .plato-precio { color: #38bdf8; font-weight: 800; font-size: 0.85rem; margin-top: 4px; }
+                .btn-add { background: var(--primary); color: white; border: none; width: 42px; height: 42px; border-radius: 8px; font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+                .btn-add:active { transform: scale(0.92); }
                 
-                /* Barra de Comanda Flotante */
-                .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #0b1120; border-top: 1px solid var(--border); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
-                .btn-enviar { background: var(--accent); color: #022c22; font-weight: 800; font-size: 1.05rem; border: none; padding: 14px 24px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+                /* Barra Inferior Flotante */
+                .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #0b1120; border-top: 1px solid var(--border); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 -4px 10px rgba(0,0,0,0.4); }
+                .btn-enviar { background: var(--accent); color: #022c22; font-weight: 800; font-size: 0.95rem; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
                 .btn-enviar:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
                 
-                /* Modal */
+                /* Modales */
                 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
                 .modal-overlay.open { display: flex; }
-                .modal-content { background: var(--card); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 500px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
-                .modal-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
-                .modal-body { padding: 16px; overflow-y: auto; flex: 1; }
-                .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
-                .qty-control { display: flex; align-items: center; gap: 10px; }
-                .btn-qty { background: var(--border); color: white; border: none; width: 34px; height: 34px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
+                .modal-content { background: var(--card); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 520px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
+                .modal-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1rem; }
+                .modal-body { padding: 14px 16px; overflow-y: auto; flex: 1; }
+                
+                /* Modificadores Rápidos */
+                .mod-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+                .mod-chip { font-size: 0.7rem; background: #0f172a; border: 1px solid #334155; color: #94a3b8; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
+                .mod-chip:active { background: #0284c7; color: #fff; }
+                
+                /* Keypad PIN */
+                .pin-display { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 1.5rem; text-align: center; letter-spacing: 0.3em; margin-bottom: 12px; font-weight: 800; color: #38bdf8; }
+                .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+                .keypad-btn { background: #1e293b; border: 1px solid var(--border); color: #fff; font-size: 1.3rem; font-weight: 700; padding: 14px; border-radius: 10px; cursor: pointer; }
+                .keypad-btn:active { background: #0369a1; }
+                .keypad-btn.action { background: #334155; font-size: 1rem; }
               </style>
             </head>
             <body>
               <header>
                 <div class="brand">🍽️ <span>Comandera</span></div>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <span id="txtMesonero" class="badge">Mesonero #1</span>
-                  <button onclick="cambiarMesonero()" style="background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer;">👤</button>
+                  <span id="badgeNet" class="status-badge status-online">🟢 Online</span>
+                  <button class="btn-user" onclick="abrirPinPad()">
+                    <span id="txtMesonero">Mesonero</span> 🔑
+                  </button>
                 </div>
               </header>
 
+              <div id="offlineBanner" class="offline-banner">
+                <span>⚠️ Conexión Wi-Fi perdida. Las comandas se guardarán en la tablet y se enviarán automáticamente al reconectar.</span>
+                <button onclick="sincronizarColaOffline()" style="background:#fef3c7; color:#78350f; border:none; padding:3px 8px; border-radius:4px; font-weight:bold; cursor:pointer;">Sincronizar</button>
+              </div>
+
               <div class="container">
-                <div class="section-title">1. Seleccionar Mesa</div>
+                <!-- SECCIÓN 1: SALAS Y MESAS -->
+                <div class="section-title">
+                  <span>1. Mesas del Salón</span>
+                  <span id="lblTasaBcv" style="font-size:0.75rem; color:#38bdf8;">Tasa: -- Bs.</span>
+                </div>
                 <div id="salasNav" class="salas-nav"></div>
                 <div id="mesasGrid" class="mesas-grid"></div>
 
-                <div class="section-title">2. Platos y Bebidas</div>
-                <input type="text" id="txtBuscar" class="search-box" placeholder="Buscar plato o bebida..." oninput="filtrarPlatos()">
+                <!-- SECCIÓN 2: CATÁLOGO DE PLATOS -->
+                <div class="section-title">
+                  <span>2. Catálogo de Platos</span>
+                  <span id="lblConteoPlatos" style="font-size:0.75rem;">0 platos</span>
+                </div>
+                <div id="catChips" class="cat-chips"></div>
+                <input type="text" id="txtBuscar" class="search-box" placeholder="🔍 Buscar plato por nombre o categoría..." oninput="filtrarPlatos()">
                 <div id="platosGrid" class="platos-grid"></div>
               </div>
 
+              <!-- BARRA DE COMANDA FLOTANTE -->
               <div class="cart-bar">
                 <div>
-                  <div style="font-size:0.8rem; color:var(--muted);" id="lblMesaSel">Mesa no seleccionada</div>
-                  <div style="font-weight:700; font-size:1.1rem;" id="lblItemsCant">0 ítems agregados</div>
+                  <div style="font-size:0.75rem; color:var(--muted);" id="lblMesaSel">Mesa no seleccionada</div>
+                  <div style="font-weight:700; font-size:1.05rem;" id="lblItemsCant">0 ítems agregados</div>
                 </div>
-                <div style="display:flex; gap:10px;">
-                  <button class="tab-btn" onclick="abrirModal()">Ver Pedido</button>
+                <div style="display:flex; gap:8px;">
+                  <button class="tab-btn" onclick="abrirModalCarrito()">Ver Ronda</button>
                   <button class="btn-enviar" id="btnEnviar" disabled onclick="enviarComanda()">🚀 Enviar</button>
                 </div>
               </div>
 
-              <!-- Modal Resumen de Comanda -->
+              <!-- MODAL 1: GESTIÓN DE MESA OCUPADA -->
+              <div class="modal-overlay" id="modalMesaOcupada">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <span id="lblMesaOcupadaTitulo">Mesa #</span>
+                    <button onclick="cerrarModal('modalMesaOcupada')" style="background:none; border:none; color:white; font-size:1.4rem; cursor:pointer;">✕</button>
+                  </div>
+                  <div class="modal-body" id="bodyMesaOcupada">
+                    <div style="text-align:center; padding:16px; color:var(--muted);">Cargando cuenta de mesa...</div>
+                  </div>
+                  <div style="padding:14px; border-top:1px solid var(--border); display:flex; gap:8px;">
+                    <button class="tab-btn" style="flex:1;" onclick="pedirPrecuentaMesaActual()">🧾 Pedir Pre-cuenta</button>
+                    <button class="btn-enviar" style="flex:1; justify-content:center;" onclick="iniciarRondaMesaActual()">➕ Añadir Ronda</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- MODAL 2: CARRITO / RONDA DE COMANDA -->
               <div class="modal-overlay" id="modalCarrito">
                 <div class="modal-content">
                   <div class="modal-header">
                     <span id="modalTitulo">Comanda para Mesa</span>
-                    <button onclick="cerrarModal()" style="background:none; border:none; color:white; font-size:1.4rem; cursor:pointer;">✕</button>
+                    <button onclick="cerrarModal('modalCarrito')" style="background:none; border:none; color:white; font-size:1.4rem; cursor:pointer;">✕</button>
                   </div>
                   <div class="modal-body" id="modalCartItems"></div>
-                  <div style="padding:16px; border-top:1px solid var(--border);">
-                    <button class="btn-enviar" style="width:100%; justify-content:center;" onclick="enviarComanda()">Confirmar y Despachar a Cocina</button>
+                  <div style="padding:14px; border-top:1px solid var(--border);">
+                    <button class="btn-enviar" style="width:100%; justify-content:center;" onclick="enviarComanda()">🚀 Confirmar y Despachar a Cocina</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- MODAL 3: KEYPAD NUMÉRICO PIN -->
+              <div class="modal-overlay" id="modalPin">
+                <div class="modal-content" style="max-width:360px;">
+                  <div class="modal-header">
+                    <span>Identificación de Mesonero</span>
+                    <button onclick="cerrarModal('modalPin')" style="background:none; border:none; color:white; font-size:1.4rem; cursor:pointer;">✕</button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="pin-display" id="pinDisplay">----</div>
+                    <div class="keypad-grid">
+                      <button class="keypad-btn" onclick="presionarTeclaPin('1')">1</button>
+                      <button class="keypad-btn" onclick="presionarTeclaPin('2')">2</button>
+                      <button class="keypad-btn" onclick="presionarTeclaPin('3')">3</button>
+                      <button class="keypad-btn" onclick="presionarTeclaPin('4')">4</button>
+                      <button class="keypad-btn" onclick="presionarTeclaPin('5')">5</button>
+                      <button class="keypad-btn" onclick="presionarTeclaPin('6')">6</button>
+                      <button class="keypad-btn" onclick="presionarTeclaPin('7')">7</button>
+                      <button class="keypad-btn" onclick="presionarTeclaPin('8')">8</button>
+                      <button class="keypad-btn" onclick="presionarTeclaPin('9')">9</button>
+                      <button class="keypad-btn action" onclick="limpiarPin()">C</button>
+                      <button class="keypad-btn" onclick="presionarTeclaPin('0')">0</button>
+                      <button class="keypad-btn action" style="background:#0284c7;" onclick="confirmarPin()">↵</button>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <script>
+                let pinActual = '';
                 let state = {
                   salas: [],
                   salaActual: null,
                   mesaSeleccionada: null,
                   platos: [],
                   platosFiltrados: [],
+                  categoriaActual: 'TODOS',
                   carrito: [],
                   idMesonero: 1,
-                  nombreMesonero: 'Mesonero 1'
+                  nombreMesonero: 'Mesonero 1',
+                  mesaOcupadaDetalle: null
                 };
+
+                // Modificadores rápidos estándar para gastronomía
+                const MODIFICADORES = ["Término medio", "Bien cocido", "Sin cebolla", "Bien fría", "Salsa aparte", "Hielo aparte", "Para llevar"];
 
                 async function authFetch(url, options = {}) {
                   options.headers = options.headers || {};
@@ -1781,34 +2197,109 @@ public final class ServidorRestTablets {
                   }
                   const res = await fetch(url, options);
                   if (res.status === 401) {
-                    alert('Sesión expirada o no autorizada. Por favor inicie sesión.');
-                    await cambiarMesonero();
+                    abrirPinPad();
                   }
                   return res;
                 }
 
                 async function init() {
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('/service-worker.js').catch(console.error);
+                  }
+
+                  window.addEventListener('online', actualizarEstadoRed);
+                  window.addEventListener('offline', actualizarEstadoRed);
+                  actualizarEstadoRed();
+
                   const savedMes = localStorage.getItem('mesonero_id');
                   const savedToken = localStorage.getItem('auth_token');
                   if (savedMes && savedToken) {
                     state.idMesonero = parseInt(savedMes);
                     state.nombreMesonero = localStorage.getItem('mesonero_nombre') || 'Mesonero ' + savedMes;
                   } else {
-                    setTimeout(cambiarMesonero, 300);
+                    abrirPinPad();
                   }
                   document.getElementById('txtMesonero').textContent = state.nombreMesonero;
 
                   await cargarSalas();
                   await cargarPlatos();
+
+                  setInterval(sincronizarColaOffline, 8000);
+                  setInterval(() => { if (state.salaActual) renderMesas(); }, 12000);
                 }
 
+                function actualizarEstadoRed() {
+                  const b = document.getElementById('badgeNet');
+                  const banner = document.getElementById('offlineBanner');
+                  if (navigator.onLine) {
+                    b.className = 'status-badge status-online';
+                    b.textContent = '🟢 Online';
+                    banner.style.display = 'none';
+                    sincronizarColaOffline();
+                  } else {
+                    b.className = 'status-badge status-offline';
+                    b.textContent = '🟡 Sin Wi-Fi';
+                    banner.style.display = 'flex';
+                  }
+                }
+
+                // ---------------- PIN PAD ----------------
+                function abrirPinPad() {
+                  pinActual = '';
+                  actualizarDisplayPin();
+                  document.getElementById('modalPin').classList.add('open');
+                }
+
+                function presionarTeclaPin(d) {
+                  if (pinActual.length < 8) {
+                    pinActual += d;
+                    actualizarDisplayPin();
+                  }
+                }
+
+                function limpiarPin() {
+                  pinActual = '';
+                  actualizarDisplayPin();
+                }
+
+                function actualizarDisplayPin() {
+                  document.getElementById('pinDisplay').textContent = pinActual ? '•'.repeat(pinActual.length) : '----';
+                }
+
+                async function confirmarPin() {
+                  if (!pinActual) return;
+                  try {
+                    const res = await fetch('/api/v1/auth/login', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ codigo: pinActual.trim() })
+                    });
+                    const json = await res.json();
+                    if (res.ok && json.ok) {
+                      state.idMesonero = json.id_mesonero;
+                      state.nombreMesonero = json.nombre;
+                      localStorage.setItem('mesonero_id', json.id_mesonero);
+                      localStorage.setItem('mesonero_nombre', json.nombre);
+                      localStorage.setItem('auth_token', json.token);
+                      document.getElementById('txtMesonero').textContent = json.nombre;
+                      cerrarModal('modalPin');
+                    } else {
+                      alert('Error: ' + (json.error || 'Código incorrecto'));
+                      limpiarPin();
+                    }
+                  } catch (e) {
+                    alert('Fallo de conexión al validar código');
+                  }
+                }
+
+                // ---------------- SALAS Y MESAS ----------------
                 async function cargarSalas() {
                   try {
                     const res = await authFetch('/api/v1/salas');
                     state.salas = await res.json();
                     if (state.salas.length > 0) {
                       state.salaActual = state.salas[0];
-                      renderSalas();
+                      renderSalasNav();
                       renderMesas();
                     }
                   } catch (e) {
@@ -1816,86 +2307,191 @@ public final class ServidorRestTablets {
                   }
                 }
 
-                function renderSalas() {
+                function renderSalasNav() {
                   const nav = document.getElementById('salasNav');
                   nav.innerHTML = state.salas.map(s => `
                     <button class="tab-btn ${s.id === state.salaActual.id ? 'active' : ''}" onclick="seleccionarSala(${s.id})">
-                      ${s.nombre} (${s.mesas_ocupadas}/${s.mesas})
+                      ${s.nombre} (${s.mesas_ocupadas || 0}/${s.mesas})
                     </button>
                   `).join('');
                 }
 
                 function seleccionarSala(id) {
                   state.salaActual = state.salas.find(s => s.id === id);
-                  renderSalas();
+                  renderSalasNav();
                   renderMesas();
                 }
 
                 async function renderMesas() {
                   const grid = document.getElementById('mesasGrid');
-                  grid.innerHTML = '<div style="color:var(--muted)">Cargando mesas...</div>';
-
                   let mesasOcupadas = [];
                   try {
                     const res = await authFetch('/api/v1/mesas?id_sala=' + state.salaActual.id);
                     mesasOcupadas = await res.json();
                   } catch (e) {}
 
-                  const ocupadasMap = new Map();
-                  mesasOcupadas.forEach(m => ocupadasMap.set(m.num_mesa, m));
+                  const mapaOcupadas = new Map();
+                  mesasOcupadas.forEach(m => mapaOcupadas.set(m.num_mesa, m));
 
                   grid.innerHTML = '';
                   for (let i = 1; i <= state.salaActual.mesas; i++) {
-                    const ocupada = ocupadasMap.get(i);
+                    const oc = mapaOcupadas.get(i);
                     const btn = document.createElement('div');
                     const esSel = state.mesaSeleccionada === i;
-                    btn.className = `mesa-btn ${ocupada ? 'ocupada' : ''} ${esSel ? 'seleccionada' : ''}`;
-                    btn.onclick = () => seleccionarMesa(i);
+                    const esPrecuenta = oc && (oc.precuenta === true);
+                    const claseEstado = oc ? (esPrecuenta ? 'precuenta' : 'ocupada') : 'libre';
+
+                    btn.className = `mesa-card ${claseEstado} ${esSel ? 'seleccionada' : ''}`;
+                    btn.onclick = () => manejarClickMesa(i, oc);
+
                     btn.innerHTML = `
                       <div class="mesa-num">#${i}</div>
-                      <div class="mesa-sub">${ocupada ? 'Ocupada (' + ocupada.mesonero + ')' : 'Libre'}</div>
+                      <div class="mesa-sub">${oc ? (esPrecuenta ? '🧾 Pre-cuenta' : (oc.minutos_activa || 0) + ' min · ' + (oc.mesonero || 'Mesa')) : 'Libre'}</div>
+                      ${oc ? '<div class="mesa-monto">$' + (oc.total ? oc.total.toFixed(2) : '0.00') + '</div>' : ''}
                     `;
                     grid.appendChild(btn);
                   }
                 }
 
-                function seleccionarMesa(num) {
+                function manejarClickMesa(num, ocupadaData) {
                   state.mesaSeleccionada = num;
                   document.getElementById('lblMesaSel').textContent = state.salaActual.nombre + ' — Mesa #' + num;
                   actualizarBotonEnviar();
+
+                  if (ocupadaData) {
+                    abrirModalMesaOcupada(num, ocupadaData);
+                  } else {
+                    renderMesas();
+                  }
+                }
+
+                async function abrirModalMesaOcupada(num, oc) {
+                  document.getElementById('lblMesaOcupadaTitulo').textContent = state.salaActual.nombre + ' — Mesa #' + num;
+                  const body = document.getElementById('bodyMesaOcupada');
+                  body.innerHTML = '<div style="text-align:center; padding:16px;">Consultando cuenta...</div>';
+                  document.getElementById('modalMesaOcupada').classList.add('open');
+
+                  try {
+                    const res = await authFetch(`/api/v1/mesas/detalle?id_sala=${state.salaActual.id}&num_mesa=${num}`);
+                    const data = await res.json();
+                    state.mesaOcupadaDetalle = data;
+
+                    if (data.ok && data.ocupada) {
+                      let html = `
+                        <div style="background:#0f172a; border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;">
+                          <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.95rem;">
+                            <span>Mesonero: ${data.mesonero}</span>
+                            <span style="color:#f59e0b;">⏱️ ${data.minutos_activa} min</span>
+                          </div>
+                          <div style="font-size:0.85rem; color:#38bdf8; margin-top:4px; font-weight:800;">
+                            Total: $${data.total_usd.toFixed(2)} · Bs. ${data.total_ves.toFixed(2)}
+                          </div>
+                        </div>
+                        <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">Ítems Servidos:</div>
+                      `;
+                      if (data.items && data.items.length > 0) {
+                        html += data.items.map(it => `
+                          <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #1f2937; font-size:0.85rem;">
+                            <span>${it.cantidad}x ${it.nombre} ${it.comentario ? '<small style=\"color:#94a3b8\">(' + it.comentario + ')</small>' : ''}</span>
+                            <span style="font-weight:bold;">$${(it.precio_usd * it.cantidad).toFixed(2)}</span>
+                          </div>
+                        `).join('');
+                      } else {
+                        html += '<div style="color:var(--muted); font-size:0.8rem;">Sin platos acumulados.</div>';
+                      }
+                      body.innerHTML = html;
+                    } else {
+                      body.innerHTML = '<div style="text-align:center; padding:16px; color:#34d399;">Mesa liberada recientemente.</div>';
+                    }
+                  } catch (e) {
+                    body.innerHTML = '<div style="color:#f87171; text-align:center; padding:16px;">Error consultando detalle de cuenta.</div>';
+                  }
+                }
+
+                function iniciarRondaMesaActual() {
+                  cerrarModal('modalMesaOcupada');
                   renderMesas();
                 }
 
+                async function pedirPrecuentaMesaActual() {
+                  if (!state.mesaSeleccionada) return;
+                  if (!confirm(`¿Emitir e imprimir pre-cuenta de la Mesa #${state.mesaSeleccionada}?`)) return;
+
+                  try {
+                    const res = await authFetch('/api/v1/mesas/precuenta', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id_sala: state.salaActual.id, num_mesa: state.mesaSeleccionada })
+                    });
+                    const json = await res.json();
+                    if (res.ok && json.ok) {
+                      alert('🧾 Pre-cuenta impresa exitosamente en la impresora de sala.');
+                      cerrarModal('modalMesaOcupada');
+                    } else {
+                      alert('Aviso: ' + (json.error || 'No se pudo generar pre-cuenta'));
+                    }
+                  } catch (e) {
+                    alert('Fallo de red al solicitar pre-cuenta');
+                  }
+                }
+
+                // ---------------- CATÁLOGO Y PLATOS ----------------
                 async function cargarPlatos() {
                   try {
                     const res = await authFetch('/api/v1/platos');
                     state.platos = await res.json();
                     state.platosFiltrados = [...state.platos];
+                    document.getElementById('lblConteoPlatos').textContent = state.platos.length + ' platos';
+                    construirChipsCategorias();
                     renderPlatos();
                   } catch (e) {
                     console.error('Error cargando platos', e);
                   }
                 }
 
+                function construirChipsCategorias() {
+                  const cats = new Set(['TODOS']);
+                  state.platos.forEach(p => { if (p.categoria) cats.add(p.categoria); });
+
+                  const container = document.getElementById('catChips');
+                  container.innerHTML = Array.from(cats).map(c => `
+                    <button class="cat-chip ${c === state.categoriaActual ? 'active' : ''}" onclick="seleccionarCategoria('${c}')">
+                      ${c === 'TODOS' ? '🍴 Todos' : c}
+                    </button>
+                  `).join('');
+                }
+
+                function seleccionarCategoria(c) {
+                  state.categoriaActual = c;
+                  construirChipsCategorias();
+                  filtrarPlatos();
+                }
+
                 function filtrarPlatos() {
-                  const txt = document.getElementById('txtBuscar').value.toLowerCase();
-                  state.platosFiltrados = state.platos.filter(p => p.nombre.toLowerCase().includes(txt) || p.categoria.toLowerCase().includes(txt));
+                  const txt = document.getElementById('txtBuscar').value.toLowerCase().trim();
+                  state.platosFiltrados = state.platos.filter(p => {
+                    const coincideTexto = p.nombre.toLowerCase().includes(txt) || (p.categoria && p.categoria.toLowerCase().includes(txt));
+                    const coincideCat = state.categoriaActual === 'TODOS' || p.categoria === state.categoriaActual;
+                    return coincideTexto && coincideCat;
+                  });
                   renderPlatos();
                 }
 
                 function renderPlatos() {
                   const grid = document.getElementById('platosGrid');
-                  grid.innerHTML = state.platosFiltrados.slice(0, 50).map(p => `
+                  grid.innerHTML = state.platosFiltrados.slice(0, 60).map(p => `
                     <div class="plato-card">
                       <div class="plato-info">
                         <div class="plato-nombre">${p.nombre}</div>
-                        <div class="plato-precio">$${p.precio_usd.toFixed(2)} / Bs. ${p.precio_ves.toFixed(2)}</div>
+                        <div class="plato-cat">${p.categoria || 'General'}</div>
+                        <div class="plato-precio">$${p.precio_usd.toFixed(2)} · Bs. ${p.precio_ves.toFixed(2)}</div>
                       </div>
                       <button class="btn-add" onclick="agregarAlCarrito(${p.id})">+</button>
                     </div>
                   `).join('');
                 }
 
+                // ---------------- CARRITO Y COMANDA ----------------
                 function agregarAlCarrito(idPlato) {
                   const plato = state.platos.find(p => p.id === idPlato);
                   if (!plato) return;
@@ -1916,12 +2512,23 @@ public final class ServidorRestTablets {
                     state.carrito.splice(idx, 1);
                   }
                   actualizarCarritoUI();
-                  renderModalItems();
+                  renderModalCarritoItems();
+                }
+
+                function agregarModificador(idPlato, modTexto) {
+                  const it = state.carrito.find(x => x.id === idPlato);
+                  if (!it) return;
+                  if (it.notas) {
+                    it.notas += ', ' + modTexto;
+                  } else {
+                    it.notas = modTexto;
+                  }
+                  renderModalCarritoItems();
                 }
 
                 function actualizarCarritoUI() {
-                  const totalItems = state.carrito.reduce((acc, it) => acc + it.cantidad, 0);
-                  document.getElementById('lblItemsCant').textContent = totalItems + ' ítems en comanda';
+                  const total = state.carrito.reduce((acc, it) => acc + it.cantidad, 0);
+                  document.getElementById('lblItemsCant').textContent = total + ' ítems en comanda';
                   actualizarBotonEnviar();
                 }
 
@@ -1930,38 +2537,37 @@ public final class ServidorRestTablets {
                   btn.disabled = !(state.mesaSeleccionada && state.carrito.length > 0);
                 }
 
-                function abrirModal() {
+                function abrirModalCarrito() {
                   if (!state.mesaSeleccionada) {
                     alert('Seleccione primero una mesa.');
                     return;
                   }
-                  document.getElementById('modalTitulo').textContent = 'Comanda: ' + state.salaActual.nombre + ' — Mesa #' + state.mesaSeleccionada;
-                  renderModalItems();
+                  document.getElementById('modalTitulo').textContent = state.salaActual.nombre + ' — Ronda Mesa #' + state.mesaSeleccionada;
+                  renderModalCarritoItems();
                   document.getElementById('modalCarrito').classList.add('open');
                 }
 
-                function cerrarModal() {
-                  document.getElementById('modalCarrito').classList.remove('open');
-                }
-
-                function renderModalItems() {
+                function renderModalCarritoItems() {
                   const container = document.getElementById('modalCartItems');
                   if (state.carrito.length === 0) {
-                    container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">No hay ítems en la comanda.</div>';
+                    container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:24px;">No hay ítems en la comanda.</div>';
                     return;
                   }
                   container.innerHTML = state.carrito.map(it => `
-                    <div class="cart-item">
-                      <div style="flex:1;">
-                        <div style="font-weight:600;">${it.nombre}</div>
-                        <input type="text" placeholder="Instrucción de cocina..." value="${it.notas || ''}"
-                               onchange="actualizarNotas(${it.id}, this.value)"
-                               style="background:none; border:none; border-bottom:1px dashed var(--muted); color:#38bdf8; font-size:0.8rem; width:90%; outline:none; margin-top:4px;">
+                    <div style="border-bottom:1px solid #1f2937; padding:10px 0;">
+                      <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:700; font-size:0.9rem;">${it.nombre}</span>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                          <button class="keypad-btn action" style="padding:4px 10px; font-size:0.9rem;" onclick="cambiarCantidad(${it.id}, -1)">-</button>
+                          <span style="font-weight:800; min-width:20px; text-align:center;">${it.cantidad}</span>
+                          <button class="keypad-btn action" style="padding:4px 10px; font-size:0.9rem;" onclick="cambiarCantidad(${it.id}, 1)">+</button>
+                        </div>
                       </div>
-                      <div class="qty-control">
-                        <button class="btn-qty" onclick="cambiarCantidad(${it.id}, -1)">-</button>
-                        <span style="font-weight:700; min-width:20px; text-align:center;">${it.cantidad}</span>
-                        <button class="btn-qty" onclick="cambiarCantidad(${it.id}, 1)">+</button>
+                      <input type="text" placeholder="Instrucción de cocina..." value="${it.notas || ''}"
+                             oninput="actualizarNotas(${it.id}, this.value)"
+                             style="background:none; border:none; border-bottom:1px dashed var(--muted); color:#38bdf8; font-size:0.8rem; width:100%; outline:none; margin-top:6px;">
+                      <div class="mod-chips">
+                        ${MODIFICADORES.map(m => `<span class="mod-chip" onclick="agregarModificador(${it.id}, '${m}')">${m}</span>`).join('')}
                       </div>
                     </div>
                   `).join('');
@@ -1972,6 +2578,11 @@ public final class ServidorRestTablets {
                   if (it) it.notas = notas;
                 }
 
+                function cerrarModal(id) {
+                  document.getElementById(id).classList.remove('open');
+                }
+
+                // ---------------- ENVÍO Y RESILIENCIA OFFLINE ----------------
                 async function enviarComanda() {
                   if (!state.mesaSeleccionada || state.carrito.length === 0) return;
                   const btn = document.getElementById('btnEnviar');
@@ -1990,57 +2601,84 @@ public final class ServidorRestTablets {
                     }))
                   };
 
+                  const idempKey = 'comanda_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+                  if (!navigator.onLine) {
+                    guardarEnColaOffline(payload, idempKey);
+                    finalizarEnvioLocal();
+                    return;
+                  }
+
                   try {
                     const res = await authFetch('/api/v1/comandas', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
-                        'Idempotency-Key': crypto.randomUUID()
+                        'Idempotency-Key': idempKey
                       },
                       body: JSON.stringify(payload)
                     });
 
                     const json = await res.json();
                     if (res.ok && json.ok) {
-                      alert('¡Comanda #' + json.id_pedido + ' enviada a cocina exitosamente!');
-                      state.carrito = [];
-                      actualizarCarritoUI();
-                      cerrarModal();
-                      renderMesas();
+                      alert('🚀 ¡Comanda #' + json.id_pedido + ' enviada a cocina exitosamente!');
+                      finalizarEnvioLocal();
                     } else {
-                      alert('Error: ' + (json.error || 'No se pudo enviar'));
+                      alert('Aviso del servidor: ' + (json.error || 'No se pudo enviar comanda'));
                     }
                   } catch (e) {
-                    alert('Fallo de red: Verifique la conexión Wi-Fi con el servidor.');
+                    guardarEnColaOffline(payload, idempKey);
+                    finalizarEnvioLocal();
                   } finally {
                     btn.textContent = '🚀 Enviar';
                     actualizarBotonEnviar();
                   }
                 }
 
-                async function cambiarMesonero() {
-                  const codigo = prompt('Ingrese ID o Cédula del mesonero:');
-                  if (!codigo) return;
-                  try {
-                    const res = await fetch('/api/v1/auth/login', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ codigo: codigo.trim() })
-                    });
-                    const json = await res.json();
-                    if (res.ok && json.ok) {
-                      state.idMesonero = json.id_mesonero;
-                      state.nombreMesonero = json.nombre;
-                      localStorage.setItem('mesonero_id', json.id_mesonero);
-                      localStorage.setItem('mesonero_nombre', json.nombre);
-                      localStorage.setItem('auth_token', json.token);
-                      document.getElementById('txtMesonero').textContent = json.nombre;
-                      alert('Sesión iniciada: ' + json.nombre);
-                    } else {
-                      alert('Error: ' + (json.error || 'Mesonero no encontrado'));
+                function finalizarEnvioLocal() {
+                  state.carrito = [];
+                  actualizarCarritoUI();
+                  cerrarModal('modalCarrito');
+                  renderMesas();
+                }
+
+                function guardarEnColaOffline(payload, idempKey) {
+                  const cola = JSON.parse(localStorage.getItem('cola_comandas_offline') || '[]');
+                  cola.push({ payload, idempKey, timestamp: Date.now() });
+                  localStorage.setItem('cola_comandas_offline', JSON.stringify(cola));
+                  alert('🟡 Sin conexión: La comanda se guardó localmente en la tablet y se transmitirá automáticamente a cocina al recuperar Wi-Fi.');
+                  actualizarEstadoRed();
+                }
+
+                async function sincronizarColaOffline() {
+                  if (!navigator.onLine) return;
+                  const colaStr = localStorage.getItem('cola_comandas_offline');
+                  if (!colaStr) return;
+                  const cola = JSON.parse(colaStr);
+                  if (cola.length === 0) return;
+
+                  const restante = [];
+                  for (const item of cola) {
+                    try {
+                      const res = await authFetch('/api/v1/comandas', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Idempotency-Key': item.idempKey
+                        },
+                        body: JSON.stringify(item.payload)
+                      });
+                      const json = await res.json();
+                      if (!res.ok || !json.ok) {
+                        restante.push(item);
+                      }
+                    } catch (e) {
+                      restante.push(item);
                     }
-                  } catch (e) {
-                    alert('Error conectando con el servidor');
+                  }
+                  localStorage.setItem('cola_comandas_offline', JSON.stringify(restante));
+                  if (restante.length === 0) {
+                    document.getElementById('offlineBanner').style.display = 'none';
                   }
                 }
 
@@ -2288,7 +2926,7 @@ public final class ServidorRestTablets {
                         int cantidad = extraerInt(obj, "cantidad");
                         String notas = extraerString(obj, "notas");
 
-                        if (idPlato > 0 && cantidad > 0) {
+                        if (obj.contains("\"id_plato\"")) {
                             ItemComandaDto it = new ItemComandaDto();
                             it.idPlato = idPlato;
                             it.cantidad = cantidad;
@@ -2302,6 +2940,20 @@ public final class ServidorRestTablets {
             LOGGER.log(Level.WARNING, "Error parseando comanda JSON: " + ex.getMessage());
         }
         return p;
+    }
+
+    private static int extraerQueryInt(String query, String param) {
+        if (query == null || query.isBlank()) return 0;
+        for (String pair : query.split("&")) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2 && kv[0].trim().equalsIgnoreCase(param.trim())) {
+                try {
+                    return Integer.parseInt(kv[1].replaceAll("[^0-9-]", "").trim());
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return 0;
     }
 
     private static int extraerInt(String json, String key) {
