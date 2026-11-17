@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guía Práctica de Compra: Tablets para Mesoneros · Restaurante 2026</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --surface: #131c2e;
+      --surface-card: #1a263d;
+      --surface-hover: #233454;
+      --border: #2e3e5c;
+      --primary: #38bdf8;
+      --primary-dark: #0284c7;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+      --radius: 14px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 32px 16px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 32px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .badge-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 10px;
+      line-height: 1.25;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .golden-rule {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+      border: 2px solid var(--accent-amber);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .golden-rule .icon {
+      font-size: 2.4rem;
+      flex-shrink: 0;
+    }
+
+    .golden-rule h3 {
+      font-size: 1.15rem;
+      color: #fbbf24;
+      margin-bottom: 4px;
+    }
+
+    .golden-rule p {
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    section { margin-bottom: 36px; }
+
+    h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    h2 .num {
+      background: var(--primary);
+      color: #0b1120;
+      font-size: 0.85rem;
+      font-weight: 800;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 20px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 800px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* TARJETAS DE MODELOS RECOMENDADOS */
+    .model-card {
+      background: var(--surface-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .model-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-3px);
+    }
+
+    .model-card.featured {
+      border-color: var(--accent-green);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, var(--surface-card) 100%);
+    }
+
+    .ribbon {
+      position: absolute;
+      top: -12px;
+      right: 18px;
+      background: var(--accent-green);
+      color: #090d16;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .model-card h3 {
+      font-size: 1.3rem;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .model-card .price {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--accent-green);
+      margin-bottom: 12px;
+    }
+
+    .model-card .badge-size {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 14px;
+    }
+
+    .model-card ul {
+      padding-left: 18px;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      margin-bottom: 18px;
+    }
+
+    .model-card ul li {
+      margin-bottom: 6px;
+    }
+
+    .model-card ul li strong {
+      color: var(--text);
+    }
+
+    .btn-action {
+      display: block;
+      width: 100%;
+      text-align: center;
+      background: var(--primary-dark);
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      transition: background 0.15s ease;
+    }
+
+    .btn-action:hover {
+      background: var(--primary);
+      color: #0b1120;
+    }
+
+    /* TIENDAS EN VENEZUELA */
+    .store-box {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .store-box h4 {
+      font-size: 1.1rem;
+      color: #fff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .store-box p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* SCRIPT DE WHATSAPP / PREGUNTAS */
+    .script-box {
+      background: #090e1a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      position: relative;
+      margin-top: 10px;
+    }
+
+    .script-box pre {
+      font-family: var(--font-sans);
+      font-size: 0.92rem;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    .btn-copy {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--primary);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-copy:hover {
+      background: var(--primary);
+      color: #090d16;
+    }
+
+    /* ALERTAS / ERRORES */
+    .danger-box {
+      background: rgba(239, 68, 68, 0.08);
+      border-left: 4px solid var(--accent-red);
+      border-radius: 0 10px 10px 0;
+      padding: 16px 20px;
+      margin-bottom: 14px;
+    }
+
+    .danger-box h4 {
+      color: #f87171;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .danger-box p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    /* CHECKLIST */
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .checklist-item:last-child {
+      border-bottom: none;
+    }
+
+    .checklist-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent-green);
+      margin-top: 3px;
+      cursor: pointer;
+    }
+
+    .checklist-item label {
+      font-size: 0.92rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .checklist-item label span {
+      display: block;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 2px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 32px 0 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="badge-top">🛒 Guía de Compras Paso a Paso · Sin Enredos Técnicos</div>
+    <h1>Cómo Ubicar y Comprar las Tablets para los Mesoneros</h1>
+    <p>
+      Diseñada para administradores, encargados o dueños de restaurante que no tienen conocimientos técnicos.
+      Aquí tienes los modelos exactos, qué tiendas buscar en Venezuela y qué decirle al vendedor para no equivocarte.
+    </p>
+  </header>
+
+  <!-- REGLA DE ORO -->
+  <div class="golden-rule">
+    <div class="icon">💡</div>
+    <div>
+      <h3>La Regla de Oro que te Ahorrará Dinero y Dolores de Cabeza</h3>
+      <p>
+        <strong>"Ni muy grande, ni baratija china de 40 dólares":</strong> La tablet de un mesonero debe medir <strong>8.0 a 8.7 pulgadas</strong> (para sostenerla con una sola mano y guardarla en el delantal) y debe comprarse siempre acompañada de su <strong>funda de goma con correa trasera</strong> para que nunca se resbale.
+      </p>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 1: LOS 3 MODELOS EXACTOS -->
+  <section>
+    <h2><span class="num">1</span> Los 3 Modelos Exactos que Debes Pedir</h2>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">
+      Cualquiera de estos tres modelos funciona al 100% con el sistema Restaurante 2026. Si vas a comprar varias, compra todas del mismo modelo para que compartan los mismos cargadores y fundas:
+    </p>
+
+    <div class="grid-3">
+
+      <!-- MODELO 1: AMAZON FIRE HD 8 -->
+      <div class="model-card featured">
+        <div class="ribbon">⭐ Opción Nº 1 (Recomendada)</div>
+        <div>
+          <h3>Amazon Fire HD 8</h3>
+          <div class="badge-size">Pantalla: 8.0 Pulgadas · 32 GB</div>
+          <div class="price">$85 a $110 USD</div>
+          <ul>
+            <li><strong>¿Por qué esta?:</strong> Es un tanque de guerra. Plástico grueso muy resistente a golpes, batería de 13 horas (cubre dos turnos sin cargar).</li>
+            <li><strong>Precio / Remplazo:</strong> Es la más barata de reponer si ocurre un accidente grave.</li>
+            <li><strong>Qué pedir en la tienda:</strong> <em>"Amazon Fire HD 8 de 32 gigas (Generación 10, 11 o 12)"</em>.</li>
+          </ul>
+        </div>
+        <a href="https://listado.mercadolibre.com.ve/amazon-fire-hd-8" target="_blank" class="btn-action">
+          🔍 Buscar en MercadoLibre Venezuela
+        </a>
+      </div>
+
+      <!-- MODELO 2: LENOVO TAB M8 / M9 -->
+      <div class="model-card">
+        <div>
+          <h3>Lenovo Tab M8 o M9</h3>
+          <div class="badge-size">Pantalla: 8.0" o 9.0" · 32/64 GB</div>
+          <div class="price">$110 a $145 USD</div>
+          <ul>
+            <li><strong>¿Por qué esta?:</strong> Trae Android original de fábrica con Google Chrome nativo sin hacer ningún ajuste.</li>
+            <li><strong>Acabado:</strong> Cuerpo con marco metálico elegante y batería de 5.100 mAh (11 horas de uso).</li>
+            <li><strong>Qué pedir en la tienda:</strong> <em>"Tablet Lenovo Tab M8 Gen 4 o Lenovo Tab M9"</em>.</li>
+          </ul>
+        </div>
+        <a href="https://listado.mercadolibre.com.ve/lenovo-tab-m8" target="_blank" class="btn-action">
+          🔍 Buscar en MercadoLibre Venezuela
+        </a>
+      </div>
+
+      <!-- MODELO 3: SAMSUNG GALAXY TAB A9 -->
+      <div class="model-card">
+        <div>
+          <h3>Samsung Galaxy Tab A9</h3>
+          <div class="badge-size">Pantalla: 8.7 Pulgadas · 64 GB</div>
+          <div class="price">$140 a $175 USD</div>
+          <ul>
+            <li><strong>¿Por qué esta?:</strong> Máxima calidad y fluidez. Pantalla brillante que se ve clarísimo incluso en terrazas bajo la luz del sol.</li>
+            <li><strong>Garantía:</strong> Soporte oficial Samsung y centros de servicio técnico autorizados en toda Venezuela.</li>
+            <li><strong>Qué pedir en la tienda:</strong> <em>"Samsung Galaxy Tab A9 (versión compacta de 8.7 pulgadas)"</em>.</li>
+          </ul>
+        </div>
+        <a href="https://listado.mercadolibre.com.ve/samsung-galaxy-tab-a9-8.7" target="_blank" class="btn-action">
+          🔍 Buscar en MercadoLibre Venezuela
+        </a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECCIÓN 2: DÓNDE COMPRAR EN VENEZUELA -->
+  <section>
+    <h2><span class="num">2</span> Dónde Comprar en Venezuela (Físico y Online)</h2>
+
+    <div class="grid-2">
+
+      <div class="card">
+        <h3 style="color: var(--primary); margin-bottom: 12px;">🏢 Tiendas Físicas en Venezuela (Para Verlas y Probarlas)</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="store-box">
+            <h4>🏬 Tiendas IVOO</h4>
+            <p>Tienen sucursales en Caracas, Valencia, Maracay, Barquisimeto, Lechería, etc. Manejan stock constante de marcas reconocidas (Samsung, Lenovo) con factura fiscal y garantía escrita.</p>
+          </div>
+
+          <div class="store-box">
+            <h4>🏬 Tiendas DAKA</h4>
+            <p>Ideales para comprar con crédito o financiamiento (como alianzas bancarias). Suelen tener tablets accesibles en el pasillo de tecnología.</p>
+          </div>
+
+          <div class="store-box">
+            <h4>🏬 Tiendas SoyTechno / Xiaomi Stores</h4>
+            <p>Especialistas en tecnología móvil. Suelen tener el mejor precio en modelos compactos de Xiaomi (Redmi Pad SE 8.7") y Samsung Tab A9.</p>
+          </div>
+
+          <div class="store-box">
+            <h4>🏬 Centros Tecnológicos Físicos</h4>
+            <p><strong>Caracas:</strong> C.C. City Market (Sabana Grande).<br>
+               <strong>Valencia:</strong> C.C. Free Market o C.C. La Granja.<br>
+               <strong>Barquisimeto:</strong> C.C. Metrópolis / Sambil.<br>
+               <em>Consejo: Compra en locales que tengan tienda física visible y entreguen factura legal con garantía mínima de 3 a 6 meses.</em>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="color: var(--accent-amber); margin-bottom: 12px;">📦 MercadoLibre Venezuela (Para Comprar por Internet)</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+          En MercadoLibre es donde se consiguen los mejores precios en las <strong>Amazon Fire HD 8</strong> importadas. Para comprar con seguridad total:
+        </p>
+
+        <div style="background: var(--surface-card); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+          <h4 style="color: var(--accent-green); margin-bottom: 6px;">Filtros de Seguridad Obligatorios en MercadoLibre:</h4>
+          <ul style="padding-left: 20px; font-size: 0.85rem; color: var(--text);">
+            <li>Filtra por <strong>"MercadoLíder Platinum"</strong> o <strong>"Tiendas Oficiales"</strong>.</li>
+            <li>Filtra por tu ciudad para hacer <strong>retiro en persona en tienda física</strong> y pagar al verificar el equipo.</li>
+            <li>Verifica que la publicación diga <strong>"Nuevo de Paquete / Sellado en Caja"</strong> (evita equipos usados o <em>refurbished</em>).</li>
+          </ul>
+        </div>
+
+        <h4 style="color: #fff; margin-bottom: 8px;">Métodos de Pago que Aceptan:</h4>
+        <p style="font-size: 0.88rem; color: var(--text-muted);">
+          Casi todas las tiendas aceptan:
+          <br>💵 <strong>Dólares en efectivo</strong> (billetes en buen estado sin roturas).
+          <br>📲 <strong>Pago Móvil</strong> (a tasa oficial del BCV del día).
+          <br>💳 <strong>Zelle</strong> o transferencias Banesco Panamá.
+          <br>🛍️ <strong>Cashea</strong> (en tiendas físicas aliadas para pagar en cuotas).
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECCIÓN 3: SCRIPT PARA EL VENDEDOR -->
+  <section>
+    <h2><span class="num">3</span> Qué Decirle o Preguntarle al Vendedor (Copia y Pega)</h2>
+    <div class="card">
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 14px;">
+        Si vas a escribir por WhatsApp o MercadoLibre a una tienda, no necesitas explicar cosas técnicas. Simplemente copia y pega este texto exacto:
+      </p>
+
+      <div class="script-box">
+        <button class="btn-copy" onclick="copiarMensaje()">📋 Copiar Mensaje</button>
+        <pre id="textoWhatsapp">Hola, buenas tardes. Estoy interesado en adquirir tablets para el personal de un restaurante. 
+
+Por favor indíqueme si tiene disponibilidad de alguno de estos modelos:
+1. Amazon Fire HD 8 (32GB)
+2. Lenovo Tab M8 o M9
+3. Samsung Galaxy Tab A9 (8.7 pulgadas)
+
+Por favor confírmeme:
+- ¿Precio exacto en divisas y si reciben Pago Móvil a tasa BCV?
+- ¿Son equipos nuevos sellados en caja?
+- ¿Tiempo de garantía en tienda?
+- ¿Disponen también de forro anti-caídas o con agarradera trasera para ese modelo?
+- ¿Tienen tienda física para retiro inmediato?
+
+Muchas gracias, quedo atento a su respuesta.</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 4: ERRORES FATALES -->
+  <section>
+    <h2><span class="num">4</span> Errores Comunes que NO Debes Cometer</h2>
+
+    <div class="danger-box">
+      <h4>❌ Error 1: Comprar tablets grandes de 10 o 11 pulgadas</h4>
+      <p>
+        Los vendedores siempre intentarán venderte la de 10 pulgadas diciendo que <em>"es más grande y se ve mejor"</em>. 
+        <strong>NO LA COMPRES:</strong> Pesa más de medio kilo, no cabe en el delantal del mesonero, cansa el brazo en media hora de trabajo y se caerá al suelo en el primer tropiezo.
+      </p>
+    </div>
+
+    <div class="danger-box">
+      <h4>❌ Error 2: Comprar tablets chinas genéricas de $40 o $50 dólares</h4>
+      <p>
+        Modelos desconocidos con 1GB de memoria RAM o baterías minúsculas de 2.000 mAh. Se quedan congeladas a los 10 minutos de trabajo continuo y la batería no aguanta ni medio turno de almuerzo. Lo barato sale caro.
+      </p>
+    </div>
+
+    <div class="danger-box">
+      <h4>❌ Error 3: Poner la tablet a trabajar en el salón sin forro protector</h4>
+      <p>
+        En un restaurante hay platos calientes, grasa, refrescos y pisos duros de cerámica o granito. Una tablet sin forro se resbala de las manos en los primeros 10 días. El forro es obligatorio desde el primer minuto.
+      </p>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 5: EL KIT COMPLETO DEL MESONERO -->
+  <section>
+    <h2><span class="num">5</span> El "Kit Completo" que Debes Armar por Cada Mesonero</h2>
+
+    <div class="card">
+      <div class="grid-3">
+
+        <div style="background: var(--surface-card); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
+          <div style="font-size: 2rem; margin-bottom: 8px;">📱</div>
+          <h4 style="color: #fff; margin-bottom: 6px;">1. La Tablet (8")</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Amazon Fire HD 8, Lenovo M8 o Samsung A9. Comprar una por cada mesonero de turno más una tablet de respaldo en gerencia.
+          </p>
+        </div>
+
+        <div style="background: var(--surface-card); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
+          <div style="font-size: 2rem; margin-bottom: 8px;">🧤</div>
+          <h4 style="color: var(--accent-amber); margin-bottom: 6px;">2. Funda con Agarradera</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Pedir <strong>"Funda de goma uso rudo con correa de mano trasera"</strong> (cuesta entre $8 y $15 USD). El mesonero mete la mano y no se le cae jamás.
+          </p>
+        </div>
+
+        <div style="background: var(--surface-card); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
+          <div style="font-size: 2rem; margin-bottom: 8px;">🛡️</div>
+          <h4 style="color: var(--accent-green); margin-bottom: 6px;">3. Vidrio Templado</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Mica de vidrio templado o hidrogel ($3 a $5 USD). Protege la pantalla contra golpes de cubiertos o rayones de llaves.
+          </p>
+        </div>
+
+      </div>
+
+      <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 16px; margin-top: 18px;">
+        <h4 style="color: var(--primary); margin-bottom: 6px;">💡 Consejo de Oro para la Caja / Gerencia:</h4>
+        <p style="font-size: 0.88rem; color: var(--text);">
+          Compra un <strong>"Cargador USB múltiple de 4 a 6 puertos"</strong> ($15 a $20 USD). Se coloca en el mueble de caja y al cerrar la jornada en la noche, todas las tablets quedan conectadas juntas cargándose para el día siguiente.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 6: CHECKLIST DE COMPRA -->
+  <section>
+    <h2><span class="num">6</span> Lista de Verificación en la Tienda (Antes de Pagar)</h2>
+
+    <div class="card">
+      <div class="checklist-item">
+        <input type="checkbox" id="chk1">
+        <label for="chk1">
+          <strong>¿La pantalla es de 8.0 a 8.7 pulgadas?</strong>
+          <span>Verifica en la caja que no sea de 10 pulgadas ni de 7 pulgadas minúscula.</span>
+        </label>
+      </div>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="chk2">
+        <label for="chk2">
+          <strong>¿La caja está sellada de fábrica con sus precintos?</strong>
+          <span>Asegúrate de que no haya sido abierta previamente ni sea reacondicionada.</span>
+        </label>
+      </div>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="chk3">
+        <label for="chk3">
+          <strong>¿La encendieron en la tienda y abre el navegador web?</strong>
+          <span>Pide al vendedor que la prenda para verificar que la pantalla táctil no tenga puntos muertos.</span>
+        </label>
+      </div>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="chk4">
+        <label for="chk4">
+          <strong>¿Tiene cargador y cable USB tipo C original en la caja?</strong>
+          <span>Revisa que los accesorios vengan completos.</span>
+        </label>
+      </div>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="chk5">
+        <label for="chk5">
+          <strong>¿Te entregaron factura o nota de entrega con sello de garantía por escrito?</strong>
+          <span>Exige mínimo 90 días de garantía por escrito con la tienda física.</span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p><strong>CAPIP Sistemas C.A.</strong> · Sistema Restaurante 2026</p>
+  <p>Guía de Equipamiento de Salón para Personal No Técnico</p>
+</footer>
+
+<script>
+  function copiarMensaje() {
+    const texto = document.getElementById('textoWhatsapp').innerText;
+    navigator.clipboard.writeText(texto).then(() => {
+      const btn = document.querySelector('.btn-copy');
+      const original = btn.innerHTML;
+      btn.innerHTML = '✓ ¡Copiado!';
+      btn.style.background = '#10b981';
+      btn.style.color = '#fff';
+      setTimeout(() => {
+        btn.innerHTML = original;
+        btn.style.background = '';
+        btn.style.color = '';
+      }, 2500);
+    }).catch(err => {
+      alert('Selecciona el texto y presiona Ctrl+C para copiar');
+    });
+  }
+</script>
+
+</body>
+</html>
