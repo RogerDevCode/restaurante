@@ -1,0 +1,33 @@
+=== INICIANDO SUITE DE PRUEBAS GRAPHIFY ===
+
+[TEST 1] Red y Protocolo MCP sobre https://api.graphify.com/mcp
+OPTIONS HTTP Error: 405 - Content-Type: application/json
+Content-Length: 31
+Connection: close
+Date: Tue, 24 Nov 2026 21:55:36 GMT
+strict-transport-security: max-age=31536000; includeSubDomains
+allow: GET, POST, DELETE
+x-correlation-id: 0327f6f9-1ed7-4c2e-8a6d-8ae7eea12fff
+X-Cache: Error from cloudfront
+Via: 1.1 832b5b409f326c88d4de228fbfac6024.cloudfront.net (CloudFront)
+X-Amz-Cf-Pop: MIA50-P2
+X-Amz-Cf-Id: Y0VEr5JldPmSB5VH4TLH69L-AAWjO8kWJl-oU4Z0ZxZY4nlyLmpRjQ==
+
+
+POST HTTP Error: 401
+Headers: {'Content-Length': '0', 'Connection': 'close', 'Date': 'Tue, 24 Nov 2026 21:55:37 GMT', 'strict-transport-security': 'max-age=31536000; includeSubDomains', 'www-authenticate': 'Bearer resource_metadata="https://api.graphify.com/.well-known/oauth-protected-resource/mcp"', 'x-correlation-id': 'd1222194-acb6-47ce-94b2-7cd936d0499a', 'X-Cache': 'Error from cloudfront', 'Via': '1.1 224797da33bb8dc3f8cf7c2b25e379a0.cloudfront.net (CloudFront)', 'X-Amz-Cf-Pop': 'MIA50-P2', 'X-Amz-Cf-Id': 'imPBptfWXrNnmV0bR3gYhSmJeZ9BaNqXeTVwoikPrj4-5aWso2_ZOw=='}
+Error Body: 
+
+[TEST 2] Integridad de archivos de Plugin y Skills
+Skill 'graphify' detectada: frontmatter=True, bytes=1436
+Skill 'get-started' detectada: frontmatter=True, bytes=1005
+
+[TEST 3] Configuración de Graphify en Clientes de IA
+Cliente Codex CLI / Desktop: configured=True
+Cliente Cursor IDE: configured=True
+Cliente GitHub Copilot CLI: configured=True
+Cliente Claude Code CLI: configured=True
+Cliente CommandCode: configured=False
+Cliente Antigravity IDE: configured=False
+
+Evidencia guardada exitosamente en /home/manager/Sync/java_proyects/RETAURANTE2026/Restaurante/temp-plugin-files/test_graphify_evidence.json

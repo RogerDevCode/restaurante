@@ -1,0 +1,116 @@
+Global Skills
+
+api-testing                        ~/.agents/skills/api-testing                       
+  Agents: Amp, Codex, Cursor, Droid, Gemini CLI +7 more  Source: serkan-ozal/browser-devtools-skills
+banner-design                      ~/.agents/skills/banner-design                     
+  Agents: Amp, Augment, Claude Code, CodeBuddy, Codex +14 more  Source: untracked
+brainstorming                      ~/.agents/skills/brainstorming                     
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: obra/superpowers
+brand                              ~/.agents/skills/brand                             
+  Agents: Amp, Augment, Claude Code, CodeBuddy, Codex +14 more  Source: untracked
+browser-automation                 ~/.agents/skills/browser-automation                
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: sickn33/antigravity-awesome-skills
+chrome-devtools                    ~/.agents/skills/chrome-devtools                   
+  Agents: Amp, Codex, Cursor, Droid, Gemini CLI +7 more  Source: github/awesome-copilot
+chrome-extensions                  ~/.agents/skills/chrome-extensions                 
+  Agents: AiderDesk, Amp, Antigravity, Antigravity CLI, AstrBot +63 more  Source: GoogleChrome/modern-web-guidance
+context7-mcp                       ~/.agents/skills/context7-mcp                      
+  Agents: Amp, Claude Code, Codex, Cursor, Devin for Terminal +9 more  Source: untracked
+design                             ~/.agents/skills/design                            
+  Agents: Amp, Augment, Claude Code, CodeBuddy, Codex +14 more  Source: untracked
+design-system                      ~/.agents/skills/design-system                     
+  Agents: Amp, Augment, Claude Code, CodeBuddy, Codex +14 more  Source: untracked
+docker-best-practices              ~/.agents/skills/docker-best-practices             
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: josiahsiegel/claude-plugin-marketplace
+docker-expert                      ~/.agents/skills/docker-expert                     
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: sickn33/antigravity-awesome-skills
+e2e-tests-studio                   ~/.agents/skills/e2e-tests-studio                  
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: mastra-ai/mastra
+execution-control                  ~/.agents/skills/execution-control                 
+  Agents: AiderDesk, Amp, Antigravity, Antigravity CLI, AstrBot +63 more  Source: Strixgov/skills
+find-skills                        ~/.agents/skills/find-skills                       
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: vercel-labs/skills
+frontend-design                    ~/.agents/skills/frontend-design                   
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: anthropics/claude-code
+govern-ai-egress                   ~/.agents/skills/govern-ai-egress                  
+  Agents: AiderDesk, Amp, Antigravity, Antigravity CLI, AstrBot +63 more  Source: Strixgov/skills
+govern-pr                          ~/.agents/skills/govern-pr                         
+  Agents: AiderDesk, Amp, Antigravity, Antigravity CLI, AstrBot +63 more  Source: Strixgov/skills
+impeccable                         ~/.agents/skills/impeccable                        
+  Agents: Amp, Claude Code, Codex, Cursor, Droid +12 more  Source: untracked
+modern-web-guidance                ~/.agents/skills/modern-web-guidance               
+  Agents: AiderDesk, Amp, Antigravity, Antigravity CLI, AstrBot +63 more  Source: GoogleChrome/modern-web-guidance
+n8n-code-javascript                ~/.agents/skills/n8n-code-javascript               
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: czlonkowski/n8n-skills
+n8n-expression-syntax              ~/.agents/skills/n8n-expression-syntax             
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: czlonkowski/n8n-skills
+n8n-mcp-tools-expert               ~/.agents/skills/n8n-mcp-tools-expert              
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: czlonkowski/n8n-skills
+n8n-node-configuration             ~/.agents/skills/n8n-node-configuration            
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: czlonkowski/n8n-skills
+n8n-validation-expert              ~/.agents/skills/n8n-validation-expert             
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: czlonkowski/n8n-skills
+n8n-workflow-patterns              ~/.agents/skills/n8n-workflow-patterns             
+  Agents: Amp, Codex, Command Code, Cursor, Droid +9 more  Source: czlonkowski/n8n-skills
+postgresql-database-engineering    ~/.agents/skills/postgresql-database-engineering   
+  Agents: Amp, Codex, Cursor, Droid, Gemini CLI +7 more  Source: manutej/luxor-claude-marketplace
+qa-test-planner                    ~/.agents/skills/qa-test-planner                   
+  Agents: Amp, Codex, Cursor, Droid, Gemini CLI +7 more  Source: softaworks/agent-toolkit
+release-readiness                  ~/.agents/skills/release-readiness                 
+  Agents: AiderDesk, Amp, Antigravity, Antigravity CLI, AstrBot +63 more  Source: Strixgov/skills
+runtime-governance-review          ~/.agents/skills/runtime-governance-review         
+  Agents: AiderDesk, Amp, Antigravity, Antigravity CLI, AstrBot +63 more  Source: Strixgov/skills
+slides                             ~/.agents/skills/slides                            
+  Agents: Amp, Augment, Claude Code, CodeBuddy, Codex +14 more  Source: untracked
+strix-verify                       ~/.agents/skills/strix-verify                      
+  Agents: AiderDesk, Amp, Antigravity, Antigravity CLI, AstrBot +63 more  Source: Strixgov/skills
+strix-wire                         ~/.agents/skills/strix-wire                        
+  Agents: AiderDesk, Amp, Antigravity, Antigravity CLI, AstrBot +63 more  Source: Strixgov/skills
+thermo-nuclear-code-quality-review ~/.agents/skills/thermo-nuclear-code-quality-review
+  Agents: AiderDesk, Amp, AstrBot, Autohand Code CLI, Augment +56 more  Source: cursor/plugins
+ui-styling                         ~/.agents/skills/ui-styling                        
+  Agents: Amp, Augment, Claude Code, CodeBuddy, Codex +14 more  Source: untracked
+ui-ux-pro-max                      ~/.agents/skills/ui-ux-pro-max                     
+  Agents: Amp, Augment, Claude Code, CodeBuddy, Codex +14 more  Source: untracked
+expert-debugger                    ~/.gemini/config/skills/expert-debugger            
+  Agents: Antigravity  Source: untracked
+21st-ai                            ~/.claude/skills/21st-ai                           
+  Agents: Claude Code, Cursor  Source: untracked
+21st-cli-use                       ~/.claude/skills/21st-cli-use                      
+  Agents: Claude Code, Cursor  Source: untracked
+21st-design-sync                   ~/.claude/skills/21st-design-sync                  
+  Agents: Claude Code, Cursor  Source: untracked
+21st-registry                      ~/.claude/skills/21st-registry                     
+  Agents: Claude Code, Cursor  Source: untracked
+21st-ui-build                      ~/.claude/skills/21st-ui-build                     
+  Agents: Claude Code, Cursor  Source: untracked
+21st-ui-explore                    ~/.claude/skills/21st-ui-explore                   
+  Agents: Claude Code, Cursor  Source: untracked
+21st-ui-review                     ~/.claude/skills/21st-ui-review                    
+  Agents: Claude Code, Cursor  Source: untracked
+21st-video                         ~/.claude/skills/21st-video                        
+  Agents: Claude Code, Cursor  Source: untracked
+crossplatform-scripts-guard        ~/.gemini/skills/crossplatform-scripts-guard       
+  Agents: Gemini CLI  Source: untracked
+java-concurrency-edt-audit         ~/.gemini/skills/java-concurrency-edt-audit        
+  Agents: Gemini CLI  Source: untracked
+systematic-debugging               ~/.gemini/skills/systematic-debugging              
+  Agents: Gemini CLI  Source: untracked
+test-driven-development            ~/.gemini/skills/test-driven-development           
+  Agents: Gemini CLI  Source: untracked
+verification-before-completion     ~/.gemini/skills/verification-before-completion    
+  Agents: Gemini CLI  Source: untracked
+check-work                         ~/.grok/skills/check-work                          
+  Agents: Grok Build  Source: untracked
+code-review                        ~/.grok/skills/code-review                         
+  Agents: Grok Build  Source: untracked
+create-skill                       ~/.grok/skills/create-skill                        
+  Agents: Grok Build  Source: untracked
+help                               ~/.grok/skills/help                                
+  Agents: Grok Build  Source: untracked
+imagine                            ~/.grok/skills/imagine                             
+  Agents: Grok Build  Source: untracked
+
+Missing (in the lock file, not on disk)
+  javascript-typescript-jest  Source: github/awesome-copilot
+

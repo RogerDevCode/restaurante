@@ -1,0 +1,20 @@
+{
+  "tool": "21st",
+  "status": "PASS",
+  "cli": {
+    "installed": true,
+    "command": "21st help",
+    "exit_code": 0
+  },
+  "mcp": {
+    "tool": "search",
+    "query": "button",
+    "status": "SUCCESS",
+    "results_returned": 8,
+    "sample_components": [
+      "Button (shugar)",
+      "Particle Button (kokonutd)",
+      "Split Button (pmalay694)"
+    ]
+  }
+}

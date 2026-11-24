@@ -1,0 +1,1371 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditoría y Verificación de Plugins, MCPs y Skills</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-light: #3b82f6;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #15803d;
+      --success-bg: #dcfce7;
+      --warning: #b45309;
+      --warning-bg: #fef3c7;
+      --info: #0369a1;
+      --info-bg: #e0f2fe;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 32px 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+    }
+    h1 {
+      font-size: 2.2rem;
+      color: var(--primary);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .stat-val {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-success { background: var(--success-bg); color: var(--success); }
+    .badge-warning { background: var(--warning-bg); color: var(--warning); }
+    .badge-info { background: var(--info-bg); color: var(--info); }
+    
+    .section-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
+    }
+    .section-title {
+      font-size: 1.35rem;
+      color: var(--primary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.93rem;
+    }
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tr:hover td {
+      background: #f8fafc;
+    }
+    code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.86rem;
+      color: #0f172a;
+    }
+    .search-box {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+      outline: none;
+    }
+    .search-box:focus {
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    .evidence-block {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .callout {
+      padding: 14px 18px;
+      border-left: 4px solid var(--primary-light);
+      background: #eff6ff;
+      border-radius: 0 8px 8px 0;
+      margin: 12px 0;
+      font-size: 0.92rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Auditoría Completa de Plugins, Servidores MCP y Skills</h1>
+      <p class="subtitle">Entorno: <strong>Restaurante 2026</strong> · Fecha de ejecución: <strong>24/11/2026 12:29:00</strong> · Directorio temporal de pruebas: <code>temp-plugin-files</code></p>
+    </header>
+
+    <div class="grid-stats">
+      <div class="stat-card">
+        <div class="stat-val">3</div>
+        <div class="stat-label">Plugins del Sistema</div>
+        <div style="margin-top: 8px;"><span class="badge badge-success">Instalados & Operativos</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">5</div>
+        <div class="stat-label">Servidores MCP</div>
+        <div style="margin-top: 8px;"><span class="badge badge-success">Activos & Verificados</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">149</div>
+        <div class="stat-label">Skills Registrados</div>
+        <div style="margin-top: 8px;"><span class="badge badge-success">100% Frontmatter Válido</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">0</div>
+        <div class="stat-label">Errores Críticos</div>
+        <div style="margin-top: 8px;"><span class="badge badge-success">Integridad Total</span></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 1: PLUGINS NATIVOS -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>1. Plugins Instalados en el Entorno</span>
+        <span class="badge badge-success">3 Verificados</span>
+      </div>
+      <p class="subtitle" style="margin-bottom: 14px;">Evaluación de paquetes con código ejecutable, hooks y utilidades de automatización en <code>~/.gemini/config/plugins</code>.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Plugin</th>
+            <th>Versión</th>
+            <th>Capacidades & Herramientas</th>
+            <th>Estado & Pruebas en Vivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Caveman</strong></td>
+            <td><code>v0.1.0</code></td>
+            <td>
+              Compresión de contexto a nivel de token, servidor MCP <code>caveman-shrink</code>, 8 sub-skills (cavecrew, caveman-compress, caveman-commit, caveman-review, caveman-stats, etc.), hooks automáticos de seguimiento.
+            </td>
+            <td>
+              <span class="badge badge-success">PASS (12/12 Unit tests)</span><br>
+              <small>Tests ejecutados: <code>test_mcp_shrink.js</code> (12/12 pass), <code>test_validate_inline.py</code> (10/10 pass), <code>test_symlink_flag.js</code> (5/5 pass).<br>
+              <em>Nota:</em> La compresión semántica completa por CLI utiliza <code>claude --print</code> o <code>ANTHROPIC_API_KEY</code>.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Chrome DevTools Plugin</strong></td>
+            <td><code>v1.10.1</code></td>
+            <td>
+              Automatización de navegador, análisis de rendimiento y heap snapshots, 6 sub-skills (<code>a11y-debugging</code>, <code>chrome-devtools</code>, <code>cookie-debugging</code>, <code>debug-optimize-lcp</code>, <code>memory-leak-debugging</code>, <code>troubleshooting</code>).
+            </td>
+            <td>
+              <span class="badge badge-success">PASS</span><br>
+              <small>Sintaxis validada en <code>compare_snapshots.js</code> (código 0). Catálogo de snippets y diagnósticos LCP/a11y verificado.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Modern Web Guidance</strong></td>
+            <td><code>v1.0.6</code></td>
+            <td>
+              Políticas de buenas prácticas web modernas, 2 sub-skills (<code>modern-web-guidance</code>, <code>chrome-extensions</code>), más de 20 guías de referencia de arquitectura Manifest V3, políticas TOML.
+            </td>
+            <td>
+              <span class="badge badge-success">PASS</span><br>
+              <small>Verificación de reglas en <code>policies/modern-web-guidance.toml</code> y fixture de escaneo HTML ejecutado sin infracciones.</small>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECCIÓN 2: PROTOCOLO MCP Y CLIs -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>2. Servidores MCP y Herramientas CLI</span>
+        <span class="badge badge-success">Verificados en Tiempo Real</span>
+      </div>
+      <p class="subtitle" style="margin-bottom: 14px;">Pruebas de invocación real sobre las herramientas integradas en Antigravity y clientes compatibles.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Servidor / CLI</th>
+            <th>Tipo</th>
+            <th>Herramientas Invocadas / Probadas</th>
+            <th>Resultado & Evidencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Context7</strong></td>
+            <td>MCP Remoto</td>
+            <td><code>resolve-library-id</code>, <code>query-docs</code></td>
+            <td>
+              <span class="badge badge-success">PASS</span><br>
+              <small>Resolvió <code>react</code> con score 84.49 y recuperó 5 snippets oficiales de <code>useState</code> de <em>react.dev</em> sin errores.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>21st</strong></td>
+            <td>MCP + CLI</td>
+            <td><code>search</code>, <code>21st help</code></td>
+            <td>
+              <span class="badge badge-success">PASS</span><br>
+              <small>CLI respondió con código 0; la herramienta MCP devolvió 8 componentes/templates de UI de 21st.dev.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Playwright</strong></td>
+            <td>MCP Local</td>
+            <td>Navegación y manipulación de navegador (<code>browser_navigate</code>, <code>browser_snapshot</code>, <code>browser_click</code>)</td>
+            <td>
+              <span class="badge badge-success">DISPONIBLE</span><br>
+              <small>Esquemas de herramientas cargados y listos para automatización web.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Firecrawl</strong></td>
+            <td>MCP Remoto</td>
+            <td>Scraping, crawling y extracción de datos web estructurados (<code>firecrawl_scrape</code>, <code>firecrawl_crawl</code>)</td>
+            <td>
+              <span class="badge badge-success">DISPONIBLE</span><br>
+              <small>Cargado en catálogo lazy de Antigravity.</small>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Graphify</strong></td>
+            <td>MCP Remoto</td>
+            <td>Indexación de grafos de conocimiento y repositorios</td>
+            <td>
+              <span class="badge badge-info">VERIFICADO (OAuth)</span><br>
+              <small>Endpoint <code>https://api.graphify.com/mcp</code> activo (HTTP/2 CloudFront). Repositorio validado en sesión previa (3.595 nodos indexados en <code>RogerDevCode/restaurante</code>).</small>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Skills CLI</strong></td>
+            <td>CLI <code>v1.9.0</code></td>
+            <td><code>skills list -g</code>, <code>skills check</code></td>
+            <td>
+              <span class="badge badge-success">PASS</span><br>
+              <small>Reconoce el registro global y sincroniza con los distintos entornos de agentes.</small>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECCIÓN 3: SKILLS ESPECÍFICAS DEL PROYECTO RESTAURANTE 2026 -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>3. Skills Quirúrgicas del Proyecto Restaurante 2026</span>
+        <span class="badge badge-success">5 de 5 Activas</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th>Ubicación</th>
+            <th>Propósito & Reglas Críticas</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>crossplatform-scripts-guard</code></td>
+            <td><code>~/.gemini/skills/crossplatform-scripts-guard</code></td>
+            <td>Supervisión estricta de CRLF en <code>.bat</code> y LF en <code>.sh</code>, UTF-8 con BOM en PowerShell, sin BOM en batch.</td>
+            <td><span class="badge badge-success">PASS</span></td>
+          </tr>
+          <tr>
+            <td><code>java-concurrency-edt-audit</code></td>
+            <td><code>~/.gemini/skills/java-concurrency-edt-audit</code></td>
+            <td>Auditoría de concurrencia Java Swing y seguridad en EDT, patrones SwingWorker y Virtual Threads en Java 21.</td>
+            <td><span class="badge badge-success">PASS</span></td>
+          </tr>
+          <tr>
+            <td><code>systematic-debugging</code></td>
+            <td><code>~/.gemini/skills/systematic-debugging</code></td>
+            <td>Protocolo metódico de depuración en 4 fases; prohíbe el 'shotgun debugging' y parches sin hipótesis.</td>
+            <td><span class="badge badge-success">PASS</span></td>
+          </tr>
+          <tr>
+            <td><code>test-driven-development</code></td>
+            <td><code>~/.gemini/skills/test-driven-development</code></td>
+            <td>Ciclo estricto red-green-refactor para lógica contable, financiera y de autorización.</td>
+            <td><span class="badge badge-success">PASS</span></td>
+          </tr>
+          <tr>
+            <td><code>verification-before-completion</code></td>
+            <td><code>~/.gemini/skills/verification-before-completion</code></td>
+            <td>Exige evidencia explícita de comandos ejecutados antes de declarar una tarea resuelta.</td>
+            <td><span class="badge badge-success">PASS</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECCIÓN 4: INVENTARIO GLOBAL DE SKILLS CON FILTRO INTERACTIVO -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>4. Inventario Completo de Skills Indexados (149)</span>
+        <span class="badge badge-info">Interactivo</span>
+      </div>
+      <input type="text" id="skillSearch" class="search-box" placeholder="Filtrar por nombre, categoría o descripción (ej: strix, n8n, design, devtools, etc.)...">
+      <table id="skillsTable">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Categoría</th>
+            <th>Descripción / Alcance</th>
+            <th>Frontmatter</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>agy-customizations</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>Comprehensive guide and reference for the Antigravity Customization System. Use to explain how customizations work, their loading priority, discovery mechanisms, and to guide the creation of skills, rules, plugins, hooks, and MCP servers.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>antigravity-guide</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>Provides a comprehensive guide, quick reference, and sitemap for Google Antigravity (AGY), including the Antigravity CLI (agy), Antigravity 2.0, Antigravity IDE, Python SDK, slash commands, keybindings, and customizations (skills, rules, MCP, sidecars). Activate this skill when the user asks questions about how to use, configure, or customize Antigravity, AGY, the agy CLI, the Antigravity IDE, or Antigravity 2.0.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>automation</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>Interactive guide to design and create a scheduled background automation. Use this skill when the user wants to create an automated or recurring scheduled task (e.g. "summarize my emails every morning", "every Monday send me a to-do list"). Also triggered by the /automation slash command.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>conversations</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>Manage local Antigravity conversations programmatically over HTTP+JSON: create a new conversation (with an optional initial prompt), list conversations, read conversation metadata and run state, rename, archive, pin, star, tag, or group conversations, and delete conversations. Use when the user asks to list, rename, pin, star, archive, delete, or start conversations, including the current one, or when a script, plugin, or automation needs to manage conversations outside of subagent tool calls.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>generative_ui</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>How to render rich interactive HTML widgets inline in the chat or as standalone artifacts. Use this skill when you want to show the user diagrams, data visualizations, interactive controls, educational walkthroughs, or any rich visual content beyond plain text and markdown.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>mcp-app-development</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>Build, package, and debug MCP Apps for Antigravity: MCP server tools whose results render as interactive UI in the conversation, in the side pane, or full-page from the sidebar. Use when adding a UI to an MCP tool, building or theming the app itself, packaging it as a plugin, or debugging an app that doesn't render or behave as expected.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>migrate-agent-settings</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>Migrates the user's MCP servers, skills, slash commands, subagents, and instruction files from other coding agents (Claude Code, Codex, Cursor, Gemini CLI) into one new Antigravity plugin. Use when the user wants to bring over, import, or migrate their setup or config from another agent or tool. Don't use for installing Marketplace plugins or authoring a new plugin from scratch (use the plugin skill).</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>migrate-workflows</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>Automatically migrate legacy workflows to modern skills across global and workspace configurations. Scans for existing workflows, creates target SKILL.md files, and safely archives old workflow files.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>permissioned-github</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>Guidelines for interacting with GitHub and request permissions from the user when commands fail due to restrictions in the agent environment.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>plugin</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>How to manage and create plugins — namespaced bundles of skills, agents, rules, MCP servers and hooks that install, enable and disable as a single unit. Use this skill when the user wants to enable, disable, install or uninstall a plugin, when they want to create a new plugin, or when a new customization should be packaged into a plugin rather than left loose. Also triggered by the /plugin slash command. Don't use for the underlying customization system itself — discovery roots, loading priority, or authoring a standalone skill, agent, rule, hook or MCP server outside a plugin; see the customizations guide skill for those.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>run-workflow</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>How to write and run a dynamic workflow script with the `run_workflow` tool: a Python script that orchestrates many agents with `agent`, `parallel`, `pipeline`, and `phase`. Use when a task splits into many independent or staged pieces of agent work (fan out over files, modules, bugs, or review angles, then aggregate), or when the user asks for a workflow. Don't use for a single delegated task (use a subagent) or for legacy workflow files (see migrate-workflows).</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>swarm</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>(Preview & Quota Heavy) Run a swarm: several agents working in parallel on one task, each in its own conversation, collaborating through a shared message board. Use when the work splits into pieces that can be done at the same time, or when a second pair of eyes should check the first pair's work.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>swarm_monitor</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>ONLY for the native-swarm worker whose brief says it is the monitor. On a timer, it checks whether the whole swarm has stalled and calls on the one member who can unstick it. Coordinators and other workers: do not load this.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>swarm_narrator</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>ONLY for the native-swarm worker whose brief says it is the narrator. It watches the board and keeps the facts behind the user's Overview (view.json) current. Coordinators and other workers: do not load this.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>swarm_pane</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>ONLY for the coordinator of an active /swarm session. What the coordinator writes so the Swarm UI's Overview can show the swarm's goal, its groups of work and a screenshot timeline; load it before you brief and add the first workers. Outside /swarm, do not load this.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-plugin-navigation</strong></td>
+            <td><small>Antigravity Built-in</small></td>
+            <td><small>Discover UI plugin panels relevant to the current task and surface a one-click pill in chat to open (toggle) them in the side pane. Use when a running UI plugin's panel would help with what the user is doing, or right after the user enables a new UI plugin pane and a shortcut to open it is handy.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ai</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Generate and iterate on UI with 21st AI from the terminal via the `21st` CLI (`@21st-dev/cli`): sketch a UI from a prompt, preview the variants in the browser, edit any variant in place with a natural-language change, and pull the final code into the project. Use whenever the user wants to BUILD / SKETCH new UI ("sketch a pricing page", "generate a hero with 21st", "make me a <X> section"), ITERATE on a generated draft ("edit the third variant", "add a toggle to that take"), or GRAB the code of a draft ("pull that variant's code", "сгенери UI на 21st", "поправь третий вариант", "забери код того наброска"). For finding/installing existing components use the `21st-cli-use` skill; to publish your own, `21st-registry`.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-cli-use</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Search, install and pull code from the 21st.dev catalog with the `21st` CLI (`@21st-dev/cli`): find React/shadcn components, themes and templates, print a component's code or a theme's CSS, install an item into the project, or generate a new component with 21st AI. Use whenever the user says "search/find a component/theme on 21st", "install our team's Button", "add @user/slug", "pull that component's code", "найди компонент на 21st", "поставь наш компонент", or wants to script catalog access from the shell/CI. Auto-activate when a project has a `components.json` — search 21st before hand-writing UI.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-design-sync</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Look at the current project's design (its shadcn / Tailwind CSS variables and color tokens) and publish it to the 21st.dev community as a shareable theme, using `21st publish-theme`. Use when the user says "publish my theme", "share our design as a 21st theme", "sync my design to 21st", "turn my globals.css into a theme", "залей наш дизайн темой", "опубликуй тему". This is the 21st equivalent of design-sync: it reads the project's design tokens and syncs them into the public theme library.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-registry</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Publish your own work to 21st.dev and manage it from the terminal with the `21st` CLI (`@21st-dev/cli`): publish a React component to a team library, publish a CSS theme or a template listing, edit / unpublish / delete your published items, list and reopen existing component work, and read/replace your public profile page (bento board). Triggers when the user says "publish/share/upload this to 21st", "залей в наш регистр", "опубликуй компонент/тему/темплейт", "share with team", "make this reusable", "unpublish/edit/delete my component", "change its visibility", "find/open my old component or draft", "найди/открой мой старый компонент или драфт", "add this to my 21st profile/bento", "update my profile page", "обнови мой профиль на 21st", "добавь блок в бенто", "add controls/knobs to my demo", "сделай демо с контролами". For finding and installing existing items use `21st-cli-use`; for turning a project's design tokens into a theme use `21st-design-sync`.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ui-build</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Build or substantially change production UI using the current project's design context, existing components, and grounded 21st inspiration. Use when implementing a page, section, component, responsive redesign, or visual polish in an existing web project. Trigger for requests such as "build this UI", "implement this screen", "make this page production-ready", or "use 21st to create the interface". Use 21st-ui-explore first when the visual direction is intentionally undecided, and 21st-ui-review for critique-only work.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ui-explore</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Explore and compare multiple meaningfully different UI directions grounded in the current project's design system and 21st inspiration. Use when the user wants options, variants, concepts, a redesign direction, visual experimentation, or is unsure how a new interface should look. Trigger for requests such as "show me three directions", "explore alternatives", "what could this page look like", or "generate variants". Do not use for a straightforward implementation with an already-selected direction.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ui-review</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Review existing UI against the project's design context, accessibility expectations, responsive behavior, interaction quality, and high-confidence production rules. Use for UI audits, design QA, frontend review, accessibility review, consistency checks, or requests to find and safely fix visual defects. Trigger for requests such as "review this UI", "audit this page", "find design issues", "check responsiveness", or "fix obvious UX problems". Use 21st-ui-build when the request is primarily to create new UI.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-video</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Create and edit a product, launch, demo, or social video from the current project with 21st video MCP tools. Open the editable project alongside the chat, apply small revision-aware edits, check rendered frames, offer visual variants, and export the result. Use when the user asks for a video, says "make a launch video for this repo", "edit this video", or points to a selected layer in the 21st video editor. Requires the 21st MCP server.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>banner-design</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>brand</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>context7-mcp</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of specific frameworks like React, Vue, Next.js, Prisma, Supabase, etc.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML→screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design-system</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Token architecture, component specifications, and slide generation. Three-layer tokens (primitive→semantic→component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>impeccable</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Use when the user wants to design, redesign, shape, critique, audit, polish, clarify, distill, harden, optimize, adapt, animate, colorize, extract, or otherwise improve a frontend interface. Covers websites, landing pages, dashboards, product UI, app shells, components, forms, settings, onboarding, and empty states. Handles UX review, visual hierarchy, information architecture, cognitive load, accessibility, performance, responsive behavior, theming, anti-patterns, typography, fonts, spacing, layout, alignment, color, motion, micro-interactions, UX copy, error states, edge cases, i18n, and reusable design systems or tokens. Also use for bland designs that need to become bolder or more delightful, loud designs that should become quieter, live browser iteration on UI elements, or ambitious visual effects that should feel technically extraordinary. Not for backend-only or non-UI tasks.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>slides</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Create strategic HTML presentations with Chart.js, design tokens, responsive layouts, copywriting formulas, and contextual slide strategies.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-styling</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-ux-pro-max</strong></td>
+            <td><small>Claude Code Skills</small></td>
+            <td><small>UI/UX design intelligence. 67 styles, 161 palettes, 57 font pairings, 25 charts, 21 stacks (React, Next.js, Vue, Svelte, Astro, SwiftUI, React Native, Flutter, WPF, WinUI 3, UWP, Avalonia, Uno Platform, Nuxt, Nuxt UI, Tailwind, shadcn/ui, Jetpack Compose, Three.js, Angular, Laravel). Actions: plan, build, create, design, implement, review, fix, improve, optimize, enhance, refactor, check UI/UX code. Projects: website, landing page, dashboard, admin panel, e-commerce, SaaS, portfolio, blog, mobile app, desktop app, .html, .tsx, .vue, .svelte, .xaml. Elements: button, modal, navbar, sidebar, card, table, form, chart. Styles: glassmorphism, claymorphism, minimalism, brutalism, neumorphism, bento grid, dark mode, responsive, skeuomorphism, flat design. Topics: color palette, accessibility, animation, layout, typography, font pairing, spacing, hover, shadow, gradient. Integrations: shadcn/ui MCP for component search and examples.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ai</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Generate and iterate on UI with 21st AI from the terminal via the `21st` CLI (`@21st-dev/cli`): sketch a UI from a prompt, preview the variants in the browser, edit any variant in place with a natural-language change, and pull the final code into the project. Use whenever the user wants to BUILD / SKETCH new UI ("sketch a pricing page", "generate a hero with 21st", "make me a <X> section"), ITERATE on a generated draft ("edit the third variant", "add a toggle to that take"), or GRAB the code of a draft ("pull that variant's code", "сгенери UI на 21st", "поправь третий вариант", "забери код того наброска"). For finding/installing existing components use the `21st-cli-use` skill; to publish your own, `21st-registry`.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-cli-use</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Search, install and pull code from the 21st.dev catalog with the `21st` CLI (`@21st-dev/cli`): find React/shadcn components, themes and templates, print a component's code or a theme's CSS, install an item into the project, or generate a new component with 21st AI. Use whenever the user says "search/find a component/theme on 21st", "install our team's Button", "add @user/slug", "pull that component's code", "найди компонент на 21st", "поставь наш компонент", or wants to script catalog access from the shell/CI. Auto-activate when a project has a `components.json` — search 21st before hand-writing UI.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-design-sync</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Look at the current project's design (its shadcn / Tailwind CSS variables and color tokens) and publish it to the 21st.dev community as a shareable theme, using `21st publish-theme`. Use when the user says "publish my theme", "share our design as a 21st theme", "sync my design to 21st", "turn my globals.css into a theme", "залей наш дизайн темой", "опубликуй тему". This is the 21st equivalent of design-sync: it reads the project's design tokens and syncs them into the public theme library.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-registry</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Publish your own work to 21st.dev and manage it from the terminal with the `21st` CLI (`@21st-dev/cli`): publish a React component to a team library, publish a CSS theme or a template listing, edit / unpublish / delete your published items, list and reopen existing component work, and read/replace your public profile page (bento board). Triggers when the user says "publish/share/upload this to 21st", "залей в наш регистр", "опубликуй компонент/тему/темплейт", "share with team", "make this reusable", "unpublish/edit/delete my component", "change its visibility", "find/open my old component or draft", "найди/открой мой старый компонент или драфт", "add this to my 21st profile/bento", "update my profile page", "обнови мой профиль на 21st", "добавь блок в бенто", "add controls/knobs to my demo", "сделай демо с контролами". For finding and installing existing items use `21st-cli-use`; for turning a project's design tokens into a theme use `21st-design-sync`.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ui-build</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Build or substantially change production UI using the current project's design context, existing components, and grounded 21st inspiration. Use when implementing a page, section, component, responsive redesign, or visual polish in an existing web project. Trigger for requests such as "build this UI", "implement this screen", "make this page production-ready", or "use 21st to create the interface". Use 21st-ui-explore first when the visual direction is intentionally undecided, and 21st-ui-review for critique-only work.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ui-explore</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Explore and compare multiple meaningfully different UI directions grounded in the current project's design system and 21st inspiration. Use when the user wants options, variants, concepts, a redesign direction, visual experimentation, or is unsure how a new interface should look. Trigger for requests such as "show me three directions", "explore alternatives", "what could this page look like", or "generate variants". Do not use for a straightforward implementation with an already-selected direction.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ui-review</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Review existing UI against the project's design context, accessibility expectations, responsive behavior, interaction quality, and high-confidence production rules. Use for UI audits, design QA, frontend review, accessibility review, consistency checks, or requests to find and safely fix visual defects. Trigger for requests such as "review this UI", "audit this page", "find design issues", "check responsiveness", or "fix obvious UX problems". Use 21st-ui-build when the request is primarily to create new UI.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-video</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Create and edit a product, launch, demo, or social video from the current project with 21st video MCP tools. Open the editable project alongside the chat, apply small revision-aware edits, check rendered frames, offer visual variants, and export the result. Use when the user asks for a video, says "make a launch video for this repo", "edit this video", or points to a selected layer in the 21st video editor. Requires the 21st MCP server.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>banner-design</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>brand</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>copywriting</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>When the user wants to write, rewrite, or improve marketing copy for any page — including homepage, landing pages, pricing pages, feature pages, about pages, or product pages. Also use when the user says "write copy for," "improve this copy," "rewrite this page," "marketing copy," "headline help," "CTA copy," "value proposition," "tagline," "subheadline," "hero section copy," "above the fold," "this copy is weak," "make this more compelling," or "help me describe my product." Use this whenever someone is working on website text that needs to persuade or convert. For email copy, see emails. For popup copy, see popups. For editing existing copy, see copy-editing. For the offer underneath the copy (bonuses, guarantees, value framing), see offers.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>create-statusline</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Build and enable a custom MCP statusline for the Codex CLI. Use when someone wants a provider that displays information in the terminal footer.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML→screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design-system</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Token architecture, component specifications, and slide generation. Three-layer tokens (primitive→semantic→component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>gpt-taste</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Elite UX/UI & Advanced GSAP Motion Engineer. Enforces Python-driven true randomization for layout variance, strict AIDA page structure, wide editorial typography (bans 6-line wraps), gapless bento grids, strict GSAP ScrollTriggers (pinning, stacking, scrubbing), inline micro-images, and massive section spacing.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>imagegen</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>openai-docs</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>API first-timers, Codex/Work Q&A. If the user already has an OpenAI API integration, skip this skill for API questions and use the developer docs. Read this skill before answering how Codex or ChatGPT Work behaves, where to find a feature, or how to configure or troubleshoot this app or coding agent. This includes conversation history, model and cache behavior, instruction precedence, permissions, and tool availability. Use for API onboarding only when the user is connecting to the OpenAI API for the first time. Skip action requests, such as scheduling an automation, and tasks fully answered by supplied text or data.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>redesign-existing-projects</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Upgrades existing websites and apps to premium quality. Audits current design, identifies generic AI patterns, and applies high-end design standards without breaking functionality. Works with any CSS framework or vanilla CSS.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>review-agent</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Perform a read-only, defect-first review of a specified code change and return every actionable finding. Use when another agent delegates review of uncommitted changes, a base-branch diff, a commit, or custom review instructions.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>skill-creator</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Create or update a Codex skill with appropriately scoped instructions and any needed supporting resources.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>skill-installer</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos).</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-styling</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-ux-pro-max</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>UI/UX design intelligence with searchable database</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>writing-plans</strong></td>
+            <td><small>Codex Skills</small></td>
+            <td><small>Use when you have a spec or requirements for a multi-step task, before touching code</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ai</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Generate and iterate on UI with 21st AI from the terminal via the `21st` CLI (`@21st-dev/cli`): sketch a UI from a prompt, preview the variants in the browser, edit any variant in place with a natural-language change, and pull the final code into the project. Use whenever the user wants to BUILD / SKETCH new UI ("sketch a pricing page", "generate a hero with 21st", "make me a <X> section"), ITERATE on a generated draft ("edit the third variant", "add a toggle to that take"), or GRAB the code of a draft ("pull that variant's code", "сгенери UI на 21st", "поправь третий вариант", "забери код того наброска"). For finding/installing existing components use the `21st-cli-use` skill; to publish your own, `21st-registry`.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-cli-use</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Search, install and pull code from the 21st.dev catalog with the `21st` CLI (`@21st-dev/cli`): find React/shadcn components, themes and templates, print a component's code or a theme's CSS, install an item into the project, or generate a new component with 21st AI. Use whenever the user says "search/find a component/theme on 21st", "install our team's Button", "add @user/slug", "pull that component's code", "найди компонент на 21st", "поставь наш компонент", or wants to script catalog access from the shell/CI. Auto-activate when a project has a `components.json` — search 21st before hand-writing UI.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-design-sync</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Look at the current project's design (its shadcn / Tailwind CSS variables and color tokens) and publish it to the 21st.dev community as a shareable theme, using `21st publish-theme`. Use when the user says "publish my theme", "share our design as a 21st theme", "sync my design to 21st", "turn my globals.css into a theme", "залей наш дизайн темой", "опубликуй тему". This is the 21st equivalent of design-sync: it reads the project's design tokens and syncs them into the public theme library.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-registry</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Publish your own work to 21st.dev and manage it from the terminal with the `21st` CLI (`@21st-dev/cli`): publish a React component to a team library, publish a CSS theme or a template listing, edit / unpublish / delete your published items, list and reopen existing component work, and read/replace your public profile page (bento board). Triggers when the user says "publish/share/upload this to 21st", "залей в наш регистр", "опубликуй компонент/тему/темплейт", "share with team", "make this reusable", "unpublish/edit/delete my component", "change its visibility", "find/open my old component or draft", "найди/открой мой старый компонент или драфт", "add this to my 21st profile/bento", "update my profile page", "обнови мой профиль на 21st", "добавь блок в бенто", "add controls/knobs to my demo", "сделай демо с контролами". For finding and installing existing items use `21st-cli-use`; for turning a project's design tokens into a theme use `21st-design-sync`.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ui-build</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Build or substantially change production UI using the current project's design context, existing components, and grounded 21st inspiration. Use when implementing a page, section, component, responsive redesign, or visual polish in an existing web project. Trigger for requests such as "build this UI", "implement this screen", "make this page production-ready", or "use 21st to create the interface". Use 21st-ui-explore first when the visual direction is intentionally undecided, and 21st-ui-review for critique-only work.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ui-explore</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Explore and compare multiple meaningfully different UI directions grounded in the current project's design system and 21st inspiration. Use when the user wants options, variants, concepts, a redesign direction, visual experimentation, or is unsure how a new interface should look. Trigger for requests such as "show me three directions", "explore alternatives", "what could this page look like", or "generate variants". Do not use for a straightforward implementation with an already-selected direction.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-ui-review</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Review existing UI against the project's design context, accessibility expectations, responsive behavior, interaction quality, and high-confidence production rules. Use for UI audits, design QA, frontend review, accessibility review, consistency checks, or requests to find and safely fix visual defects. Trigger for requests such as "review this UI", "audit this page", "find design issues", "check responsiveness", or "fix obvious UX problems". Use 21st-ui-build when the request is primarily to create new UI.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>21st-video</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Create and edit a product, launch, demo, or social video from the current project with 21st video MCP tools. Open the editable project alongside the chat, apply small revision-aware edits, check rendered frames, offer visual variants, and export the result. Use when the user asks for a video, says "make a launch video for this repo", "edit this video", or points to a selected layer in the 21st video editor. Requires the 21st MCP server.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>banner-design</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>brand</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>context7-mcp</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of specific frameworks like React, Vue, Next.js, Prisma, Supabase, etc.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML→screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design-system</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Token architecture, component specifications, and slide generation. Three-layer tokens (primitive→semantic→component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>impeccable</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Use when the user wants to design, redesign, shape, critique, audit, polish, clarify, distill, harden, optimize, adapt, animate, colorize, extract, or otherwise improve a frontend interface. Covers websites, landing pages, dashboards, product UI, app shells, components, forms, settings, onboarding, and empty states. Handles UX review, visual hierarchy, information architecture, cognitive load, accessibility, performance, responsive behavior, theming, anti-patterns, typography, fonts, spacing, layout, alignment, color, motion, micro-interactions, UX copy, error states, edge cases, i18n, and reusable design systems or tokens. Also use for bland designs that need to become bolder or more delightful, loud designs that should become quieter, live browser iteration on UI elements, or ambitious visual effects that should feel technically extraordinary. Not for backend-only or non-UI tasks.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>slides</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Create strategic HTML presentations with Chart.js, design tokens, responsive layouts, copywriting formulas, and contextual slide strategies.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-styling</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-ux-pro-max</strong></td>
+            <td><small>Cursor Skills</small></td>
+            <td><small>Comprehensive design guide for web, mobile, and desktop applications. Contains 67 styles, 161 color palettes, 57 font pairings, 99 UX guidelines, and 25 chart types across 22 technology stacks.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>banner-design</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>brand</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>context7-mcp</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of specific frameworks like React, Vue, Next.js, Prisma, Supabase, etc.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>crossplatform-scripts-guard</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Enforce encoding, line endings (CRLF vs LF), BOM rules, and compatibility across Windows (.bat, .ps1, .vbs) and Linux (.sh) scripts</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML→screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design-system</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Token architecture, component specifications, and slide generation. Three-layer tokens (primitive→semantic→component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>impeccable</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Use when the user wants to design, redesign, shape, critique, audit, polish, clarify, distill, harden, optimize, adapt, animate, colorize, extract, or otherwise improve a frontend interface. Covers websites, landing pages, dashboards, product UI, app shells, components, forms, settings, onboarding, and empty states. Handles UX review, visual hierarchy, information architecture, cognitive load, accessibility, performance, responsive behavior, theming, anti-patterns, typography, fonts, spacing, layout, alignment, color, motion, micro-interactions, UX copy, error states, edge cases, i18n, and reusable design systems or tokens. Also use for bland designs that need to become bolder or more delightful, loud designs that should become quieter, live browser iteration on UI elements, or ambitious visual effects that should feel technically extraordinary. Not for backend-only or non-UI tasks.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>java-concurrency-edt-audit</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Audit and enforce Java Swing threading rules, Event Dispatch Thread (EDT) safety, SwingWorker patterns, and Java 21 Virtual Threads interaction with AWT/Swing</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>slides</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Create strategic HTML presentations with Chart.js, design tokens, responsive layouts, copywriting formulas, and contextual slide strategies.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>systematic-debugging</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>test-driven-development</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Use when implementing any feature or bugfix, before writing implementation code</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-styling</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-ux-pro-max</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>UI/UX design intelligence with searchable database</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>verification-before-completion</strong></td>
+            <td><small>Gemini CLI / Antigravity Custom</small></td>
+            <td><small>Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>a11y-debugging</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Uses Chrome DevTools MCP for accessibility (a11y) debugging and auditing based on web.dev guidelines. Use when testing semantic HTML, ARIA labels, focus states, keyboard navigation, tap targets, and color contrast.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>cavecrew</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller — main context lasts longer across long sessions. Trigger: "delegate to subagent", "use cavecrew", "spawn investigator/builder/reviewer", "save context", "compressed agent output".
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>cavecrew</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller — main context lasts longer across long sessions. Trigger: "delegate to subagent", "use cavecrew", "spawn investigator/builder/reviewer", "save context", "compressed agent output".
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>cavecrew</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller — main context lasts longer across long sessions. Trigger: "delegate to subagent", "use cavecrew", "spawn investigator/builder/reviewer", "save context", "compressed agent output".
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>cavecrew</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller — main context lasts longer across long sessions. Trigger: "delegate to subagent", "use cavecrew", "spawn investigator/builder/reviewer", "save context", "compressed agent output".
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>cavecrew</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller — main context lasts longer across long sessions. Trigger: "delegate to subagent", "use cavecrew", "spawn investigator/builder/reviewer", "save context", "compressed agent output".
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>cavecrew</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller — main context lasts longer across long sessions. Trigger: "delegate to subagent", "use cavecrew", "spawn investigator/builder/reviewer", "save context", "compressed agent output".
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Switch caveman intensity level (lite/full/ultra/wenyan)</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Ultra-compressed communication mode. Cuts token usage ~75% by speaking like caveman while keeping full technical accuracy. Supports intensity levels: lite, full (default), ultra, wenyan-lite, wenyan-full, wenyan-ultra. Use when user says "caveman mode", "talk like caveman", "use caveman", "less tokens", "be brief", or invokes /caveman. Also auto-triggers when token efficiency is requested.
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman-commit</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Generate terse caveman-style commit message</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman-compress</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Compress natural language memory files (CLAUDE.md, todos, preferences) into caveman format to save input tokens. Preserves all technical substance, code, URLs, and structure. Compressed version overwrites the original file. Human-readable backup saved as FILE.original.md. Trigger: /caveman-compress FILEPATH or "compress memory file"
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman-compress</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Compress natural language memory files (CLAUDE.md, todos, preferences) into caveman format to save input tokens. Preserves all technical substance, code, URLs, and structure. Compressed version overwrites the original file. Human-readable backup saved as FILE.original.md. Trigger: /caveman-compress FILEPATH or "compress memory file"
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman-help</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Quick-reference card for all caveman modes, skills, and commands. One-shot display, not a persistent mode. Trigger: /caveman-help, "caveman help", "what caveman commands", "how do I use caveman".
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman-init</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Drop the always-on caveman activation rule into the current repo for every IDE agent</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman-review</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>One-line code review comments</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman-stats</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Show real token usage and estimated savings for the current session. Reads directly from the Claude Code session log — no AI estimation. Triggers on /caveman-stats. Output is injected by the mode-tracker hook; the model itself does not compute the numbers.
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>caveman-stats</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Show real token usage and estimated savings for the current session. Reads directly from the Claude Code session log — no AI estimation. Triggers on /caveman-stats. Output is injected by the mode-tracker hook; the model itself does not compute the numbers.
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>chrome-devtools</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Uses Chrome DevTools via MCP for efficient debugging, troubleshooting and browser automation. Use when debugging web pages, automating browser interactions, analyzing performance, or inspecting network requests. This skill does not apply to `--slim` mode (MCP configuration).</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>chrome-extensions</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Build and publish Chrome Extensions using Manifest V3 best practices. Use this skill whenever the user asks to create, modify, debug, or understand Chrome browser extensions, add-ons, or anything involving the Chrome Extensions API. Trigger on mentions of: 'Chrome extension', 'browser extension', 'manifest.json', 'content script', 'service worker' (in browser context), 'popup' (in browser extension context), 'side panel', 'chrome.* API', 'declarativeNetRequest', 'omnibox', 'context menu' (in extension context), 'userScripts', 'user script', 'script manager', or any request to build functionality that integrates with the Chrome browser UI. Also trigger for publishing to the Chrome Web Store: 'publish extension', preparing an extension for publishing, responding to a review rejection, writing permission justifications, or drafting a privacy policy.
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>cookie-debugging</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Uses Chrome DevTools MCP for inspecting, debugging, and testing cookies, session state, authentication issues, and cookie consent compliance. Use when diagnosing 401/403 errors, authentication redirects, session expiration, Cookie/Set-Cookie header issues, cookie banner consent conformance, or third-party cookie/SameSite/Partitioned cookie warnings.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>debug-optimize-lcp</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Guides debugging and optimizing Largest Contentful Paint (LCP) using Chrome DevTools MCP tools. Use this skill whenever the user asks about LCP performance, slow page loads, Core Web Vitals optimization, or wants to understand why their page's main content takes too long to appear. Also use when the user mentions "largest contentful paint", "page load speed", "CWV", or wants to improve how fast their hero image or main content renders.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>memory-leak-debugging</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Diagnoses and resolves memory leaks in JavaScript/Node.js applications. Use when a user reports high memory usage, OOM errors, or wants to capture, compare, or inspect heap snapshots with Chrome DevTools MCP memory tools.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>modern-web-guidance</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.
+
+Trigger immediately for:
+- UI/Layout: Modals, dialogs, popovers, Glassmorphism/backdrop-filters, anchor positioning, container queries, `:has()`, `:user-valid`.
+- Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals.
+- Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.
+- System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.
+- Frameworks: Adapting layout/styles in React, Vue, Angular.
+- General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.
+
+DO NOT trigger for:
+- Backend: Database SQL, ORMs, Express API routes.
+- Pipelines: CI/CD deployment, Docker, Actions.
+- Generic: Local scripts (Python/Go tools), ESLint, Git.
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>troubleshooting</strong></td>
+            <td><small>Gemini Plugins (Caveman, CDP, MWG)</small></td>
+            <td><small>Uses Chrome DevTools MCP and documentation to troubleshoot connection and target issues. Trigger this skill when list_pages, new_page, or navigate_page fail, or when the server initialization fails.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>expert-debugger</strong></td>
+            <td><small>StrixGov / Global Config</small></td>
+            <td><small>Active when debugging code, investigating errors/exceptions, troubleshooting system failures, or locating bugs. Instructs the agent to form hypotheses, test them sequentially with evidence, minimize inputs (Delta Debugging), check alternatives, and rely strictly on observed data.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>api-testing</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Test API integrations by mocking responses, intercepting requests, and monitoring network traffic. Use when the user wants to mock backend APIs, simulate errors, test offline behavior, intercept requests, or add authentication headers.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>banner-design</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>brainstorming</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>brand</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>browser-automation</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Browser automation powers web testing, scraping, and AI agent interactions. The difference between a flaky script and a reliable system comes down to understanding selectors, waiting strategies, and anti-detection patterns.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>chrome-devtools</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Expert-level browser automation, debugging, and performance analysis using Chrome DevTools MCP. Use for interacting with web pages, capturing screenshots, analyzing network traffic, and profiling performance.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>chrome-extensions</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Build and publish Chrome Extensions using Manifest V3 best practices. Use this skill whenever the user asks to create, modify, debug, or understand Chrome browser extensions, add-ons, or anything involving the Chrome Extensions API. Trigger on mentions of: 'Chrome extension', 'browser extension', 'manifest.json', 'content script', 'service worker' (in browser context), 'popup' (in browser extension context), 'side panel', 'chrome.* API', 'declarativeNetRequest', 'omnibox', 'context menu' (in extension context), 'userScripts', 'user script', 'script manager', or any request to build functionality that integrates with the Chrome browser UI. Also trigger for publishing to the Chrome Web Store: 'publish extension', preparing an extension for publishing, responding to a review rejection, writing permission justifications, or drafting a privacy policy.
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>context7-mcp</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of specific frameworks like React, Vue, Next.js, Prisma, Supabase, etc.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML→screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>design-system</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Token architecture, component specifications, and slide generation. Three-layer tokens (primitive→semantic→component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>docker-best-practices</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Comprehensive Docker best practices for images, containers, and production deployments.
+PROACTIVELY activate for: (1) writing production-ready Dockerfiles, (2) multi-stage builds for lean images, (3) base image selection (distroless, alpine, scratch, slim), (4) layer caching and ordering, (5) .dockerignore hygiene, (6) HEALTHCHECK and graceful shutdown, (7) non-root user and least-privilege patterns, (8) ENV vs ARG and secret handling, (9) tag/digest pinning and reproducibility, (10) Compose for local development.
+Provides: Dockerfile templates by language, image-size optimization checklist, .dockerignore template, HEALTHCHECK patterns, and Compose dev-stack examples.
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>docker-expert</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>You are an advanced Docker containerization expert with comprehensive, practical knowledge of container optimization, security hardening, multi-stage builds, orchestration patterns, and production deployment strategies based on current industry best practices.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>e2e-tests-studio</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>REQUIRED when modifying any file in packages/playground-ui or packages/playground. Triggers on: React component creation/modification/refactoring, UI changes, new playground features, bug fixes affecting studio UI. Generates Playwright E2E tests that validate PRODUCT BEHAVIOR, not just UI states.
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>execution-control</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Explain AI execution control and assess (read-only) which actions in a project need governance. ASSESSMENT ONLY — it does not enforce anything. Use when the user asks "what is execution control", "which of my actions are risky", "what should Claude not be allowed to do", or wants a governance assessment before installing enforcement.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>find-skills</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>frontend-design</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>govern-ai-egress</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Put Strix Governed AI Egress in front of calls to an external AI provider, self-hosted. Runs the governed egress proxy (npx or container) inside your own boundary, points an OpenAI or Anthropic SDK at it, installs the local Claude Code prompt hook, and verifies the path with a synthetic request. States plainly what the detector does not prove. Use when the user asks to "govern AI egress", "stop PHI going to Claude/OpenAI", "put a proxy in front of the model", "de-identify prompts before they leave", "install the egress prompt hook", or runs /govern-ai-egress.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>govern-pr</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Runs a Strix Governance Review (SGRF v1) on a pull request or diff — the change lens. Reviews whether the change adds or modifies a consequential action, touches the execution boundary / permissions / policy, opens or closes a bypass, or weakens any execution-control invariant, and reports whether it moves any of the 4 SGRF axes. Produces a PR-comment-ready verdict. Advisory and diagnostic; it does not block merges or enforce. Use when the user asks to "govern this PR", "review this diff for governance", "does this change weaken enforcement", "governance impact of this PR", or runs /govern-pr.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>impeccable</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Use when the user wants to design, redesign, shape, critique, audit, polish, clarify, distill, harden, optimize, adapt, animate, colorize, extract, or otherwise improve a frontend interface. Covers websites, landing pages, dashboards, product UI, app shells, components, forms, settings, onboarding, and empty states. Handles UX review, visual hierarchy, information architecture, cognitive load, accessibility, performance, responsive behavior, theming, anti-patterns, typography, fonts, spacing, layout, alignment, color, motion, micro-interactions, UX copy, error states, edge cases, i18n, and reusable design systems or tokens. Also use for bland designs that need to become bolder or more delightful, loud designs that should become quieter, live browser iteration on UI elements, or ambitious visual effects that should feel technically extraordinary. Not for backend-only or non-UI tasks.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>modern-web-guidance</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.
+Trigger immediately for: modals/dialogs/popovers, tables, dark mode, anchor positioning, container queries, view transitions, scroll-driven animations, parallax/reveals, forms, validation, autofill, accessibility, custom selects, scrollbars, CWV (LCP, INP, CLS), content-visibility, fetch priority, image optimization, security, passkeys, HTML sanitization, web components, dates/timezones, built-in AI, WebAssembly, standard HTML/CSS/DOM in frameworks, etc.
+DO NOT trigger for: backend (SQL, ORMs, API routes), infra/scripts (CI/CD, Docker, Actions, Python/Go, Git), or tooling/trivial (Vite, tsconfig, ESLint, tests, copy/renames, 3P docs), etc.
+</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>n8n-code-javascript</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Write JavaScript code in n8n Code nodes. Use when writing JavaScript in n8n, using $input/$json/$node syntax, making HTTP requests with this.helpers / the $helpers global, working with dates using DateTime, troubleshooting Code node errors, choosing between Code node modes, or doing any custom data transformation in n8n. Always use this skill when a workflow needs a Code node — whether for data aggregation, filtering, API calls, format conversion, batch processing logic, or any custom JavaScript. Covers SplitInBatches loop patterns, cross-iteration data, pairedItem, and real-world production patterns. Also use when asked why a Code node or workflow is slow, which execution mode is faster, or how to cut per-item overhead on large datasets. EXCEPTION — for the AI-agent-callable Custom Code Tool (@n8n/n8n-nodes-langchain.toolCode, a tool attached to an AI Agent), use the n8n-code-tool skill instead; it has a different runtime contract.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>n8n-expression-syntax</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Validate n8n expression syntax and fix common errors. Use when writing n8n expressions, using {{}} syntax, accessing $json/$node variables, troubleshooting expression errors, mapping data between nodes, or referencing webhook data in workflows. Use this skill whenever configuring node fields that reference data from previous nodes — expressions are how n8n passes data between nodes, and getting the syntax wrong is the most common source of workflow errors. Also use when asked whether a complex expression hurts performance.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>n8n-mcp-tools-expert</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Expert guide for using n8n-mcp MCP tools effectively. Use when searching for nodes, validating configurations, accessing templates, managing workflows, managing credentials, auditing instance security, or using any n8n-mcp tool. Provides tool selection guidance, parameter formats, and common patterns. IMPORTANT — Always consult this skill before calling any n8n-mcp tool — it prevents common mistakes like wrong nodeType formats, incorrect parameter structures, and inefficient tool usage. If the user mentions n8n, workflows, nodes, or automation and you have n8n MCP tools available, use this skill first.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>n8n-node-configuration</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Operation-aware node configuration guidance. Use when configuring nodes, understanding property dependencies, determining required fields, choosing between get_node detail levels, or learning common configuration patterns by node type. Always use this skill when setting up node parameters — it explains which fields are required for each operation, how displayOptions control field visibility, and when to use patchNodeField for surgical edits vs full node updates.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>n8n-validation-expert</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Interpret validation errors and guide fixing them. Use when encountering validation errors, validation warnings, false positives, operator structure issues, or need help understanding validation results. Also use when asking about validation profiles, error types, the validation loop process, or auto-fix capabilities. Consult this skill whenever a validate_node or validate_workflow call returns errors or warnings — it knows which warnings are false positives and which errors need real fixes.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>n8n-workflow-patterns</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Proven workflow architectural patterns from real n8n workflows. Use when building new workflows, designing workflow structure, choosing workflow patterns, planning workflow architecture, or asking about webhook processing, HTTP API integration, database operations, AI agent workflows, batch processing, or scheduled tasks. Always consult this skill when the user asks to create, build, or design an n8n workflow, automate a process, or connect services — even if they don't explicitly mention 'patterns'. Covers webhook, API, database, AI, batch processing, and scheduled automation architectures. Also use when optimizing a slow workflow or speeding up large-item-count processing (node count, batchSize, all-items vs per-item).</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>postgresql-database-engineering</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Comprehensive PostgreSQL database engineering skill covering indexing strategies, query optimization, performance tuning, partitioning, replication, backup and recovery, high availability, and production database management. Master advanced PostgreSQL features including MVCC, VACUUM operations, connection pooling, monitoring, and scalability patterns.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>qa-test-planner</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Generate comprehensive test plans, manual test cases, regression test suites, and bug reports for QA engineers. Includes Figma MCP integration for design validation.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>release-readiness</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Runs a Strix Governance Review (SGRF v1) on a release or deploy candidate — the release lens. Reviews whether the release is governed end-to-end before it ships — is the deploy itself an evaluated/approved decision, what new consequential actions does it enable, is there a verifiable record of what shipped, and is it revocable — producing the canonical 13-section report, a 4-axis profile, and a GO / GO-WITH-CONDITIONS / NO-GO readiness call. Advisory; it does not gate the release. Use when the user asks "is this release ready", "release readiness review", "are we safe to deploy", "governance sign-off for this release", or runs /release-readiness.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>runtime-governance-review</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Runs a Strix Governance Review (SGRF v1) on a project, agent workflow, MCP server, or CI/CD pipeline — the system lens. Reviews whether consequential actions are evaluated before they execute, whether a third party can verify it, and how easily governance can be bypassed, producing the canonical 13-section report and a 4-axis maturity profile (capability vs governance vs independent verifiability vs runtime enforcement) with an applicability declaration and an ASCII governance profile. Advisory and diagnostic; it does not enforce. Use when the user asks to "run a governance review", "audit execution safety", "check what could bypass approval", "is this agent safe to run in prod", or runs /runtime-governance-review.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>slides</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Create strategic HTML presentations with Chart.js, design tokens, responsive layouts, copywriting formulas, and contextual slide strategies.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>strix-verify</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Independently verify a Strix governance artifact — signed evidence records, approval artifacts, approval quorums, agent-swarm runs, tool-gateway receipts/chains, signed visuals, and CT inclusion/consistency proofs. Re-derives the canonical signed bytes and checks the Ed25519 signature against the public JWKS using only standard crypto — no Strix account, SDK, or API key; the verdict can be reproduced locally or fully offline. Use whenever someone asks to verify, audit, or confirm the authenticity of a Strix proof, evidence id, approval, quorum, receipt, or swarm run.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>strix-wire</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Wire Strix governance into the current codebase. Scans for an irreversible mutation (payment charges, deletes, sends, schema migrations), wraps the call site with governedAction(), runs it once, and prints the resulting evidenceId. Use when the user asks to "wire Strix", "wire up Strix", "add Strix to this project", "set up governed actions", "get an evidence record", or runs /strix-wire.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>thermo-nuclear-code-quality-review</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Run an extremely strict maintainability review for abstraction quality, giant files, and spaghetti-condition growth. Use for a thermo-nuclear code quality review, thermonuclear review, deep code quality audit, or especially harsh maintainability review.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-styling</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+          <tr>
+            <td><strong>ui-ux-pro-max</strong></td>
+            <td><small>Universal Agent Skills Registry</small></td>
+            <td><small>Comprehensive design guide for web, mobile, and desktop applications. Contains 67 styles, 161 color palettes, 57 font pairings, 99 UX guidelines, and 25 chart types across 22 technology stacks.</small></td>
+            <td><span class="badge badge-success">VÁLIDO</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECCIÓN 5: CONCLUSIÓN Y RECOMENDACIONES -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>5. Resumen Técnico y Conclusiones</span>
+      </div>
+      <div class="callout">
+        <strong>Resultado General:</strong> La totalidad del ecosistema de plugins (Caveman, Chrome DevTools, Modern Web Guidance), clientes/servidores MCP (Context7, 21st, Graphify, Playwright, Firecrawl) y la biblioteca de 149 skills se encuentran instalados, bien estructurados y totalmente operativos en el sistema.
+      </div>
+      <ul style="margin-left: 20px; font-size: 0.95rem; line-height: 1.8;">
+        <li><strong>Evidencias generadas:</strong> Los resultados detallados en formato JSON y logs de prueba se guardaron en <code>temp-plugin-files/</code>:
+          <ul>
+            <li><code>test_context7_result.json</code>: Verificación de consultas MCP Context7 a la documentación oficial.</li>
+            <li><code>test_21st_result.json</code>: Verificación de CLI y recuperación de componentes UI de 21st.</li>
+            <li><code>test_caveman_results.json</code>: Verificación de la suite de pruebas del plugin Caveman (12/12 en compresor MCP).</li>
+            <li><code>test_all_skills_inventory.json</code>: Catálogo serializado de los 149 skills auditados.</li>
+          </ul>
+        </li>
+        <li><strong>Compatibilidad multimodelo:</strong> Las habilidades globales en <code>~/.agents/skills</code> y <code>~/.gemini/skills</code> están enlazadas y son accesibles por Gemini CLI, Antigravity, Claude Code, Cursor, Copilot y Codex.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('skillSearch');
+    const table = document.getElementById('skillsTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+    searchInput.addEventListener('input', function() {
+      const q = this.value.toLowerCase().trim();
+      for (let i = 0; i < rows.length; i++) {
+        const text = rows[i].innerText.toLowerCase();
+        rows[i].style.display = text.includes(q) ? '' : 'none';
+      }
+    });
+  </script>
+</body>
+</html>

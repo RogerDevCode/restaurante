@@ -1,0 +1,798 @@
+{
+  "total": 158,
+  "valid_count": 158,
+  "invalid_count": 0,
+  "valid": [
+    [
+      "/home/manager/.agents/skills/api-testing/SKILL.md",
+      "api-testing",
+      "Test API integrations by mocking responses, intercepting req..."
+    ],
+    [
+      "/home/manager/.agents/skills/banner-design/SKILL.md",
+      "banner-design",
+      "Design banners for social media, ads, website heroes, creati..."
+    ],
+    [
+      "/home/manager/.agents/skills/brainstorming/SKILL.md",
+      "brainstorming",
+      "You MUST use this before any creative work - creating featur..."
+    ],
+    [
+      "/home/manager/.agents/skills/brand/SKILL.md",
+      "brand",
+      "Brand voice, visual identity, messaging frameworks, asset ma..."
+    ],
+    [
+      "/home/manager/.agents/skills/browser-automation/SKILL.md",
+      "browser-automation",
+      "Browser automation powers web testing, scraping, and AI agen..."
+    ],
+    [
+      "/home/manager/.agents/skills/chrome-devtools/SKILL.md",
+      "chrome-devtools",
+      "Expert-level browser automation, debugging, and performance ..."
+    ],
+    [
+      "/home/manager/.agents/skills/chrome-extensions/SKILL.md",
+      "chrome-extensions",
+      "Build and publish Chrome Extensions using Manifest V3 best p..."
+    ],
+    [
+      "/home/manager/.agents/skills/context7-mcp/SKILL.md",
+      "context7-mcp",
+      "This skill should be used when the user asks about libraries..."
+    ],
+    [
+      "/home/manager/.agents/skills/design-system/SKILL.md",
+      "design-system",
+      "Token architecture, component specifications, and slide gene..."
+    ],
+    [
+      "/home/manager/.agents/skills/design/SKILL.md",
+      "design",
+      "Comprehensive design skill: brand identity, design tokens, U..."
+    ],
+    [
+      "/home/manager/.agents/skills/docker-best-practices/SKILL.md",
+      "docker-best-practices",
+      "Comprehensive Docker best practices for images, containers, ..."
+    ],
+    [
+      "/home/manager/.agents/skills/docker-expert/SKILL.md",
+      "docker-expert",
+      "You are an advanced Docker containerization expert with comp..."
+    ],
+    [
+      "/home/manager/.agents/skills/e2e-tests-studio/SKILL.md",
+      "e2e-tests-studio",
+      "REQUIRED when modifying any file in packages/playground-ui o..."
+    ],
+    [
+      "/home/manager/.agents/skills/execution-control/SKILL.md",
+      "execution-control",
+      "Explain AI execution control and assess (read-only) which ac..."
+    ],
+    [
+      "/home/manager/.agents/skills/find-skills/SKILL.md",
+      "find-skills",
+      "Helps users discover and install agent skills when they ask ..."
+    ],
+    [
+      "/home/manager/.agents/skills/frontend-design/SKILL.md",
+      "frontend-design",
+      "Guidance for distinctive, intentional visual design when bui..."
+    ],
+    [
+      "/home/manager/.agents/skills/govern-ai-egress/SKILL.md",
+      "govern-ai-egress",
+      "Put Strix Governed AI Egress in front of calls to an externa..."
+    ],
+    [
+      "/home/manager/.agents/skills/govern-pr/SKILL.md",
+      "govern-pr",
+      "Runs a Strix Governance Review (SGRF v1) on a pull request o..."
+    ],
+    [
+      "/home/manager/.agents/skills/impeccable/SKILL.md",
+      "impeccable",
+      "Use when the user wants to design, redesign, shape, critique..."
+    ],
+    [
+      "/home/manager/.agents/skills/modern-web-guidance/SKILL.md",
+      "modern-web-guidance",
+      "Search tool for modern web development best practices. MANDA..."
+    ],
+    [
+      "/home/manager/.agents/skills/n8n-code-javascript/SKILL.md",
+      "n8n-code-javascript",
+      "Write JavaScript code in n8n Code nodes. Use when writing Ja..."
+    ],
+    [
+      "/home/manager/.agents/skills/n8n-expression-syntax/SKILL.md",
+      "n8n-expression-syntax",
+      "Validate n8n expression syntax and fix common errors. Use wh..."
+    ],
+    [
+      "/home/manager/.agents/skills/n8n-mcp-tools-expert/SKILL.md",
+      "n8n-mcp-tools-expert",
+      "Expert guide for using n8n-mcp MCP tools effectively. Use wh..."
+    ],
+    [
+      "/home/manager/.agents/skills/n8n-node-configuration/SKILL.md",
+      "n8n-node-configuration",
+      "Operation-aware node configuration guidance. Use when config..."
+    ],
+    [
+      "/home/manager/.agents/skills/n8n-validation-expert/SKILL.md",
+      "n8n-validation-expert",
+      "Interpret validation errors and guide fixing them. Use when ..."
+    ],
+    [
+      "/home/manager/.agents/skills/n8n-workflow-patterns/SKILL.md",
+      "n8n-workflow-patterns",
+      "Proven workflow architectural patterns from real n8n workflo..."
+    ],
+    [
+      "/home/manager/.agents/skills/postgresql-database-engineering/SKILL.md",
+      "postgresql-database-engineering",
+      "Comprehensive PostgreSQL database engineering skill covering..."
+    ],
+    [
+      "/home/manager/.agents/skills/qa-test-planner/SKILL.md",
+      "qa-test-planner",
+      "Generate comprehensive test plans, manual test cases, regres..."
+    ],
+    [
+      "/home/manager/.agents/skills/release-readiness/SKILL.md",
+      "release-readiness",
+      "Runs a Strix Governance Review (SGRF v1) on a release or dep..."
+    ],
+    [
+      "/home/manager/.agents/skills/runtime-governance-review/SKILL.md",
+      "runtime-governance-review",
+      "Runs a Strix Governance Review (SGRF v1) on a project, agent..."
+    ],
+    [
+      "/home/manager/.agents/skills/slides/SKILL.md",
+      "slides",
+      "Create strategic HTML presentations with Chart.js, design to..."
+    ],
+    [
+      "/home/manager/.agents/skills/strix-verify/SKILL.md",
+      "strix-verify",
+      "Independently verify a Strix governance artifact \u2014 signed ev..."
+    ],
+    [
+      "/home/manager/.agents/skills/strix-wire/SKILL.md",
+      "strix-wire",
+      "Wire Strix governance into the current codebase. Scans for a..."
+    ],
+    [
+      "/home/manager/.agents/skills/thermo-nuclear-code-quality-review/SKILL.md",
+      "thermo-nuclear-code-quality-review",
+      "Run an extremely strict maintainability review for abstracti..."
+    ],
+    [
+      "/home/manager/.agents/skills/ui-styling/SKILL.md",
+      "ui-styling",
+      "Create beautiful, accessible user interfaces with shadcn/ui ..."
+    ],
+    [
+      "/home/manager/.agents/skills/ui-ux-pro-max/SKILL.md",
+      "ui-ux-pro-max",
+      "Comprehensive design guide for web, mobile, and desktop appl..."
+    ],
+    [
+      "/home/manager/.claude/skills/21st-ai/SKILL.md",
+      "21st-ai",
+      "Generate and iterate on UI with 21st AI from the terminal vi..."
+    ],
+    [
+      "/home/manager/.claude/skills/21st-cli-use/SKILL.md",
+      "21st-cli-use",
+      "Search, install and pull code from the 21st.dev catalog with..."
+    ],
+    [
+      "/home/manager/.claude/skills/21st-design-sync/SKILL.md",
+      "21st-design-sync",
+      "Look at the current project's design (its shadcn / Tailwind ..."
+    ],
+    [
+      "/home/manager/.claude/skills/21st-registry/SKILL.md",
+      "21st-registry",
+      "Publish your own work to 21st.dev and manage it from the ter..."
+    ],
+    [
+      "/home/manager/.claude/skills/21st-ui-build/SKILL.md",
+      "21st-ui-build",
+      "Build or substantially change production UI using the curren..."
+    ],
+    [
+      "/home/manager/.claude/skills/21st-ui-explore/SKILL.md",
+      "21st-ui-explore",
+      "Explore and compare multiple meaningfully different UI direc..."
+    ],
+    [
+      "/home/manager/.claude/skills/21st-ui-review/SKILL.md",
+      "21st-ui-review",
+      "Review existing UI against the project's design context, acc..."
+    ],
+    [
+      "/home/manager/.claude/skills/21st-video/SKILL.md",
+      "21st-video",
+      "Create and edit a product, launch, demo, or social video fro..."
+    ],
+    [
+      "/home/manager/.claude/skills/banner-design/SKILL.md",
+      "banner-design",
+      "Design banners for social media, ads, website heroes, creati..."
+    ],
+    [
+      "/home/manager/.claude/skills/brand/SKILL.md",
+      "brand",
+      "Brand voice, visual identity, messaging frameworks, asset ma..."
+    ],
+    [
+      "/home/manager/.claude/skills/chrome-extensions/SKILL.md",
+      "chrome-extensions",
+      "Build and publish Chrome Extensions using Manifest V3 best p..."
+    ],
+    [
+      "/home/manager/.claude/skills/context7-mcp/SKILL.md",
+      "context7-mcp",
+      "This skill should be used when the user asks about libraries..."
+    ],
+    [
+      "/home/manager/.claude/skills/design-system/SKILL.md",
+      "design-system",
+      "Token architecture, component specifications, and slide gene..."
+    ],
+    [
+      "/home/manager/.claude/skills/design/SKILL.md",
+      "design",
+      "Comprehensive design skill: brand identity, design tokens, U..."
+    ],
+    [
+      "/home/manager/.claude/skills/execution-control/SKILL.md",
+      "execution-control",
+      "Explain AI execution control and assess (read-only) which ac..."
+    ],
+    [
+      "/home/manager/.claude/skills/govern-ai-egress/SKILL.md",
+      "govern-ai-egress",
+      "Put Strix Governed AI Egress in front of calls to an externa..."
+    ],
+    [
+      "/home/manager/.claude/skills/govern-pr/SKILL.md",
+      "govern-pr",
+      "Runs a Strix Governance Review (SGRF v1) on a pull request o..."
+    ],
+    [
+      "/home/manager/.claude/skills/impeccable/SKILL.md",
+      "impeccable",
+      "Use when the user wants to design, redesign, shape, critique..."
+    ],
+    [
+      "/home/manager/.claude/skills/modern-web-guidance/SKILL.md",
+      "modern-web-guidance",
+      "Search tool for modern web development best practices. MANDA..."
+    ],
+    [
+      "/home/manager/.claude/skills/release-readiness/SKILL.md",
+      "release-readiness",
+      "Runs a Strix Governance Review (SGRF v1) on a release or dep..."
+    ],
+    [
+      "/home/manager/.claude/skills/runtime-governance-review/SKILL.md",
+      "runtime-governance-review",
+      "Runs a Strix Governance Review (SGRF v1) on a project, agent..."
+    ],
+    [
+      "/home/manager/.claude/skills/slides/SKILL.md",
+      "slides",
+      "Create strategic HTML presentations with Chart.js, design to..."
+    ],
+    [
+      "/home/manager/.claude/skills/strix-verify/SKILL.md",
+      "strix-verify",
+      "Independently verify a Strix governance artifact \u2014 signed ev..."
+    ],
+    [
+      "/home/manager/.claude/skills/strix-wire/SKILL.md",
+      "strix-wire",
+      "Wire Strix governance into the current codebase. Scans for a..."
+    ],
+    [
+      "/home/manager/.claude/skills/thermo-nuclear-code-quality-review/SKILL.md",
+      "thermo-nuclear-code-quality-review",
+      "Run an extremely strict maintainability review for abstracti..."
+    ],
+    [
+      "/home/manager/.claude/skills/ui-styling/SKILL.md",
+      "ui-styling",
+      "Create beautiful, accessible user interfaces with shadcn/ui ..."
+    ],
+    [
+      "/home/manager/.claude/skills/ui-ux-pro-max/SKILL.md",
+      "ui-ux-pro-max",
+      "UI/UX design intelligence. 67 styles, 161 palettes, 57 font ..."
+    ],
+    [
+      "/home/manager/.codex/skills/21st-ai/SKILL.md",
+      "21st-ai",
+      "Generate and iterate on UI with 21st AI from the terminal vi..."
+    ],
+    [
+      "/home/manager/.codex/skills/21st-cli-use/SKILL.md",
+      "21st-cli-use",
+      "Search, install and pull code from the 21st.dev catalog with..."
+    ],
+    [
+      "/home/manager/.codex/skills/21st-design-sync/SKILL.md",
+      "21st-design-sync",
+      "Look at the current project's design (its shadcn / Tailwind ..."
+    ],
+    [
+      "/home/manager/.codex/skills/21st-registry/SKILL.md",
+      "21st-registry",
+      "Publish your own work to 21st.dev and manage it from the ter..."
+    ],
+    [
+      "/home/manager/.codex/skills/21st-ui-build/SKILL.md",
+      "21st-ui-build",
+      "Build or substantially change production UI using the curren..."
+    ],
+    [
+      "/home/manager/.codex/skills/21st-ui-explore/SKILL.md",
+      "21st-ui-explore",
+      "Explore and compare multiple meaningfully different UI direc..."
+    ],
+    [
+      "/home/manager/.codex/skills/21st-ui-review/SKILL.md",
+      "21st-ui-review",
+      "Review existing UI against the project's design context, acc..."
+    ],
+    [
+      "/home/manager/.codex/skills/21st-video/SKILL.md",
+      "21st-video",
+      "Create and edit a product, launch, demo, or social video fro..."
+    ],
+    [
+      "/home/manager/.codex/skills/banner-design/SKILL.md",
+      "banner-design",
+      "Design banners for social media, ads, website heroes, creati..."
+    ],
+    [
+      "/home/manager/.codex/skills/brand/SKILL.md",
+      "brand",
+      "Brand voice, visual identity, messaging frameworks, asset ma..."
+    ],
+    [
+      "/home/manager/.codex/skills/copywriting/SKILL.md",
+      "copywriting",
+      "When the user wants to write, rewrite, or improve marketing ..."
+    ],
+    [
+      "/home/manager/.codex/skills/design-system/SKILL.md",
+      "design-system",
+      "Token architecture, component specifications, and slide gene..."
+    ],
+    [
+      "/home/manager/.codex/skills/design/SKILL.md",
+      "design",
+      "Comprehensive design skill: brand identity, design tokens, U..."
+    ],
+    [
+      "/home/manager/.codex/skills/gpt-tasteskill/SKILL.md",
+      "gpt-taste",
+      "Elite UX/UI & Advanced GSAP Motion Engineer. Enforces Python..."
+    ],
+    [
+      "/home/manager/.codex/skills/redesign-skill/SKILL.md",
+      "redesign-existing-projects",
+      "Upgrades existing websites and apps to premium quality. Audi..."
+    ],
+    [
+      "/home/manager/.codex/skills/ui-styling/SKILL.md",
+      "ui-styling",
+      "Create beautiful, accessible user interfaces with shadcn/ui ..."
+    ],
+    [
+      "/home/manager/.codex/skills/ui-ux-pro-max/SKILL.md",
+      "ui-ux-pro-max",
+      "UI/UX design intelligence with searchable database..."
+    ],
+    [
+      "/home/manager/.codex/skills/writing-plans/SKILL.md",
+      "writing-plans",
+      "Use when you have a spec or requirements for a multi-step ta..."
+    ],
+    [
+      "/home/manager/.cursor/skills/21st-ai/SKILL.md",
+      "21st-ai",
+      "Generate and iterate on UI with 21st AI from the terminal vi..."
+    ],
+    [
+      "/home/manager/.cursor/skills/21st-cli-use/SKILL.md",
+      "21st-cli-use",
+      "Search, install and pull code from the 21st.dev catalog with..."
+    ],
+    [
+      "/home/manager/.cursor/skills/21st-design-sync/SKILL.md",
+      "21st-design-sync",
+      "Look at the current project's design (its shadcn / Tailwind ..."
+    ],
+    [
+      "/home/manager/.cursor/skills/21st-registry/SKILL.md",
+      "21st-registry",
+      "Publish your own work to 21st.dev and manage it from the ter..."
+    ],
+    [
+      "/home/manager/.cursor/skills/21st-ui-build/SKILL.md",
+      "21st-ui-build",
+      "Build or substantially change production UI using the curren..."
+    ],
+    [
+      "/home/manager/.cursor/skills/21st-ui-explore/SKILL.md",
+      "21st-ui-explore",
+      "Explore and compare multiple meaningfully different UI direc..."
+    ],
+    [
+      "/home/manager/.cursor/skills/21st-ui-review/SKILL.md",
+      "21st-ui-review",
+      "Review existing UI against the project's design context, acc..."
+    ],
+    [
+      "/home/manager/.cursor/skills/21st-video/SKILL.md",
+      "21st-video",
+      "Create and edit a product, launch, demo, or social video fro..."
+    ],
+    [
+      "/home/manager/.cursor/skills/banner-design/SKILL.md",
+      "banner-design",
+      "Design banners for social media, ads, website heroes, creati..."
+    ],
+    [
+      "/home/manager/.cursor/skills/brand/SKILL.md",
+      "brand",
+      "Brand voice, visual identity, messaging frameworks, asset ma..."
+    ],
+    [
+      "/home/manager/.cursor/skills/context7-mcp/SKILL.md",
+      "context7-mcp",
+      "This skill should be used when the user asks about libraries..."
+    ],
+    [
+      "/home/manager/.cursor/skills/design-system/SKILL.md",
+      "design-system",
+      "Token architecture, component specifications, and slide gene..."
+    ],
+    [
+      "/home/manager/.cursor/skills/design/SKILL.md",
+      "design",
+      "Comprehensive design skill: brand identity, design tokens, U..."
+    ],
+    [
+      "/home/manager/.cursor/skills/impeccable/SKILL.md",
+      "impeccable",
+      "Use when the user wants to design, redesign, shape, critique..."
+    ],
+    [
+      "/home/manager/.cursor/skills/slides/SKILL.md",
+      "slides",
+      "Create strategic HTML presentations with Chart.js, design to..."
+    ],
+    [
+      "/home/manager/.cursor/skills/ui-styling/SKILL.md",
+      "ui-styling",
+      "Create beautiful, accessible user interfaces with shadcn/ui ..."
+    ],
+    [
+      "/home/manager/.cursor/skills/ui-ux-pro-max/SKILL.md",
+      "ui-ux-pro-max",
+      "Comprehensive design guide for web, mobile, and desktop appl..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/agy-customizations/SKILL.md",
+      "agy-customizations",
+      "Comprehensive guide and reference for the Antigravity Custom..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/antigravity_guide/SKILL.md",
+      "antigravity-guide",
+      "Provides a comprehensive guide, quick reference, and sitemap..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/automation/SKILL.md",
+      "automation",
+      "Interactive guide to design and create a scheduled backgroun..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/conversations/SKILL.md",
+      "conversations",
+      "Manage local Antigravity conversations programmatically over..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/generative_ui/SKILL.md",
+      "generative_ui",
+      "How to render rich interactive HTML widgets inline in the ch..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/mcp-app-development/SKILL.md",
+      "mcp-app-development",
+      "Build, package, and debug MCP Apps for Antigravity: MCP serv..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/migrate-agent-settings/SKILL.md",
+      "migrate-agent-settings",
+      "Migrates the user's MCP servers, skills, slash commands, sub..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/migrate-workflows/SKILL.md",
+      "migrate-workflows",
+      "Automatically migrate legacy workflows to modern skills acro..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/native_swarm/SKILL.md",
+      "swarm",
+      "(Preview & Quota Heavy) Run a swarm: several agents working ..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/permissioned-github/SKILL.md",
+      "permissioned-github",
+      "Guidelines for interacting with GitHub and request permissio..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/plugin/SKILL.md",
+      "plugin",
+      "How to manage and create plugins \u2014 namespaced bundles of ski..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/run-workflow/SKILL.md",
+      "run-workflow",
+      "How to write and run a dynamic workflow script with the `run..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/swarm_monitor/SKILL.md",
+      "swarm_monitor",
+      "ONLY for the native-swarm worker whose brief says it is the ..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/swarm_narrator/SKILL.md",
+      "swarm_narrator",
+      "ONLY for the native-swarm worker whose brief says it is the ..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/swarm_pane/SKILL.md",
+      "swarm_pane",
+      "ONLY for the coordinator of an active /swarm session. What t..."
+    ],
+    [
+      "/home/manager/.gemini/antigravity-cli/builtin/skills/ui-plugin-navigation/SKILL.md",
+      "ui-plugin-navigation",
+      "Discover UI plugin panels relevant to the current task and s..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/plugins/caveman/skills/cavecrew/SKILL.md",
+      "cavecrew",
+      "Decision guide for delegating to caveman-style subagents. Te..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/plugins/caveman/skills/caveman-compress/SKILL.md",
+      "caveman-compress",
+      "Compress natural language memory files (CLAUDE.md, todos, pr..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/plugins/caveman/skills/caveman-stats/SKILL.md",
+      "caveman-stats",
+      "Show real token usage and estimated savings for the current ..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/plugins/caveman/skills/caveman/SKILL.md",
+      "caveman",
+      "Ultra-compressed communication mode. Cuts token usage ~75% b..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/skills/cavecrew/SKILL.md",
+      "cavecrew",
+      "Decision guide for delegating to caveman-style subagents. Te..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/skills/caveman-commit/SKILL.md",
+      "caveman-commit",
+      "Generate terse caveman-style commit message..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/skills/caveman-compress/SKILL.md",
+      "caveman-compress",
+      "Compress natural language memory files (CLAUDE.md, todos, pr..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/skills/caveman-help/SKILL.md",
+      "caveman-help",
+      "Quick-reference card for all caveman modes, skills, and comm..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/skills/caveman-init/SKILL.md",
+      "caveman-init",
+      "Drop the always-on caveman activation rule into the current ..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/skills/caveman-review/SKILL.md",
+      "caveman-review",
+      "One-line code review comments..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/skills/caveman-stats/SKILL.md",
+      "caveman-stats",
+      "Show real token usage and estimated savings for the current ..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/caveman/skills/caveman/SKILL.md",
+      "caveman",
+      "Switch caveman intensity level (lite/full/ultra/wenyan)..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/a11y-debugging/SKILL.md",
+      "a11y-debugging",
+      "Uses Chrome DevTools MCP for accessibility (a11y) debugging ..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/chrome-devtools/SKILL.md",
+      "chrome-devtools",
+      "Uses Chrome DevTools via MCP for efficient debugging, troubl..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/cookie-debugging/SKILL.md",
+      "cookie-debugging",
+      "Uses Chrome DevTools MCP for inspecting, debugging, and test..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/debug-optimize-lcp/SKILL.md",
+      "debug-optimize-lcp",
+      "Guides debugging and optimizing Largest Contentful Paint (LC..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/memory-leak-debugging/SKILL.md",
+      "memory-leak-debugging",
+      "Diagnoses and resolves memory leaks in JavaScript/Node.js ap..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/troubleshooting/SKILL.md",
+      "troubleshooting",
+      "Uses Chrome DevTools MCP and documentation to troubleshoot c..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/modern-web-guidance-plugin/skills/chrome-extensions/SKILL.md",
+      "chrome-extensions",
+      "Build and publish Chrome Extensions using Manifest V3 best p..."
+    ],
+    [
+      "/home/manager/.gemini/config/plugins/modern-web-guidance-plugin/skills/modern-web-guidance/SKILL.md",
+      "modern-web-guidance",
+      "Search tool for modern web development best practices. MANDA..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/chrome-extensions/SKILL.md",
+      "chrome-extensions",
+      "Build and publish Chrome Extensions using Manifest V3 best p..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/execution-control/SKILL.md",
+      "execution-control",
+      "Explain AI execution control and assess (read-only) which ac..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/expert-debugger/SKILL.md",
+      "expert-debugger",
+      "Active when debugging code, investigating errors/exceptions,..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/govern-ai-egress/SKILL.md",
+      "govern-ai-egress",
+      "Put Strix Governed AI Egress in front of calls to an externa..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/govern-pr/SKILL.md",
+      "govern-pr",
+      "Runs a Strix Governance Review (SGRF v1) on a pull request o..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/modern-web-guidance/SKILL.md",
+      "modern-web-guidance",
+      "Search tool for modern web development best practices. MANDA..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/release-readiness/SKILL.md",
+      "release-readiness",
+      "Runs a Strix Governance Review (SGRF v1) on a release or dep..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/runtime-governance-review/SKILL.md",
+      "runtime-governance-review",
+      "Runs a Strix Governance Review (SGRF v1) on a project, agent..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/strix-verify/SKILL.md",
+      "strix-verify",
+      "Independently verify a Strix governance artifact \u2014 signed ev..."
+    ],
+    [
+      "/home/manager/.gemini/config/skills/strix-wire/SKILL.md",
+      "strix-wire",
+      "Wire Strix governance into the current codebase. Scans for a..."
+    ],
+    [
+      "/home/manager/.gemini/skills/banner-design/SKILL.md",
+      "banner-design",
+      "Design banners for social media, ads, website heroes, creati..."
+    ],
+    [
+      "/home/manager/.gemini/skills/brand/SKILL.md",
+      "brand",
+      "Brand voice, visual identity, messaging frameworks, asset ma..."
+    ],
+    [
+      "/home/manager/.gemini/skills/context7-mcp/SKILL.md",
+      "context7-mcp",
+      "This skill should be used when the user asks about libraries..."
+    ],
+    [
+      "/home/manager/.gemini/skills/crossplatform-scripts-guard/SKILL.md",
+      "crossplatform-scripts-guard",
+      "Enforce encoding, line endings (CRLF vs LF), BOM rules, and ..."
+    ],
+    [
+      "/home/manager/.gemini/skills/design-system/SKILL.md",
+      "design-system",
+      "Token architecture, component specifications, and slide gene..."
+    ],
+    [
+      "/home/manager/.gemini/skills/design/SKILL.md",
+      "design",
+      "Comprehensive design skill: brand identity, design tokens, U..."
+    ],
+    [
+      "/home/manager/.gemini/skills/impeccable/SKILL.md",
+      "impeccable",
+      "Use when the user wants to design, redesign, shape, critique..."
+    ],
+    [
+      "/home/manager/.gemini/skills/java-concurrency-edt-audit/SKILL.md",
+      "java-concurrency-edt-audit",
+      "Audit and enforce Java Swing threading rules, Event Dispatch..."
+    ],
+    [
+      "/home/manager/.gemini/skills/slides/SKILL.md",
+      "slides",
+      "Create strategic HTML presentations with Chart.js, design to..."
+    ],
+    [
+      "/home/manager/.gemini/skills/systematic-debugging/SKILL.md",
+      "systematic-debugging",
+      "Use when encountering any bug, test failure, or unexpected b..."
+    ],
+    [
+      "/home/manager/.gemini/skills/test-driven-development/SKILL.md",
+      "test-driven-development",
+      "Use when implementing any feature or bugfix, before writing ..."
+    ],
+    [
+      "/home/manager/.gemini/skills/ui-styling/SKILL.md",
+      "ui-styling",
+      "Create beautiful, accessible user interfaces with shadcn/ui ..."
+    ],
+    [
+      "/home/manager/.gemini/skills/ui-ux-pro-max/SKILL.md",
+      "ui-ux-pro-max",
+      "UI/UX design intelligence with searchable database..."
+    ],
+    [
+      "/home/manager/.gemini/skills/verification-before-completion/SKILL.md",
+      "verification-before-completion",
+      "Use when about to claim work is complete, fixed, or passing,..."
+    ]
+  ],
+  "invalid": []
+}

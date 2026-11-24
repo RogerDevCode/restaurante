@@ -1,0 +1,23 @@
+=== INICIANDO VALIDACIÓN DETALLADA DE PLUGINS Y SKILLS ===
+
+[TEST 1] Caveman Compress script
+Caveman compress return code: 1
+Caveman stdout: 
+Compressed content snippet:
+# Project Overview
+
+The Restaurant Management System is designed to handle orders, kitchen communication, and invoicing for table service.
+It ensures that orders are sent in rounds (comandas) and prin
+
+[TEST 2] Chrome Devtools Plugin compare_snapshots.js syntax/execution
+compare_snapshots.js syntax check code: 0 (stderr: )
+
+[TEST 3] Skills CLI Global List & Validation
+skills list -g return code: 0
+
+[TEST 4] Frontmatter audit across all skill repositories
+Found 158 unique SKILL.md files across search paths.
+Valid skills with proper frontmatter: 158
+Invalid / skipped skills: 0
+
+=== FIN DE PRUEBAS AUTOMATIZADAS ===

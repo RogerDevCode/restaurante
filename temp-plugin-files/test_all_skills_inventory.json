@@ -1,0 +1,1343 @@
+[
+  {
+    "name": "agy-customizations",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/agy-customizations/SKILL.md",
+    "relative": "agy-customizations/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "Comprehensive guide and reference for the Antigravity Customization System. Use to explain how customizations work, their loading priority, discovery mechanisms, and to guide the creation of skills, rules, plugins, hooks, and MCP servers.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "antigravity-guide",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/antigravity_guide/SKILL.md",
+    "relative": "antigravity_guide/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "Provides a comprehensive guide, quick reference, and sitemap for Google Antigravity (AGY), including the Antigravity CLI (agy), Antigravity 2.0, Antigravity IDE, Python SDK, slash commands, keybindings, and customizations (skills, rules, MCP, sidecars). Activate this skill when the user asks questions about how to use, configure, or customize Antigravity, AGY, the agy CLI, the Antigravity IDE, or Antigravity 2.0.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "automation",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/automation/SKILL.md",
+    "relative": "automation/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "Interactive guide to design and create a scheduled background automation. Use this skill when the user wants to create an automated or recurring scheduled task (e.g. \"summarize my emails every morning\", \"every Monday send me a to-do list\"). Also triggered by the /automation slash command.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "conversations",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/conversations/SKILL.md",
+    "relative": "conversations/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "Manage local Antigravity conversations programmatically over HTTP+JSON: create a new conversation (with an optional initial prompt), list conversations, read conversation metadata and run state, rename, archive, pin, star, tag, or group conversations, and delete conversations. Use when the user asks to list, rename, pin, star, archive, delete, or start conversations, including the current one, or when a script, plugin, or automation needs to manage conversations outside of subagent tool calls.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "generative_ui",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/generative_ui/SKILL.md",
+    "relative": "generative_ui/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "How to render rich interactive HTML widgets inline in the chat or as standalone artifacts. Use this skill when you want to show the user diagrams, data visualizations, interactive controls, educational walkthroughs, or any rich visual content beyond plain text and markdown.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "mcp-app-development",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/mcp-app-development/SKILL.md",
+    "relative": "mcp-app-development/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "Build, package, and debug MCP Apps for Antigravity: MCP server tools whose results render as interactive UI in the conversation, in the side pane, or full-page from the sidebar. Use when adding a UI to an MCP tool, building or theming the app itself, packaging it as a plugin, or debugging an app that doesn't render or behave as expected.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "migrate-agent-settings",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/migrate-agent-settings/SKILL.md",
+    "relative": "migrate-agent-settings/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "Migrates the user's MCP servers, skills, slash commands, subagents, and instruction files from other coding agents (Claude Code, Codex, Cursor, Gemini CLI) into one new Antigravity plugin. Use when the user wants to bring over, import, or migrate their setup or config from another agent or tool. Don't use for installing Marketplace plugins or authoring a new plugin from scratch (use the plugin skill).",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "migrate-workflows",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/migrate-workflows/SKILL.md",
+    "relative": "migrate-workflows/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "Automatically migrate legacy workflows to modern skills across global and workspace configurations. Scans for existing workflows, creates target SKILL.md files, and safely archives old workflow files.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "permissioned-github",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/permissioned-github/SKILL.md",
+    "relative": "permissioned-github/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "Guidelines for interacting with GitHub and request permissions from the user when commands fail due to restrictions in the agent environment.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "plugin",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/plugin/SKILL.md",
+    "relative": "plugin/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "How to manage and create plugins \u2014 namespaced bundles of skills, agents, rules, MCP servers and hooks that install, enable and disable as a single unit. Use this skill when the user wants to enable, disable, install or uninstall a plugin, when they want to create a new plugin, or when a new customization should be packaged into a plugin rather than left loose. Also triggered by the /plugin slash command. Don't use for the underlying customization system itself \u2014 discovery roots, loading priority, or authoring a standalone skill, agent, rule, hook or MCP server outside a plugin; see the customizations guide skill for those.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "run-workflow",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/run-workflow/SKILL.md",
+    "relative": "run-workflow/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "How to write and run a dynamic workflow script with the `run_workflow` tool: a Python script that orchestrates many agents with `agent`, `parallel`, `pipeline`, and `phase`. Use when a task splits into many independent or staged pieces of agent work (fan out over files, modules, bugs, or review angles, then aggregate), or when the user asks for a workflow. Don't use for a single delegated task (use a subagent) or for legacy workflow files (see migrate-workflows).",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "swarm",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/native_swarm/SKILL.md",
+    "relative": "native_swarm/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "(Preview & Quota Heavy) Run a swarm: several agents working in parallel on one task, each in its own conversation, collaborating through a shared message board. Use when the work splits into pieces that can be done at the same time, or when a second pair of eyes should check the first pair's work.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "swarm_monitor",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/swarm_monitor/SKILL.md",
+    "relative": "swarm_monitor/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "ONLY for the native-swarm worker whose brief says it is the monitor. On a timer, it checks whether the whole swarm has stalled and calls on the one member who can unstick it. Coordinators and other workers: do not load this.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "swarm_narrator",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/swarm_narrator/SKILL.md",
+    "relative": "swarm_narrator/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "ONLY for the native-swarm worker whose brief says it is the narrator. It watches the board and keeps the facts behind the user's Overview (view.json) current. Coordinators and other workers: do not load this.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "swarm_pane",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/swarm_pane/SKILL.md",
+    "relative": "swarm_pane/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "ONLY for the coordinator of an active /swarm session. What the coordinator writes so the Swarm UI's Overview can show the swarm's goal, its groups of work and a screenshot timeline; load it before you brief and add the first workers. Outside /swarm, do not load this.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-plugin-navigation",
+    "path": "/home/manager/.gemini/antigravity-cli/builtin/skills/ui-plugin-navigation/SKILL.md",
+    "relative": "ui-plugin-navigation/SKILL.md",
+    "category": "Antigravity Built-in",
+    "description": "Discover UI plugin panels relevant to the current task and surface a one-click pill in chat to open (toggle) them in the side pane. Use when a running UI plugin's panel would help with what the user is doing, or right after the user enables a new UI plugin pane and a shortcut to open it is handy.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ai",
+    "path": "/home/manager/.claude/skills/21st-ai/SKILL.md",
+    "relative": "21st-ai/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Generate and iterate on UI with 21st AI from the terminal via the `21st` CLI (`@21st-dev/cli`): sketch a UI from a prompt, preview the variants in the browser, edit any variant in place with a natural-language change, and pull the final code into the project. Use whenever the user wants to BUILD / SKETCH new UI (\"sketch a pricing page\", \"generate a hero with 21st\", \"make me a <X> section\"), ITERATE on a generated draft (\"edit the third variant\", \"add a toggle to that take\"), or GRAB the code of a draft (\"pull that variant's code\", \"\u0441\u0433\u0435\u043d\u0435\u0440\u0438 UI \u043d\u0430 21st\", \"\u043f\u043e\u043f\u0440\u0430\u0432\u044c \u0442\u0440\u0435\u0442\u0438\u0439 \u0432\u0430\u0440\u0438\u0430\u043d\u0442\", \"\u0437\u0430\u0431\u0435\u0440\u0438 \u043a\u043e\u0434 \u0442\u043e\u0433\u043e \u043d\u0430\u0431\u0440\u043e\u0441\u043a\u0430\"). For finding/installing existing components use the `21st-cli-use` skill; to publish your own, `21st-registry`.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-cli-use",
+    "path": "/home/manager/.claude/skills/21st-cli-use/SKILL.md",
+    "relative": "21st-cli-use/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Search, install and pull code from the 21st.dev catalog with the `21st` CLI (`@21st-dev/cli`): find React/shadcn components, themes and templates, print a component's code or a theme's CSS, install an item into the project, or generate a new component with 21st AI. Use whenever the user says \"search/find a component/theme on 21st\", \"install our team's Button\", \"add @user/slug\", \"pull that component's code\", \"\u043d\u0430\u0439\u0434\u0438 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442 \u043d\u0430 21st\", \"\u043f\u043e\u0441\u0442\u0430\u0432\u044c \u043d\u0430\u0448 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442\", or wants to script catalog access from the shell/CI. Auto-activate when a project has a `components.json` \u2014 search 21st before hand-writing UI.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-design-sync",
+    "path": "/home/manager/.claude/skills/21st-design-sync/SKILL.md",
+    "relative": "21st-design-sync/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Look at the current project's design (its shadcn / Tailwind CSS variables and color tokens) and publish it to the 21st.dev community as a shareable theme, using `21st publish-theme`. Use when the user says \"publish my theme\", \"share our design as a 21st theme\", \"sync my design to 21st\", \"turn my globals.css into a theme\", \"\u0437\u0430\u043b\u0435\u0439 \u043d\u0430\u0448 \u0434\u0438\u0437\u0430\u0439\u043d \u0442\u0435\u043c\u043e\u0439\", \"\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u0443\u0439 \u0442\u0435\u043c\u0443\". This is the 21st equivalent of design-sync: it reads the project's design tokens and syncs them into the public theme library.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-registry",
+    "path": "/home/manager/.claude/skills/21st-registry/SKILL.md",
+    "relative": "21st-registry/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Publish your own work to 21st.dev and manage it from the terminal with the `21st` CLI (`@21st-dev/cli`): publish a React component to a team library, publish a CSS theme or a template listing, edit / unpublish / delete your published items, list and reopen existing component work, and read/replace your public profile page (bento board). Triggers when the user says \"publish/share/upload this to 21st\", \"\u0437\u0430\u043b\u0435\u0439 \u0432 \u043d\u0430\u0448 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\", \"\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u0443\u0439 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442/\u0442\u0435\u043c\u0443/\u0442\u0435\u043c\u043f\u043b\u0435\u0439\u0442\", \"share with team\", \"make this reusable\", \"unpublish/edit/delete my component\", \"change its visibility\", \"find/open my old component or draft\", \"\u043d\u0430\u0439\u0434\u0438/\u043e\u0442\u043a\u0440\u043e\u0439 \u043c\u043e\u0439 \u0441\u0442\u0430\u0440\u044b\u0439 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442 \u0438\u043b\u0438 \u0434\u0440\u0430\u0444\u0442\", \"add this to my 21st profile/bento\", \"update my profile page\", \"\u043e\u0431\u043d\u043e\u0432\u0438 \u043c\u043e\u0439 \u043f\u0440\u043e\u0444\u0438\u043b\u044c \u043d\u0430 21st\", \"\u0434\u043e\u0431\u0430\u0432\u044c \u0431\u043b\u043e\u043a \u0432 \u0431\u0435\u043d\u0442\u043e\", \"add controls/knobs to my demo\", \"\u0441\u0434\u0435\u043b\u0430\u0439 \u0434\u0435\u043c\u043e \u0441 \u043a\u043e\u043d\u0442\u0440\u043e\u043b\u0430\u043c\u0438\". For finding and installing existing items use `21st-cli-use`; for turning a project's design tokens into a theme use `21st-design-sync`.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ui-build",
+    "path": "/home/manager/.claude/skills/21st-ui-build/SKILL.md",
+    "relative": "21st-ui-build/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Build or substantially change production UI using the current project's design context, existing components, and grounded 21st inspiration. Use when implementing a page, section, component, responsive redesign, or visual polish in an existing web project. Trigger for requests such as \"build this UI\", \"implement this screen\", \"make this page production-ready\", or \"use 21st to create the interface\". Use 21st-ui-explore first when the visual direction is intentionally undecided, and 21st-ui-review for critique-only work.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ui-explore",
+    "path": "/home/manager/.claude/skills/21st-ui-explore/SKILL.md",
+    "relative": "21st-ui-explore/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Explore and compare multiple meaningfully different UI directions grounded in the current project's design system and 21st inspiration. Use when the user wants options, variants, concepts, a redesign direction, visual experimentation, or is unsure how a new interface should look. Trigger for requests such as \"show me three directions\", \"explore alternatives\", \"what could this page look like\", or \"generate variants\". Do not use for a straightforward implementation with an already-selected direction.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ui-review",
+    "path": "/home/manager/.claude/skills/21st-ui-review/SKILL.md",
+    "relative": "21st-ui-review/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Review existing UI against the project's design context, accessibility expectations, responsive behavior, interaction quality, and high-confidence production rules. Use for UI audits, design QA, frontend review, accessibility review, consistency checks, or requests to find and safely fix visual defects. Trigger for requests such as \"review this UI\", \"audit this page\", \"find design issues\", \"check responsiveness\", or \"fix obvious UX problems\". Use 21st-ui-build when the request is primarily to create new UI.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-video",
+    "path": "/home/manager/.claude/skills/21st-video/SKILL.md",
+    "relative": "21st-video/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Create and edit a product, launch, demo, or social video from the current project with 21st video MCP tools. Open the editable project alongside the chat, apply small revision-aware edits, check rendered frames, offer visual variants, and export the result. Use when the user asks for a video, says \"make a launch video for this repo\", \"edit this video\", or points to a selected layer in the 21st video editor. Requires the 21st MCP server.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "banner-design",
+    "path": "/home/manager/.claude/skills/banner-design/SKILL.md",
+    "relative": "banner-design/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "brand",
+    "path": "/home/manager/.claude/skills/brand/SKILL.md",
+    "relative": "brand/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "context7-mcp",
+    "path": "/home/manager/.claude/skills/context7-mcp/SKILL.md",
+    "relative": "context7-mcp/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of specific frameworks like React, Vue, Next.js, Prisma, Supabase, etc.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design",
+    "path": "/home/manager/.claude/skills/design/SKILL.md",
+    "relative": "design/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML\u2192screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design-system",
+    "path": "/home/manager/.claude/skills/design-system/SKILL.md",
+    "relative": "design-system/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Token architecture, component specifications, and slide generation. Three-layer tokens (primitive\u2192semantic\u2192component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "impeccable",
+    "path": "/home/manager/.claude/skills/impeccable/SKILL.md",
+    "relative": "impeccable/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Use when the user wants to design, redesign, shape, critique, audit, polish, clarify, distill, harden, optimize, adapt, animate, colorize, extract, or otherwise improve a frontend interface. Covers websites, landing pages, dashboards, product UI, app shells, components, forms, settings, onboarding, and empty states. Handles UX review, visual hierarchy, information architecture, cognitive load, accessibility, performance, responsive behavior, theming, anti-patterns, typography, fonts, spacing, layout, alignment, color, motion, micro-interactions, UX copy, error states, edge cases, i18n, and reusable design systems or tokens. Also use for bland designs that need to become bolder or more delightful, loud designs that should become quieter, live browser iteration on UI elements, or ambitious visual effects that should feel technically extraordinary. Not for backend-only or non-UI tasks.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "slides",
+    "path": "/home/manager/.claude/skills/slides/SKILL.md",
+    "relative": "slides/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Create strategic HTML presentations with Chart.js, design tokens, responsive layouts, copywriting formulas, and contextual slide strategies.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-styling",
+    "path": "/home/manager/.claude/skills/ui-styling/SKILL.md",
+    "relative": "ui-styling/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-ux-pro-max",
+    "path": "/home/manager/.claude/skills/ui-ux-pro-max/SKILL.md",
+    "relative": "ui-ux-pro-max/SKILL.md",
+    "category": "Claude Code Skills",
+    "description": "UI/UX design intelligence. 67 styles, 161 palettes, 57 font pairings, 25 charts, 21 stacks (React, Next.js, Vue, Svelte, Astro, SwiftUI, React Native, Flutter, WPF, WinUI 3, UWP, Avalonia, Uno Platform, Nuxt, Nuxt UI, Tailwind, shadcn/ui, Jetpack Compose, Three.js, Angular, Laravel). Actions: plan, build, create, design, implement, review, fix, improve, optimize, enhance, refactor, check UI/UX code. Projects: website, landing page, dashboard, admin panel, e-commerce, SaaS, portfolio, blog, mobile app, desktop app, .html, .tsx, .vue, .svelte, .xaml. Elements: button, modal, navbar, sidebar, card, table, form, chart. Styles: glassmorphism, claymorphism, minimalism, brutalism, neumorphism, bento grid, dark mode, responsive, skeuomorphism, flat design. Topics: color palette, accessibility, animation, layout, typography, font pairing, spacing, hover, shadow, gradient. Integrations: shadcn/ui MCP for component search and examples.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ai",
+    "path": "/home/manager/.codex/skills/21st-ai/SKILL.md",
+    "relative": "21st-ai/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Generate and iterate on UI with 21st AI from the terminal via the `21st` CLI (`@21st-dev/cli`): sketch a UI from a prompt, preview the variants in the browser, edit any variant in place with a natural-language change, and pull the final code into the project. Use whenever the user wants to BUILD / SKETCH new UI (\"sketch a pricing page\", \"generate a hero with 21st\", \"make me a <X> section\"), ITERATE on a generated draft (\"edit the third variant\", \"add a toggle to that take\"), or GRAB the code of a draft (\"pull that variant's code\", \"\u0441\u0433\u0435\u043d\u0435\u0440\u0438 UI \u043d\u0430 21st\", \"\u043f\u043e\u043f\u0440\u0430\u0432\u044c \u0442\u0440\u0435\u0442\u0438\u0439 \u0432\u0430\u0440\u0438\u0430\u043d\u0442\", \"\u0437\u0430\u0431\u0435\u0440\u0438 \u043a\u043e\u0434 \u0442\u043e\u0433\u043e \u043d\u0430\u0431\u0440\u043e\u0441\u043a\u0430\"). For finding/installing existing components use the `21st-cli-use` skill; to publish your own, `21st-registry`.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-cli-use",
+    "path": "/home/manager/.codex/skills/21st-cli-use/SKILL.md",
+    "relative": "21st-cli-use/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Search, install and pull code from the 21st.dev catalog with the `21st` CLI (`@21st-dev/cli`): find React/shadcn components, themes and templates, print a component's code or a theme's CSS, install an item into the project, or generate a new component with 21st AI. Use whenever the user says \"search/find a component/theme on 21st\", \"install our team's Button\", \"add @user/slug\", \"pull that component's code\", \"\u043d\u0430\u0439\u0434\u0438 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442 \u043d\u0430 21st\", \"\u043f\u043e\u0441\u0442\u0430\u0432\u044c \u043d\u0430\u0448 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442\", or wants to script catalog access from the shell/CI. Auto-activate when a project has a `components.json` \u2014 search 21st before hand-writing UI.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-design-sync",
+    "path": "/home/manager/.codex/skills/21st-design-sync/SKILL.md",
+    "relative": "21st-design-sync/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Look at the current project's design (its shadcn / Tailwind CSS variables and color tokens) and publish it to the 21st.dev community as a shareable theme, using `21st publish-theme`. Use when the user says \"publish my theme\", \"share our design as a 21st theme\", \"sync my design to 21st\", \"turn my globals.css into a theme\", \"\u0437\u0430\u043b\u0435\u0439 \u043d\u0430\u0448 \u0434\u0438\u0437\u0430\u0439\u043d \u0442\u0435\u043c\u043e\u0439\", \"\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u0443\u0439 \u0442\u0435\u043c\u0443\". This is the 21st equivalent of design-sync: it reads the project's design tokens and syncs them into the public theme library.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-registry",
+    "path": "/home/manager/.codex/skills/21st-registry/SKILL.md",
+    "relative": "21st-registry/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Publish your own work to 21st.dev and manage it from the terminal with the `21st` CLI (`@21st-dev/cli`): publish a React component to a team library, publish a CSS theme or a template listing, edit / unpublish / delete your published items, list and reopen existing component work, and read/replace your public profile page (bento board). Triggers when the user says \"publish/share/upload this to 21st\", \"\u0437\u0430\u043b\u0435\u0439 \u0432 \u043d\u0430\u0448 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\", \"\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u0443\u0439 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442/\u0442\u0435\u043c\u0443/\u0442\u0435\u043c\u043f\u043b\u0435\u0439\u0442\", \"share with team\", \"make this reusable\", \"unpublish/edit/delete my component\", \"change its visibility\", \"find/open my old component or draft\", \"\u043d\u0430\u0439\u0434\u0438/\u043e\u0442\u043a\u0440\u043e\u0439 \u043c\u043e\u0439 \u0441\u0442\u0430\u0440\u044b\u0439 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442 \u0438\u043b\u0438 \u0434\u0440\u0430\u0444\u0442\", \"add this to my 21st profile/bento\", \"update my profile page\", \"\u043e\u0431\u043d\u043e\u0432\u0438 \u043c\u043e\u0439 \u043f\u0440\u043e\u0444\u0438\u043b\u044c \u043d\u0430 21st\", \"\u0434\u043e\u0431\u0430\u0432\u044c \u0431\u043b\u043e\u043a \u0432 \u0431\u0435\u043d\u0442\u043e\", \"add controls/knobs to my demo\", \"\u0441\u0434\u0435\u043b\u0430\u0439 \u0434\u0435\u043c\u043e \u0441 \u043a\u043e\u043d\u0442\u0440\u043e\u043b\u0430\u043c\u0438\". For finding and installing existing items use `21st-cli-use`; for turning a project's design tokens into a theme use `21st-design-sync`.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ui-build",
+    "path": "/home/manager/.codex/skills/21st-ui-build/SKILL.md",
+    "relative": "21st-ui-build/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Build or substantially change production UI using the current project's design context, existing components, and grounded 21st inspiration. Use when implementing a page, section, component, responsive redesign, or visual polish in an existing web project. Trigger for requests such as \"build this UI\", \"implement this screen\", \"make this page production-ready\", or \"use 21st to create the interface\". Use 21st-ui-explore first when the visual direction is intentionally undecided, and 21st-ui-review for critique-only work.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ui-explore",
+    "path": "/home/manager/.codex/skills/21st-ui-explore/SKILL.md",
+    "relative": "21st-ui-explore/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Explore and compare multiple meaningfully different UI directions grounded in the current project's design system and 21st inspiration. Use when the user wants options, variants, concepts, a redesign direction, visual experimentation, or is unsure how a new interface should look. Trigger for requests such as \"show me three directions\", \"explore alternatives\", \"what could this page look like\", or \"generate variants\". Do not use for a straightforward implementation with an already-selected direction.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ui-review",
+    "path": "/home/manager/.codex/skills/21st-ui-review/SKILL.md",
+    "relative": "21st-ui-review/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Review existing UI against the project's design context, accessibility expectations, responsive behavior, interaction quality, and high-confidence production rules. Use for UI audits, design QA, frontend review, accessibility review, consistency checks, or requests to find and safely fix visual defects. Trigger for requests such as \"review this UI\", \"audit this page\", \"find design issues\", \"check responsiveness\", or \"fix obvious UX problems\". Use 21st-ui-build when the request is primarily to create new UI.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-video",
+    "path": "/home/manager/.codex/skills/21st-video/SKILL.md",
+    "relative": "21st-video/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Create and edit a product, launch, demo, or social video from the current project with 21st video MCP tools. Open the editable project alongside the chat, apply small revision-aware edits, check rendered frames, offer visual variants, and export the result. Use when the user asks for a video, says \"make a launch video for this repo\", \"edit this video\", or points to a selected layer in the 21st video editor. Requires the 21st MCP server.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "banner-design",
+    "path": "/home/manager/.codex/skills/banner-design/SKILL.md",
+    "relative": "banner-design/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "brand",
+    "path": "/home/manager/.codex/skills/brand/SKILL.md",
+    "relative": "brand/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "copywriting",
+    "path": "/home/manager/.codex/skills/copywriting/SKILL.md",
+    "relative": "copywriting/SKILL.md",
+    "category": "Codex Skills",
+    "description": "When the user wants to write, rewrite, or improve marketing copy for any page \u2014 including homepage, landing pages, pricing pages, feature pages, about pages, or product pages. Also use when the user says \"write copy for,\" \"improve this copy,\" \"rewrite this page,\" \"marketing copy,\" \"headline help,\" \"CTA copy,\" \"value proposition,\" \"tagline,\" \"subheadline,\" \"hero section copy,\" \"above the fold,\" \"this copy is weak,\" \"make this more compelling,\" or \"help me describe my product.\" Use this whenever someone is working on website text that needs to persuade or convert. For email copy, see emails. For popup copy, see popups. For editing existing copy, see copy-editing. For the offer underneath the copy (bonuses, guarantees, value framing), see offers.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "create-statusline",
+    "path": "/home/manager/.codex/skills/.system/create-statusline/SKILL.md",
+    "relative": ".system/create-statusline/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Build and enable a custom MCP statusline for the Codex CLI. Use when someone wants a provider that displays information in the terminal footer.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design",
+    "path": "/home/manager/.codex/skills/design/SKILL.md",
+    "relative": "design/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML\u2192screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design-system",
+    "path": "/home/manager/.codex/skills/design-system/SKILL.md",
+    "relative": "design-system/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Token architecture, component specifications, and slide generation. Three-layer tokens (primitive\u2192semantic\u2192component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "gpt-taste",
+    "path": "/home/manager/.codex/skills/gpt-tasteskill/SKILL.md",
+    "relative": "gpt-tasteskill/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Elite UX/UI & Advanced GSAP Motion Engineer. Enforces Python-driven true randomization for layout variance, strict AIDA page structure, wide editorial typography (bans 6-line wraps), gapless bento grids, strict GSAP ScrollTriggers (pinning, stacking, scrubbing), inline micro-images, and massive section spacing.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "imagegen",
+    "path": "/home/manager/.codex/skills/.system/imagegen/SKILL.md",
+    "relative": ".system/imagegen/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "openai-docs",
+    "path": "/home/manager/.codex/skills/.system/openai-docs/SKILL.md",
+    "relative": ".system/openai-docs/SKILL.md",
+    "category": "Codex Skills",
+    "description": "API first-timers, Codex/Work Q&A. If the user already has an OpenAI API integration, skip this skill for API questions and use the developer docs. Read this skill before answering how Codex or ChatGPT Work behaves, where to find a feature, or how to configure or troubleshoot this app or coding agent. This includes conversation history, model and cache behavior, instruction precedence, permissions, and tool availability. Use for API onboarding only when the user is connecting to the OpenAI API for the first time. Skip action requests, such as scheduling an automation, and tasks fully answered by supplied text or data.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "redesign-existing-projects",
+    "path": "/home/manager/.codex/skills/redesign-skill/SKILL.md",
+    "relative": "redesign-skill/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Upgrades existing websites and apps to premium quality. Audits current design, identifies generic AI patterns, and applies high-end design standards without breaking functionality. Works with any CSS framework or vanilla CSS.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "review-agent",
+    "path": "/home/manager/.codex/skills/.system/review-agent/SKILL.md",
+    "relative": ".system/review-agent/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Perform a read-only, defect-first review of a specified code change and return every actionable finding. Use when another agent delegates review of uncommitted changes, a base-branch diff, a commit, or custom review instructions.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "skill-creator",
+    "path": "/home/manager/.codex/skills/.system/skill-creator/SKILL.md",
+    "relative": ".system/skill-creator/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Create or update a Codex skill with appropriately scoped instructions and any needed supporting resources.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "skill-installer",
+    "path": "/home/manager/.codex/skills/.system/skill-installer/SKILL.md",
+    "relative": ".system/skill-installer/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos).",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-styling",
+    "path": "/home/manager/.codex/skills/ui-styling/SKILL.md",
+    "relative": "ui-styling/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-ux-pro-max",
+    "path": "/home/manager/.codex/skills/ui-ux-pro-max/SKILL.md",
+    "relative": "ui-ux-pro-max/SKILL.md",
+    "category": "Codex Skills",
+    "description": "UI/UX design intelligence with searchable database",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "writing-plans",
+    "path": "/home/manager/.codex/skills/writing-plans/SKILL.md",
+    "relative": "writing-plans/SKILL.md",
+    "category": "Codex Skills",
+    "description": "Use when you have a spec or requirements for a multi-step task, before touching code",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ai",
+    "path": "/home/manager/.cursor/skills/21st-ai/SKILL.md",
+    "relative": "21st-ai/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Generate and iterate on UI with 21st AI from the terminal via the `21st` CLI (`@21st-dev/cli`): sketch a UI from a prompt, preview the variants in the browser, edit any variant in place with a natural-language change, and pull the final code into the project. Use whenever the user wants to BUILD / SKETCH new UI (\"sketch a pricing page\", \"generate a hero with 21st\", \"make me a <X> section\"), ITERATE on a generated draft (\"edit the third variant\", \"add a toggle to that take\"), or GRAB the code of a draft (\"pull that variant's code\", \"\u0441\u0433\u0435\u043d\u0435\u0440\u0438 UI \u043d\u0430 21st\", \"\u043f\u043e\u043f\u0440\u0430\u0432\u044c \u0442\u0440\u0435\u0442\u0438\u0439 \u0432\u0430\u0440\u0438\u0430\u043d\u0442\", \"\u0437\u0430\u0431\u0435\u0440\u0438 \u043a\u043e\u0434 \u0442\u043e\u0433\u043e \u043d\u0430\u0431\u0440\u043e\u0441\u043a\u0430\"). For finding/installing existing components use the `21st-cli-use` skill; to publish your own, `21st-registry`.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-cli-use",
+    "path": "/home/manager/.cursor/skills/21st-cli-use/SKILL.md",
+    "relative": "21st-cli-use/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Search, install and pull code from the 21st.dev catalog with the `21st` CLI (`@21st-dev/cli`): find React/shadcn components, themes and templates, print a component's code or a theme's CSS, install an item into the project, or generate a new component with 21st AI. Use whenever the user says \"search/find a component/theme on 21st\", \"install our team's Button\", \"add @user/slug\", \"pull that component's code\", \"\u043d\u0430\u0439\u0434\u0438 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442 \u043d\u0430 21st\", \"\u043f\u043e\u0441\u0442\u0430\u0432\u044c \u043d\u0430\u0448 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442\", or wants to script catalog access from the shell/CI. Auto-activate when a project has a `components.json` \u2014 search 21st before hand-writing UI.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-design-sync",
+    "path": "/home/manager/.cursor/skills/21st-design-sync/SKILL.md",
+    "relative": "21st-design-sync/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Look at the current project's design (its shadcn / Tailwind CSS variables and color tokens) and publish it to the 21st.dev community as a shareable theme, using `21st publish-theme`. Use when the user says \"publish my theme\", \"share our design as a 21st theme\", \"sync my design to 21st\", \"turn my globals.css into a theme\", \"\u0437\u0430\u043b\u0435\u0439 \u043d\u0430\u0448 \u0434\u0438\u0437\u0430\u0439\u043d \u0442\u0435\u043c\u043e\u0439\", \"\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u0443\u0439 \u0442\u0435\u043c\u0443\". This is the 21st equivalent of design-sync: it reads the project's design tokens and syncs them into the public theme library.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-registry",
+    "path": "/home/manager/.cursor/skills/21st-registry/SKILL.md",
+    "relative": "21st-registry/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Publish your own work to 21st.dev and manage it from the terminal with the `21st` CLI (`@21st-dev/cli`): publish a React component to a team library, publish a CSS theme or a template listing, edit / unpublish / delete your published items, list and reopen existing component work, and read/replace your public profile page (bento board). Triggers when the user says \"publish/share/upload this to 21st\", \"\u0437\u0430\u043b\u0435\u0439 \u0432 \u043d\u0430\u0448 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\", \"\u043e\u043f\u0443\u0431\u043b\u0438\u043a\u0443\u0439 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442/\u0442\u0435\u043c\u0443/\u0442\u0435\u043c\u043f\u043b\u0435\u0439\u0442\", \"share with team\", \"make this reusable\", \"unpublish/edit/delete my component\", \"change its visibility\", \"find/open my old component or draft\", \"\u043d\u0430\u0439\u0434\u0438/\u043e\u0442\u043a\u0440\u043e\u0439 \u043c\u043e\u0439 \u0441\u0442\u0430\u0440\u044b\u0439 \u043a\u043e\u043c\u043f\u043e\u043d\u0435\u043d\u0442 \u0438\u043b\u0438 \u0434\u0440\u0430\u0444\u0442\", \"add this to my 21st profile/bento\", \"update my profile page\", \"\u043e\u0431\u043d\u043e\u0432\u0438 \u043c\u043e\u0439 \u043f\u0440\u043e\u0444\u0438\u043b\u044c \u043d\u0430 21st\", \"\u0434\u043e\u0431\u0430\u0432\u044c \u0431\u043b\u043e\u043a \u0432 \u0431\u0435\u043d\u0442\u043e\", \"add controls/knobs to my demo\", \"\u0441\u0434\u0435\u043b\u0430\u0439 \u0434\u0435\u043c\u043e \u0441 \u043a\u043e\u043d\u0442\u0440\u043e\u043b\u0430\u043c\u0438\". For finding and installing existing items use `21st-cli-use`; for turning a project's design tokens into a theme use `21st-design-sync`.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ui-build",
+    "path": "/home/manager/.cursor/skills/21st-ui-build/SKILL.md",
+    "relative": "21st-ui-build/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Build or substantially change production UI using the current project's design context, existing components, and grounded 21st inspiration. Use when implementing a page, section, component, responsive redesign, or visual polish in an existing web project. Trigger for requests such as \"build this UI\", \"implement this screen\", \"make this page production-ready\", or \"use 21st to create the interface\". Use 21st-ui-explore first when the visual direction is intentionally undecided, and 21st-ui-review for critique-only work.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ui-explore",
+    "path": "/home/manager/.cursor/skills/21st-ui-explore/SKILL.md",
+    "relative": "21st-ui-explore/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Explore and compare multiple meaningfully different UI directions grounded in the current project's design system and 21st inspiration. Use when the user wants options, variants, concepts, a redesign direction, visual experimentation, or is unsure how a new interface should look. Trigger for requests such as \"show me three directions\", \"explore alternatives\", \"what could this page look like\", or \"generate variants\". Do not use for a straightforward implementation with an already-selected direction.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-ui-review",
+    "path": "/home/manager/.cursor/skills/21st-ui-review/SKILL.md",
+    "relative": "21st-ui-review/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Review existing UI against the project's design context, accessibility expectations, responsive behavior, interaction quality, and high-confidence production rules. Use for UI audits, design QA, frontend review, accessibility review, consistency checks, or requests to find and safely fix visual defects. Trigger for requests such as \"review this UI\", \"audit this page\", \"find design issues\", \"check responsiveness\", or \"fix obvious UX problems\". Use 21st-ui-build when the request is primarily to create new UI.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "21st-video",
+    "path": "/home/manager/.cursor/skills/21st-video/SKILL.md",
+    "relative": "21st-video/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Create and edit a product, launch, demo, or social video from the current project with 21st video MCP tools. Open the editable project alongside the chat, apply small revision-aware edits, check rendered frames, offer visual variants, and export the result. Use when the user asks for a video, says \"make a launch video for this repo\", \"edit this video\", or points to a selected layer in the 21st video editor. Requires the 21st MCP server.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "banner-design",
+    "path": "/home/manager/.cursor/skills/banner-design/SKILL.md",
+    "relative": "banner-design/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "brand",
+    "path": "/home/manager/.cursor/skills/brand/SKILL.md",
+    "relative": "brand/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "context7-mcp",
+    "path": "/home/manager/.cursor/skills/context7-mcp/SKILL.md",
+    "relative": "context7-mcp/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of specific frameworks like React, Vue, Next.js, Prisma, Supabase, etc.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design",
+    "path": "/home/manager/.cursor/skills/design/SKILL.md",
+    "relative": "design/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML\u2192screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design-system",
+    "path": "/home/manager/.cursor/skills/design-system/SKILL.md",
+    "relative": "design-system/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Token architecture, component specifications, and slide generation. Three-layer tokens (primitive\u2192semantic\u2192component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "impeccable",
+    "path": "/home/manager/.cursor/skills/impeccable/SKILL.md",
+    "relative": "impeccable/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Use when the user wants to design, redesign, shape, critique, audit, polish, clarify, distill, harden, optimize, adapt, animate, colorize, extract, or otherwise improve a frontend interface. Covers websites, landing pages, dashboards, product UI, app shells, components, forms, settings, onboarding, and empty states. Handles UX review, visual hierarchy, information architecture, cognitive load, accessibility, performance, responsive behavior, theming, anti-patterns, typography, fonts, spacing, layout, alignment, color, motion, micro-interactions, UX copy, error states, edge cases, i18n, and reusable design systems or tokens. Also use for bland designs that need to become bolder or more delightful, loud designs that should become quieter, live browser iteration on UI elements, or ambitious visual effects that should feel technically extraordinary. Not for backend-only or non-UI tasks.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "slides",
+    "path": "/home/manager/.cursor/skills/slides/SKILL.md",
+    "relative": "slides/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Create strategic HTML presentations with Chart.js, design tokens, responsive layouts, copywriting formulas, and contextual slide strategies.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-styling",
+    "path": "/home/manager/.cursor/skills/ui-styling/SKILL.md",
+    "relative": "ui-styling/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-ux-pro-max",
+    "path": "/home/manager/.cursor/skills/ui-ux-pro-max/SKILL.md",
+    "relative": "ui-ux-pro-max/SKILL.md",
+    "category": "Cursor Skills",
+    "description": "Comprehensive design guide for web, mobile, and desktop applications. Contains 67 styles, 161 color palettes, 57 font pairings, 99 UX guidelines, and 25 chart types across 22 technology stacks.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "banner-design",
+    "path": "/home/manager/.gemini/skills/banner-design/SKILL.md",
+    "relative": "banner-design/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "brand",
+    "path": "/home/manager/.gemini/skills/brand/SKILL.md",
+    "relative": "brand/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "context7-mcp",
+    "path": "/home/manager/.gemini/skills/context7-mcp/SKILL.md",
+    "relative": "context7-mcp/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of specific frameworks like React, Vue, Next.js, Prisma, Supabase, etc.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "crossplatform-scripts-guard",
+    "path": "/home/manager/.gemini/skills/crossplatform-scripts-guard/SKILL.md",
+    "relative": "crossplatform-scripts-guard/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Enforce encoding, line endings (CRLF vs LF), BOM rules, and compatibility across Windows (.bat, .ps1, .vbs) and Linux (.sh) scripts",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design",
+    "path": "/home/manager/.gemini/skills/design/SKILL.md",
+    "relative": "design/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML\u2192screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design-system",
+    "path": "/home/manager/.gemini/skills/design-system/SKILL.md",
+    "relative": "design-system/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Token architecture, component specifications, and slide generation. Three-layer tokens (primitive\u2192semantic\u2192component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "impeccable",
+    "path": "/home/manager/.gemini/skills/impeccable/SKILL.md",
+    "relative": "impeccable/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Use when the user wants to design, redesign, shape, critique, audit, polish, clarify, distill, harden, optimize, adapt, animate, colorize, extract, or otherwise improve a frontend interface. Covers websites, landing pages, dashboards, product UI, app shells, components, forms, settings, onboarding, and empty states. Handles UX review, visual hierarchy, information architecture, cognitive load, accessibility, performance, responsive behavior, theming, anti-patterns, typography, fonts, spacing, layout, alignment, color, motion, micro-interactions, UX copy, error states, edge cases, i18n, and reusable design systems or tokens. Also use for bland designs that need to become bolder or more delightful, loud designs that should become quieter, live browser iteration on UI elements, or ambitious visual effects that should feel technically extraordinary. Not for backend-only or non-UI tasks.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "java-concurrency-edt-audit",
+    "path": "/home/manager/.gemini/skills/java-concurrency-edt-audit/SKILL.md",
+    "relative": "java-concurrency-edt-audit/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Audit and enforce Java Swing threading rules, Event Dispatch Thread (EDT) safety, SwingWorker patterns, and Java 21 Virtual Threads interaction with AWT/Swing",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "slides",
+    "path": "/home/manager/.gemini/skills/slides/SKILL.md",
+    "relative": "slides/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Create strategic HTML presentations with Chart.js, design tokens, responsive layouts, copywriting formulas, and contextual slide strategies.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "systematic-debugging",
+    "path": "/home/manager/.gemini/skills/systematic-debugging/SKILL.md",
+    "relative": "systematic-debugging/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "test-driven-development",
+    "path": "/home/manager/.gemini/skills/test-driven-development/SKILL.md",
+    "relative": "test-driven-development/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Use when implementing any feature or bugfix, before writing implementation code",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-styling",
+    "path": "/home/manager/.gemini/skills/ui-styling/SKILL.md",
+    "relative": "ui-styling/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-ux-pro-max",
+    "path": "/home/manager/.gemini/skills/ui-ux-pro-max/SKILL.md",
+    "relative": "ui-ux-pro-max/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "UI/UX design intelligence with searchable database",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "verification-before-completion",
+    "path": "/home/manager/.gemini/skills/verification-before-completion/SKILL.md",
+    "relative": "verification-before-completion/SKILL.md",
+    "category": "Gemini CLI / Antigravity Custom",
+    "description": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "a11y-debugging",
+    "path": "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/a11y-debugging/SKILL.md",
+    "relative": "chrome-devtools-plugin/skills/a11y-debugging/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Uses Chrome DevTools MCP for accessibility (a11y) debugging and auditing based on web.dev guidelines. Use when testing semantic HTML, ARIA labels, focus states, keyboard navigation, tap targets, and color contrast.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "cavecrew",
+    "path": "/home/manager/.gemini/config/plugins/caveman/skills/cavecrew/SKILL.md",
+    "relative": "caveman/skills/cavecrew/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller \u2014 main context lasts longer across long sessions. Trigger: \"delegate to subagent\", \"use cavecrew\", \"spawn investigator/builder/reviewer\", \"save context\", \"compressed agent output\".\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "cavecrew",
+    "path": "/home/manager/.gemini/config/plugins/caveman/plugins/caveman/skills/cavecrew/SKILL.md",
+    "relative": "caveman/plugins/caveman/skills/cavecrew/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller \u2014 main context lasts longer across long sessions. Trigger: \"delegate to subagent\", \"use cavecrew\", \"spawn investigator/builder/reviewer\", \"save context\", \"compressed agent output\".\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "cavecrew",
+    "path": "/home/manager/.gemini/config/plugins/caveman/.junie/skills/cavecrew/SKILL.md",
+    "relative": "caveman/.junie/skills/cavecrew/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller \u2014 main context lasts longer across long sessions. Trigger: \"delegate to subagent\", \"use cavecrew\", \"spawn investigator/builder/reviewer\", \"save context\", \"compressed agent output\".\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "cavecrew",
+    "path": "/home/manager/.gemini/config/plugins/caveman/.roo/skills/cavecrew/SKILL.md",
+    "relative": "caveman/.roo/skills/cavecrew/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller \u2014 main context lasts longer across long sessions. Trigger: \"delegate to subagent\", \"use cavecrew\", \"spawn investigator/builder/reviewer\", \"save context\", \"compressed agent output\".\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "cavecrew",
+    "path": "/home/manager/.gemini/config/plugins/caveman/.agents/skills/cavecrew/SKILL.md",
+    "relative": "caveman/.agents/skills/cavecrew/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller \u2014 main context lasts longer across long sessions. Trigger: \"delegate to subagent\", \"use cavecrew\", \"spawn investigator/builder/reviewer\", \"save context\", \"compressed agent output\".\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "cavecrew",
+    "path": "/home/manager/.gemini/config/plugins/caveman/.kiro/skills/cavecrew/SKILL.md",
+    "relative": "caveman/.kiro/skills/cavecrew/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Decision guide for delegating to caveman-style subagents. Tells the main thread WHEN to spawn `cavecrew-investigator` (locate code), `cavecrew-builder` (1-2 file edit), or `cavecrew-reviewer` (diff review) instead of doing the work inline or using vanilla `Explore`. Subagent output is caveman-compressed so the tool-result injected back into main context is ~60% smaller \u2014 main context lasts longer across long sessions. Trigger: \"delegate to subagent\", \"use cavecrew\", \"spawn investigator/builder/reviewer\", \"save context\", \"compressed agent output\".\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman",
+    "path": "/home/manager/.gemini/config/plugins/caveman/skills/caveman/SKILL.md",
+    "relative": "caveman/skills/caveman/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Switch caveman intensity level (lite/full/ultra/wenyan)",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman",
+    "path": "/home/manager/.gemini/config/plugins/caveman/plugins/caveman/skills/caveman/SKILL.md",
+    "relative": "caveman/plugins/caveman/skills/caveman/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Ultra-compressed communication mode. Cuts token usage ~75% by speaking like caveman while keeping full technical accuracy. Supports intensity levels: lite, full (default), ultra, wenyan-lite, wenyan-full, wenyan-ultra. Use when user says \"caveman mode\", \"talk like caveman\", \"use caveman\", \"less tokens\", \"be brief\", or invokes /caveman. Also auto-triggers when token efficiency is requested.\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman-commit",
+    "path": "/home/manager/.gemini/config/plugins/caveman/skills/caveman-commit/SKILL.md",
+    "relative": "caveman/skills/caveman-commit/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Generate terse caveman-style commit message",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman-compress",
+    "path": "/home/manager/.gemini/config/plugins/caveman/skills/caveman-compress/SKILL.md",
+    "relative": "caveman/skills/caveman-compress/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Compress natural language memory files (CLAUDE.md, todos, preferences) into caveman format to save input tokens. Preserves all technical substance, code, URLs, and structure. Compressed version overwrites the original file. Human-readable backup saved as FILE.original.md. Trigger: /caveman-compress FILEPATH or \"compress memory file\"\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman-compress",
+    "path": "/home/manager/.gemini/config/plugins/caveman/plugins/caveman/skills/caveman-compress/SKILL.md",
+    "relative": "caveman/plugins/caveman/skills/caveman-compress/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Compress natural language memory files (CLAUDE.md, todos, preferences) into caveman format to save input tokens. Preserves all technical substance, code, URLs, and structure. Compressed version overwrites the original file. Human-readable backup saved as FILE.original.md. Trigger: /caveman-compress FILEPATH or \"compress memory file\"\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman-help",
+    "path": "/home/manager/.gemini/config/plugins/caveman/skills/caveman-help/SKILL.md",
+    "relative": "caveman/skills/caveman-help/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Quick-reference card for all caveman modes, skills, and commands. One-shot display, not a persistent mode. Trigger: /caveman-help, \"caveman help\", \"what caveman commands\", \"how do I use caveman\".\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman-init",
+    "path": "/home/manager/.gemini/config/plugins/caveman/skills/caveman-init/SKILL.md",
+    "relative": "caveman/skills/caveman-init/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Drop the always-on caveman activation rule into the current repo for every IDE agent",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman-review",
+    "path": "/home/manager/.gemini/config/plugins/caveman/skills/caveman-review/SKILL.md",
+    "relative": "caveman/skills/caveman-review/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "One-line code review comments",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman-stats",
+    "path": "/home/manager/.gemini/config/plugins/caveman/skills/caveman-stats/SKILL.md",
+    "relative": "caveman/skills/caveman-stats/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Show real token usage and estimated savings for the current session. Reads directly from the Claude Code session log \u2014 no AI estimation. Triggers on /caveman-stats. Output is injected by the mode-tracker hook; the model itself does not compute the numbers.\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "caveman-stats",
+    "path": "/home/manager/.gemini/config/plugins/caveman/plugins/caveman/skills/caveman-stats/SKILL.md",
+    "relative": "caveman/plugins/caveman/skills/caveman-stats/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Show real token usage and estimated savings for the current session. Reads directly from the Claude Code session log \u2014 no AI estimation. Triggers on /caveman-stats. Output is injected by the mode-tracker hook; the model itself does not compute the numbers.\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "chrome-devtools",
+    "path": "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/chrome-devtools/SKILL.md",
+    "relative": "chrome-devtools-plugin/skills/chrome-devtools/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Uses Chrome DevTools via MCP for efficient debugging, troubleshooting and browser automation. Use when debugging web pages, automating browser interactions, analyzing performance, or inspecting network requests. This skill does not apply to `--slim` mode (MCP configuration).",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "chrome-extensions",
+    "path": "/home/manager/.gemini/config/plugins/modern-web-guidance-plugin/skills/chrome-extensions/SKILL.md",
+    "relative": "modern-web-guidance-plugin/skills/chrome-extensions/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Build and publish Chrome Extensions using Manifest V3 best practices. Use this skill whenever the user asks to create, modify, debug, or understand Chrome browser extensions, add-ons, or anything involving the Chrome Extensions API. Trigger on mentions of: 'Chrome extension', 'browser extension', 'manifest.json', 'content script', 'service worker' (in browser context), 'popup' (in browser extension context), 'side panel', 'chrome.* API', 'declarativeNetRequest', 'omnibox', 'context menu' (in extension context), 'userScripts', 'user script', 'script manager', or any request to build functionality that integrates with the Chrome browser UI. Also trigger for publishing to the Chrome Web Store: 'publish extension', preparing an extension for publishing, responding to a review rejection, writing permission justifications, or drafting a privacy policy.\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "cookie-debugging",
+    "path": "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/cookie-debugging/SKILL.md",
+    "relative": "chrome-devtools-plugin/skills/cookie-debugging/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Uses Chrome DevTools MCP for inspecting, debugging, and testing cookies, session state, authentication issues, and cookie consent compliance. Use when diagnosing 401/403 errors, authentication redirects, session expiration, Cookie/Set-Cookie header issues, cookie banner consent conformance, or third-party cookie/SameSite/Partitioned cookie warnings.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "debug-optimize-lcp",
+    "path": "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/debug-optimize-lcp/SKILL.md",
+    "relative": "chrome-devtools-plugin/skills/debug-optimize-lcp/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Guides debugging and optimizing Largest Contentful Paint (LCP) using Chrome DevTools MCP tools. Use this skill whenever the user asks about LCP performance, slow page loads, Core Web Vitals optimization, or wants to understand why their page's main content takes too long to appear. Also use when the user mentions \"largest contentful paint\", \"page load speed\", \"CWV\", or wants to improve how fast their hero image or main content renders.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "memory-leak-debugging",
+    "path": "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/memory-leak-debugging/SKILL.md",
+    "relative": "chrome-devtools-plugin/skills/memory-leak-debugging/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Diagnoses and resolves memory leaks in JavaScript/Node.js applications. Use when a user reports high memory usage, OOM errors, or wants to capture, compare, or inspect heap snapshots with Chrome DevTools MCP memory tools.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "modern-web-guidance",
+    "path": "/home/manager/.gemini/config/plugins/modern-web-guidance-plugin/skills/modern-web-guidance/SKILL.md",
+    "relative": "modern-web-guidance-plugin/skills/modern-web-guidance/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip \u2014 web APIs evolve rapidly and training weights contain obsolete patterns.\n\nTrigger immediately for:\n- UI/Layout: Modals, dialogs, popovers, Glassmorphism/backdrop-filters, anchor positioning, container queries, `:has()`, `:user-valid`.\n- Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals.\n- Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.\n- System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.\n- Frameworks: Adapting layout/styles in React, Vue, Angular.\n- General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.\n\nDO NOT trigger for:\n- Backend: Database SQL, ORMs, Express API routes.\n- Pipelines: CI/CD deployment, Docker, Actions.\n- Generic: Local scripts (Python/Go tools), ESLint, Git.\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "troubleshooting",
+    "path": "/home/manager/.gemini/config/plugins/chrome-devtools-plugin/skills/troubleshooting/SKILL.md",
+    "relative": "chrome-devtools-plugin/skills/troubleshooting/SKILL.md",
+    "category": "Gemini Plugins (Caveman, CDP, MWG)",
+    "description": "Uses Chrome DevTools MCP and documentation to troubleshoot connection and target issues. Trigger this skill when list_pages, new_page, or navigate_page fail, or when the server initialization fails.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "expert-debugger",
+    "path": "/home/manager/.gemini/config/skills/expert-debugger/SKILL.md",
+    "relative": "expert-debugger/SKILL.md",
+    "category": "StrixGov / Global Config",
+    "description": "Active when debugging code, investigating errors/exceptions, troubleshooting system failures, or locating bugs. Instructs the agent to form hypotheses, test them sequentially with evidence, minimize inputs (Delta Debugging), check alternatives, and rely strictly on observed data.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "api-testing",
+    "path": "/home/manager/.agents/skills/api-testing/SKILL.md",
+    "relative": "api-testing/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Test API integrations by mocking responses, intercepting requests, and monitoring network traffic. Use when the user wants to mock backend APIs, simulate errors, test offline behavior, intercept requests, or add authentication headers.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "banner-design",
+    "path": "/home/manager/.agents/skills/banner-design/SKILL.md",
+    "relative": "banner-design/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Design banners for social media, ads, website heroes, creative assets, and print. Multiple art direction options with AI-generated visuals. Actions: design, create, generate banner. Platforms: Facebook, Twitter/X, LinkedIn, YouTube, Instagram, Google Display, website hero, print. Styles: minimalist, gradient, bold typography, photo-based, illustrated, geometric, retro, glassmorphism, 3D, neon, duotone, editorial, collage. Uses ui-ux-pro-max, frontend-design, ai-artist, ai-multimodal skills.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "brainstorming",
+    "path": "/home/manager/.agents/skills/brainstorming/SKILL.md",
+    "relative": "brainstorming/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "brand",
+    "path": "/home/manager/.agents/skills/brand/SKILL.md",
+    "relative": "brand/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Brand voice, visual identity, messaging frameworks, asset management, brand consistency. Activate for branded content, tone of voice, marketing assets, brand compliance, style guides.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "browser-automation",
+    "path": "/home/manager/.agents/skills/browser-automation/SKILL.md",
+    "relative": "browser-automation/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Browser automation powers web testing, scraping, and AI agent interactions. The difference between a flaky script and a reliable system comes down to understanding selectors, waiting strategies, and anti-detection patterns.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "chrome-devtools",
+    "path": "/home/manager/.agents/skills/chrome-devtools/SKILL.md",
+    "relative": "chrome-devtools/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Expert-level browser automation, debugging, and performance analysis using Chrome DevTools MCP. Use for interacting with web pages, capturing screenshots, analyzing network traffic, and profiling performance.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "chrome-extensions",
+    "path": "/home/manager/.agents/skills/chrome-extensions/SKILL.md",
+    "relative": "chrome-extensions/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Build and publish Chrome Extensions using Manifest V3 best practices. Use this skill whenever the user asks to create, modify, debug, or understand Chrome browser extensions, add-ons, or anything involving the Chrome Extensions API. Trigger on mentions of: 'Chrome extension', 'browser extension', 'manifest.json', 'content script', 'service worker' (in browser context), 'popup' (in browser extension context), 'side panel', 'chrome.* API', 'declarativeNetRequest', 'omnibox', 'context menu' (in extension context), 'userScripts', 'user script', 'script manager', or any request to build functionality that integrates with the Chrome browser UI. Also trigger for publishing to the Chrome Web Store: 'publish extension', preparing an extension for publishing, responding to a review rejection, writing permission justifications, or drafting a privacy policy.\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "context7-mcp",
+    "path": "/home/manager/.agents/skills/context7-mcp/SKILL.md",
+    "relative": "context7-mcp/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of specific frameworks like React, Vue, Next.js, Prisma, Supabase, etc.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design",
+    "path": "/home/manager/.agents/skills/design/SKILL.md",
+    "relative": "design/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Comprehensive design skill: brand identity, design tokens, UI styling, logo generation (55 styles, Gemini AI), corporate identity program (50 deliverables, CIP mockups), HTML presentations (Chart.js), banner design (22 styles, social/ads/web/print), icon design (15 styles, SVG, Gemini 3.1 Pro), social photos (HTML\u2192screenshot, multi-platform). Actions: design logo, create CIP, generate mockups, build slides, design banner, generate icon, create social photos, social media images, brand identity, design system. Platforms: Facebook, Twitter, LinkedIn, YouTube, Instagram, Pinterest, TikTok, Threads, Google Ads.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "design-system",
+    "path": "/home/manager/.agents/skills/design-system/SKILL.md",
+    "relative": "design-system/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Token architecture, component specifications, and slide generation. Three-layer tokens (primitive\u2192semantic\u2192component), CSS variables, spacing/typography scales, component specs, strategic slide creation. Use for design tokens, systematic design, brand-compliant presentations.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "docker-best-practices",
+    "path": "/home/manager/.agents/skills/docker-best-practices/SKILL.md",
+    "relative": "docker-best-practices/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Comprehensive Docker best practices for images, containers, and production deployments.\nPROACTIVELY activate for: (1) writing production-ready Dockerfiles, (2) multi-stage builds for lean images, (3) base image selection (distroless, alpine, scratch, slim), (4) layer caching and ordering, (5) .dockerignore hygiene, (6) HEALTHCHECK and graceful shutdown, (7) non-root user and least-privilege patterns, (8) ENV vs ARG and secret handling, (9) tag/digest pinning and reproducibility, (10) Compose for local development.\nProvides: Dockerfile templates by language, image-size optimization checklist, .dockerignore template, HEALTHCHECK patterns, and Compose dev-stack examples.\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "docker-expert",
+    "path": "/home/manager/.agents/skills/docker-expert/SKILL.md",
+    "relative": "docker-expert/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "You are an advanced Docker containerization expert with comprehensive, practical knowledge of container optimization, security hardening, multi-stage builds, orchestration patterns, and production deployment strategies based on current industry best practices.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "e2e-tests-studio",
+    "path": "/home/manager/.agents/skills/e2e-tests-studio/SKILL.md",
+    "relative": "e2e-tests-studio/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "REQUIRED when modifying any file in packages/playground-ui or packages/playground. Triggers on: React component creation/modification/refactoring, UI changes, new playground features, bug fixes affecting studio UI. Generates Playwright E2E tests that validate PRODUCT BEHAVIOR, not just UI states.\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "execution-control",
+    "path": "/home/manager/.agents/skills/execution-control/SKILL.md",
+    "relative": "execution-control/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Explain AI execution control and assess (read-only) which actions in a project need governance. ASSESSMENT ONLY \u2014 it does not enforce anything. Use when the user asks \"what is execution control\", \"which of my actions are risky\", \"what should Claude not be allowed to do\", or wants a governance assessment before installing enforcement.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "find-skills",
+    "path": "/home/manager/.agents/skills/find-skills/SKILL.md",
+    "relative": "find-skills/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "frontend-design",
+    "path": "/home/manager/.agents/skills/frontend-design/SKILL.md",
+    "relative": "frontend-design/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "govern-ai-egress",
+    "path": "/home/manager/.agents/skills/govern-ai-egress/SKILL.md",
+    "relative": "govern-ai-egress/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Put Strix Governed AI Egress in front of calls to an external AI provider, self-hosted. Runs the governed egress proxy (npx or container) inside your own boundary, points an OpenAI or Anthropic SDK at it, installs the local Claude Code prompt hook, and verifies the path with a synthetic request. States plainly what the detector does not prove. Use when the user asks to \"govern AI egress\", \"stop PHI going to Claude/OpenAI\", \"put a proxy in front of the model\", \"de-identify prompts before they leave\", \"install the egress prompt hook\", or runs /govern-ai-egress.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "govern-pr",
+    "path": "/home/manager/.agents/skills/govern-pr/SKILL.md",
+    "relative": "govern-pr/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Runs a Strix Governance Review (SGRF v1) on a pull request or diff \u2014 the change lens. Reviews whether the change adds or modifies a consequential action, touches the execution boundary / permissions / policy, opens or closes a bypass, or weakens any execution-control invariant, and reports whether it moves any of the 4 SGRF axes. Produces a PR-comment-ready verdict. Advisory and diagnostic; it does not block merges or enforce. Use when the user asks to \"govern this PR\", \"review this diff for governance\", \"does this change weaken enforcement\", \"governance impact of this PR\", or runs /govern-pr.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "impeccable",
+    "path": "/home/manager/.agents/skills/impeccable/SKILL.md",
+    "relative": "impeccable/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Use when the user wants to design, redesign, shape, critique, audit, polish, clarify, distill, harden, optimize, adapt, animate, colorize, extract, or otherwise improve a frontend interface. Covers websites, landing pages, dashboards, product UI, app shells, components, forms, settings, onboarding, and empty states. Handles UX review, visual hierarchy, information architecture, cognitive load, accessibility, performance, responsive behavior, theming, anti-patterns, typography, fonts, spacing, layout, alignment, color, motion, micro-interactions, UX copy, error states, edge cases, i18n, and reusable design systems or tokens. Also use for bland designs that need to become bolder or more delightful, loud designs that should become quieter, live browser iteration on UI elements, or ambitious visual effects that should feel technically extraordinary. Not for backend-only or non-UI tasks.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "modern-web-guidance",
+    "path": "/home/manager/.agents/skills/modern-web-guidance/SKILL.md",
+    "relative": "modern-web-guidance/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip \u2014 web APIs evolve rapidly and training weights contain obsolete patterns.\nTrigger immediately for: modals/dialogs/popovers, tables, dark mode, anchor positioning, container queries, view transitions, scroll-driven animations, parallax/reveals, forms, validation, autofill, accessibility, custom selects, scrollbars, CWV (LCP, INP, CLS), content-visibility, fetch priority, image optimization, security, passkeys, HTML sanitization, web components, dates/timezones, built-in AI, WebAssembly, standard HTML/CSS/DOM in frameworks, etc.\nDO NOT trigger for: backend (SQL, ORMs, API routes), infra/scripts (CI/CD, Docker, Actions, Python/Go, Git), or tooling/trivial (Vite, tsconfig, ESLint, tests, copy/renames, 3P docs), etc.\n",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "n8n-code-javascript",
+    "path": "/home/manager/.agents/skills/n8n-code-javascript/SKILL.md",
+    "relative": "n8n-code-javascript/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Write JavaScript code in n8n Code nodes. Use when writing JavaScript in n8n, using $input/$json/$node syntax, making HTTP requests with this.helpers / the $helpers global, working with dates using DateTime, troubleshooting Code node errors, choosing between Code node modes, or doing any custom data transformation in n8n. Always use this skill when a workflow needs a Code node \u2014 whether for data aggregation, filtering, API calls, format conversion, batch processing logic, or any custom JavaScript. Covers SplitInBatches loop patterns, cross-iteration data, pairedItem, and real-world production patterns. Also use when asked why a Code node or workflow is slow, which execution mode is faster, or how to cut per-item overhead on large datasets. EXCEPTION \u2014 for the AI-agent-callable Custom Code Tool (@n8n/n8n-nodes-langchain.toolCode, a tool attached to an AI Agent), use the n8n-code-tool skill instead; it has a different runtime contract.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "n8n-expression-syntax",
+    "path": "/home/manager/.agents/skills/n8n-expression-syntax/SKILL.md",
+    "relative": "n8n-expression-syntax/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Validate n8n expression syntax and fix common errors. Use when writing n8n expressions, using {{}} syntax, accessing $json/$node variables, troubleshooting expression errors, mapping data between nodes, or referencing webhook data in workflows. Use this skill whenever configuring node fields that reference data from previous nodes \u2014 expressions are how n8n passes data between nodes, and getting the syntax wrong is the most common source of workflow errors. Also use when asked whether a complex expression hurts performance.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "n8n-mcp-tools-expert",
+    "path": "/home/manager/.agents/skills/n8n-mcp-tools-expert/SKILL.md",
+    "relative": "n8n-mcp-tools-expert/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Expert guide for using n8n-mcp MCP tools effectively. Use when searching for nodes, validating configurations, accessing templates, managing workflows, managing credentials, auditing instance security, or using any n8n-mcp tool. Provides tool selection guidance, parameter formats, and common patterns. IMPORTANT \u2014 Always consult this skill before calling any n8n-mcp tool \u2014 it prevents common mistakes like wrong nodeType formats, incorrect parameter structures, and inefficient tool usage. If the user mentions n8n, workflows, nodes, or automation and you have n8n MCP tools available, use this skill first.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "n8n-node-configuration",
+    "path": "/home/manager/.agents/skills/n8n-node-configuration/SKILL.md",
+    "relative": "n8n-node-configuration/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Operation-aware node configuration guidance. Use when configuring nodes, understanding property dependencies, determining required fields, choosing between get_node detail levels, or learning common configuration patterns by node type. Always use this skill when setting up node parameters \u2014 it explains which fields are required for each operation, how displayOptions control field visibility, and when to use patchNodeField for surgical edits vs full node updates.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "n8n-validation-expert",
+    "path": "/home/manager/.agents/skills/n8n-validation-expert/SKILL.md",
+    "relative": "n8n-validation-expert/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Interpret validation errors and guide fixing them. Use when encountering validation errors, validation warnings, false positives, operator structure issues, or need help understanding validation results. Also use when asking about validation profiles, error types, the validation loop process, or auto-fix capabilities. Consult this skill whenever a validate_node or validate_workflow call returns errors or warnings \u2014 it knows which warnings are false positives and which errors need real fixes.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "n8n-workflow-patterns",
+    "path": "/home/manager/.agents/skills/n8n-workflow-patterns/SKILL.md",
+    "relative": "n8n-workflow-patterns/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Proven workflow architectural patterns from real n8n workflows. Use when building new workflows, designing workflow structure, choosing workflow patterns, planning workflow architecture, or asking about webhook processing, HTTP API integration, database operations, AI agent workflows, batch processing, or scheduled tasks. Always consult this skill when the user asks to create, build, or design an n8n workflow, automate a process, or connect services \u2014 even if they don't explicitly mention 'patterns'. Covers webhook, API, database, AI, batch processing, and scheduled automation architectures. Also use when optimizing a slow workflow or speeding up large-item-count processing (node count, batchSize, all-items vs per-item).",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "postgresql-database-engineering",
+    "path": "/home/manager/.agents/skills/postgresql-database-engineering/SKILL.md",
+    "relative": "postgresql-database-engineering/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Comprehensive PostgreSQL database engineering skill covering indexing strategies, query optimization, performance tuning, partitioning, replication, backup and recovery, high availability, and production database management. Master advanced PostgreSQL features including MVCC, VACUUM operations, connection pooling, monitoring, and scalability patterns.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "qa-test-planner",
+    "path": "/home/manager/.agents/skills/qa-test-planner/SKILL.md",
+    "relative": "qa-test-planner/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Generate comprehensive test plans, manual test cases, regression test suites, and bug reports for QA engineers. Includes Figma MCP integration for design validation.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "release-readiness",
+    "path": "/home/manager/.agents/skills/release-readiness/SKILL.md",
+    "relative": "release-readiness/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Runs a Strix Governance Review (SGRF v1) on a release or deploy candidate \u2014 the release lens. Reviews whether the release is governed end-to-end before it ships \u2014 is the deploy itself an evaluated/approved decision, what new consequential actions does it enable, is there a verifiable record of what shipped, and is it revocable \u2014 producing the canonical 13-section report, a 4-axis profile, and a GO / GO-WITH-CONDITIONS / NO-GO readiness call. Advisory; it does not gate the release. Use when the user asks \"is this release ready\", \"release readiness review\", \"are we safe to deploy\", \"governance sign-off for this release\", or runs /release-readiness.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "runtime-governance-review",
+    "path": "/home/manager/.agents/skills/runtime-governance-review/SKILL.md",
+    "relative": "runtime-governance-review/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Runs a Strix Governance Review (SGRF v1) on a project, agent workflow, MCP server, or CI/CD pipeline \u2014 the system lens. Reviews whether consequential actions are evaluated before they execute, whether a third party can verify it, and how easily governance can be bypassed, producing the canonical 13-section report and a 4-axis maturity profile (capability vs governance vs independent verifiability vs runtime enforcement) with an applicability declaration and an ASCII governance profile. Advisory and diagnostic; it does not enforce. Use when the user asks to \"run a governance review\", \"audit execution safety\", \"check what could bypass approval\", \"is this agent safe to run in prod\", or runs /runtime-governance-review.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "slides",
+    "path": "/home/manager/.agents/skills/slides/SKILL.md",
+    "relative": "slides/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Create strategic HTML presentations with Chart.js, design tokens, responsive layouts, copywriting formulas, and contextual slide strategies.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "strix-verify",
+    "path": "/home/manager/.agents/skills/strix-verify/SKILL.md",
+    "relative": "strix-verify/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Independently verify a Strix governance artifact \u2014 signed evidence records, approval artifacts, approval quorums, agent-swarm runs, tool-gateway receipts/chains, signed visuals, and CT inclusion/consistency proofs. Re-derives the canonical signed bytes and checks the Ed25519 signature against the public JWKS using only standard crypto \u2014 no Strix account, SDK, or API key; the verdict can be reproduced locally or fully offline. Use whenever someone asks to verify, audit, or confirm the authenticity of a Strix proof, evidence id, approval, quorum, receipt, or swarm run.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "strix-wire",
+    "path": "/home/manager/.agents/skills/strix-wire/SKILL.md",
+    "relative": "strix-wire/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Wire Strix governance into the current codebase. Scans for an irreversible mutation (payment charges, deletes, sends, schema migrations), wraps the call site with governedAction(), runs it once, and prints the resulting evidenceId. Use when the user asks to \"wire Strix\", \"wire up Strix\", \"add Strix to this project\", \"set up governed actions\", \"get an evidence record\", or runs /strix-wire.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "thermo-nuclear-code-quality-review",
+    "path": "/home/manager/.agents/skills/thermo-nuclear-code-quality-review/SKILL.md",
+    "relative": "thermo-nuclear-code-quality-review/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Run an extremely strict maintainability review for abstraction quality, giant files, and spaghetti-condition growth. Use for a thermo-nuclear code quality review, thermonuclear review, deep code quality audit, or especially harsh maintainability review.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-styling",
+    "path": "/home/manager/.agents/skills/ui-styling/SKILL.md",
+    "relative": "ui-styling/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Create beautiful, accessible user interfaces with shadcn/ui components (built on Radix UI + Tailwind), Tailwind CSS utility-first styling, and canvas-based visual designs. Use when building user interfaces, implementing design systems, creating responsive layouts, adding accessible components (dialogs, dropdowns, forms, tables), customizing themes and colors, implementing dark mode, generating visual designs and posters, or establishing consistent styling patterns across applications.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  },
+  {
+    "name": "ui-ux-pro-max",
+    "path": "/home/manager/.agents/skills/ui-ux-pro-max/SKILL.md",
+    "relative": "ui-ux-pro-max/SKILL.md",
+    "category": "Universal Agent Skills Registry",
+    "description": "Comprehensive design guide for web, mobile, and desktop applications. Contains 67 styles, 161 color palettes, 57 font pairings, 99 UX guidelines, and 25 chart types across 22 technology stacks.",
+    "valid_frontmatter": true,
+    "status": "PASS"
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "plugin": "caveman",
+  "version": "0.1.0",
+  "mcp_shrink_tests": {
+    "passed": 12,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "unit_tests": {
+    "test_validate_inline": "10/10 OK",
+    "test_symlink_flag": "5/5 OK",
+    "test_caveman_stats": "6/6 OK"
+  },
+  "compression_engine": {
+    "status": "REQUIRES_AUTH_SESSION",
+    "note": "El motor de compresi\u00f3n sem\u00e1ntica invoca claude CLI o ANTHROPIC_API_KEY. Actualmente reporta 'Not logged in \u00b7 Please run /login' para llamadas headless directas de Claude Code."
+  }
+}

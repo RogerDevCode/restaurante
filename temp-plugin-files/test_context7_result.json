@@ -1,0 +1,20 @@
+{
+  "tool": "context7",
+  "status": "PASS",
+  "test_resolve": {
+    "query": "react",
+    "result_count": 5,
+    "primary_library_id": "/reactjs/react.dev",
+    "benchmark_score": 84.49,
+    "snippets": 5029
+  },
+  "test_query_docs": {
+    "library_id": "/reactjs/react.dev",
+    "query": "useState hook basic usage",
+    "status": "SUCCESS",
+    "sources": [
+      "https://github.com/reactjs/react.dev/blob/main/src/content/reference/react/Component.md",
+      "https://github.com/reactjs/react.dev/blob/main/src/content/learn/adding-interactivity.md"
+    ]
+  }
+}

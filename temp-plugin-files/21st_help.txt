@@ -1,0 +1,122 @@
+21st CLI
+
+Usage:
+  21st login                                      Sign in via your browser (saved locally)
+  21st logout                                      Clear the saved login
+  21st whoami                                      Show the signed-in account
+  21st usage [--json]                             Show retrieval quota, AI access and credit balance
+  21st search <query> [--type c|theme|template] [--limit N] [--json] [--context auto|path]
+                      [--tag <slug>] [--color <bucket>] [--sort <s>] [--free|--paid]
+                      [--author <username>] [--mine] [--liked]
+                      [--runtime ui|remotion] [--kind <kind>] [--aspect 16:9|9:16|1:1]
+                                                  Search components + themes + templates (default: all)
+                                                  (--runtime remotion: 21st video blocks only)
+  21st logo <query> [--limit N] [--json]          Search brand + UI SVG logos (free, no login)
+  21st get <id> [--json]                          Print a component's code + demo (by search id)
+  21st theme <id> [--json]                         Print a theme's CSS (by search --type theme id)
+  21st generate <prompt> [--models <keys>] [--theme <slug>] [--remix <source>] [--wait] [--no-open] [--json] [--context auto|path] [--variants N]
+                                                  Sketch project-aware UI variants with 21st AI
+  21st generation <projectId> [--json]             List the takes of a Sketch or Code generation
+  21st iterate <projectId> "<change>" [--take N] [--part nav] [--note "sticky"] [--refs '<JSON array>'] [--lock hero,pricing] [--scope every-take] [--wait] [--base-version N]
+                                                  Refine a Sketch take (quote the change)
+  21st take <projectId> [--take N] [--version N] [--code|--spec|--agent-prompt|--files <dir>] [--select]
+  21st take <projectId> --take N --done <landed|adapted|abandoned> [--by agent|user]
+                      [--typecheck passed|failed|not_run] [--build passed|failed|not_run]
+  21st take --latest                             Suggest a recent handoff for confirmation
+  21st feedback "<message>" [--bug|--idea] [--project <uuid> --take N]
+                                                  Send the user's feedback to 21st
+  21st notes latest [--status sent|open|all]         Read the last user-sent notes
+  21st notes <projectId> [--take N]                 Read notes for a saved take
+  21st notes done|in_progress|wont_do <id,...> [--summary "<reason>"]
+  21st changes <projectId> --take N [--since pulled|N]
+                                                  Read saved edits and their plan
+  21st take-edit <projectId> --take N --version N [--ops '<JSON array>'] [--notes '<JSON array>'] [--json]
+                                                  Save supported literal values with zero credits
+  21st bookmarks [--type component|theme|template] [--limit N] [--json]
+                                                  List your bookmarks (components + themes + templates)
+  21st bookmark <id> --type <kind> [--remove]     Bookmark / unbookmark an item (heart)
+  21st lists [--json]                             List your bookmark lists
+  21st list <listId> [--json]                     Show items in a bookmark list
+  21st list-new <name>                            Create a bookmark list
+  21st list-add <listId> <id> --type <kind> [--remove]
+                                                  Add / remove an item in a list
+  21st teams [--json]                             List your teams
+  21st team <teamId> [--json]                     List a team's libraries
+  21st team-lists <teamId> [--json]               List a team's shared bookmark lists
+  21st team-components <teamId> [--library <id>]  List a team library's components
+  21st components [--status all|draft|published|private] [--scope all|personal|team:<uuid>] [--json]
+                                                  List every component and draft you can manage
+  21st open <component:<id>|draft:<uuid>> [--no-open]
+                                                  Open a draft or create/resume a reviewed component revision
+  21st draft <draft:<uuid>> [--watch] [--json]     Draft state, editor URL and media states without a browser
+  21st library [list|show|create|update] <slug>    Read and edit a library's identity
+                      [--name N] [--description D] [--display-name D]
+                      [--logo <file>|--logo-url <url>] [--website U] [--github U] [--x U]
+                      [--public|--private] [--json]
+                                                  Works for team libraries you manage
+  21st add <user>/<slug> [--print]                Install a published component by author/slug
+  21st add video/<user>/<slug> [--print]          Install a 21st video block into a Remotion project
+                                                  (@remotion/* pinned to your project's version;
+                                                   inside a Remotion project <user>/<slug> works too;
+                                                   --ui forces the UI install there)
+  21st add @<registry> [--print]                  Install every component in a tracked registry
+  21st publish <file> --description "…"            Create a reviewed component draft
+                      [--component component:<id>] [--to <library-slug>]
+                      [--name N] [--slug S] [--tags a,b]
+                      [--demo <file>]… [--preview <img>] [--registry ui|hooks|blocks|icons]
+                      [--runtime react|expo|remotion]
+                      [--visibility published|private] [--no-open]
+                      [--prepare|--auto] [--wait-video] [--media-dir <dir>]
+                      [--draft draft:<uuid>] [--no-push] [--json]
+                                                   Prepare or publish entirely through the CLI
+                                                   (--draft sends this file into that draft first,
+                                                    so one draft carries every edit; --no-push skips)
+                                                   (--json: one JSON doc on stdout; exit codes
+                                                    3 auth, 4 rate limit, 5 build, 6 media, 7 conflict)
+  21st render <file> [--demo <file>] [--out <dir>] [--video] [--json]
+                                                  Build and photograph a component without publishing it
+  21st submit <slug>                              Submit a Published component for featuring
+  21st withdraw <slug>                            Withdraw a component from review
+  21st resubmit <slug>                            Resubmit after requested changes
+  21st remove-from-catalog <slug>                  Return a Featured component to Published
+  21st publish-theme <file.css> --name "…"        Publish a CSS theme (needs :root + .dark) [--tags a,b]
+  21st publish-template <name> --site <url> --preview <img>   Publish a template listing [--price N --tags 1,2]
+  21st publish-gradient <recipe.json> --name "…" --thumbnail <img>
+                                                  Publish a Gradient Builder recipe
+  21st publish-ascii <recipe.json> --name "…" --thumbnail <img>
+                                                  Publish an ASCII recipe [--video <file> --mask <file> --private]
+  21st edit <component:<id>|id|slug> --type <kind>
+                                                  Update your published item
+                      [--visibility published|private] [--name N] [--description D] [--tags a,b]
+  21st delete <component:<id>|draft:<uuid>|id|slug> --type <kind> --yes
+                                                  Remove your published item
+                                                  (component/theme: unpublish; template: permanent)
+  21st profile get [--json]                       Read your bento profile board (as content blocks)
+  21st profile set --file <path.json> [--clear]   Replace your bento profile board
+                                                  (reads a JSON blocks array/object from the file,
+                                                  or stdin if --file is omitted; --clear reverts to classic)
+  21st profile upload <image-file>                Upload a png/jpg/gif/webp, prints the url to use
+                                                  as an image block's mediaUrl in 'profile set'
+  21st init --design-context [--check|--refresh]  Create/check project-aware .21st design context
+  21st review <path...> [--fix] [--json] [--strict]
+                                                  Review UI with deterministic local rules
+  21st inspiration-feedback <feedbackId> --outcome accepted|rejected
+                                                  Record a privacy-safe inspiration decision
+  21st init --client <name> [--write]             Print/write the 21st MCP config for a client
+                                                  (name: cursor | claude | codex | vscode | devin)
+  21st skills install [name] [--global] [--agent <name>]
+  21st skills list|check|update|remove [name]     Manage verified 21st skills for Claude, Cursor, and Codex
+  21st skills catalog                             Inspect curated external compatibility
+  21st skills install <name> --external --allow-scripts
+                                                  Explicitly install a reviewed third-party skill
+  21st install-skill                              Compatibility alias for `skills install --global`
+  21st help                                       Show this help
+
+Auth:
+  Run `21st login`, or set TWENTYFIRST_TOKEN (or API_KEY_21ST), or pass --api-key <key>.
+  Get a key at https://21st.dev/mcp
+
+Docs:
+  https://help.21st.dev/cli - guides, every flag, exit codes and failure modes
+
+

@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pruebas de Diagnóstico y Protocolo: Graphify MCP</title>
+  <style>
+    :root {
+      --primary: #4338ca;
+      --primary-light: #6366f1;
+      --primary-bg: #eef2ff;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #15803d;
+      --success-bg: #dcfce7;
+      --warning: #b45309;
+      --warning-bg: #fef3c7;
+      --info: #0369a1;
+      --info-bg: #e0f2fe;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 32px 20px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid var(--border);
+    }
+    h1 {
+      font-size: 2.1rem;
+      color: var(--primary);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .stat-val {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-success { background: var(--success-bg); color: var(--success); }
+    .badge-warning { background: var(--warning-bg); color: var(--warning); }
+    .badge-info { background: var(--info-bg); color: var(--info); }
+    
+    .section-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 22px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
+    }
+    .section-title {
+      font-size: 1.25rem;
+      color: var(--primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.92rem;
+    }
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tr:hover td {
+      background: #f8fafc;
+    }
+    code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.85rem;
+      color: #0f172a;
+    }
+    .code-block {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 0.84rem;
+      overflow-x: auto;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .callout {
+      padding: 14px 18px;
+      border-left: 4px solid var(--primary-light);
+      background: var(--primary-bg);
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+      font-size: 0.92rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Auditoría y Pruebas Técnicas: Graphify MCP</h1>
+      <p class="subtitle">Componente: <strong>Graphify Hosted MCP Server & Codex Plugin</strong> · Fecha: <strong>24/11/2026 18:57:09</strong> · Destino de artefactos: <code>temp-plugin-files</code></p>
+    </header>
+
+    <div class="grid-stats">
+      <div class="stat-card">
+        <div class="stat-val">200 OK</div>
+        <div class="stat-label">OAuth 2.0 Metadata</div>
+        <div style="margin-top: 8px;"><span class="badge badge-success">RFC 9207 Cumplido</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">1.0.2</div>
+        <div class="stat-label">Versión de Plugin</div>
+        <div style="margin-top: 8px;"><span class="badge badge-success">Instalado en Codex</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">5</div>
+        <div class="stat-label">Clientes Configurados</div>
+        <div style="margin-top: 8px;"><span class="badge badge-info">Codex, Cursor, Copilot, Claude, ChatGPT</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">3.595</div>
+        <div class="stat-label">Nodos en Grafo</div>
+        <div style="margin-top: 8px;"><span class="badge badge-success">RogerDevCode/restaurante</span></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 1: PROTOCOLO MCP Y SEGURIDAD -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>1. Pruebas de Red, Conectividad y Protocolo MCP</span>
+        <span class="badge badge-success">Protocolo Verificado</span>
+      </div>
+      <p class="subtitle" style="margin-bottom: 12px;">Se ejecutaron pruebas directas sobre el servidor hosted oficial <code>https://api.graphify.com/mcp</code>:</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Prueba</th>
+            <th>Método / Endpoint</th>
+            <th>Código HTTP</th>
+            <th>Evidencia y Comportamiento Observado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Negociación de Métodos</strong></td>
+            <td><code>OPTIONS /mcp</code></td>
+            <td><code>405 / Allow Header</code></td>
+            <td>
+              CloudFront / Servidor devolvió cabecera <code>Allow: GET, POST, DELETE</code>, confirmando compatibilidad con el transporte HTTP de MCP y streaming.
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Handshake MCP JSON-RPC</strong></td>
+            <td><code>POST /mcp</code> (initialize)</td>
+            <td><code>401 Unauthorized</code></td>
+            <td>
+              Respuesta conforme a la especificación estándar RFC 9207 / MCP Auth. Incluye cabecera:
+              <div class="code-block">WWW-Authenticate: Bearer resource_metadata="https://api.graphify.com/.well-known/oauth-protected-resource/mcp"</div>
+              Confirma que el servidor está online, escuchando llamadas MCP y exigiendo autenticación OAuth PKCE por usuario.
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Descubrimiento de Recurso Protegido</strong></td>
+            <td><code>GET /.well-known/oauth-protected-resource/mcp</code></td>
+            <td><code>200 OK</code></td>
+            <td>
+              Devuelve la configuración del recurso MCP:
+              <div class="code-block">{"resource":"https://api.graphify.com/mcp","authorization_servers":["https://api.graphify.com"],"scopes_supported":["graphify:query"]}</div>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Descubrimiento de Servidor OAuth</strong></td>
+            <td><code>GET /.well-known/oauth-authorization-server</code></td>
+            <td><code>200 OK</code></td>
+            <td>
+              Endpoints de autorización confirmados:
+              <ul style="margin-left: 20px; margin-top: 6px;">
+                <li><code>authorization_endpoint</code>: <code>https://api.graphify.com/oauth/authorize</code></li>
+                <li><code>token_endpoint</code>: <code>https://api.graphify.com/oauth/token</code></li>
+                <li><code>code_challenge_methods_supported</code>: <code>["S256"]</code> (PKCE)</li>
+                <li><code>scopes_supported</code>: <code>["graphify:query", "openid", "offline_access"]</code></li>
+              </ul>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECCIÓN 2: INTEGRIDAD DEL PLUGIN Y SKILLS -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>2. Integridad del Plugin y Skills en Disco</span>
+        <span class="badge badge-success">100% Válido</span>
+      </div>
+      <p class="subtitle" style="margin-bottom: 12px;">Ubicación: <code>~/.codex/plugins/cache/graphify/graphify/1.0.2</code> (instalado desde <code>Graphify-Labs/graphify-codex-plugin</code>):</p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Archivo / Componente</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+            <th>Detalles</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>plugin.json</code></td>
+            <td>Manifiesto de Plugin</td>
+            <td><span class="badge badge-success">Válido</span></td>
+            <td>Nombre: <code>graphify</code>, Versión: <code>1.0.2</code>, Esquema: <code>agent-plugins.org/schemas/1.0.0</code>.</td>
+          </tr>
+          <tr>
+            <td><code>mcp.json</code></td>
+            <td>Definición MCP</td>
+            <td><span class="badge badge-success">Válido</span></td>
+            <td>Tipo: <code>streamable-http</code>, URL: <code>https://api.graphify.com/mcp</code>, Extensión: <code>com.openai (auth: oauth)</code>.</td>
+          </tr>
+          <tr>
+            <td><code>skills/graphify/SKILL.md</code></td>
+            <td>Skill de Consulta</td>
+            <td><span class="badge badge-success">Válido</span></td>
+            <td>1.436 bytes. Guía para explorar el grafo de código, callers/dependencias, memoria del equipo y pull request reviews.</td>
+          </tr>
+          <tr>
+            <td><code>skills/get-started/SKILL.md</code></td>
+            <td>Skill de Inicio</td>
+            <td><span class="badge badge-success">Válido</span></td>
+            <td>1.005 bytes. Guía para el flujo OAuth en navegador y primera llamada a <code>list_repositories</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECCIÓN 3: DISTRIBUCIÓN EN CLIENTES DE IA -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>3. Configuración en Clientes de IA en el Entorno</span>
+        <span class="badge badge-info">Cobertura Multicliente</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente de IA</th>
+            <th>Archivo de Configuración</th>
+            <th>Estado</th>
+            <th>Modo de Integración</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Codex CLI / Desktop</strong></td>
+            <td><code>~/.codex/config.toml</code></td>
+            <td><span class="badge badge-success">ACTIVO</span></td>
+            <td>Plugin nativo <code>[plugins."graphify@graphify"]</code> con repositorio de marketplace configurado.</td>
+          </tr>
+          <tr>
+            <td><strong>Cursor IDE</strong></td>
+            <td><code>~/.cursor/mcp.json</code></td>
+            <td><span class="badge badge-success">ACTIVO</span></td>
+            <td>Servidor MCP HTTP apuntando a <code>https://api.graphify.com/mcp</code>.</td>
+          </tr>
+          <tr>
+            <td><strong>GitHub Copilot CLI</strong></td>
+            <td><code>~/.copilot/mcp-config.json</code></td>
+            <td><span class="badge badge-success">ACTIVO</span></td>
+            <td>Servidor MCP HTTP apuntando a <code>https://api.graphify.com/mcp</code>.</td>
+          </tr>
+          <tr>
+            <td><strong>Claude Code CLI</strong></td>
+            <td><code>~/.claude.json</code></td>
+            <td><span class="badge badge-success">ACTIVO</span></td>
+            <td>Servidor MCP HTTP configurado globalmente.</td>
+          </tr>
+          <tr>
+            <td><strong>ChatGPT Work Desktop</strong></td>
+            <td>Sesión de usuario vinculada</td>
+            <td><span class="badge badge-success">CONFIRMADO</span></td>
+            <td>Sesión autenticada con acceso comprobado a <code>RogerDevCode/restaurante</code> (3.595 nodos, rama <code>main</code>, estado <em>Queryable</em>).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECCIÓN 4: HERRAMIENTAS DISPONIBLES EN GRAPHIFY -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>4. Herramientas MCP Servidas por Graphify</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Herramienta</th>
+            <th>Categoría</th>
+            <th>Funcionalidad y Uso Práctico</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>list_repositories</code></td>
+            <td><span class="badge badge-info">Discovery</span></td>
+            <td>Lista los repositorios indexados en el espacio de trabajo Graphify y su estado (Indexed, Queryable, etc.).</td>
+          </tr>
+          <tr>
+            <td><code>code_graph_search</code></td>
+            <td><span class="badge badge-info">Code Graph</span></td>
+            <td>Búsqueda de símbolos, clases, funciones y archivos en el grafo sintáctico y semántico.</td>
+          </tr>
+          <tr>
+            <td><code>trace_callers_dependencies</code></td>
+            <td><span class="badge badge-info">Code Graph</span></td>
+            <td>Rastreo de llamadas hacia arriba y hacia abajo (callers, callees, dependencias directas e indirectas).</td>
+          </tr>
+          <tr>
+            <td><code>impact_analysis</code></td>
+            <td><span class="badge badge-info">Code Graph</span></td>
+            <td>Análisis de impacto ante modificaciones y tests unitarios/de integración vinculados.</td>
+          </tr>
+          <tr>
+            <td><code>memory_recall_notes</code></td>
+            <td><span class="badge badge-info">Memory</span></td>
+            <td>Consulta de lecciones aprendidas, incidentes y notas guardadas por el equipo en el workspace.</td>
+          </tr>
+          <tr>
+            <td><code>review_status</code></td>
+            <td><span class="badge badge-info">PR Review</span></td>
+            <td>Consulta del estado, hallazgos clave y gates de calidad de las revisiones de Pull Requests en Graphify.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECCIÓN 5: CONCLUSIÓN Y DIAGNÓSTICO -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>5. Conclusiones del Diagnóstico</span>
+      </div>
+      <div class="callout">
+        <strong>Veredicto:</strong> <strong>GRAPHIFY ESTÁ PLENAMENTE OPERATIVO</strong>. Tanto la infraestructura hosted oficial (servidor MCP y servidor OAuth 2.0 PKCE) como las definiciones de plugins y skills locales en Codex, Cursor, Copilot y Claude están perfectamente configuradas e íntegras.
+      </div>
+      <ul style="margin-left: 20px; font-size: 0.95rem; line-height: 1.8;">
+        <li><strong>Autenticación:</strong> Graphify utiliza un esquema de seguridad basado en OAuth 2.0 PKCE (RFC 9207). No utiliza claves estáticas ni tokens embebidos en texto plano. Cada cliente realiza un flujo interactivo en el navegador al invocar por primera vez las herramientas.</li>
+        <li><strong>Repositorio indexado:</strong> El proyecto <code>RogerDevCode/restaurante</code> ya se encuentra indexado en Graphify con 3.595 nodos sintácticos/semánticos listos para consultas de grafo de llamadas, impacto y memoria de equipo.</li>
+        <li><strong>Artefactos guardados:</strong>
+          <ul>
+            <li><code>test_graphify_evidence.json</code>: Registro estructurado con códigos HTTP, cabeceras de respuesta y catálogo de herramientas.</li>
+            <li><code>test_graphify_log.txt</code>: Bitácora de ejecución de las pruebas.</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,123 @@
+{
+  "timestamp": "2026-11-24T18:55:37-03:00",
+  "mcp_endpoint": "https://api.graphify.com/mcp",
+  "endpoint_check": {
+    "post_status": 401,
+    "post_headers": {
+      "Content-Length": "0",
+      "Connection": "close",
+      "Date": "Tue, 24 Nov 2026 21:55:37 GMT",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "www-authenticate": "Bearer resource_metadata=\"https://api.graphify.com/.well-known/oauth-protected-resource/mcp\"",
+      "x-correlation-id": "d1222194-acb6-47ce-94b2-7cd936d0499a",
+      "X-Cache": "Error from cloudfront",
+      "Via": "1.1 224797da33bb8dc3f8cf7c2b25e379a0.cloudfront.net (CloudFront)",
+      "X-Amz-Cf-Pop": "MIA50-P2",
+      "X-Amz-Cf-Id": "imPBptfWXrNnmV0bR3gYhSmJeZ9BaNqXeTVwoikPrj4-5aWso2_ZOw=="
+    },
+    "post_body": "",
+    "requires_oauth": true
+  },
+  "plugin_integrity": {
+    "installed_version": "1.0.2",
+    "plugin_path": "/home/manager/.codex/plugins/cache/graphify/graphify/1.0.2",
+    "skills": {
+      "graphify": {
+        "path": "/home/manager/.codex/plugins/cache/graphify/graphify/1.0.2/skills/graphify/SKILL.md",
+        "has_frontmatter": true,
+        "length": 1436,
+        "snippet": "--- name: graphify description: Query Graphify for the code graph, Memory, and PR review status of repositories indexed in the user's Graphify workspace. ---  # Use Graphify  Use Graphify's MCP tools "
+      },
+      "get-started": {
+        "path": "/home/manager/.codex/plugins/cache/graphify/graphify/1.0.2/skills/get-started/SKILL.md",
+        "has_frontmatter": true,
+        "length": 1005,
+        "snippet": "--- name: get-started description: Sign in to Graphify and confirm the agent can list the repositories indexed in your workspace. ---  # Get started with Graphify  Graphify is already connected as an "
+      }
+    }
+  },
+  "client_distribution": {
+    "Codex CLI / Desktop": {
+      "file": "/home/manager/.codex/config.toml",
+      "configured": true,
+      "details": "Activo con URL https://api.graphify.com/mcp"
+    },
+    "Cursor IDE": {
+      "file": "/home/manager/.cursor/mcp.json",
+      "configured": true,
+      "details": "Activo con URL https://api.graphify.com/mcp"
+    },
+    "GitHub Copilot CLI": {
+      "file": "/home/manager/.copilot/mcp-config.json",
+      "configured": true,
+      "details": "Activo con URL https://api.graphify.com/mcp"
+    },
+    "Claude Code CLI": {
+      "file": "/home/manager/.claude.json",
+      "configured": true,
+      "details": "Activo con URL https://api.graphify.com/mcp"
+    },
+    "CommandCode": {
+      "file": "/home/manager/.commandcode/mcp.json",
+      "configured": false,
+      "details": "No configurado"
+    },
+    "Antigravity IDE": {
+      "file": "/home/manager/.gemini/antigravity/mcp_config.json",
+      "configured": false,
+      "details": "No configurado"
+    }
+  },
+  "oauth_discovery": {
+    "issuer": "https://api.graphify.com",
+    "authorization_endpoint": "https://api.graphify.com/oauth/authorize",
+    "token_endpoint": "https://api.graphify.com/oauth/token",
+    "registration_endpoint": "https://api.graphify.com/oauth/register",
+    "revocation_endpoint": "https://api.graphify.com/oauth/revoke",
+    "grant_types_supported": [
+      "authorization_code",
+      "refresh_token"
+    ],
+    "code_challenge_methods_supported": [
+      "S256"
+    ],
+    "scopes_supported": [
+      "graphify:query",
+      "openid",
+      "offline_access"
+    ],
+    "protected_resource_url": "https://api.graphify.com/.well-known/oauth-protected-resource/mcp"
+  },
+  "tools_catalog": [
+    {
+      "name": "list_repositories",
+      "category": "Discovery",
+      "description": "Lista los repositorios indexados en el espacio de trabajo Graphify y su estado (Indexed, Queryable, etc.)."
+    },
+    {
+      "name": "code_graph_search",
+      "category": "Code Graph",
+      "description": "B\u00fasqueda de s\u00edmbolos, clases, funciones y archivos en el grafo sint\u00e1ctico y sem\u00e1ntico."
+    },
+    {
+      "name": "trace_callers_dependencies",
+      "category": "Code Graph",
+      "description": "Rastreo de llamadas hacia arriba y hacia abajo (callers, callees, dependencias directas e indirectas)."
+    },
+    {
+      "name": "impact_analysis",
+      "category": "Code Graph",
+      "description": "An\u00e1lisis de impacto ante modificaciones y tests unitarios/de integraci\u00f3n vinculados."
+    },
+    {
+      "name": "memory_recall_notes",
+      "category": "Memory",
+      "description": "Consulta de lecciones aprendidas, incidentes y notas guardadas por el equipo en el workspace."
+    },
+    {
+      "name": "review_status",
+      "category": "PR Review",
+      "description": "Consulta del estado, hallazgos clave y gates de calidad de las revisiones de Pull Requests en Graphify."
+    }
+  ]
+}
