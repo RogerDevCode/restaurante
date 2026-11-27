@@ -62,3 +62,7 @@ sermig/*.doc
 a1*.sqlx
 sermig/*.doc
 a1*.sql
+
+# Symlinks locales de skills por proyecto (apuntan a ~/skills-pool/)
+.agents/skills/
+.claude/skills

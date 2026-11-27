@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Primeros Clientes para Proyectos ESP32 — Región del Biobío, Chile</title>
+<style>
+:root{--bg:#f6f5f2;--sheet:#fff;--ink:#18181a;--ink2:#54545b;--ink3:#86868d;--line:#ecebe7;--tint:#f4f3ef;--accent:#2f5d50;--link-line:#cfcfca;
+  --shadow:0 1px 2px rgba(20,20,20,.04),0 12px 40px -12px rgba(20,20,20,.08);
+  --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#121211;--sheet:#1a1a19;--ink:#ecebe7;--ink2:#a8a7a1;--ink3:#8a8983;--line:rgba(255,255,255,.07);--tint:#222220;--accent:#93b5a6;--link-line:#4a4a46;--shadow:0 1px 2px rgba(0,0,0,.3)}}
+*{box-sizing:border-box}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans)}
+a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--link-line);text-underline-offset:3px}
+a:hover{text-decoration-color:currentColor}
+.num{font-variant-numeric:tabular-nums}
+.sheet{max-width:880px;margin:40px auto 64px;background:var(--sheet);border-radius:28px;box-shadow:var(--shadow);padding:72px 80px 56px}
+.meta{color:var(--ink3);font-size:13px;margin:0}
+h1{font-weight:300;font-size:clamp(32px,5vw,46px);line-height:1.08;letter-spacing:-.035em;margin:18px 0 22px;max-width:15em}
+.verdict{font-size:18px;line-height:1.6;color:var(--ink2);max-width:36em;margin:0}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:48px 0 0;padding:22px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.facts dt,.kv dt,.steps dt,.dims dt,.label,.eyebrow{color:var(--ink3);font-size:13px;font-weight:400}
+.facts dd{margin:4px 0 0;font-weight:500}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;margin:56px 0 0}
+.top h2{font-weight:400;font-size:28px;line-height:1.2;letter-spacing:-.025em;margin:6px 0 8px}
+.top p{margin:0;color:var(--ink2);max-width:32em}
+.top .big{font-weight:300;font-size:64px;line-height:1;letter-spacing:-.05em;color:var(--accent)}
+section.block{margin-top:80px}
+.eyebrow{margin:0}
+h2.section{font-weight:400;font-size:26px;line-height:1.2;letter-spacing:-.025em;margin:8px 0 6px}
+.note{color:var(--ink3);font-size:14px;margin:0 0 12px;max-width:40em}
+.prospect{padding:36px 0;border-bottom:1px solid var(--line);break-inside:avoid;page-break-inside:avoid}
+.prospect:last-child{border-bottom:0}
+.p-head{display:flex;justify-content:space-between;gap:24px;align-items:baseline}
+.p-head h3{font-weight:500;font-size:20px;line-height:1.3;letter-spacing:-.02em;margin:0}
+.sub{color:var(--ink3);font-size:13px;margin:4px 0 0}
+.score{text-align:right;white-space:nowrap}
+.score b{font-weight:400;font-size:30px;line-height:1;letter-spacing:-.03em}
+.score span{display:block;color:var(--ink3);font-size:12px;margin-top:6px}
+.signal{font-size:17px;line-height:1.55;margin:18px 0 22px;max-width:38em}
+.kv:empty{display:none}.p-head+.kv{margin-top:18px}.kv{display:grid;grid-template-columns:120px 1fr;gap:10px 24px;margin:0}
+.kv dd{margin:0;color:var(--ink2);font-size:14px}
+.kv dt{font-size:14px}
+.opener{background:var(--tint);border-radius:16px;padding:18px 22px;margin:22px 0 0}
+.opener p{margin:6px 0 0}.opener .label{margin:0}
+details{margin-top:16px}
+summary{cursor:pointer;color:var(--ink2);font-size:14px;list-style:none;display:inline-block}
+summary::-webkit-details-marker{display:none}
+summary::after{content:" +";color:var(--ink3)}
+details[open] summary::after{content:" \2212"}
+details p,.print-only p{color:var(--ink2);font-size:14px;margin:10px 0 0;max-width:42em}
+.source{color:var(--ink3)}
+.dims{display:flex;flex-wrap:wrap;gap:6px 28px;margin:12px 0 0}
+.dims div{display:flex;gap:8px}.dims dd{margin:0;font-size:13px;color:var(--ink)}.dims dt{font-size:13px}
+.patterns{margin-top:12px}
+.pattern{display:grid;grid-template-columns:56px 1fr;gap:16px;padding:18px 0;border-top:1px solid var(--line);break-inside:avoid}
+.pattern b{font-weight:300;font-size:28px;line-height:1}
+.pattern h4{margin:0;font-size:15px;font-weight:500}
+.pattern p{margin:2px 0 0;color:var(--ink2);font-size:14px}
+.angle{font-weight:400;font-size:22px;line-height:1.4;letter-spacing:-.02em;margin:10px 0 22px;max-width:30em}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;border-top:1px solid var(--line);padding-top:20px;margin:0}
+.steps dd{margin:4px 0 0;font-size:14px;color:var(--ink2)}
+.limits{margin:10px 0 0;padding:0;list-style:none}
+.limits li{padding:10px 0;border-top:1px solid var(--line);color:var(--ink2);font-size:14px}
+.print-only{display:none}
+.empty{color:var(--ink3);font-size:14px;padding:18px 0;margin:0}
+footer{margin-top:56px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--ink3);font-size:12px}
+@media screen and (max-width:760px){.sheet{margin:0;border-radius:0;box-shadow:none;padding:40px 22px}.facts,.steps{grid-template-columns:1fr 1fr;gap:16px}.kv{grid-template-columns:1fr;gap:2px}.kv dd{margin-bottom:10px}.top .big{font-size:48px}}
+@page{margin:14mm}
+@media print{
+  :root{--bg:#fff;--sheet:#fff;--ink:#111;--ink2:#444;--ink3:#777;--line:#e2e2de;--tint:#f4f3ef;--accent:#2f5d50;--link-line:#bbb;--shadow:none}
+  body{background:#fff;font-size:12.5px}
+  .sheet{margin:0;max-width:none;padding:0;border-radius:0;box-shadow:none;zoom:.92}
+  section.block{margin-top:40px}
+  .top,.opener,.pattern,.steps{break-inside:avoid}
+  .eyebrow,h2.section,.note{break-after:avoid}
+  .screen-only{display:none}.print-only{display:block;margin-top:10px}
+  .prospect{padding:20px 0}
+  .signal{font-size:14px;margin:10px 0 12px}
+  .kv{gap:4px 20px}.kv dt,.kv dd{font-size:12px}
+  .opener{padding:10px 14px;margin-top:12px;border-radius:10px}
+  details{margin-top:10px}details p,.print-only p{font-size:12px;margin-top:6px}
+  .score b{font-size:24px}
+  .opener{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<main class="sheet">
+  <header>
+    <p class="meta">First Customer Finder <span aria-hidden="true">&middot;</span> 2026-11-26 <span aria-hidden="true">&middot;</span> Standard mode</p>
+    <h1>Primeros Clientes para Proyectos ESP32 — Región del Biobío, Chile</h1>
+    <p class="verdict">Los señales más fuertes de demanda para implementaciones con ESP32 en el Biobío se concentran en startups de base tecnológica y centros de transferencia en Concepción (Permacultura Tech, C4i UdeC, UGPS e incubados de Prospecta+), seguidos por integradores marítimo-industriales (Ramcotec). Lidera la lista Permacultura Tech por su tracción reciente (2026) con sensores en baja conectividad y necesidad directa de escalar nodos de campo.</p>
+  </header>
+
+  <dl class="facts">
+    <div><dt>Product</dt><dd><a href="https://www.espressif.com/en/products/socs/esp32" target="_blank" rel="noreferrer">Desarrollo e Implementación de Proyectos IoT con ESP32</a></dd></div>
+    <div><dt>Target customer</dt><dd>Startups Agrotech/Logística/DeepTech, integradores industriales y centros de transferencia tecnológica en la Región del Biobío (Concepción, Talcahuano, Coronel, Los Ángeles)</dd></div>
+    <div><dt>Qualified prospects</dt><dd class="num">6 <span class="sub">(0 high intent)</span></dd></div>
+    <div><dt>Average fit score</dt><dd class="num">86 of 100</dd></div>
+  </dl>
+
+  <section class="top">
+    <div>
+      <p class="eyebrow">Highest confidence prospect</p>
+      <h2>Permacultura Tech (IAgroTech)</h2>
+      <p>Premiación eAwards Chile 2026 e impulso comercial actual implican pasar de validación a despliegues repetibles en campo.</p>
+    </div>
+    <div class="big num">95</div>
+  </section>
+  <section class="block">
+    <p class="eyebrow">Shortlist</p>
+    <h2 class="section">Who to talk to first</h2>
+    <p class="note">Sources: Fuentes públicas en español e inglés sobre Región del Biobío (IncubaUdeC, Noticias UdeC, empresas locales, GitHub Chile), últimos 12 meses.</p>
+    
+    <article class="prospect">
+      <header class="p-head">
+        <div>
+          <h3>Permacultura Tech (IAgroTech)</h3>
+          <p class="sub">Startup Agrotech (Concepción) <span aria-hidden="true">&middot;</span> Trigger present</p>
+        </div>
+        <div class="score"><b class="num">95</b><span>Strong candidate</span></div>
+      </header>
+      <p class="signal">Startup de Concepción que desarrolla soluciones de monitoreo agrícola e invernaderos con sensores en entornos de baja conectividad, ganadora de eAwards Chile 2026.</p>
+      <dl class="kv"><dt>Why it fits</dt><dd>Los nodos de sensores con ESP32 (Wi-Fi/BLE/LoRa + deep sleep) son ideales para escalar su hardware de monitoreo en invernaderos y zonas rurales de baja conectividad a bajo costo.</dd><dt>Why now</dt><dd>Premiación eAwards Chile 2026 e impulso comercial actual implican pasar de validación a despliegues repetibles en campo.</dd><dt>Channel</dt><dd>Formulario / correo oficial (contacto@permaculturatech.com) en Concepción</dd><dt>Caution</dt><dd>Confirmar si ya tienen equipo interno de hardware o tercerizan el diseño de nodos/firmware.</dd></dl>
+      <div class="opener">
+        <p class="label">Suggested opener, draft only and never sent automatically</p>
+        <p>Hola equipo de Permacultura Tech, vi su trabajo en Concepción con IAgroTech y el reconocimiento en eAwards 2026 por monitoreo hídrico en baja conectividad. Desarrollo firmware y hardware con ESP32 (LoRa/MQTT/bajo consumo) para nodos de sensores en campo listos para escalar. ¿Están necesitando apoyo local en Concepción para optimizar o producir nuevos nodos de sensores?</p>
+      </div>
+      <details class="screen-only">
+        <summary>Evidence and score breakdown</summary>
+        <p>Sitio oficial activo en Concepción (permaculturatech.com) y cobertura pública 2026 destacando su despliegue de sensores hídricos e IoT para ahorro de agua.</p>
+        <p class="source">
+          Sitio oficial de empresa, 2026-11-26
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://permaculturatech.com/" target="_blank" rel="noreferrer">Permacultura Tech - Tecnología para cuidar tu entorno</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>5 of 5</dd></div><div><dt>Timing</dt><dd>5 of 5</dd></div><div><dt>Reachability</dt><dd>5 of 5</dd></div><div><dt>Evidence quality</dt><dd>5 of 5</dd></div></dl>
+      </details>
+      <div class="print-only">
+        <p class="label">Evidence and score breakdown</p>
+        <p>Sitio oficial activo en Concepción (permaculturatech.com) y cobertura pública 2026 destacando su despliegue de sensores hídricos e IoT para ahorro de agua.</p>
+        <p class="source">
+          Sitio oficial de empresa, 2026-11-26
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://permaculturatech.com/" target="_blank" rel="noreferrer">Permacultura Tech - Tecnología para cuidar tu entorno</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>5 of 5</dd></div><div><dt>Timing</dt><dd>5 of 5</dd></div><div><dt>Reachability</dt><dd>5 of 5</dd></div><div><dt>Evidence quality</dt><dd>5 of 5</dd></div></dl>
+      </div>
+    </article>
+    <article class="prospect">
+      <header class="p-head">
+        <div>
+          <h3>C4i UdeC (Centro para la Industria 4.0)</h3>
+          <p class="sub">Centro de Transferencia Tecnológica (Concepción) <span aria-hidden="true">&middot;</span> Trigger present</p>
+        </div>
+        <div class="score"><b class="num">88</b><span>Strong candidate</span></div>
+      </header>
+      <p class="signal">El C4i de la Universidad de Concepción selló alianza con Seeed Studio (fabricante líder de hardware ESP32/XIAO/SenseCAP) para acelerar la digitalización industrial en PyMEs.</p>
+      <dl class="kv"><dt>Why it fits</dt><dd>La alianza requiere integradores locales capaces de programar firmware ESP32/Seeed, conectar sensores industriales (Modbus/RS-485/MQTT) e implementarlos en PyMEs del Biobío.</dd><dt>Why now</dt><dd>Convenio activo firmado en 2026 más cierre reciente de programas PATI CORFO con PyMEs locales.</dd><dt>Channel</dt><dd>Contacto institucional C4i UdeC / Facultad de Ingeniería UdeC en Concepción</dd><dt>Caution</dt><dd>Tratar el contacto como alianza/subcontratación técnica para proyectos con PyMEs, no venta directa de producto cerrado.</dd></dl>
+      <div class="opener">
+        <p class="label">Suggested opener, draft only and never sent automatically</p>
+        <p>Hola equipo C4i UdeC, leí sobre su alianza con Seeed Studio para llevar hardware IoT y digitalización industrial a PyMEs. Trabajo implementando proyectos con ESP32 y módulos compatibles (sensores industriales, MQTT, telemetría) aquí en el Biobío. ¿Tienen espacio en su red de proveedores o proyectos piloto para colaborar en implementaciones con PyMEs?</p>
+      </div>
+      <details class="screen-only">
+        <summary>Evidence and score breakdown</summary>
+        <p>Publicación oficial de Noticias UdeC (27/04/2026) detallando cooperación técnica y comercial para integrar hardware de Seeed en proyectos para PyMEs del país y la región.</p>
+        <p class="source">
+          Noticia institucional UdeC, 2026-04-27
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://noticias.udec.cl/c4i-udec-y-empresa-china-seeed-studio-sellan-alianza-para-acelerar-la-digitalizacion-industrial-en-el-pais/" target="_blank" rel="noreferrer">C4i UdeC y empresa China Seeed Studio sellan alianza para acelerar la digitalización industrial</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>5 of 5</dd></div><div><dt>Timing</dt><dd>4 of 5</dd></div><div><dt>Reachability</dt><dd>4 of 5</dd></div><div><dt>Evidence quality</dt><dd>5 of 5</dd></div></dl>
+      </details>
+      <div class="print-only">
+        <p class="label">Evidence and score breakdown</p>
+        <p>Publicación oficial de Noticias UdeC (27/04/2026) detallando cooperación técnica y comercial para integrar hardware de Seeed en proyectos para PyMEs del país y la región.</p>
+        <p class="source">
+          Noticia institucional UdeC, 2026-04-27
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://noticias.udec.cl/c4i-udec-y-empresa-china-seeed-studio-sellan-alianza-para-acelerar-la-digitalizacion-industrial-en-el-pais/" target="_blank" rel="noreferrer">C4i UdeC y empresa China Seeed Studio sellan alianza para acelerar la digitalización industrial</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>5 of 5</dd></div><div><dt>Timing</dt><dd>4 of 5</dd></div><div><dt>Reachability</dt><dd>4 of 5</dd></div><div><dt>Evidence quality</dt><dd>5 of 5</dd></div></dl>
+      </div>
+    </article>
+    <article class="prospect">
+      <header class="p-head">
+        <div>
+          <h3>UGPS (IncubaUdeC)</h3>
+          <p class="sub">Startup de Telemetría y Flotas (Biobío) <span aria-hidden="true">&middot;</span> Trigger present</p>
+        </div>
+        <div class="score"><b class="num">87</b><span>Strong candidate</span></div>
+      </header>
+      <p class="signal">Empresa tecnológica incubada en IncubaUdeC que lanzó &#x27;Unificador&#x27; para integrar múltiples equipos GPS y telemetría de flotas en Chile y México.</p>
+      <dl class="kv"><dt>Why it fits</dt><dd>Un ESP32 con BLE/Wi-Fi/GPS/CAN-bus puede actuar como nodo auxiliar económico (monitoreo de cadena de frío, identificación RFID de conductor o gateway de sensores en cabina) integrado a su plataforma.</dd><dt>Why now</dt><dd>Lanzamiento reciente (noviembre 2026) y expansión comercial activa.</dd><dt>Channel</dt><dd>Contacto vía IncubaUdeC o sitio/LinkedIn de UGPS</dd><dt>Caution</dt><dd>Validar si su modelo actual es 100% software agnóstico al hardware o si también recomiendan/proveen dispositivos.</dd></dl>
+      <div class="opener">
+        <p class="label">Suggested opener, draft only and never sent automatically</p>
+        <p>Hola equipo de UGPS, vi su nota en IncubaUdeC sobre Unificador y cómo resuelven la fragmentación entre equipos de telemetría. Desarrollo nodos IoT con ESP32 (sensores de temperatura/cadena de frío, BLE y gateways de bajo costo) fáciles de integrar por API/MQTT. ¿Evalúan incorporar hardware complementario económico para clientes con flotas mixtas?</p>
+      </div>
+      <details class="screen-only">
+        <summary>Evidence and score breakdown</summary>
+        <p>Nota publicada en IncubaUdeC el 05/11/2026 describiendo su crecimiento y el problema de fragmentación de hardware entre transportistas.</p>
+        <p class="source">
+          Comunicado IncubaUdeC, 2026-11-05
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://www.incubaudec.cl/ugps-revoluciona-la-gestion-de-flotas-con-unificador-una-plataforma-que-integra-multiples-gps-y-potencia-la-operacion-con-inteligencia-artificial/" target="_blank" rel="noreferrer">UGPS revoluciona la gestión de flotas con &#x27;Unificador&#x27;</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>4 of 5</dd></div><div><dt>Timing</dt><dd>5 of 5</dd></div><div><dt>Reachability</dt><dd>4 of 5</dd></div><div><dt>Evidence quality</dt><dd>5 of 5</dd></div></dl>
+      </details>
+      <div class="print-only">
+        <p class="label">Evidence and score breakdown</p>
+        <p>Nota publicada en IncubaUdeC el 05/11/2026 describiendo su crecimiento y el problema de fragmentación de hardware entre transportistas.</p>
+        <p class="source">
+          Comunicado IncubaUdeC, 2026-11-05
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://www.incubaudec.cl/ugps-revoluciona-la-gestion-de-flotas-con-unificador-una-plataforma-que-integra-multiples-gps-y-potencia-la-operacion-con-inteligencia-artificial/" target="_blank" rel="noreferrer">UGPS revoluciona la gestión de flotas con &#x27;Unificador&#x27;</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>4 of 5</dd></div><div><dt>Timing</dt><dd>5 of 5</dd></div><div><dt>Reachability</dt><dd>4 of 5</dd></div><div><dt>Evidence quality</dt><dd>5 of 5</dd></div></dl>
+      </div>
+    </article>
+    <article class="prospect">
+      <header class="p-head">
+        <div>
+          <h3>Cohorte Prospecta+ Biobío (IncubaUdeC)</h3>
+          <p class="sub">Programa de 25 Startups EBCT (Biobío) <span aria-hidden="true">&middot;</span> Trigger present</p>
+        </div>
+        <div class="score"><b class="num">84</b><span>Strong candidate</span></div>
+      </header>
+      <p class="signal">25 emprendimientos científico-tecnológicos del Biobío iniciaron un proceso de incubación de 5 meses (septiembre 2026 - febrero 2027) para validar soluciones y llegar al mercado.</p>
+      <dl class="kv"><dt>Why it fits</dt><dd>Varios proyectos científico-tecnológicos en etapa temprana necesitan pasar de prueba de concepto de laboratorio a un MVP físico funcional con microcontroladores como ESP32.</dd><dt>Why now</dt><dd>La cohorte está actualmente en plena ejecución de los 5 meses de validación técnica y comercial.</dd><dt>Channel</dt><dd>Correo institucional IncubaUdeC (incuba@udec.cl / 41-2207060) o eventos de comunidad</dd><dt>Caution</dt><dd>Es un canal multiplicador (incubadora), no un comprador directo único.</dd></dl>
+      <div class="opener">
+        <p class="label">Suggested opener, draft only and never sent automatically</p>
+        <p>Hola equipo de IncubaUdeC, vi que los 25 emprendimientos de Prospecta+ están en plena etapa de validación técnica. En Concepción desarrollo prototipos electrónicos y firmware IoT con ESP32 para llevar ideas a MVP funcional en semanas. ¿Hay startups de la cohorte actual buscando apoyo técnico local para su prototipo de hardware?</p>
+      </div>
+      <details class="screen-only">
+        <summary>Evidence and score breakdown</summary>
+        <p>Publicación oficial de IncubaUdeC del 10/09/2026 confirmando el Kick Off de los 25 proyectos financiados por Corfo.</p>
+        <p class="source">
+          Noticia institucional IncubaUdeC, 2026-09-10
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://www.incubaudec.cl/prospecta-inicia-su-proceso-de-incubacion-con-25-emprendimientos-tecnologicos-del-biobio/" target="_blank" rel="noreferrer">Prospecta+ inicia su proceso de incubación con 25 emprendimientos tecnológicos del Biobío</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>4 of 5</dd></div><div><dt>Timing</dt><dd>5 of 5</dd></div><div><dt>Reachability</dt><dd>4 of 5</dd></div><div><dt>Evidence quality</dt><dd>4 of 5</dd></div></dl>
+      </details>
+      <div class="print-only">
+        <p class="label">Evidence and score breakdown</p>
+        <p>Publicación oficial de IncubaUdeC del 10/09/2026 confirmando el Kick Off de los 25 proyectos financiados por Corfo.</p>
+        <p class="source">
+          Noticia institucional IncubaUdeC, 2026-09-10
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://www.incubaudec.cl/prospecta-inicia-su-proceso-de-incubacion-con-25-emprendimientos-tecnologicos-del-biobio/" target="_blank" rel="noreferrer">Prospecta+ inicia su proceso de incubación con 25 emprendimientos tecnológicos del Biobío</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>4 of 5</dd></div><div><dt>Timing</dt><dd>5 of 5</dd></div><div><dt>Reachability</dt><dd>4 of 5</dd></div><div><dt>Evidence quality</dt><dd>4 of 5</dd></div></dl>
+      </div>
+    </article>
+    <article class="prospect">
+      <header class="p-head">
+        <div>
+          <h3>FAMI · Redes que Protegen (Senda Zero / dLab UDD)</h3>
+          <p class="sub">Proyecto MVP Hardware LoRaWAN (Chile) <span aria-hidden="true">&middot;</span> Problem aware</p>
+        </div>
+        <div class="score"><b class="num">80</b><span>Strong candidate</span></div>
+      </header>
+      <p class="signal">Prototipo MVP validado de teleasistencia comunitaria para adultos mayores basado en wearables LoRaWAN 915 MHz sin depender de red celular.</p>
+      <dl class="kv"><dt>Why it fits</dt><dd>El hardware wearable/gateway LoRaWAN 915 MHz encaja directamente con plataformas ESP32+SX1262 (bajo consumo, cifrado AES-256, diseño de PCB compacto).</dd><dt>Why now</dt><dd>Actualización reciente (noviembre 2026) en etapa de prototipo validado buscando transición hacia despliegue real.</dd><dt>Channel</dt><dd>Issue/contacto en el repositorio público de GitHub (FX010)</dd><dt>Caution</dt><dd>UDD tiene sedes en Concepción y Santiago; confirmar ubicación del equipo antes de proponer reuniones presenciales.</dd></dl>
+      <div class="opener">
+        <p class="label">Suggested opener, draft only and never sent automatically</p>
+        <p>Hola equipo de FAMI / Senda Zero, revisé su repo en GitHub y el enfoque de teleasistencia con LoRaWAN 915 MHz sin depender de red celular. Trabajo en el Biobío implementando firmware y hardware sobre ESP32/LoRa de bajo consumo. ¿Están buscando apoyo técnico para llevar el MVP actual a una versión lista para pilotos?</p>
+      </div>
+      <details class="screen-only">
+        <summary>Evidence and score breakdown</summary>
+        <p>Repositorio público en GitHub actualizado el 15/11/2026 documentando el MVP del programa dLab iCubo UDD 2026.</p>
+        <p class="source">
+          Repositorio público GitHub, 2026-11-15
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://github.com/FX010/fami-redes-que-protegen" target="_blank" rel="noreferrer">GitHub - FX010/fami-redes-que-protegen</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>4 of 5</dd></div><div><dt>Timing</dt><dd>4 of 5</dd></div><div><dt>Reachability</dt><dd>4 of 5</dd></div><div><dt>Evidence quality</dt><dd>4 of 5</dd></div></dl>
+      </details>
+      <div class="print-only">
+        <p class="label">Evidence and score breakdown</p>
+        <p>Repositorio público en GitHub actualizado el 15/11/2026 documentando el MVP del programa dLab iCubo UDD 2026.</p>
+        <p class="source">
+          Repositorio público GitHub, 2026-11-15
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://github.com/FX010/fami-redes-que-protegen" target="_blank" rel="noreferrer">GitHub - FX010/fami-redes-que-protegen</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>4 of 5</dd></div><div><dt>Product fit</dt><dd>4 of 5</dd></div><div><dt>Timing</dt><dd>4 of 5</dd></div><div><dt>Reachability</dt><dd>4 of 5</dd></div><div><dt>Evidence quality</dt><dd>4 of 5</dd></div></dl>
+      </div>
+    </article>
+    <article class="prospect">
+      <header class="p-head">
+        <div>
+          <h3>Ramcotec</h3>
+          <p class="sub">Empresa de Telemetría e IoT (Concepción) <span aria-hidden="true">&middot;</span> Problem aware</p>
+        </div>
+        <div class="score"><b class="num">79</b><span>Promising</span></div>
+      </header>
+      <p class="signal">Empresa con casa matriz en Concepción que implementa sistemas IoT, data loggers, sensores y telemetría para centros de cultivo acuícola, puertos y plataformas.</p>
+      <dl class="kv"><dt>Why it fits</dt><dd>Requieren desarrollo continuo de nodos de telemetría, lectura de sensores y pasarelas de comunicación donde ESP32 sirve para prototipado rápido o nodos auxiliares.</dd><dt>Why now</dt><dd>Demanda estructural continua en la industria acuícola y portuaria del Biobío.</dd><dt>Channel</dt><dd>Página de contacto oficial en ramcotec.cl</dd><dt>Caution</dt><dd>Al ser una empresa consolidada, validar primero si externalizan desarrollo de firmware/hardware o solo contratan en planta.</dd></dl>
+      <div class="opener">
+        <p class="label">Suggested opener, draft only and never sent automatically</p>
+        <p>Hola equipo de Ramcotec, sigo su trabajo desde Concepción en telemetría IoT y monitoreo para puertos y centros de cultivo. Soy desarrollador local especializado en implementaciones con ESP32, sensores industriales y protocolos de comunicación. ¿Suelen trabajar con colaboradores externos en el Biobío para prototipos o nodos a medida?</p>
+      </div>
+      <details class="screen-only">
+        <summary>Evidence and score breakdown</summary>
+        <p>Sitio web oficial y página de contacto verificados (ramcotec.cl) detallando líneas de seguridad y telemetría industrial/marítima.</p>
+        <p class="source">
+          Sitio oficial de empresa, unavailable
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://ramcotec.cl/contacto/" target="_blank" rel="noreferrer">CONTACTO – RAMCOTEC</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>3 of 5</dd></div><div><dt>Product fit</dt><dd>5 of 5</dd></div><div><dt>Timing</dt><dd>3 of 5</dd></div><div><dt>Reachability</dt><dd>5 of 5</dd></div><div><dt>Evidence quality</dt><dd>4 of 5</dd></div></dl>
+      </details>
+      <div class="print-only">
+        <p class="label">Evidence and score breakdown</p>
+        <p>Sitio web oficial y página de contacto verificados (ramcotec.cl) detallando líneas de seguridad y telemetría industrial/marítima.</p>
+        <p class="source">
+          Sitio oficial de empresa, unavailable
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://ramcotec.cl/contacto/" target="_blank" rel="noreferrer">CONTACTO – RAMCOTEC</a>
+        </p>
+        <dl class="dims"><div><dt>Pain strength</dt><dd>3 of 5</dd></div><div><dt>Product fit</dt><dd>5 of 5</dd></div><div><dt>Timing</dt><dd>3 of 5</dd></div><div><dt>Reachability</dt><dd>5 of 5</dd></div><div><dt>Evidence quality</dt><dd>4 of 5</dd></div></dl>
+      </div>
+    </article>
+  </section>
+
+  <section class="block">
+    <p class="eyebrow">Patterns</p>
+    <h2 class="section">Signals that repeat</h2>
+    <p class="note">Problems that came up more than once. Lead with these.</p>
+    <div class="patterns"><div class="pattern"><b class="num">4</b><div><h4>Demanda concentrada en Concepción como polo universitario-industrial</h4><p>La mayoría de señales públicas activas en el Biobío nacen alrededor de UdeC (C4i, IncubaUdeC, Prospecta+) y startups surgidas de ese ecosistema.</p></div></div><div class="pattern"><b class="num">3</b><div><h4>Baja conectividad y entornos exigentes (agro y marítimo)</h4><p>Tanto en agricultura (Permacultura Tech) como en acuicultura/puertos (Ramcotec) y teleasistencia (FAMI), el valor clave no es solo el ESP32 con Wi-Fi, sino integrarlo con LoRa/BLE, bajo consumo y sensores robustos.</p></div></div><div class="pattern"><b class="num">2</b><div><h4>Licitaciones y PyMEs regionales como canal paralelo</h4><p>Programas como PATI CORFO (C4i) y licitaciones en Mercado Público de organismos del Biobío canalizan presupuesto público-privado hacia digitalización con sensores.</p></div></div></div>
+  </section>
+
+  <section class="block">
+    <p class="eyebrow">Next seven days</p>
+    <h2 class="section">What to do this week</h2>
+    <p class="angle">Posicionarte como desarrollador/integrador local en el Biobío capaz de llevar una idea o necesidad operativa a un prototipo funcional con ESP32 en semanas (sin costos de traslado desde Santiago).</p>
+    <dl class="steps"><div><dt>First step</dt><dd>Contactar primero a Permacultura Tech, UGPS y C4i UdeC con mensajes cortos (&lt;90 palabras) mencionando su hito público de 2026 y ofreciendo una conversación técnica de 15 minutos.</dd></div><div><dt>Follow up</dt><dd>Mostrar un prototipo o demo concreta (por ejemplo, nodo ESP32 + sensor + dashboard MQTT/LoRa funcionando) una vez que confirmen necesidad activa.</dd></div><div><dt>Success signal</dt><dd>Lograr 2 a 3 reuniones presenciales o virtuales en Concepción durante los próximos 7 días y al menos 1 piloto o alianza técnica.</dd></div></dl>
+  </section>
+
+  <section class="block">
+    <p class="eyebrow">Limits</p>
+    <h2 class="section">Read this before acting</h2>
+    <ul class="limits"><li>Prospectos inferidos a partir de señales públicas; no son compradores confirmados.</li><li>Portales con bloqueo de scraping directo (como Mercado Público o LinkedIn/Reddit) requieren revisión manual directa con filtros de Región del Biobío.</li><li>Verificar siempre vigencia de la necesidad antes de enviar propuestas comerciales; todo contacto debe ser manual.</li></ul>
+  </section>
+
+  <footer>
+    <span>Built from public posts only. Nothing here gets sent for you.</span>
+  </footer>
+</main>
+</body>
+</html>

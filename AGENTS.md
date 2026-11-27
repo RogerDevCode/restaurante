@@ -65,3 +65,4 @@
   - `test-driven-development`: ciclo red-green-refactor obligatorio para lógica contable, financiera y de autorización.
   - `java-concurrency-edt-audit`: auditoría de hilos en Swing + Java 21; prohibido bloquear el EDT con E/S o JDBC, derivar a `SwingUtilities.invokeLater()`.
   - `crossplatform-scripts-guard`: salvaguarda de codificación, BOM y CRLF/LF en instaladores y scripts multiplataforma.
+  - **Skills locales del proyecto (`.agents/skills/` y `.claude/skills`)**: usa `brainstorming` antes de diseñar features, `ub-mode` + `test-driven-development` en lógica contable/fiscal nueva (sin refactors masivos en Swing legacy), `java-concurrency-edt-audit` al tocar UI Swing, `systematic-debugging` ante fallos, `caveman` para respuestas concisas y `verification-before-completion` siempre antes de cerrar.
